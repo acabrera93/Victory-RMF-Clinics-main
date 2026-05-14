@@ -290,12 +290,11 @@ const WEBHOOK_PREINSCRIPCION = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhw
 function postMakeWebhook(baseUrl, payload) {
   return fetch(baseUrl, {
     method: 'POST',
+    mode: 'no-cors',
     headers: {
       'Content-Type': 'text/plain;charset=UTF-8',
-      Accept: '*/*'
     },
     body: JSON.stringify(payload),
-    keepalive: true
   });
 }
 
@@ -411,8 +410,7 @@ async function submitForm(tipo) {
   };
 
   try {
-    const res = await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload);
     document.getElementById('type-grid').style.display = 'none';
     document.getElementById('form-' + tipo).style.display = 'none';
     document.getElementById('success-msg').innerHTML =
