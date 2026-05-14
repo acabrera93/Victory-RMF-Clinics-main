@@ -119,6 +119,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .ptab:hover{border-color:var(--blue-light)}
 .ptab.active{border-color:var(--blue);background:var(--blue);color:#fff;font-weight:500}
 #main-content{display:none}
+.dres-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.dres-item .dres-l{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.dres-item .dres-v{font-size:14px;color:var(--navy);font-weight:500;word-break:break-word}
+@media(max-width:600px){.dres-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -172,6 +176,17 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid rgba(90,157,224,.4);background:transparent;color:var(--blue-bright);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;">
         ✈️ <span id="tiq-toggle-label">Agregar tiquete aéreo</span>
       </button>
+    </div>
+  </div>
+
+  <div class="card" id="datos-resumen-card">
+    <div class="ctitle">Resumen de pre-inscripción</div>
+    <div class="dres-grid">
+      <div class="dres-item"><div class="dres-l">Nombre</div><div class="dres-v" id="dr-nombre">—</div></div>
+      <div class="dres-item"><div class="dres-l">Fecha de nacimiento / edad</div><div class="dres-v" id="dr-fnac">—</div></div>
+      <div class="dres-item"><div class="dres-l">Email acudiente / contacto</div><div class="dres-v" id="dr-email-acu">—</div></div>
+      <div class="dres-item"><div class="dres-l">Posición</div><div class="dres-v" id="dr-pos">—</div></div>
+      <div class="dres-item" style="grid-column:1/-1"><div class="dres-l">Club / colegio</div><div class="dres-v" id="dr-club">—</div></div>
     </div>
   </div>
 
@@ -387,73 +402,191 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 </div><!-- /main-content -->
 
 <script>
-// ── CONFIG ────────────────────────────────────────────────────────────────────
-const LOOKUP_WEBHOOK_URL = 'LOOKUP_WEBHOOK_URL'; // ← Reemplazar con URL de Make.com
+// ── CONFIG (mismo webhook que preinscripción; Make filtra por body.action) ───
+const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
+
+// ── Estado global (getTyC, loadParticipant, pasos) ───────────────────────────
+let allParticipants = [];
+let currentIndex = 0;
+let nombre = 'Participante';
+let tipo = 'jugador';
+let conTiq = false;
+let programa = '';
+let habitacion = '';
+
+function rowVal(obj, ...names) {
+  if (!obj || typeof obj !== 'object') return '';
+  for (const name of names) {
+    if (obj[name] != null && String(obj[name]).trim() !== '') return String(obj[name]).trim();
+  }
+  for (const key of Object.keys(obj)) {
+    const kl = key.toLowerCase().replace(/\s+/g, '_');
+    for (const name of names) {
+      if (kl === name.toLowerCase().replace(/\s+/g, '_')) {
+        const v = obj[key];
+        if (v != null && String(v).trim() !== '') return String(v).trim();
+      }
+    }
+  }
+  return '';
+}
+
+function normalizeParticipant(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const tipoRaw = (rowVal(raw, 'tipo', 'Tipo') || 'Jugador').toLowerCase();
+  const esJugador = tipoRaw.includes('jug');
+  const tiqRaw = rowVal(raw, 'tiquete_aereo', 'Tiquete aéreo', 'Tiquete', 'tiquete');
+  const conTicket = (tiqRaw === 'Con tiquete') || /con\s*tiquete/i.test(tiqRaw);
+  return {
+    nombre: rowVal(raw, 'nombre', 'Nombre completo', 'nombre_completo', 'Nombre'),
+    fecha_nacimiento: rowVal(raw, 'fecha_nacimiento', 'Fecha de nacimiento', 'fecha nacimiento', 'fnac', 'Fecha nacimiento'),
+    email: rowVal(raw, 'email', 'Email', 'correo', 'Correo electrónico').toLowerCase(),
+    email_acudiente: rowVal(raw, 'email_acudiente', 'Email acudiente', 'email acudiente') || rowVal(raw, 'email', 'Email'),
+    posicion: rowVal(raw, 'posicion', 'Posición', 'posición'),
+    club_colegio: rowVal(raw, 'club_colegio', 'Club / Colegio', 'colegio', 'club', 'Club'),
+    tipo: esJugador ? 'Jugador' : 'Acompañante',
+    tiquete_aereo: conTicket ? 'Con tiquete' : (tiqRaw || 'Sin tiquete'),
+    programa: rowVal(raw, 'programa', 'Programa'),
+    habitacion: rowVal(raw, 'habitacion', 'habitación', 'Habitacion', 'Habitación'),
+    acudiente: rowVal(raw, 'acudiente', 'Nombre del acudiente', 'Nombre acudiente'),
+    phone: rowVal(raw, 'phone', 'WhatsApp', 'telefono', 'Teléfono')
+  };
+}
+
+function extractParticipants(body) {
+  if (!body) return [];
+  if (Array.isArray(body)) return body.map(normalizeParticipant).filter(Boolean);
+  if (Array.isArray(body.participants)) return body.participants.map(normalizeParticipant).filter(Boolean);
+  if (Array.isArray(body.rows)) return body.rows.map(normalizeParticipant).filter(Boolean);
+  if (Array.isArray(body.data)) return body.data.map(normalizeParticipant).filter(Boolean);
+  if (body.participant && typeof body.participant === 'object') return [normalizeParticipant(body.participant)].filter(Boolean);
+  if (body.ok === false) return [];
+  if (body.nombre || body.email) return [normalizeParticipant(body)].filter(Boolean);
+  return [];
+}
+
+async function readJsonFlexible(res) {
+  const text = await res.text();
+  if (!text || !text.trim()) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+function edadDesdeISO(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T12:00:00');
+  if (isNaN(d.getTime())) return null;
+  const t = new Date();
+  let age = t.getFullYear() - d.getFullYear();
+  const m = t.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--;
+  return age;
+}
+
+function fmtFechaES(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T12:00:00');
+  if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function updateDatosResumen(u) {
+  document.getElementById('dr-nombre').textContent = u.nombre || '—';
+  const edad = edadDesdeISO(u.fecha_nacimiento);
+  const fStr = u.fecha_nacimiento ? fmtFechaES(u.fecha_nacimiento) : '';
+  document.getElementById('dr-fnac').textContent =
+    fStr ? (edad != null ? fStr + ' · ' + edad + ' años' : fStr) : '—';
+  document.getElementById('dr-email-acu').textContent = (u.email_acudiente || u.email || '—');
+  const tipoL = (u.tipo || '').toLowerCase();
+  document.getElementById('dr-pos').textContent =
+    tipoL.includes('jug') ? (u.posicion || '—') : '— (no aplica)';
+  document.getElementById('dr-club').textContent = (u.club_colegio && u.club_colegio.trim()) ? u.club_colegio : '—';
+}
+
+function updatePermisoDoc(u) {
+  const el = document.getElementById('permiso-doc');
+  if (!el) return;
+  const tipoL = (u.tipo || '').toLowerCase();
+  if (tipoL.includes('acompa')) {
+    el.style.display = 'none';
+    return;
+  }
+  const age = edadDesdeISO(u.fecha_nacimiento);
+  el.style.display = age != null && age < 18 ? '' : 'none';
+}
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim().toLowerCase();
-  if (!email) return;
+  const errEl = document.getElementById('login-err');
+  const defaultErr = 'No encontramos ninguna pre-inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.';
+  errEl.textContent = defaultErr;
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Introduce un correo electrónico válido.';
+    errEl.style.display = 'block';
+    return;
+  }
   const btn = document.getElementById('login-btn');
   btn.disabled = true;
   btn.textContent = 'Buscando...';
-  document.getElementById('login-err').style.display = 'none';
+  errEl.style.display = 'none';
   try {
-    const res = await fetch(LOOKUP_WEBHOOK_URL, {
+    const res = await fetch(WEBHOOK_URL, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ email })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'buscar', email })
     });
-    const data = await res.json();
-    if (data.participants && data.participants.length > 0) {
-      document.getElementById('login-gate').style.display = 'none';
-      document.getElementById('main-content').style.display = 'block';
-      allParticipants = data.participants;
-      if (data.participants.length > 1) {
-        buildParticipantTabs(data.participants);
-      }
-      loadParticipant(data.participants[0]);
+    const data = await readJsonFlexible(res);
+    const participants = extractParticipants(data);
+    if (!res.ok || participants.length === 0) throw new Error('not_found');
+    document.getElementById('login-gate').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    allParticipants = participants;
+    currentIndex = 0;
+    if (participants.length > 1) {
+      buildParticipantTabs(participants);
     } else {
-      throw new Error('not_found');
+      document.getElementById('ptabs-container').style.display = 'none';
+      document.getElementById('ptabs').innerHTML = '';
     }
-  } catch(e) {
-    document.getElementById('login-err').style.display = 'block';
+    loadParticipant(participants[0]);
+  } catch (e) {
+    errEl.textContent = defaultErr;
+    errEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Acceder →';
   }
 }
-
-let allParticipants = [];
-let currentIndex = 0;
 
 function buildParticipantTabs(participants) {
   const container = document.getElementById('ptabs-container');
   const tabsEl = document.getElementById('ptabs');
   container.style.display = 'block';
   tabsEl.innerHTML = '';
-  participants.forEach((p, i) => {
+  participants.forEach((raw, i) => {
+    const p = normalizeParticipant(raw) || raw;
     const tab = document.createElement('button');
     tab.className = 'ptab' + (i === 0 ? ' active' : '');
-    tab.textContent = (p.tipo === 'Jugador' ? '⚽ ' : '👤 ') + p.nombre;
+    tab.textContent = (p.tipo === 'Jugador' ? '⚽ ' : '👤 ') + (p.nombre || 'Participante');
     tab.onclick = () => {
       document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       currentIndex = i;
-      loadParticipant(p);
+      loadParticipant(participants[i]);
     };
     tabsEl.appendChild(tab);
   });
 }
 
 function loadParticipant(p) {
-  const nombre    = p.nombre    || 'Participante';
-  const tipo      = (p.tipo     || 'Jugador').toLowerCase();
-  conTiq          = p.tiquete_aereo === 'Con tiquete';
-  programa        = p.programa  || '';
-  habitacion      = p.habitacion || '';
+  const u = normalizeParticipant(p) || p;
+  nombre = u.nombre || 'Participante';
+  tipo = (u.tipo || 'Jugador').toLowerCase();
+  conTiq = u.tiquete_aereo === 'Con tiquete';
+  programa = u.programa || '';
+  habitacion = u.habitacion || '';
 
   document.getElementById('dn').textContent = nombre;
-  document.getElementById('dtipo').textContent = tipo === 'jugador' ? '⚽ Jugador' : '👨‍👩‍👧 Acompañante';
+  document.getElementById('dtipo').textContent = tipo.includes('jug') ? '⚽ Jugador' : '👨‍👩‍👧 Acompañante';
   document.getElementById('ref1').textContent = nombre;
   document.getElementById('ref-banco').textContent = nombre;
   document.getElementById('ref-tiq').textContent = nombre + ' - TIQUETE';
@@ -461,16 +594,19 @@ function loadParticipant(p) {
   document.getElementById('tc-text').innerHTML = getTyC();
   const tiqOptin = document.getElementById('tiq-optin');
   if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
+
+  const tc = document.getElementById('tc-chk');
+  if (tc) {
+    tc.checked = false;
+    onTC();
+  }
+
+  updateDatosResumen(u);
+  updatePermisoDoc(u);
+
   buildSteps();
   goPanel('panel2');
 }
-
-// ── PARAMS (now set by loadParticipant) ──────────────────────────────────────
-let nombre    = 'Participante';
-let tipo      = 'jugador';
-let conTiq    = false;
-let programa  = '';
-let habitacion= '';
 
 // ── STEPS ────────────────────────────────────────────────────────────────────
 const STEP_DEFS = [
@@ -576,8 +712,9 @@ setInterval(fetchTasa, 30 * 60 * 1000); // Refrescar cada 30 minutos
 
 // ── T&C ──────────────────────────────────────────────────────────────────────
 function getTyC() {
-  const tipoCurrent = tipo.toLowerCase();
+  const tipoCurrent = (tipo || 'jugador').toLowerCase();
   const conAloj = programa !== 'solo_actividades';
+  if (tipoCurrent.includes('jug')) {
     return `
 <h3>1. Servicios incluidos</h3>
 <ul>
@@ -618,10 +755,9 @@ function getTyC() {
 <p>Los participantes deben respetar las normas del programa y las indicaciones del staff. El incumplimiento puede resultar en expulsión inmediata sin derecho a reembolso.</p>
 <h3>8. Jurisdicción legal</h3>
 <p>Este contrato se rige bajo las leyes colombianas. Cualquier disputa se resolverá en los tribunales de Bogotá.</p>`;
-  } else {
-    const conAloj = programa !== 'solo_actividades';
-    const hab = habitacion === 'doble' ? 'Habitación doble' : 'Habitación sencilla';
-    return `
+  }
+  const hab = habitacion === 'doble' ? 'Habitación doble' : 'Habitación sencilla';
+  return `
 <h3>1. Servicios incluidos (Acompañante)</h3>
 <ul>
   ${conTiq ? '<li><strong>Tiquete aéreo:</strong> Bogotá – Madrid – Bogotá</li>' : ''}
@@ -643,14 +779,15 @@ function getTyC() {
 <p>Victory Sports Spain y Fundación Revel garantizan la calidad de los servicios y quedan exentos en casos de fuerza mayor.</p>
 <h3>4. Cesión de derechos de imagen</h3>
 <p>El acompañante autoriza a Victory Sports Spain SL y Fundación Revel a usar fotografías y videos durante el viaje con fines promocionales, respetando siempre la dignidad de los participantes.</p>`;
-  }
 }
 
-document.getElementById('tc-text').innerHTML = getTyC();
+// T&C se inicializa en loadParticipant() después del login.
 
-// ── TIQUETE OPTIN ─────────────────────────────────────────────────────────────
-if (q.get('tiquete') === 'sin') {
-  document.getElementById('tiq-optin').style.display = 'block';
+// ── TIQUETE OPTIN (query string opcional) ─────────────────────────────────────
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('tiquete') === 'sin') {
+  const opt = document.getElementById('tiq-optin');
+  if (opt) opt.style.display = 'block';
 }
 
 function setTiquete(val) {
@@ -673,8 +810,11 @@ function onTC() {
     document.getElementById('tc-fecha').textContent = fecha;
     document.getElementById('tc-ok-doc').style.display = 'block';
     document.getElementById('ds3').style.display = 'none';
-    // Actualizar T&C final con elección de tiquete
     document.getElementById('tc-text').innerHTML = getTyC();
+  } else {
+    document.getElementById('tc-ok-doc').style.display = 'none';
+    const ds3 = document.getElementById('ds3');
+    if (ds3) ds3.style.display = '';
   }
 }
 
@@ -698,12 +838,6 @@ function uploaded(inp, sid) {
   if (n) { const el=document.getElementById(sid); el.className='dstatus ok'; el.textContent='✅ '+n; }
 }
 
-// Ocultar permiso si es acompañante adulto
-if (tipo === 'acompanante') {
-  const el = document.getElementById('permiso-doc');
-  if (el) el.style.display = 'none';
-}
-
 // ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
 function toggleTiqueteDesdeWelcome() {
   conTiq = !conTiq;
@@ -720,15 +854,8 @@ function toggleTiqueteDesdeWelcome() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-// Inicializar label del botón de tiquete en welcome
-document.getElementById('tiq-toggle-label').textContent =
-  conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
+// Todo se inicializa en loadParticipant() después del login exitoso.
 
-// Mostrar optin en panel2 si vino sin tiquete
-const tiqOptin = document.getElementById('tiq-optin');
-if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
-
-buildSteps();
 </script>
 </body>
 </html>
