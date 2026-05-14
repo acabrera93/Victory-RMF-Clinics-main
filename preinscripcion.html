@@ -273,7 +273,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div class="scheck">✅</div>
     <h2>¡Pre-inscripción recibida!</h2>
     <p id="success-msg">Hemos recibido tu pre-inscripción. Te enviamos un correo con las instrucciones para acceder a tu Área Personal, donde podrás gestionar pagos y documentos.</p>
-    <a href="area-personal.html" class="btn-area">Ir al Área Personal →</a>
+    <a href="areapersonal.html" class="btn-area">Ir al Área Personal →</a>
     <button class="btn-otro" onclick="reiniciar()">Inscribir a otro participante con el mismo correo</button>
   </div>
 
@@ -314,10 +314,14 @@ function selTiq(tipo, val) {
     tiqJugador = val;
     document.getElementById('j-tiq-si').classList.toggle('sel', val === 'si');
     document.getElementById('j-tiq-no').classList.toggle('sel', val === 'no');
+    const r = document.querySelector('input[name="j-tiquete"][value="' + val + '"]');
+    if (r) r.checked = true;
   } else {
     tiqAcompanante = val;
     document.getElementById('a-tiq-si').classList.toggle('sel', val === 'si');
     document.getElementById('a-tiq-no').classList.toggle('sel', val === 'no');
+    const r = document.querySelector('input[name="a-tiquete"][value="' + val + '"]');
+    if (r) r.checked = true;
   }
 }
 
@@ -369,6 +373,7 @@ async function submitForm(tipo) {
     programa: 'RMF Clinic 2026', habitacion: '', jugador_acompana: '',
     paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web'
   } : {
+    action: 'preinscripcion',
     timestamp: ts, tipo: 'Acompañante',
     nombre: document.getElementById('a-nombre').value.trim(),
     email: document.getElementById('a-email').value.trim().toLowerCase(),
@@ -389,11 +394,12 @@ async function submitForm(tipo) {
   };
 
   try {
-    await fetch(WEBHOOK_PREINSCRIPCION, {
+    const res = await fetch(WEBHOOK_PREINSCRIPCION, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     document.getElementById('type-grid').style.display = 'none';
     document.getElementById('form-' + tipo).style.display = 'none';
     document.getElementById('success-msg').innerHTML =
@@ -411,7 +417,6 @@ async function submitForm(tipo) {
 
 function reiniciar() {
   document.getElementById('success').classList.remove('active');
-  document.getElementById('success').style.display = 'none';
   document.getElementById('type-grid').style.display = 'grid';
   selectedType = null;
   tiqJugador = null;
@@ -420,6 +425,8 @@ function reiniciar() {
   document.getElementById('card-acompanante').classList.remove('selected');
   document.getElementById('form-jugador').classList.remove('active');
   document.getElementById('form-acompanante').classList.remove('active');
+  document.getElementById('form-jugador').style.display = '';
+  document.getElementById('form-acompanante').style.display = '';
   window.scrollTo({top:0, behavior:'smooth'});
 }
 </script>
