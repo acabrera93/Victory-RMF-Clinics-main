@@ -405,6 +405,19 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 // ── CONFIG (mismo webhook que preinscripción; Make filtra por body.action) ───
 const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
 
+/** Mismo criterio que preinscripcion.html: evita preflight CORS desde GitHub Pages. */
+function postMakeWebhook(baseUrl, payload) {
+  return fetch(baseUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      Accept: '*/*'
+    },
+    body: JSON.stringify(payload),
+    keepalive: true
+  });
+}
+
 // ── Estado global (getTyC, loadParticipant, pasos) ───────────────────────────
 let allParticipants = [];
 let currentIndex = 0;
@@ -530,11 +543,7 @@ async function doLogin() {
   btn.textContent = 'Buscando...';
   errEl.style.display = 'none';
   try {
-    const res = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'buscar', email })
-    });
+    const res = await postMakeWebhook(WEBHOOK_URL, { action: 'buscar', email });
     const data = await readJsonFlexible(res);
     const participants = extractParticipants(data);
     if (!res.ok || participants.length === 0) throw new Error('not_found');

@@ -282,6 +282,23 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 <script>
 const WEBHOOK_PREINSCRIPCION = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
 
+/**
+ * POST al webhook de Make desde el navegador (p. ej. GitHub Pages).
+ * application/json dispara preflight OPTIONS; muchos webhooks de Make no responden CORS y el navegador bloquea el POST.
+ * text/plain + cuerpo JSON suele enviarse como "simple request" sin preflight; Make sigue parseando el JSON en el bundle.
+ */
+function postMakeWebhook(baseUrl, payload) {
+  return fetch(baseUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      Accept: '*/*'
+    },
+    body: JSON.stringify(payload),
+    keepalive: true
+  });
+}
+
 let selectedType = null;
 let tiqJugador = null;
 let tiqAcompanante = null;
@@ -394,11 +411,7 @@ async function submitForm(tipo) {
   };
 
   try {
-    const res = await fetch(WEBHOOK_PREINSCRIPCION, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    });
+    const res = await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     document.getElementById('type-grid').style.display = 'none';
     document.getElementById('form-' + tipo).style.display = 'none';
