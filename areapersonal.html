@@ -182,11 +182,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <div class="card" id="datos-resumen-card">
     <div class="ctitle">Resumen de pre-inscripción</div>
     <div class="dres-grid">
-      <div class="dres-item"><div class="dres-l">Nombre</div><div class="dres-v" id="dr-nombre">—</div></div>
-      <div class="dres-item"><div class="dres-l">Fecha de nacimiento / edad</div><div class="dres-v" id="dr-fnac">—</div></div>
-      <div class="dres-item"><div class="dres-l">Email acudiente / contacto</div><div class="dres-v" id="dr-email-acu">—</div></div>
-      <div class="dres-item"><div class="dres-l">Posición</div><div class="dres-v" id="dr-pos">—</div></div>
-      <div class="dres-item" style="grid-column:1/-1"><div class="dres-l">Club / colegio</div><div class="dres-v" id="dr-club">—</div></div>
+      <div class="dres-item"><div class="dres-l">Nombre</div><div class="dres-v" id="d-nombre">-</div></div>
+      <div class="dres-item"><div class="dres-l">Fecha de nacimiento</div><div class="dres-v" id="d-fecha">-</div></div>
+      <div class="dres-item"><div class="dres-l">Correo electrónico</div><div class="dres-v" id="d-email">-</div></div>
+      <div class="dres-item"><div class="dres-l">Posición</div><div class="dres-v" id="d-posicion">-</div></div>
+      <div class="dres-item" style="grid-column:1/-1"><div class="dres-l">Club / colegio</div><div class="dres-v" id="d-club">-</div></div>
     </div>
   </div>
 
@@ -427,42 +427,141 @@ let conTiq = false;
 let programa = '';
 let habitacion = '';
 
+/** Normaliza nombres de campo para comparar claves de Sheets/Make (tildes, espacios, /, guiones). */
+function normFieldName(s) {
+  return String(s == null ? '' : s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+/**
+ * Lee el primer valor no vacío de obj usando nombres candidatos y coincidencia flexible de claves.
+ */
 function rowVal(obj, ...names) {
-  if (!obj || typeof obj !== 'object') return '';
-  for (const name of names) {
-    if (obj[name] != null && String(obj[name]).trim() !== '') return String(obj[name]).trim();
-  }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return '';
+  const byNorm = {};
   for (const key of Object.keys(obj)) {
-    const kl = key.toLowerCase().replace(/\s+/g, '_');
-    for (const name of names) {
-      if (kl === name.toLowerCase().replace(/\s+/g, '_')) {
-        const v = obj[key];
-        if (v != null && String(v).trim() !== '') return String(v).trim();
-      }
-    }
+    const nk = normFieldName(key);
+    if (byNorm[nk] !== undefined) continue;
+    const v = obj[key];
+    if (v == null) continue;
+    if (typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date)) continue;
+    const s = String(v).trim();
+    if (s !== '') byNorm[nk] = s;
+  }
+  for (const name of names) {
+    const nk = normFieldName(name);
+    if (nk && byNorm[nk] !== undefined) return byNorm[nk];
   }
   return '';
 }
 
 function normalizeParticipant(raw) {
-  if (!raw || typeof raw !== 'object') return null;
-  const tipoRaw = (rowVal(raw, 'tipo', 'Tipo') || 'Jugador').toLowerCase();
+  if (raw == null) return null;
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw);
+      if (p && typeof p === 'object' && !Array.isArray(p)) return normalizeParticipant(p);
+    } catch (_) {}
+    return null;
+  }
+  if (Array.isArray(raw) || typeof raw !== 'object') return null;
+
+  const tipoRaw = (rowVal(raw, 'tipo', 'Tipo', 'type', 'rol', 'Rol', 'categoria', 'Categoría') || 'Jugador').toLowerCase();
   const esJugador = tipoRaw.includes('jug');
-  const tiqRaw = rowVal(raw, 'tiquete_aereo', 'Tiquete aéreo', 'Tiquete', 'tiquete');
+  const tiqRaw = rowVal(
+    raw,
+    'tiquete_aereo',
+    'tiquete aereo',
+    'Tiquete aéreo',
+    'Tiquete aereo',
+    'Tiquete',
+    'tiquete',
+    'Tiquete aéreo ',
+    'vuelo',
+    'Vuelo'
+  );
   const conTicket = (tiqRaw === 'Con tiquete') || /con\s*tiquete/i.test(tiqRaw);
+
+  const emailRaw = rowVal(
+    raw,
+    'email',
+    'Email',
+    'correo',
+    'Correo electrónico',
+    'Correo electronico',
+    'e-mail',
+    'E-mail',
+    'mail'
+  );
+
   return {
-    nombre: rowVal(raw, 'nombre', 'Nombre completo', 'nombre_completo', 'Nombre'),
-    fecha_nacimiento: rowVal(raw, 'fecha_nacimiento', 'Fecha de nacimiento', 'fecha nacimiento', 'fnac', 'Fecha nacimiento'),
-    email: rowVal(raw, 'email', 'Email', 'correo', 'Correo electrónico').toLowerCase(),
-    email_acudiente: rowVal(raw, 'email_acudiente', 'Email acudiente', 'email acudiente') || rowVal(raw, 'email', 'Email'),
-    posicion: rowVal(raw, 'posicion', 'Posición', 'posición'),
-    club_colegio: rowVal(raw, 'club_colegio', 'Club / Colegio', 'colegio', 'club', 'Club'),
+    nombre: rowVal(raw, 'nombre', 'Nombre completo', 'nombre_completo', 'Nombre', 'name', 'participant', 'Participante'),
+    fecha_nacimiento: rowVal(
+      raw,
+      'fecha_nacimiento',
+      'fecha de nacimiento',
+      'Fecha de nacimiento',
+      'fecha nacimiento',
+      'Fecha nacimiento',
+      'fnac',
+      'birthdate',
+      'date_of_birth',
+      'dob'
+    ),
+    email: emailRaw.toLowerCase(),
+    email_acudiente: rowVal(raw, 'email_acudiente', 'Email acudiente', 'email acudiente', 'correo_acudiente') || emailRaw.toLowerCase(),
+    posicion: rowVal(raw, 'posicion', 'posición', 'Posición', 'Posicion', 'position', 'Position', 'rol_deportivo'),
+    club_colegio: rowVal(
+      raw,
+      'club_colegio',
+      'club colegio',
+      'Club / Colegio',
+      'Club colegio',
+      'colegio',
+      'club',
+      'Club',
+      'escuela',
+      'institucion',
+      'institución'
+    ),
     tipo: esJugador ? 'Jugador' : 'Acompañante',
     tiquete_aereo: conTicket ? 'Con tiquete' : (tiqRaw || 'Sin tiquete'),
-    programa: rowVal(raw, 'programa', 'Programa'),
-    habitacion: rowVal(raw, 'habitacion', 'habitación', 'Habitacion', 'Habitación'),
-    acudiente: rowVal(raw, 'acudiente', 'Nombre del acudiente', 'Nombre acudiente'),
-    phone: rowVal(raw, 'phone', 'WhatsApp', 'telefono', 'Teléfono')
+    programa: rowVal(raw, 'programa', 'Programa', 'program', 'evento', 'Evento'),
+    habitacion: rowVal(raw, 'habitacion', 'habitación', 'Habitacion', 'Habitación', 'room', 'tipo_habitacion'),
+    acudiente: rowVal(
+      raw,
+      'acudiente',
+      'Nombre del acudiente',
+      'nombre acudiente',
+      'Nombre acudiente',
+      'tutor',
+      'Tutor',
+      'representante',
+      'padre_madre'
+    ),
+    phone: rowVal(
+      raw,
+      'phone',
+      'Phone',
+      'whatsapp',
+      'WhatsApp',
+      'telefono',
+      'teléfono',
+      'Teléfono',
+      'movil',
+      'móvil',
+      'celular',
+      'Celular',
+      'contacto',
+      'tel'
+    ),
+    pais: rowVal(raw, 'pais', 'país', 'País', 'country', 'país_residencia'),
+    ciudad: rowVal(raw, 'ciudad', 'Ciudad', 'city', 'municipio', 'Municipio'),
+    relacion: rowVal(raw, 'relacion', 'relación', 'Relación', 'Relacion', 'parentesco', 'Parentesco', 'vinculo', 'Vínculo')
   };
 }
 
@@ -495,24 +594,21 @@ function edadDesdeISO(iso) {
   return age;
 }
 
-function fmtFechaES(iso) {
-  if (!iso) return '';
-  const d = new Date(iso + 'T12:00:00');
-  if (isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
-}
+function updateDatosResumen(p) {
+  document.getElementById('d-nombre').textContent =
+    p.nombre || '-';
 
-function updateDatosResumen(u) {
-  document.getElementById('dr-nombre').textContent = u.nombre || '—';
-  const edad = edadDesdeISO(u.fecha_nacimiento);
-  const fStr = u.fecha_nacimiento ? fmtFechaES(u.fecha_nacimiento) : '';
-  document.getElementById('dr-fnac').textContent =
-    fStr ? (edad != null ? fStr + ' · ' + edad + ' años' : fStr) : '—';
-  document.getElementById('dr-email-acu').textContent = (u.email_acudiente || u.email || '—');
-  const tipoL = (u.tipo || '').toLowerCase();
-  document.getElementById('dr-pos').textContent =
-    tipoL.includes('jug') ? (u.posicion || '—') : '— (no aplica)';
-  document.getElementById('dr-club').textContent = (u.club_colegio && u.club_colegio.trim()) ? u.club_colegio : '—';
+  document.getElementById('d-fecha').textContent =
+    p.fecha_nacimiento || '-';
+
+  document.getElementById('d-email').textContent =
+    p.email || '-';
+
+  document.getElementById('d-posicion').textContent =
+    p.posicion || '-';
+
+  document.getElementById('d-club').textContent =
+    p.club_colegio || '-';
 }
 
 function updatePermisoDoc(u) {
@@ -587,12 +683,12 @@ function buildParticipantTabs(participants) {
 }
 
 function loadParticipant(p) {
-  const u = normalizeParticipant(p) || p;
-  nombre = u.nombre || 'Participante';
-  tipo = (u.tipo || 'Jugador').toLowerCase();
-  conTiq = u.tiquete_aereo === 'Con tiquete';
-  programa = u.programa || '';
-  habitacion = u.habitacion || '';
+  const participant = normalizeParticipant(p) || p;
+  nombre = participant.nombre || 'Participante';
+  tipo = (participant.tipo || 'Jugador').toLowerCase();
+  conTiq = participant.tiquete_aereo === 'Con tiquete';
+  programa = participant.programa || '';
+  habitacion = participant.habitacion || '';
 
   document.getElementById('dn').textContent = nombre;
   document.getElementById('dtipo').textContent = tipo.includes('jug') ? '⚽ Jugador' : '👨‍👩‍👧 Acompañante';
@@ -610,8 +706,8 @@ function loadParticipant(p) {
     onTC();
   }
 
-  updateDatosResumen(u);
-  updatePermisoDoc(u);
+  updateDatosResumen(participant);
+  updatePermisoDoc(participant);
 
   buildSteps();
   goPanel('panel2');
