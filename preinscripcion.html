@@ -2,8 +2,15 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pre-inscripción — Real Madrid Foundation Clinic 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Formulario oficial de pre-inscripción al RMF Clinic 2026 de la Real Madrid Foundation con Victory Sports.">
+<meta property="og:title" content="Pre-inscripción — Real Madrid Foundation Clinic 2026">
+<meta property="og:description" content="Formulario oficial de pre-inscripción al RMF Clinic 2026 de la Real Madrid Foundation con Victory Sports.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pre-inscripción — Real Madrid Foundation Clinic 2026">
+<meta name="twitter:description" content="Formulario oficial de pre-inscripción al RMF Clinic 2026 de la Real Madrid Foundation con Victory Sports.">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--navy:#0b1f3a;--blue:#1e5ba8;--blue-light:#3b7fd4;--blue-bright:#5a9de0;--white:#fff;--off:#f4f7fb;--text:#1a2e46;--muted:#4a6080;--border:rgba(11,31,58,0.1);--green:#166534;--gbg:rgba(21,128,61,0.08);--gborder:rgba(21,128,61,0.2);--red:#dc2626;--rbg:rgba(220,38,38,0.06);--rborder:rgba(220,38,38,0.2)}
@@ -67,7 +74,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 <nav>
   <div class="nav-logos">
     <img src="https://i.imgur.com/o6ey8V4.png" alt="Victory">
-    <img src="https://i.imgur.com/SzxB8ru.png" alt="RMF">
+    <img src="https://i.imgur.com/SzxB8ru.png" alt="Real Madrid Foundation">
     <img src="https://i.imgur.com/KQCiHWS.png" alt="EFI">
     <img src="https://i.imgur.com/97OXnBN.png" alt="Revel">
   </div>
@@ -280,7 +287,12 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 </div>
 
 <script>
-const WEBHOOK_PREINSCRIPCION = 'PREINSCRIPCION_WEBHOOK_URL'; // ← Reemplazar con URL de Make.com
+// Mismo endpoint Make.com que index.html (ajusta aquí si usas un escenario distinto para pre-inscripción)
+const WEBHOOK_PREINSCRIPCION = 'https://hook.us2.make.com/3gcs8kbhhs9pwlnblt16l5oqybbkc6sh';
+
+const MSG_VALIDACION_JUGADOR = 'Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.';
+const MSG_VALIDACION_ACOMPANANTE = 'Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.';
+const MSG_ERROR_ENVIO = 'Error al enviar. Por favor intenta nuevamente o escríbenos a alejandro.cabrera@fundacionrevel.net';
 
 let selectedType = null;
 let tiqJugador = null;
@@ -306,6 +318,11 @@ function onHabitacion() {
     document.getElementById('p2-pasaporte').value = '';
     document.getElementById('p2-nombre').classList.remove('error');
     document.getElementById('p2-pasaporte').classList.remove('error');
+  } else {
+    ['p2-nombre', 'p2-pasaporte'].forEach(function (id) {
+      const el = document.getElementById(id);
+      el.classList.toggle('error', el.value.trim() === '');
+    });
   }
 }
 
@@ -332,7 +349,12 @@ async function submitForm(tipo) {
   let valid = true;
   if (tipo === 'jugador') {
     valid = ['j-nombre','j-fnac','j-pasaporte','j-pais','j-posicion','j-ciudad','j-acudiente','j-relacion','j-email','j-phone'].map(chk).every(Boolean) && tiqJugador !== null;
-    if (!valid) { document.getElementById('j-err').style.display = 'block'; return; }
+    if (!valid) {
+      const errEl = document.getElementById('j-err');
+      errEl.textContent = MSG_VALIDACION_JUGADOR;
+      errEl.style.display = 'block';
+      return;
+    }
     document.getElementById('j-err').style.display = 'none';
   } else {
     valid = ['a-nombre','a-fnac','a-pasaporte','a-pais','a-ciudad','a-habitacion','a-jugador','a-email','a-phone'].map(chk).every(Boolean) && tiqAcompanante !== null;
@@ -341,7 +363,12 @@ async function submitForm(tipo) {
       const p2ok = ['p2-nombre','p2-pasaporte'].map(chk).every(Boolean);
       valid = valid && p2ok;
     }
-    if (!valid) { document.getElementById('a-err').style.display = 'block'; return; }
+    if (!valid) {
+      const errEl = document.getElementById('a-err');
+      errEl.textContent = MSG_VALIDACION_ACOMPANANTE;
+      errEl.style.display = 'block';
+      return;
+    }
     document.getElementById('a-err').style.display = 'none';
   }
 
@@ -388,37 +415,77 @@ async function submitForm(tipo) {
   };
 
   try {
-    await fetch(WEBHOOK_PREINSCRIPCION, {
+    const res = await fetch(WEBHOOK_PREINSCRIPCION, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     document.getElementById('type-grid').style.display = 'none';
     document.getElementById('form-' + tipo).style.display = 'none';
-    document.getElementById('success-msg').innerHTML =
-      `Recibimos la pre-inscripción de <strong>${payload.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con las instrucciones para acceder a tu <strong>Área Personal</strong>.`;
+    setSuccessMsgSafe(payload.nombre, payload.email);
     document.getElementById('success').classList.add('active');
     window.scrollTo({top:0, behavior:'smooth'});
   } catch(e) {
     btn.disabled = false;
     btn.textContent = tipo === 'jugador' ? 'Enviar pre-inscripción del jugador →' : 'Enviar pre-inscripción del acompañante →';
     const errEl = document.getElementById(tipo === 'jugador' ? 'j-err' : 'a-err');
-    errEl.textContent = 'Error al enviar. Por favor intenta nuevamente o escríbenos a alejandro.cabrera@fundacionrevel.net';
+    errEl.textContent = MSG_ERROR_ENVIO;
     errEl.style.display = 'block';
   }
 }
 
+function setSuccessMsgSafe(nombre, email) {
+  const el = document.getElementById('success-msg');
+  el.textContent = '';
+  el.appendChild(document.createTextNode('Recibimos la pre-inscripción de '));
+  const s1 = document.createElement('strong');
+  s1.textContent = nombre;
+  el.appendChild(s1);
+  el.appendChild(document.createTextNode('. Te enviamos un correo a '));
+  const s2 = document.createElement('strong');
+  s2.textContent = email;
+  el.appendChild(s2);
+  el.appendChild(document.createTextNode(' con las instrucciones para acceder a tu '));
+  const s3 = document.createElement('strong');
+  s3.textContent = 'Área Personal';
+  el.appendChild(s3);
+  el.appendChild(document.createTextNode('.'));
+}
+
 function reiniciar() {
   document.getElementById('success').classList.remove('active');
-  document.getElementById('success').style.display = 'none';
   document.getElementById('type-grid').style.display = 'grid';
+  ['form-jugador', 'form-acompanante'].forEach(function (id) {
+    const fc = document.getElementById(id);
+    fc.classList.remove('active');
+    fc.style.removeProperty('display');
+  });
   selectedType = null;
   tiqJugador = null;
   tiqAcompanante = null;
   document.getElementById('card-jugador').classList.remove('selected');
   document.getElementById('card-acompanante').classList.remove('selected');
-  document.getElementById('form-jugador').classList.remove('active');
-  document.getElementById('form-acompanante').classList.remove('active');
+  document.getElementById('j-tiq-si').classList.remove('sel');
+  document.getElementById('j-tiq-no').classList.remove('sel');
+  document.getElementById('a-tiq-si').classList.remove('sel');
+  document.getElementById('a-tiq-no').classList.remove('sel');
+  document.querySelectorAll('input[name="j-tiquete"], input[name="a-tiquete"]').forEach(function (r) { r.checked = false; });
+  document.querySelectorAll('#form-jugador .finput, #form-jugador .ftextarea, #form-acompanante .finput, #form-acompanante .ftextarea').forEach(function (inp) {
+    inp.value = '';
+    inp.classList.remove('error');
+  });
+  document.querySelectorAll('#form-jugador .fselect, #form-acompanante .fselect').forEach(function (sel) {
+    sel.selectedIndex = 0;
+    sel.classList.remove('error');
+  });
+  document.getElementById('p2-section').style.display = 'none';
+  document.getElementById('success-msg').textContent =
+    'Hemos recibido tu pre-inscripción. Te enviamos un correo con las instrucciones para acceder a tu Área Personal, donde podrás gestionar pagos y documentos.';
+  document.getElementById('j-err').textContent = MSG_VALIDACION_JUGADOR;
+  document.getElementById('j-err').style.display = 'none';
+  document.getElementById('a-err').textContent = MSG_VALIDACION_ACOMPANANTE;
+  document.getElementById('a-err').style.display = 'none';
   window.scrollTo({top:0, behavior:'smooth'});
 }
 </script>
