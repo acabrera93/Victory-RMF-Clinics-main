@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Área Personal — RMF Clinic 2026 · Victory Sports</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0b1f3a;--blue:#1e5ba8;--blue-light:#3b7fd4;--blue-bright:#5a9de0;--white:#fff;--off:#f4f7fb;--text:#1a2e46;--muted:#4a6080;--border:rgba(11,31,58,0.1);--green:#166534;--gbg:rgba(21,128,61,0.08);--gborder:rgba(21,128,61,0.2)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--text)}
+nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.nav-logos{display:flex;align-items:center;gap:14px}
+.nav-logos img{height:36px;filter:brightness(0)invert(1)}
+.nav-tag{color:rgba(255,255,255,.5);font-size:13px}
+.wrap{max-width:820px;margin:0 auto;padding:36px 20px 80px}
+/* welcome */
+.welcome{background:var(--navy);border-radius:12px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.welcome h1{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;letter-spacing:1px;margin-bottom:4px}
+.welcome h1 span{color:var(--blue-bright)}
+.welcome p{font-size:13px;color:rgba(255,255,255,.6)}
+.badge{background:rgba(90,157,224,.15);border:1px solid rgba(90,157,224,.3);border-radius:20px;padding:5px 14px;font-size:12px;color:var(--blue-bright);white-space:nowrap}
+/* steps */
+.steps{display:flex;gap:0;margin-bottom:24px;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.step{flex:1;padding:14px 12px;text-align:center;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s}
+.step.done{border-bottom-color:var(--green)}
+.step.done .snum{background:var(--green);color:#fff}
+.step.active{border-bottom-color:var(--blue);background:rgba(30,91,168,.03)}
+.step.active .snum{background:var(--blue);color:#fff}
+.snum{width:24px;height:24px;border-radius:50%;background:rgba(11,31,58,.1);color:var(--muted);font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;margin:0 auto 6px}
+.stitle{font-size:12px;font-weight:500;color:var(--navy)}
+.sdesc{font-size:10px;color:var(--muted);margin-top:2px}
+/* panels */
+.panel{display:none}.panel.active{display:block}
+/* card */
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:18px}
+.ctitle{font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.ctitle::after{content:'';flex:1;height:1px;background:rgba(30,91,168,.15)}
+/* tc box */
+.tc-scroll{background:var(--off);border:1px solid var(--border);border-radius:8px;padding:18px 20px;max-height:280px;overflow-y:auto;font-size:13px;line-height:1.8;color:var(--muted);margin-bottom:16px}
+.tc-scroll h3{font-size:13px;font-weight:600;color:var(--navy);margin:14px 0 5px}
+.tc-scroll h3:first-child{margin-top:0}
+.tc-scroll ul{padding-left:16px;margin:4px 0}
+.tc-scroll li{margin-bottom:3px}
+.tc-scroll strong{color:var(--navy)}
+.tc-scroll::-webkit-scrollbar{width:4px}
+.tc-scroll::-webkit-scrollbar-thumb{background:rgba(30,91,168,.2);border-radius:2px}
+.chk-row{display:flex;align-items:flex-start;gap:10px;padding:13px 15px;background:rgba(30,91,168,.04);border:1px solid rgba(30,91,168,.15);border-radius:8px;cursor:pointer;transition:background .2s}
+.chk-row:hover{background:rgba(30,91,168,.08)}
+.chk-row input{width:17px;height:17px;accent-color:var(--blue);flex-shrink:0;margin-top:2px;cursor:pointer}
+.chk-row span{font-size:13px;color:var(--text);line-height:1.5}
+/* tiquete optin */
+.tiq-box{margin-top:16px;background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.2);border-radius:10px;padding:18px}
+.tiq-box h4{font-size:14px;font-weight:500;color:var(--navy);margin-bottom:6px}
+.tiq-box p{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6}
+.tiq-btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn-tiq-yes{padding:9px 18px;background:var(--blue);color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.btn-tiq-no{padding:9px 18px;background:var(--off);color:var(--muted);border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .2s}
+/* calc */
+.calc-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.clabel{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px}
+.cinput{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:20px;font-weight:500;color:var(--navy);outline:none;transition:border-color .2s}
+.cinput:focus{border-color:var(--blue-light)}
+.cinput.ro{background:var(--off);color:var(--muted);font-size:14px;cursor:default}
+.cresult{background:var(--navy);border-radius:10px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.crlabel{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.crvalue{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--blue-bright);letter-spacing:1px;line-height:1}
+.crref{font-size:11px;color:rgba(255,255,255,.45)}
+/* pay */
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:0}
+.pay-opt{border:2px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;position:relative;transition:all .2s}
+.pay-opt:hover{border-color:var(--blue-light)}
+.pay-opt.sel{border-color:var(--blue);background:rgba(30,91,168,.03)}
+.pbadge{position:absolute;top:10px;right:10px;background:rgba(30,91,168,.1);color:var(--blue);font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px}
+.picon{font-size:26px;margin-bottom:8px}
+.ptitle{font-size:14px;font-weight:500;color:var(--navy);margin-bottom:3px}
+.pdesc{font-size:12px;color:var(--muted);line-height:1.5}
+.pay-detail{display:none;margin-top:16px}.pay-detail.vis{display:block}
+.bank-card{background:var(--off);border:1px solid var(--border);border-radius:10px;padding:18px 22px}
+.brow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.brow:last-child{border-bottom:none}
+.bkey{color:var(--muted)}.bval{font-weight:500;color:var(--navy)}
+.bold-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;background:#00A86B;color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .2s;margin-top:14px}
+.bold-btn:hover{background:#009060;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,168,107,.3)}
+.info-box{background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:8px;padding:13px 15px;font-size:13px;color:var(--muted);line-height:1.7;margin-top:14px}
+.info-box strong{color:var(--navy)}
+.ok-box{background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:13px 15px;font-size:13px;color:var(--green);line-height:1.7;margin-top:14px}
+/* pago bloqueado */
+.pay-lock{opacity:.4;pointer-events:none;transition:opacity .3s}
+/* doc */
+.doc-item{display:flex;align-items:flex-start;gap:14px;padding:18px;background:var(--off);border:1px solid var(--border);border-radius:10px;margin-bottom:10px}
+.dicon{font-size:26px;flex-shrink:0}
+.dtitle{font-size:14px;font-weight:500;color:var(--navy);margin-bottom:3px}
+.ddesc{font-size:12px;color:var(--muted);line-height:1.5}
+.dstatus{margin-top:6px;font-size:12px;font-weight:500;color:var(--muted)}
+.dstatus.ok{color:var(--green)}
+.upload{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;margin-top:8px}
+.upload:hover{border-color:var(--blue-light);background:rgba(30,91,168,.03)}
+.upload p{font-size:12px;color:var(--muted);margin-top:5px}
+.upload input{display:none}
+@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}}
+/* LOGIN GATE */
+#login-gate{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;text-align:center}
+.login-logos{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:28px}
+.login-logos img{height:32px;filter:brightness(0)invert(0);opacity:.8}
+.login-title{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--navy);letter-spacing:1px;margin-bottom:8px}
+.login-sub{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:28px}
+.login-input{width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--navy);outline:none;transition:border-color .2s;text-align:center}
+.login-input:focus{border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(30,91,168,.08)}
+.login-btn{width:100%;margin-top:14px;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s}
+.login-btn:hover:not(:disabled){background:#162d57;transform:translateY(-1px)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.login-err{display:none;margin-top:12px;padding:10px 14px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:7px;font-size:13px;color:#dc2626;line-height:1.6}
+.login-footer{margin-top:20px;font-size:12px;color:var(--muted);line-height:1.7}
+/* PARTICIPANT TABS */
+.ptabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.ptab{padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:all .2s;background:#fff;font-family:'DM Sans',sans-serif;color:var(--muted)}
+.ptab:hover{border-color:var(--blue-light)}
+.ptab.active{border-color:var(--blue);background:var(--blue);color:#fff;font-weight:500}
+#main-content{display:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div id="login-gate">
+  <div class="login-box">
+    <div class="login-logos">
+      <img src="https://i.imgur.com/o6ey8V4.png" alt="Victory">
+      <img src="https://i.imgur.com/SzxB8ru.png" alt="RMF">
+      <img src="https://i.imgur.com/KQCiHWS.png" alt="EFI">
+      <img src="https://i.imgur.com/97OXnBN.png" alt="Revel">
+    </div>
+    <div class="login-title">Área Personal</div>
+    <div class="login-sub">RMF Clinic 2026 · Madrid, España<br>Ingresa el correo electrónico con el que te pre-inscribiste para acceder a tu información.</div>
+    <input class="login-input" id="login-email" type="email" placeholder="tucorreo@ejemplo.com" onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Acceder →</button>
+    <div class="login-err" id="login-err">No encontramos ninguna pre-inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.</div>
+    <div class="login-footer">¿Aún no te has pre-inscrito? <a href="preinscripcion.html" style="color:var(--blue-light)">Ir al formulario →</a></div>
+  </div>
+</div>
+
+<div id="main-content">
+
+<nav>
+  <div class="nav-logos">
+    <img src="https://i.imgur.com/o6ey8V4.png" alt="Victory">
+    <img src="https://i.imgur.com/SzxB8ru.png" alt="RMF">
+    <img src="https://i.imgur.com/KQCiHWS.png" alt="EFI">
+    <img src="https://i.imgur.com/97OXnBN.png" alt="Revel">
+  </div>
+  <div class="nav-tag">Área Personal · RMF Clinic 2026</div>
+</nav>
+
+<div class="wrap">
+
+  <!-- TABS DE PARTICIPANTES (si hay más de uno) -->
+  <div id="ptabs-container" style="display:none;margin-bottom:8px">
+    <p style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:10px">Participantes vinculados</p>
+    <div class="ptabs" id="ptabs"></div>
+  </div>
+
+  <div class="welcome">
+    <div>
+      <h1>¡Bienvenido/a, <span id="dn">Participante</span>!</h1>
+      <p>Real Madrid Foundation Clinic · 2–10 Octubre 2026 · Madrid, España</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+      <div class="badge" id="dtipo">⚽ Jugador</div>
+      <button id="btn-toggle-tiq" onclick="toggleTiqueteDesdeWelcome()"
+        style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid rgba(90,157,224,.4);background:transparent;color:var(--blue-bright);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;">
+        ✈️ <span id="tiq-toggle-label">Agregar tiquete aéreo</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="steps" id="steps-row"></div>
+
+  <!-- PANEL 2: T&C + CALCULADORA + PAGO RESERVA -->
+  <div class="panel active" id="panel2">
+
+    <div class="card">
+      <div class="ctitle">Términos y Condiciones</div>
+      <div class="tc-scroll" id="tc-text">Cargando...</div>
+      <label class="chk-row">
+        <input type="checkbox" id="tc-chk" onchange="onTC()">
+        <span>He leído y acepto los <strong>Términos y Condiciones</strong> del Real Madrid Foundation Clinic 2026. Entiendo las políticas de cancelación y la cláusula de responsabilidad.</span>
+      </label>
+
+      <!-- Opción agregar tiquete (solo si vino sin tiquete) -->
+      <div id="tiq-optin" style="display:none" class="tiq-box">
+        <h4>✈️ ¿Deseas agregar el tiquete aéreo?</h4>
+        <p>No lo incluiste en la pre-inscripción. Puedes agregarlo ahora — costo aprox. <strong>~1.150 EUR</strong> por persona (vuelo grupal BOG–MAD–BOG, fecha fija).</p>
+        <div class="tiq-btns">
+          <button class="btn-tiq-yes" id="btn-tiq-si" onclick="setTiquete(true)">✈️ Sí, agregar tiquete</button>
+          <button class="btn-tiq-no" onclick="setTiquete(false)">No, gestiono mi tiquete</button>
+        </div>
+        <div id="tiq-ok" style="display:none;margin-top:10px;font-size:13px;color:var(--green);font-weight:500">✅ Tiquete agregado — se añadirá un paso de pago.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Calculadora EUR → COP</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago se realiza en <strong>pesos colombianos (COP)</strong>. Ingresa el monto en euros y te mostramos el equivalente al tipo de cambio de referencia de mercado:</p>
+      <p id="tasa-fecha" style="font-size:11px;color:var(--muted);margin-bottom:16px;opacity:0.7">Actualizando tasa...</p>
+      <div class="calc-row">
+        <div>
+          <div class="clabel">Monto en euros (€)</div>
+          <input class="cinput" id="eur1" type="number" value="1000" min="1" oninput="calc1()">
+        </div>
+        <div>
+          <div class="clabel">Tasa de referencia</div>
+          <input class="cinput ro" id="tasa1" type="text" readonly>
+        </div>
+      </div>
+      <div class="cresult">
+        <div>
+          <div class="crlabel">Total en COP</div>
+          <div class="crvalue" id="cop1">$ —</div>
+        </div>
+        <div style="text-align:right">
+          <div class="crref">Referencia de pago:</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:3px" id="ref1">—</div>
+        </div>
+      </div>
+      <div class="info-box">💡 Usa tu <strong>nombre completo</strong> como referencia al pagar, tanto en transferencia como con tarjeta. Así identificamos tu pago de inmediato.</div>
+      <div id="calc-note1" style="display:none;margin-top:12px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles en este momento.</strong> Contacta a tu asesor para conocer el tipo de cambio aplicado: <strong>alejandro.cabrera@fundacionrevel.net</strong> · WhatsApp: <strong>+34 658233126</strong></div>
+    </div>
+
+    <div class="card pay-lock" id="pay-card1">
+      <div class="ctitle">Pago de reserva — 1.000 EUR</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
+      <div class="pay-grid">
+        <div class="pay-opt" id="p1tc" onclick="selPay(1,'tc')">
+          <div class="pbadge">+3% servicio</div>
+          <div class="picon">💳</div>
+          <div class="ptitle">Tarjeta de crédito</div>
+          <div class="pdesc">Paga con Bold. Se aplica un recargo del 3% por plataforma.</div>
+        </div>
+        <div class="pay-opt" id="p1tr" onclick="selPay(1,'tr')">
+          <div class="pbadge">Sin recargo</div>
+          <div class="picon">🏦</div>
+          <div class="ptitle">Transferencia bancaria</div>
+          <div class="pdesc">Bancolombia. Sin costos adicionales.</div>
+        </div>
+      </div>
+      <div class="pay-detail" id="d1tc">
+        <div class="info-box">Ingresa el monto en COP calculado arriba. En el campo referencia escribe tu <strong>nombre completo</strong>.</div>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a>
+      </div>
+      <div class="pay-detail" id="d1tr">
+        <div class="bank-card">
+          <div class="brow"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
+          <div class="brow"><span class="bkey">Beneficiario</span><span class="bval">Fundación Revel</span></div>
+          <div class="brow"><span class="bkey">Cuenta corriente</span><span class="bval">05962673128</span></div>
+          <div class="brow"><span class="bkey">NIT</span><span class="bval">900636583</span></div>
+          <div class="brow"><span class="bkey">Referencia</span><span class="bval" id="ref-banco">Tu nombre completo</span></div>
+        </div>
+        <div class="ok-box" style="margin-top:14px;">
+          📎 Por favor envía tu comprobante de pago al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Reserva — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL TIQUETE (solo si aplica) -->
+  <div class="panel" id="panel-tiq">
+    <div class="card">
+      <div class="ctitle">Pago del tiquete aéreo</div>
+      <div style="background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:20px;margin-bottom:20px">
+        <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo aprox. <strong>~1.150 EUR</strong> por persona.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">✈️</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Vuelo grupo</div><div style="font-size:10px;color:var(--muted)">BOG–MAD–BOG</div></div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">📅</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Fecha límite</div><div style="font-size:10px;color:var(--muted)">1 de junio 2026</div></div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo aprox.</div><div style="font-size:10px;color:var(--muted)">~1.150 EUR / persona</div></div>
+        </div>
+      </div>
+      <div class="calc-row">
+        <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur-tiq" type="number" value="1150" min="1" oninput="calcTiq()"></div>
+        <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
+      </div>
+      <div class="cresult" style="margin-bottom:20px">
+        <div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop-tiq">$ —</div></div>
+      </div>
+      <div id="calc-note-tiq" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
+      <div class="pay-grid">
+        <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+3% servicio</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3% de recargo.</div></div>
+        <div class="pay-opt" id="ptiqtr" onclick="selPay('tiq','tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div></div>
+      </div>
+      <div class="pay-detail" id="dtiqtc"><div class="info-box">Referencia: <strong>tu nombre + TIQUETE</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar tiquete con Bold →</a></div>
+      <div class="pay-detail" id="dtiqtr">
+        <div class="bank-card">
+          <div class="brow"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
+          <div class="brow"><span class="bkey">Beneficiario</span><span class="bval">Fundación Revel</span></div>
+          <div class="brow"><span class="bkey">Cuenta</span><span class="bval">05962673128</span></div>
+          <div class="brow"><span class="bkey">Referencia</span><span class="bval" id="ref-tiq">Tu nombre + TIQUETE</span></div>
+        </div>
+        <div class="ok-box" style="margin-top:14px;">
+          📎 Por favor envía tu comprobante del tiquete al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Tiquete — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 3: PAGO FINAL -->
+  <div class="panel" id="panel3">
+    <div class="card">
+      <div class="ctitle">Pago final del programa</div>
+      <div style="text-align:center;padding:20px 0 24px">
+        <div style="font-size:48px;margin-bottom:10px">📅</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--navy);letter-spacing:1px;margin-bottom:6px">SEGUNDO PAGO — 1.790 EUR</div>
+        <div style="font-size:14px;color:var(--muted)">Fecha límite: <strong>30 de julio 2026</strong></div>
+      </div>
+      <div class="calc-row">
+        <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur2" type="number" value="1790" min="1" oninput="calc2()"></div>
+        <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
+      </div>
+      <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
+      <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
+      <div class="pay-grid">
+        <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+3% servicio</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3% de recargo.</div></div>
+        <div class="pay-opt" id="p2tr" onclick="selPay(2,'tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div></div>
+      </div>
+      <div class="pay-detail" id="d2tc"><div class="info-box">Referencia: <strong>tu nombre completo</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a></div>
+      <div class="pay-detail" id="d2tr">
+        <div class="bank-card">
+          <div class="brow"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
+          <div class="brow"><span class="bkey">Beneficiario</span><span class="bval">Fundación Revel</span></div>
+          <div class="brow"><span class="bkey">Cuenta</span><span class="bval">05962673128</span></div>
+          <div class="brow"><span class="bkey">NIT</span><span class="bval">900636583</span></div>
+        </div>
+        <div class="ok-box" style="margin-top:14px;">
+          📎 Por favor envía tu comprobante del pago final al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Pago Final — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 4: DOCUMENTACIÓN -->
+  <div class="panel" id="panel4">
+    <div class="card">
+      <div class="ctitle">Documentación requerida</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6">Necesitamos los siguientes documentos para completar tu inscripción. Puedes subirlos aquí o enviarlos a <strong>alejandro.cabrera@fundacionrevel.net</strong>.</p>
+
+      <div class="doc-item">
+        <div class="dicon">🛂</div>
+        <div style="flex:1">
+          <div class="dtitle">Copia del pasaporte vigente</div>
+          <div class="ddesc">Mínimo 6 meses de validez desde el 10 de octubre 2026. Página principal con foto.</div>
+          <div class="dstatus" id="ds1">⏳ Pendiente</div>
+          <div class="upload" onclick="document.getElementById('di1').click()">
+            <div style="font-size:22px">📎</div>
+            <p>Subir pasaporte · JPG, PNG o PDF · Máx. 5MB</p>
+            <input type="file" id="di1" accept=".jpg,.jpeg,.png,.pdf" onchange="uploaded(this,'ds1')">
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-item" id="permiso-doc">
+        <div class="dicon">📋</div>
+        <div style="flex:1">
+          <div class="dtitle">Permiso de salida del país</div>
+          <div class="ddesc">Para menores de edad. Permiso notariado de ambos padres o tutores legales, autenticado.</div>
+          <div class="dstatus" id="ds2">⏳ Pendiente</div>
+          <div class="upload" onclick="document.getElementById('di2').click()">
+            <div style="font-size:22px">📎</div>
+            <p>Subir permiso · JPG, PNG o PDF · Máx. 5MB</p>
+            <input type="file" id="di2" accept=".jpg,.jpeg,.png,.pdf" onchange="uploaded(this,'ds2')">
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-item">
+        <div class="dicon">✅</div>
+        <div style="flex:1">
+          <div class="dtitle">Términos y condiciones</div>
+          <div class="ddesc">Se registran automáticamente al aceptar en el paso 2.</div>
+          <div class="dstatus" id="ds3" style="color:var(--blue)">📌 Se generará al aceptar T&C en el paso 2</div>
+          <div id="tc-ok-doc" style="display:none" class="ok-box">✅ T&C aceptados el <span id="tc-fecha">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+</div><!-- /main-content -->
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const LOOKUP_WEBHOOK_URL = 'LOOKUP_WEBHOOK_URL'; // ← Reemplazar con URL de Make.com
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  if (!email) return;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+  document.getElementById('login-err').style.display = 'none';
+  try {
+    const res = await fetch(LOOKUP_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.participants && data.participants.length > 0) {
+      document.getElementById('login-gate').style.display = 'none';
+      document.getElementById('main-content').style.display = 'block';
+      allParticipants = data.participants;
+      if (data.participants.length > 1) {
+        buildParticipantTabs(data.participants);
+      }
+      loadParticipant(data.participants[0]);
+    } else {
+      throw new Error('not_found');
+    }
+  } catch(e) {
+    document.getElementById('login-err').style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Acceder →';
+  }
+}
+
+let allParticipants = [];
+let currentIndex = 0;
+
+function buildParticipantTabs(participants) {
+  const container = document.getElementById('ptabs-container');
+  const tabsEl = document.getElementById('ptabs');
+  container.style.display = 'block';
+  tabsEl.innerHTML = '';
+  participants.forEach((p, i) => {
+    const tab = document.createElement('button');
+    tab.className = 'ptab' + (i === 0 ? ' active' : '');
+    tab.textContent = (p.tipo === 'Jugador' ? '⚽ ' : '👤 ') + p.nombre;
+    tab.onclick = () => {
+      document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentIndex = i;
+      loadParticipant(p);
+    };
+    tabsEl.appendChild(tab);
+  });
+}
+
+function loadParticipant(p) {
+  const nombre    = p.nombre    || 'Participante';
+  const tipo      = (p.tipo     || 'Jugador').toLowerCase();
+  conTiq          = p.tiquete_aereo === 'Con tiquete';
+  programa        = p.programa  || '';
+  habitacion      = p.habitacion || '';
+
+  document.getElementById('dn').textContent = nombre;
+  document.getElementById('dtipo').textContent = tipo === 'jugador' ? '⚽ Jugador' : '👨‍👩‍👧 Acompañante';
+  document.getElementById('ref1').textContent = nombre;
+  document.getElementById('ref-banco').textContent = nombre;
+  document.getElementById('ref-tiq').textContent = nombre + ' - TIQUETE';
+  document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
+  document.getElementById('tc-text').innerHTML = getTyC();
+  const tiqOptin = document.getElementById('tiq-optin');
+  if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
+  buildSteps();
+  goPanel('panel2');
+}
+
+// ── PARAMS (now set by loadParticipant) ──────────────────────────────────────
+let nombre    = 'Participante';
+let tipo      = 'jugador';
+let conTiq    = false;
+let programa  = '';
+let habitacion= '';
+
+// ── STEPS ────────────────────────────────────────────────────────────────────
+const STEP_DEFS = [
+  {title:'Pre-inscripción', desc:'Completada', panel:null, done:true},
+  {title:'T&C y Reserva',   desc:'Acepta y paga 1.000 EUR', panel:'panel2'},
+  {title:'Pago tiquete',    desc:'Vuelo BOG–MAD–BOG', panel:'panel-tiq', tiqOnly:true},
+  {title:'Pago final',      desc:'1.790 EUR antes jul 2026', panel:'panel3'},
+  {title:'Documentación',   desc:'Pasaporte y permisos', panel:'panel4'},
+];
+
+let curPanel = 'panel2';
+
+function buildSteps() {
+  const row = document.getElementById('steps-row');
+  row.innerHTML = '';
+  const visible = STEP_DEFS.filter(s => !s.tiqOnly || conTiq);
+  visible.forEach((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'step' + (s.done ? ' done' : '') + (s.panel === curPanel ? ' active' : '');
+    if (s.panel) d.onclick = () => goPanel(s.panel);
+    d.innerHTML = `<div class="snum">${s.done ? '✓' : i+1}</div><div class="stitle">${s.title}</div><div class="sdesc">${s.desc}</div>`;
+    row.appendChild(d);
+  });
+}
+
+function goPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('active'); curPanel = id; }
+  buildSteps();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── TASA ─────────────────────────────────────────────────────────────────────
+const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + 1% margen
+let tasa = TASA_FALLBACK;
+
+function updateTasaFecha() {
+  const el = document.getElementById('tasa-fecha');
+  if (!el) return;
+  const now = new Date();
+  const fmt = now.toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  el.textContent = `Tasa actualizada: ${fmt} · Se refresca cada 30 min`;
+}
+
+function showTasaError() {
+  tasa = TASA_FALLBACK;
+  const el = document.getElementById('tasa-fecha');
+  if (el) el.textContent = `Usando tasa de referencia: $${TASA_FALLBACK.toLocaleString('es-CO')} / EUR`;
+  updateCalcs();
+}
+
+async function fetchTasa() {
+  try {
+    // Fuente 1: ExchangeRate-API (soporta CORS, gratuita)
+    const r = await fetch('https://open.er-api.com/v6/latest/EUR');
+    const d = await r.json();
+    if (d && d.rates && d.rates.COP) {
+      tasa = Math.max(Math.round(parseFloat(d.rates.COP) * 1.01), TASA_FALLBACK);
+      updateTasaFecha();
+      updateCalcs(); return;
+    }
+  } catch(e) {}
+  try {
+    // Fuente 2: TRM Banco de la República (USD/COP → convertir a EUR/COP)
+    const r2 = await fetch('https://www.datos.gov.co/resource/mcec-87by.json?$limit=1&$order=vigenciadesde DESC');
+    const d2 = await r2.json();
+    if (d2 && d2[0] && d2[0].valor) {
+      const trm = parseFloat(d2[0].valor);
+      tasa = Math.max(Math.round(trm * 1.06), TASA_FALLBACK);
+      updateTasaFecha();
+      updateCalcs(); return;
+    }
+  } catch(e) {}
+  showTasaError();
+}
+
+function fmt(n)  { return '$ ' + Math.round(n).toLocaleString('es-CO'); }
+function fmtT(n) { return '$ ' + Math.round(n).toLocaleString('es-CO') + ' / EUR'; }
+
+function updateCalcs() { calc1(); calc2(); calcTiq(); }
+function calc1()   {
+  if (!tasa) return;
+  const e=parseFloat(document.getElementById('eur1').value)||0;
+  document.getElementById('tasa1').value=fmtT(tasa);
+  document.getElementById('cop1').textContent=fmt(e*tasa);
+}
+function calc2()   {
+  if (!tasa) return;
+  const e=parseFloat(document.getElementById('eur2').value)||0;
+  document.getElementById('tasa2').value=fmtT(tasa);
+  document.getElementById('cop2').textContent=fmt(e*tasa);
+}
+function calcTiq() {
+  if (!tasa) return;
+  const e=parseFloat(document.getElementById('eur-tiq').value)||0;
+  document.getElementById('tasa-tiq').value=fmtT(tasa);
+  document.getElementById('cop-tiq').textContent=fmt(e*tasa);
+}
+
+fetchTasa();
+setInterval(fetchTasa, 30 * 60 * 1000); // Refrescar cada 30 minutos
+
+// ── T&C ──────────────────────────────────────────────────────────────────────
+function getTyC() {
+  const tipoCurrent = tipo.toLowerCase();
+  const conAloj = programa !== 'solo_actividades';
+    return `
+<h3>1. Servicios incluidos</h3>
+<ul>
+  ${conTiq ? '<li><strong>Tiquete aéreo:</strong> Bogotá – Madrid – Bogotá</li>' : ''}
+  <li><strong>Alojamiento:</strong> 7 noches en Campus Deportivo European Football Institute — pensión completa (desayuno, almuerzo, snack y cena). Lavandería incluida.</li>
+  <li>4 sesiones de entrenamiento en la Ciudad Deportiva del Real Madrid (Valdebebas) con metodología oficial</li>
+  <li>Victory Cup — 3 partidos oficiales contra colegios de Madrid</li>
+  <li>Tour Estadio Santiago Bernabéu y tienda oficial Adidas</li>
+  <li>Recorrido histórico por Madrid · Conferencia "Building a Champion" · Parque Warner</li>
+  <li><strong>Kit deportivo:</strong> 2 uniformes completos, 2 camisetas, chaqueta y escarapela identificativa</li>
+  <li><strong>Seguro médico</strong> durante todo el programa y <strong>staff dedicado</strong></li>
+  <li><strong>Transporte:</strong> Todos los traslados incluyendo aeropuerto Madrid-Barajas</li>
+</ul>
+<h3>2. Precio y forma de pago</h3>
+<ul>
+  <li>Costo total: <strong>2.790 EUR</strong> ${conTiq ? '+ tiquete aéreo (~1.150 EUR)' : '(sin tiquete aéreo)'}</li>
+  <li>1er pago (reserva): <strong>1.000 EUR</strong> — antes del <strong>1 de junio 2026</strong></li>
+  <li>2do pago: <strong>1.790 EUR</strong> — antes del <strong>30 de julio 2026</strong></li>
+  <li>Pagos en COP según tasa de referencia de mercado. Banco Bancolombia · Beneficiario: Fundación Revel · Cta. Cte. 05962673128 · NIT 900636583</li>
+</ul>
+<h3>3. Documentación requerida</h3>
+<ul>
+  <li>Pasaporte vigente con mínimo 6 meses de validez desde el 10 de octubre 2026</li>
+  <li>Registro civil original y autenticado (menores de edad)</li>
+  <li>Permiso de salida del país debidamente autenticado (menores de edad)</li>
+</ul>
+<h3>4. Políticas de cancelación</h3>
+<ul>
+  <li>El primer pago de reserva (1.000 EUR) es <strong>no reembolsable</strong></li>
+  <li>Situaciones personales (pasaporte vencido, documentación incompleta, demoras en aeropuerto, etc.) que impidan viajar no dan derecho a reembolso</li>
+  <li>Condiciones médicas debidamente certificadas: reembolso del 100% del programa, menos el tiquete aéreo (sujeto a políticas de la aerolínea)</li>
+</ul>
+<h3>5. Cláusula de responsabilidad</h3>
+<p>Victory Sports Spain y Fundación Revel garantizan la calidad de los servicios y quedan exentos de responsabilidad en casos de fuerza mayor (desastres naturales, pandemias, huelgas u otras circunstancias imprevisibles e inevitables).</p>
+<h3>6. Cesión de derechos de imagen</h3>
+<p>El padre, madre o representante legal autoriza a Victory Sports Spain SL y Fundación Revel a tomar fotografías y videos del menor durante el viaje para uso en redes sociales, páginas web y materiales promocionales, respetando siempre la dignidad del menor.</p>
+<h3>7. Cláusula de comportamiento</h3>
+<p>Los participantes deben respetar las normas del programa y las indicaciones del staff. El incumplimiento puede resultar en expulsión inmediata sin derecho a reembolso.</p>
+<h3>8. Jurisdicción legal</h3>
+<p>Este contrato se rige bajo las leyes colombianas. Cualquier disputa se resolverá en los tribunales de Bogotá.</p>`;
+  } else {
+    const conAloj = programa !== 'solo_actividades';
+    const hab = habitacion === 'doble' ? 'Habitación doble' : 'Habitación sencilla';
+    return `
+<h3>1. Servicios incluidos (Acompañante)</h3>
+<ul>
+  ${conTiq ? '<li><strong>Tiquete aéreo:</strong> Bogotá – Madrid – Bogotá</li>' : ''}
+  ${conAloj ? `<li><strong>Alojamiento:</strong> ${hab} en Campus EFI, Madrid (desayuno incluido)</li>` : '<li>Modalidad solo actividades — sin alojamiento incluido</li>'}
+  <li>Asistencia a la ceremonia de clausura del RMF Clinic en Ciudad Deportiva del Real Madrid</li>
+  <li>Tour Ciudad Deportiva del Real Madrid</li>
+  <li>Entrada a los 4 partidos de la Victory Cup</li>
+  <li>Tour Estadio Santiago Bernabéu · Madrid City Tour · Parque Warner</li>
+  <li>Seguro médico durante todo el viaje</li>
+  <li>Transporte a todas las actividades</li>
+</ul>
+<h3>2. Políticas de cancelación</h3>
+<ul>
+  <li>El primer pago (reserva) es <strong>no reembolsable</strong></li>
+  <li>30 días antes del viaje: 100% de penalidad</li>
+  <li>Situaciones personales que impidan viajar no dan derecho a reembolso</li>
+</ul>
+<h3>3. Cláusula de responsabilidad</h3>
+<p>Victory Sports Spain y Fundación Revel garantizan la calidad de los servicios y quedan exentos en casos de fuerza mayor.</p>
+<h3>4. Cesión de derechos de imagen</h3>
+<p>El acompañante autoriza a Victory Sports Spain SL y Fundación Revel a usar fotografías y videos durante el viaje con fines promocionales, respetando siempre la dignidad de los participantes.</p>`;
+  }
+}
+
+document.getElementById('tc-text').innerHTML = getTyC();
+
+// ── TIQUETE OPTIN ─────────────────────────────────────────────────────────────
+if (q.get('tiquete') === 'sin') {
+  document.getElementById('tiq-optin').style.display = 'block';
+}
+
+function setTiquete(val) {
+  conTiq = val;
+  document.getElementById('tiq-ok').style.display = val ? 'block' : 'none';
+  document.getElementById('btn-tiq-si').textContent = val ? '✅ Tiquete agregado' : '✈️ Sí, agregar tiquete';
+  document.getElementById('btn-tiq-si').style.background = val ? 'var(--green)' : 'var(--blue)';
+  // Actualizar T&C con la nueva elección
+  document.getElementById('tc-text').innerHTML = getTyC();
+  buildSteps();
+}
+
+// ── TC CHECKBOX ───────────────────────────────────────────────────────────────
+function onTC() {
+  const ok = document.getElementById('tc-chk').checked;
+  const card = document.getElementById('pay-card1');
+  card.classList.toggle('pay-lock', !ok);
+  if (ok) {
+    const fecha = new Date().toLocaleDateString('es-CO', {year:'numeric', month:'long', day:'numeric'});
+    document.getElementById('tc-fecha').textContent = fecha;
+    document.getElementById('tc-ok-doc').style.display = 'block';
+    document.getElementById('ds3').style.display = 'none';
+    // Actualizar T&C final con elección de tiquete
+    document.getElementById('tc-text').innerHTML = getTyC();
+  }
+}
+
+// ── PAY SELECT ────────────────────────────────────────────────────────────────
+function selPay(panel, tipo) {
+  const map = {
+    1:   {tc:'p1tc',    tr:'p1tr',    dtc:'d1tc',    dtr:'d1tr'},
+    2:   {tc:'p2tc',    tr:'p2tr',    dtc:'d2tc',    dtr:'d2tr'},
+    tiq: {tc:'ptiqtc',  tr:'ptiqtr',  dtc:'dtiqtc',  dtr:'dtiqtr'},
+  };
+  const m = map[panel];
+  document.getElementById(m.tc).classList.toggle('sel', tipo==='tc');
+  document.getElementById(m.tr).classList.toggle('sel', tipo!=='tc');
+  document.getElementById(m.dtc).classList.toggle('vis', tipo==='tc');
+  document.getElementById(m.dtr).classList.toggle('vis', tipo!=='tc');
+}
+
+// ── DOC UPLOAD ────────────────────────────────────────────────────────────────
+function uploaded(inp, sid) {
+  const n = inp.files[0]?.name;
+  if (n) { const el=document.getElementById(sid); el.className='dstatus ok'; el.textContent='✅ '+n; }
+}
+
+// Ocultar permiso si es acompañante adulto
+if (tipo === 'acompanante') {
+  const el = document.getElementById('permiso-doc');
+  if (el) el.style.display = 'none';
+}
+
+// ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
+function toggleTiqueteDesdeWelcome() {
+  conTiq = !conTiq;
+  // Actualizar label botón welcome
+  document.getElementById('tiq-toggle-label').textContent =
+    conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
+  // Ocultar optin del panel2 si ya se manejó desde welcome
+  const optin = document.getElementById('tiq-optin');
+  if (optin) optin.style.display = 'none';
+  // Actualizar T&C
+  document.getElementById('tc-text').innerHTML = getTyC();
+  // Reconstruir pasos
+  buildSteps();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+// Inicializar label del botón de tiquete en welcome
+document.getElementById('tiq-toggle-label').textContent =
+  conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
+
+// Mostrar optin en panel2 si vino sin tiquete
+const tiqOptin = document.getElementById('tiq-optin');
+if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
+
+buildSteps();
+</script>
+</body>
+</html>
