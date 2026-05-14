@@ -99,9 +99,49 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .upload p{font-size:12px;color:var(--muted);margin-top:5px}
 .upload input{display:none}
 @media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}}
+/* LOGIN GATE */
+#login-gate{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;text-align:center}
+.login-logos{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:28px}
+.login-logos img{height:32px;filter:brightness(0)invert(0);opacity:.8}
+.login-title{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--navy);letter-spacing:1px;margin-bottom:8px}
+.login-sub{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:28px}
+.login-input{width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--navy);outline:none;transition:border-color .2s;text-align:center}
+.login-input:focus{border-color:var(--blue-light);box-shadow:0 0 0 3px rgba(30,91,168,.08)}
+.login-btn{width:100%;margin-top:14px;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s}
+.login-btn:hover:not(:disabled){background:#162d57;transform:translateY(-1px)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.login-err{display:none;margin-top:12px;padding:10px 14px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:7px;font-size:13px;color:#dc2626;line-height:1.6}
+.login-footer{margin-top:20px;font-size:12px;color:var(--muted);line-height:1.7}
+/* PARTICIPANT TABS */
+.ptabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.ptab{padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:all .2s;background:#fff;font-family:'DM Sans',sans-serif;color:var(--muted)}
+.ptab:hover{border-color:var(--blue-light)}
+.ptab.active{border-color:var(--blue);background:var(--blue);color:#fff;font-weight:500}
+#main-content{display:none}
 </style>
 </head>
 <body>
+
+<!-- LOGIN GATE -->
+<div id="login-gate">
+  <div class="login-box">
+    <div class="login-logos">
+      <img src="https://i.imgur.com/o6ey8V4.png" alt="Victory">
+      <img src="https://i.imgur.com/SzxB8ru.png" alt="RMF">
+      <img src="https://i.imgur.com/KQCiHWS.png" alt="EFI">
+      <img src="https://i.imgur.com/97OXnBN.png" alt="Revel">
+    </div>
+    <div class="login-title">Área Personal</div>
+    <div class="login-sub">RMF Clinic 2026 · Madrid, España<br>Ingresa el correo electrónico con el que te pre-inscribiste para acceder a tu información.</div>
+    <input class="login-input" id="login-email" type="email" placeholder="tucorreo@ejemplo.com" onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Acceder →</button>
+    <div class="login-err" id="login-err">No encontramos ninguna pre-inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.</div>
+    <div class="login-footer">¿Aún no te has pre-inscrito? <a href="preinscripcion.html" style="color:var(--blue-light)">Ir al formulario →</a></div>
+  </div>
+</div>
+
+<div id="main-content">
 
 <nav>
   <div class="nav-logos">
@@ -114,6 +154,12 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 </nav>
 
 <div class="wrap">
+
+  <!-- TABS DE PARTICIPANTES (si hay más de uno) -->
+  <div id="ptabs-container" style="display:none;margin-bottom:8px">
+    <p style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:10px">Participantes vinculados</p>
+    <div class="ptabs" id="ptabs"></div>
+  </div>
 
   <div class="welcome">
     <div>
@@ -156,7 +202,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <div class="card">
       <div class="ctitle">Calculadora EUR → COP</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">El pago se realiza en <strong>pesos colombianos (COP)</strong>. Ingresa el monto en euros y te mostramos el equivalente al tipo de cambio de referencia de mercado:</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago se realiza en <strong>pesos colombianos (COP)</strong>. Ingresa el monto en euros y te mostramos el equivalente al tipo de cambio de referencia de mercado:</p>
+      <p id="tasa-fecha" style="font-size:11px;color:var(--muted);margin-bottom:16px;opacity:0.7">Actualizando tasa...</p>
       <div class="calc-row">
         <div>
           <div class="clabel">Monto en euros (€)</div>
@@ -337,21 +384,93 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
 </div><!-- /wrap -->
+</div><!-- /main-content -->
 
 <script>
-// ── PARAMS ──────────────────────────────────────────────────────────────────
-const q = new URLSearchParams(location.search);
-const nombre    = q.get('nombre')    || 'Participante';
-const tipo      = q.get('tipo')      || 'jugador';
-let   conTiq    = q.get('tiquete')   === 'con';
-const programa  = q.get('programa')  || '';
-const habitacion= q.get('habitacion')|| '';
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const LOOKUP_WEBHOOK_URL = 'LOOKUP_WEBHOOK_URL'; // ← Reemplazar con URL de Make.com
 
-document.getElementById('dn').textContent = nombre;
-document.getElementById('dtipo').textContent = tipo === 'jugador' ? '⚽ Jugador' : '👨‍👩‍👧 Acompañante';
-document.getElementById('ref1').textContent = nombre;
-document.getElementById('ref-banco').textContent = nombre;
-document.getElementById('ref-tiq').textContent = nombre + ' - TIQUETE';
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  if (!email) return;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+  document.getElementById('login-err').style.display = 'none';
+  try {
+    const res = await fetch(LOOKUP_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.participants && data.participants.length > 0) {
+      document.getElementById('login-gate').style.display = 'none';
+      document.getElementById('main-content').style.display = 'block';
+      allParticipants = data.participants;
+      if (data.participants.length > 1) {
+        buildParticipantTabs(data.participants);
+      }
+      loadParticipant(data.participants[0]);
+    } else {
+      throw new Error('not_found');
+    }
+  } catch(e) {
+    document.getElementById('login-err').style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Acceder →';
+  }
+}
+
+let allParticipants = [];
+let currentIndex = 0;
+
+function buildParticipantTabs(participants) {
+  const container = document.getElementById('ptabs-container');
+  const tabsEl = document.getElementById('ptabs');
+  container.style.display = 'block';
+  tabsEl.innerHTML = '';
+  participants.forEach((p, i) => {
+    const tab = document.createElement('button');
+    tab.className = 'ptab' + (i === 0 ? ' active' : '');
+    tab.textContent = (p.tipo === 'Jugador' ? '⚽ ' : '👤 ') + p.nombre;
+    tab.onclick = () => {
+      document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentIndex = i;
+      loadParticipant(p);
+    };
+    tabsEl.appendChild(tab);
+  });
+}
+
+function loadParticipant(p) {
+  const nombre    = p.nombre    || 'Participante';
+  const tipo      = (p.tipo     || 'Jugador').toLowerCase();
+  conTiq          = p.tiquete_aereo === 'Con tiquete';
+  programa        = p.programa  || '';
+  habitacion      = p.habitacion || '';
+
+  document.getElementById('dn').textContent = nombre;
+  document.getElementById('dtipo').textContent = tipo === 'jugador' ? '⚽ Jugador' : '👨‍👩‍👧 Acompañante';
+  document.getElementById('ref1').textContent = nombre;
+  document.getElementById('ref-banco').textContent = nombre;
+  document.getElementById('ref-tiq').textContent = nombre + ' - TIQUETE';
+  document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
+  document.getElementById('tc-text').innerHTML = getTyC();
+  const tiqOptin = document.getElementById('tiq-optin');
+  if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
+  buildSteps();
+  goPanel('panel2');
+}
+
+// ── PARAMS (now set by loadParticipant) ──────────────────────────────────────
+let nombre    = 'Participante';
+let tipo      = 'jugador';
+let conTiq    = false;
+let programa  = '';
+let habitacion= '';
 
 // ── STEPS ────────────────────────────────────────────────────────────────────
 const STEP_DEFS = [
@@ -386,43 +505,47 @@ function goPanel(id) {
 }
 
 // ── TASA ─────────────────────────────────────────────────────────────────────
-const TASA_FALLBACK = 4466000; // Wise ~4.421.540 + 1% redondeado
+const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + 1% margen
 let tasa = TASA_FALLBACK;
+
+function updateTasaFecha() {
+  const el = document.getElementById('tasa-fecha');
+  if (!el) return;
+  const now = new Date();
+  const fmt = now.toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  el.textContent = `Tasa actualizada: ${fmt} · Se refresca cada 30 min`;
+}
+
+function showTasaError() {
+  tasa = TASA_FALLBACK;
+  const el = document.getElementById('tasa-fecha');
+  if (el) el.textContent = `Usando tasa de referencia: $${TASA_FALLBACK.toLocaleString('es-CO')} / EUR`;
+  updateCalcs();
+}
 
 async function fetchTasa() {
   try {
-    // Fuente 1: TRM oficial Banco de la República (datos.gov.co)
-    const r = await fetch('https://www.datos.gov.co/resource/mcec-87by.json?$limit=1&$order=vigenciadesde DESC');
+    // Fuente 1: ExchangeRate-API (soporta CORS, gratuita)
+    const r = await fetch('https://open.er-api.com/v6/latest/EUR');
     const d = await r.json();
-    if (d && d[0] && d[0].valor) {
-      const trm = parseFloat(d[0].valor);
-      tasa = Math.max(Math.round(trm * 1.06), TASA_FALLBACK);
+    if (d && d.rates && d.rates.COP) {
+      tasa = Math.max(Math.round(parseFloat(d.rates.COP) * 1.01), TASA_FALLBACK);
+      updateTasaFecha();
       updateCalcs(); return;
     }
   } catch(e) {}
   try {
-    // Fuente 2: ExchangeRate-API (gratuita, se actualiza diariamente)
-    const r2 = await fetch('https://open.er-api.com/v6/latest/EUR');
+    // Fuente 2: TRM Banco de la República (USD/COP → convertir a EUR/COP)
+    const r2 = await fetch('https://www.datos.gov.co/resource/mcec-87by.json?$limit=1&$order=vigenciadesde DESC');
     const d2 = await r2.json();
-    if (d2 && d2.rates && d2.rates.COP) {
-      const rate = parseFloat(d2.rates.COP);
-      tasa = Math.max(Math.round(rate * 1.01), TASA_FALLBACK);
+    if (d2 && d2[0] && d2[0].valor) {
+      const trm = parseFloat(d2[0].valor);
+      tasa = Math.max(Math.round(trm * 1.06), TASA_FALLBACK);
+      updateTasaFecha();
       updateCalcs(); return;
     }
   } catch(e) {}
-  // Fallback final si ambas APIs fallan
-  tasa = null;
-  document.getElementById('tasa1').value = 'No disponible';
-  document.getElementById('tasa2').value = 'No disponible';
-  document.getElementById('tasa-tiq').value = 'No disponible';
-  document.getElementById('cop1').textContent = '—';
-  document.getElementById('cop2').textContent = '—';
-  document.getElementById('cop-tiq').textContent = '—';
-  // Mostrar aviso en cada calculadora
-  ['calc-note1','calc-note2','calc-note-tiq'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.display = 'block'; }
-  });
+  showTasaError();
 }
 
 function fmt(n)  { return '$ ' + Math.round(n).toLocaleString('es-CO'); }
@@ -449,10 +572,12 @@ function calcTiq() {
 }
 
 fetchTasa();
+setInterval(fetchTasa, 30 * 60 * 1000); // Refrescar cada 30 minutos
 
 // ── T&C ──────────────────────────────────────────────────────────────────────
 function getTyC() {
-  if (tipo === 'jugador') {
+  const tipoCurrent = tipo.toLowerCase();
+  const conAloj = programa !== 'solo_actividades';
     return `
 <h3>1. Servicios incluidos</h3>
 <ul>
