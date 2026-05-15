@@ -34,7 +34,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .panel{display:none}.panel.active{display:block}
 /* card */
 .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:18px}
-.ctitle{font-size:11px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.ctitle{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--navy);margin-bottom:18px;display:flex;align-items:center;gap:10px}
 .ctitle::after{content:'';flex:1;height:1px;background:rgba(30,91,168,.15)}
 /* tc box */
 .tc-scroll{background:var(--off);border:1px solid var(--border);border-radius:8px;padding:20px 22px;max-height:320px;overflow-y:auto;font-size:14px;line-height:1.8;color:var(--muted);margin-bottom:16px}
@@ -103,6 +103,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .upload p{font-size:12px;color:var(--muted);margin-top:5px}
 .upload input{display:none}
 @media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 /* LOGIN GATE */
 #login-gate{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-box{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;text-align:center}
@@ -228,7 +229,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <input type="checkbox" id="tc-chk" onchange="onTC()">
         <span>He leído y acepto los <strong>Términos y Condiciones</strong> del Real Madrid Foundation Clinic 2026. Entiendo las políticas de cancelación y la cláusula de responsabilidad.</span>
       </label>
-      <button onclick="goPanel('panel2')" id="btn-continuar-tc" disabled style="width:100%;margin-top:20px;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:not-allowed;opacity:0.5;transition:all .2s">Continuar al pago de reserva →</button>
+      <button onclick="continuarAReserva()" id="btn-continuar-tc" disabled style="width:100%;margin-top:20px;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:not-allowed;opacity:0.5;transition:all .2s">Continuar al pago de reserva →</button>
     </div>
   </div>
 
@@ -296,6 +297,25 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           📎 Por favor envía tu comprobante de pago al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Reserva — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
         </div>
       </div>
+
+      <!-- UPLOAD COMPROBANTE RESERVA -->
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+        <div class="ctitle">Subir comprobante de pago — Reserva</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Después de realizar el pago, sube el comprobante (captura de pantalla, recibo o PDF) para que podamos validar tu reserva.</p>
+        <div class="upload" onclick="document.getElementById('comp-reserva-input').click()">
+          <div style="font-size:22px">📄</div>
+          <p>Subir comprobante · JPG, PNG o PDF · Máx. 5MB</p>
+          <input type="file" id="comp-reserva-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'reserva')">
+        </div>
+        <div class="dstatus" id="comp-reserva-status">⏳ Pendiente</div>
+        <button id="comp-reserva-btn" onclick="enviarComprobante('reserva')" style="width:100%;margin-top:12px;padding:12px;background:#999;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:not-allowed;opacity:0.5;transition:all 0.2s;display:none;">
+          ✓ Enviar comprobante para validación
+        </button>
+        <div id="comp-reserva-validando" style="display:none;margin-top:12px;background:rgba(30,91,168,0.08);border:1px solid rgba(30,91,168,0.2);border-radius:8px;padding:14px;text-align:center;font-size:14px;color:var(--blue);">
+          ⏳ <strong>Comprobante en validación</strong><br>
+          <span style="font-size:12px;color:var(--muted);">Nuestro equipo está revisando tu pago. Te notificaremos en máx. 24 horas.</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -334,6 +354,18 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           📎 Por favor envía tu comprobante del tiquete al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Tiquete — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
         </div>
       </div>
+
+      <!-- UPLOAD COMPROBANTE TIQUETE -->
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+        <div class="ctitle">Subir comprobante de pago — Tiquete aéreo</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Después de realizar el pago del tiquete, sube el comprobante para que podamos registrar tu vuelo.</p>
+        <div class="upload" onclick="document.getElementById('comp-tiquete-input').click()">
+          <div style="font-size:22px">📄</div>
+          <p>Subir comprobante · JPG, PNG o PDF · Máx. 5MB</p>
+          <input type="file" id="comp-tiquete-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'tiquete')">
+        </div>
+        <div class="dstatus" id="comp-tiquete-status">⏳ Pendiente</div>
+      </div>
     </div>
   </div>
 
@@ -368,6 +400,18 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           📎 Por favor envía tu comprobante del pago final al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Pago Final — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
         </div>
       </div>
+
+      <!-- UPLOAD COMPROBANTE PAGO FINAL -->
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+        <div class="ctitle">Subir comprobante de pago — Pago final</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Después de realizar el pago final, sube el comprobante para completar tu proceso de inscripción.</p>
+        <div class="upload" onclick="document.getElementById('comp-final-input').click()">
+          <div style="font-size:22px">📄</div>
+          <p>Subir comprobante · JPG, PNG o PDF · Máx. 5MB</p>
+          <input type="file" id="comp-final-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'final')">
+        </div>
+        <div class="dstatus" id="comp-final-status">⏳ Pendiente</div>
+      </div>
     </div>
   </div>
 
@@ -386,7 +430,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="upload" onclick="document.getElementById('di1').click()">
             <div style="font-size:22px">📎</div>
             <p>Subir pasaporte · JPG, PNG o PDF · Máx. 5MB</p>
-            <input type="file" id="di1" accept=".jpg,.jpeg,.png,.pdf" onchange="uploaded(this,'ds1')">
+            <input type="file" id="di1" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'pasaporte')">
           </div>
         </div>
       </div>
@@ -395,12 +439,12 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="dicon">📋</div>
         <div style="flex:1">
           <div class="dtitle">Permiso de salida del país</div>
-          <div class="ddesc">Para menores de edad. Firmado por ambos padres y autenticado ante notario.</div>
+          <div class="ddesc"><strong>Requerido solo si incluye tiquete aéreo.</strong> Firmado por ambos padres o tutores legales, autenticado ante notario. Formato oficial requerido.</div>
           <div class="dstatus" id="ds2">⏳ Pendiente</div>
           <div class="upload" onclick="document.getElementById('di2').click()">
             <div style="font-size:22px">📎</div>
             <p>Subir permiso · JPG, PNG o PDF · Máx. 5MB</p>
-            <input type="file" id="di2" accept=".jpg,.jpeg,.png,.pdf" onchange="uploaded(this,'ds2')">
+            <input type="file" id="di2" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'permiso')">
           </div>
         </div>
       </div>
@@ -409,12 +453,12 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="dicon">📄</div>
         <div style="flex:1">
           <div class="dtitle">Registro civil de nacimiento</div>
-          <div class="ddesc">Original y autenticado por notario. Requerido para viajes internacionales de menores de edad con tiquete aéreo.</div>
+          <div class="ddesc"><strong>Requerido solo si incluye tiquete aéreo.</strong> Original o copia autenticada por notario. Necesario para viajes internacionales de menores de edad.</div>
           <div class="dstatus" id="ds4">⏳ Pendiente</div>
           <div class="upload" onclick="document.getElementById('di4').click()">
             <div style="font-size:22px">📎</div>
             <p>Subir registro civil · JPG, PNG o PDF · Máx. 5MB</p>
-            <input type="file" id="di4" accept=".jpg,.jpeg,.png,.pdf" onchange="uploaded(this,'ds4')">
+            <input type="file" id="di4" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'registro_civil')">
           </div>
         </div>
       </div>
@@ -503,6 +547,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 // ── CONFIG (mismo webhook que preinscripción; Make filtra por body.action) ───
 const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
 
+// ── GOOGLE APPS SCRIPT UPLOAD URL ───────────────────────────────────────────
+// REEMPLAZA ESTA URL CON LA DE TU GOOGLE APPS SCRIPT DEPLOYMENTS
+const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/victory.com.es/s/AKfycbwrapSSZNW09cQvffVBQFdT65FGeyACNxTkfC2W0sZXY9BuDV9G9rZrkr4fepmtxdvcCA/exec';
+// (Después de desplegar tu Apps Script, copia la URL de implementación aquí)
+
 /** Mismo criterio que preinscripcion.html: evita preflight CORS desde GitHub Pages. */
 function postMakeWebhook(baseUrl, payload) {
   return fetch(baseUrl, {
@@ -520,6 +569,7 @@ function postMakeWebhook(baseUrl, payload) {
 let allParticipants = [];
 let currentIndex = 0;
 let nombre = 'Participante';
+let participantEmail = ''; // Nuevo: guardar email para uploads
 let tipo = 'jugador';
 let conTiq = false;
 let programa = '';
@@ -659,7 +709,8 @@ function normalizeParticipant(raw) {
     ),
     pais: rowVal(raw, 'pais', 'país', 'País', 'country', 'país_residencia'),
     ciudad: rowVal(raw, 'ciudad', 'Ciudad', 'city', 'municipio', 'Municipio'),
-    relacion: rowVal(raw, 'relacion', 'relación', 'Relación', 'Relacion', 'parentesco', 'Parentesco', 'vinculo', 'Vínculo')
+    relacion: rowVal(raw, 'relacion', 'relación', 'Relación', 'Relacion', 'parentesco', 'Parentesco', 'vinculo', 'Vínculo'),
+    paso_actual: rowVal(raw, 'paso_actual', 'Paso Actual', 'paso actual', 'step', 'paso')
   };
 }
 
@@ -792,6 +843,7 @@ function buildParticipantTabs(participants) {
 function loadParticipant(p) {
   const participant = normalizeParticipant(p) || p;
   nombre = participant.nombre || 'Participante';
+  participantEmail = participant.email || ''; // Guardar email para uploads
   tipo = (participant.tipo || 'Jugador').toLowerCase();
   conTiq = participant.tiquete_aereo === 'Con tiquete';
   programa = participant.programa || '';
@@ -1093,6 +1145,7 @@ function onTC() {
     const tcStep = STEP_DEFS.findIndex(s => s.panel === 'panel-tc');
     if (tcStep > -1) STEP_DEFS[tcStep].done = true;
     buildSteps();
+    actualizarPaso(2);
   } else {
     const tcOkDoc = document.getElementById('tc-ok-doc');
     if (tcOkDoc) tcOkDoc.style.display = 'none';
@@ -1116,9 +1169,112 @@ function selPay(panel, tipo) {
 }
 
 // ── DOC UPLOAD ────────────────────────────────────────────────────────────────
-function uploaded(inp, sid) {
-  const n = inp.files[0]?.name;
-  if (n) { const el=document.getElementById(sid); el.className='dstatus ok'; el.textContent='✅ '+n; }
+function uploadDocumento(inp, tipoDocumento) {
+  const file = inp.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    alert('⚠️ Archivo demasiado grande. Máximo 5MB.');
+    return;
+  }
+  const statusId = {
+    pasaporte: 'ds1',
+    permiso: 'ds2',
+    registro_civil: 'ds4'
+  }[tipoDocumento];
+
+  const statusEl = document.getElementById(statusId);
+  if (statusEl) {
+    statusEl.innerHTML = '⏳ Subiendo...';
+    statusEl.style.color = 'var(--muted)';
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64Data = reader.result.split(',')[1];
+    const payload = {
+      email: participantEmail,
+      tipo_documento: tipoDocumento,
+      base64: base64Data,
+      fileName: file.name,
+      nombre: nombre
+    };
+
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(() => {
+        if (statusEl) {
+          statusEl.innerHTML = `✅ ${file.name}`;
+          statusEl.classList.add('ok');
+          statusEl.style.color = 'var(--green)';
+        }
+      })
+      .catch(err => {
+        console.error('Upload error:', err);
+        if (statusEl) {
+          statusEl.innerHTML = '❌ Error al subir. Intenta nuevamente.';
+          statusEl.style.color = 'var(--red)';
+        }
+      });
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadComprobante(inp, tipoPago) {
+  const file = inp.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    alert('⚠️ Archivo demasiado grande. Máximo 5MB.');
+    return;
+  }
+  const statusId = {
+    reserva: 'comp-reserva-status',
+    tiquete: 'comp-tiquete-status',
+    final: 'comp-final-status'
+  }[tipoPago];
+
+  const statusEl = document.getElementById(statusId);
+  if (statusEl) {
+    statusEl.innerHTML = '⏳ Subiendo...';
+    statusEl.style.color = 'var(--muted)';
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64Data = reader.result.split(',')[1];
+    const payload = {
+      email: participantEmail,
+      tipo_pago: tipoPago,
+      base64: base64Data,
+      fileName: file.name,
+      nombre: nombre
+    };
+
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(() => {
+        if (statusEl) {
+          statusEl.innerHTML = `✅ ${file.name}`;
+          statusEl.classList.add('ok');
+          statusEl.style.color = 'var(--green)';
+        }
+      })
+      .catch(err => {
+        console.error('Upload error:', err);
+        if (statusEl) {
+          statusEl.innerHTML = '❌ Error al subir. Intenta nuevamente.';
+          statusEl.style.color = 'var(--red)';
+        }
+      });
+  };
+  reader.readAsDataURL(file);
 }
 
 // ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
@@ -1132,8 +1288,67 @@ function toggleTiqueteDesdeWelcome() {
   if (optin) optin.style.display = 'none';
   // Actualizar T&C
   document.getElementById('tc-text').innerHTML = getTyC();
+
+  // NUEVO: Desmarcar checkbox de T&C y forzar re-lectura
+  const tcChk = document.getElementById('tc-chk');
+  if (tcChk) {
+    tcChk.checked = false;
+    onTC();
+  }
+
+  // NUEVO: Mostrar mensaje de alerta
+  const tcPanel = document.getElementById('panel-tc');
+  if (tcPanel) {
+    const existingAlert = tcPanel.querySelector('.tiq-change-alert');
+    if (existingAlert) existingAlert.remove();
+
+    const alertBox = document.createElement('div');
+    alertBox.className = 'tiq-change-alert';
+    alertBox.style.cssText = `
+      background: rgba(217,119,6,0.1);
+      border: 1.5px solid rgba(217,119,6,0.4);
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #92400e;
+      line-height: 1.7;
+      animation: slideIn 0.3s ease;
+    `;
+    alertBox.innerHTML = `
+      <strong>⚠️ Términos y Condiciones actualizados</strong><br>
+      Has ${conTiq ? 'agregado' : 'removido'} el tiquete aéreo. Por favor, lee y acepta los nuevos Términos y Condiciones para continuar.
+    `;
+
+    const tcCard = tcPanel.querySelector('.card');
+    if (tcCard) tcCard.insertBefore(alertBox, tcCard.firstChild);
+
+    // Scroll al panel de T&C
+    goPanel('panel-tc');
+    setTimeout(() => {
+      tcPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+
   // Reconstruir pasos
   buildSteps();
+}
+
+// ── ACTUALIZAR PASO EN SHEETS ─────────────────────────────────────────────────
+function actualizarPaso(nuevoPaso) {
+  if (!participantEmail) return;
+  fetch(WEBHOOK_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify({ action: 'actualizar_paso', email: participantEmail, paso_actual: String(nuevoPaso) }),
+    keepalive: true
+  }).catch(() => {});
+}
+
+function continuarAReserva() {
+  actualizarPaso(3);
+  goPanel('panel2');
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
