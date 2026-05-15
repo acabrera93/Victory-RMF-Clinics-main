@@ -102,6 +102,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .upload:hover{border-color:var(--blue-light);background:rgba(30,91,168,.03)}
 .upload p{font-size:12px;color:var(--muted);margin-top:5px}
 .upload input{display:none}
+/* breakdown por participante */
+.breakdown-box{margin-bottom:16px;background:rgba(30,91,168,.04);border:1px solid rgba(30,91,168,.12);border-radius:8px;padding:14px 16px;font-size:13px}
+.bkrow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(30,91,168,.08)}
+.bkrow:last-child{border-bottom:none;font-weight:700;color:var(--navy);padding-top:9px;margin-top:3px;font-size:14px}
+.bkrow .bk-name{color:var(--text)}.bkrow .bk-sub{color:var(--muted);font-size:12px;margin-left:4px}.bkrow .bk-amt{font-weight:600;color:var(--navy);white-space:nowrap}
 @media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}}
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 /* LOGIN GATE */
@@ -197,6 +202,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="dres-item"><div class="dres-l">Correo electrónico</div><div class="dres-v" id="d-email">-</div></div>
       <div class="dres-item"><div class="dres-l">Posición</div><div class="dres-v" id="d-posicion">-</div></div>
       <div class="dres-item" style="grid-column:1/-1"><div class="dres-l">Club / colegio</div><div class="dres-v" id="d-club">-</div></div>
+      <div class="dres-item" id="companions-section" style="grid-column:1/-1;display:none;"><div class="dres-l">Acompañantes</div><div class="dres-v" id="companions-names">-</div></div>
       </div>
       <div class="dres-logo">
         <img src="https://i.ibb.co/nMxyz0Kn/F-REAL-MADRID-WORLD-CHALLENGE-2026.png" alt="Team Revel" referrerpolicy="no-referrer">
@@ -265,6 +271,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <div class="card pay-lock" id="pay-card1">
       <div class="ctitle">Pago de reserva — 1.000 EUR</div>
+      <div id="breakdown-reserva" class="breakdown-box" style="display:none"></div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
       <div class="pay-grid">
         <div class="pay-opt" id="p1tc" onclick="selPay(1,'tc')">
@@ -323,16 +330,17 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <div class="panel" id="panel-tiq">
     <div class="card">
       <div class="ctitle">Pago del tiquete aéreo</div>
+      <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
       <div style="background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:20px;margin-bottom:20px">
-        <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo aprox. <strong>~1.150 EUR</strong> por persona.</p>
+        <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo aprox. <strong>~1.000 EUR</strong> por persona.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">✈️</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Vuelo grupo</div><div style="font-size:10px;color:var(--muted)">BOG–MAD–BOG</div></div>
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">📅</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Fecha límite</div><div style="font-size:10px;color:var(--muted)">1 de junio 2026</div></div>
-          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo aprox.</div><div style="font-size:10px;color:var(--muted)">~1.150 EUR / persona</div></div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo aprox.</div><div style="font-size:10px;color:var(--muted)">~1.000 EUR / persona</div></div>
         </div>
       </div>
       <div class="calc-row">
-        <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur-tiq" type="number" value="1150" min="1" oninput="calcTiq()"></div>
+        <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur-tiq" type="number" value="1000" min="1" oninput="calcTiq()"></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
       </div>
       <div class="cresult" style="margin-bottom:20px">
@@ -375,9 +383,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="ctitle">Pago final del programa</div>
       <div style="text-align:center;padding:20px 0 24px">
         <div style="font-size:48px;margin-bottom:10px">📅</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--navy);letter-spacing:1px;margin-bottom:6px">SEGUNDO PAGO — 1.790 EUR</div>
+        <div id="panel3-subtitle" style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--navy);letter-spacing:1px;margin-bottom:6px">SEGUNDO PAGO — 1.790 EUR</div>
         <div style="font-size:14px;color:var(--muted)">Fecha límite: <strong>30 de julio 2026</strong></div>
       </div>
+      <div id="breakdown-final" class="breakdown-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur2" type="number" value="1790" min="1" oninput="calc2()"></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
@@ -618,6 +627,21 @@ function normalizeParticipant(raw) {
   }
   if (Array.isArray(raw) || typeof raw !== 'object') return null;
 
+  // Make.com Array Aggregator returns numeric column indices ("0","1","2"...) instead of header names
+  const numColMap = {
+    '1':'tipo','2':'nombre','3':'email','4':'phone','5':'pais','6':'pasaporte',
+    '7':'fecha_nacimiento','8':'posicion','9':'club_colegio','10':'ciudad',
+    '11':'salud_alergias','12':'acudiente','13':'relacion','14':'tiquete_aereo',
+    '15':'programa','16':'habitacion'
+  };
+  if (Object.keys(raw).some(k => /^\d+$/.test(k) && Number(k) < 20)) {
+    const remapped = { ...raw };
+    for (const [col, name] of Object.entries(numColMap)) {
+      if (raw[col] != null && raw[col] !== '' && !remapped[name]) remapped[name] = raw[col];
+    }
+    raw = remapped;
+  }
+
   const tipoRaw = (rowVal(raw, 'tipo', 'Tipo', 'type', 'rol', 'Rol', 'categoria', 'Categoría') || 'Jugador').toLowerCase();
   const esJugador = tipoRaw.includes('jug');
   const tiqRaw = rowVal(
@@ -781,6 +805,113 @@ function updatePermisoDoc(u) {
   if (elReg) elReg.style.display = (esMenor && tieneTiquete) ? '' : 'none';
 }
 
+// ── CÁLCULO DE TOTALES POR GRUPO ──────────────────────────────────────────────
+function calcPaymentTotals() {
+  const total = allParticipants.length || 1;
+
+  // Reserva: 1.000€ por participante
+  const reserva = 1000 * total;
+
+  // Tiquete: ~1.000€ por participante con tiquete
+  const tiqCount = allParticipants.filter(p => {
+    const n = normalizeParticipant(p) || p;
+    return n.tiquete_aereo === 'Con tiquete';
+  }).length;
+  const tiquete = 1000 * tiqCount;
+
+  // Pago final: jugador=1.790, acomp-doble=1.190, acomp-sencilla=1.510
+  let final = 0;
+  for (const raw of allParticipants) {
+    const n = normalizeParticipant(raw) || raw;
+    if ((n.tipo || '').toLowerCase().includes('jug')) {
+      final += 1790;
+    } else {
+      const hab = (n.habitacion || '').toLowerCase();
+      final += hab.includes('doble') ? 1190 : 1510;
+    }
+  }
+  if (allParticipants.length === 0) final = 1790; // fallback
+
+  return { reserva, tiquete, final, tiqCount, total };
+}
+
+function applyPaymentTotals(t) {
+  // Reserva: input + título del card
+  const e1 = document.getElementById('eur1');
+  if (e1) { e1.value = t.reserva; calc1(); }
+  const pc1 = document.getElementById('pay-card1');
+  if (pc1) {
+    const h = pc1.querySelector('.ctitle');
+    if (h) h.childNodes[0].textContent = `Pago de reserva — ${t.reserva.toLocaleString('es-CO')} EUR `;
+  }
+
+  // Tiquete: input
+  const etiq = document.getElementById('eur-tiq');
+  if (etiq) { etiq.value = t.tiquete || 1000; calcTiq(); }
+
+  // Pago final: input + subtítulo
+  const e2 = document.getElementById('eur2');
+  if (e2) { e2.value = t.final; calc2(); }
+  const sub3 = document.getElementById('panel3-subtitle');
+  if (sub3) sub3.textContent = `SEGUNDO PAGO — ${t.final.toLocaleString('es-CO')} EUR`;
+
+  // Actualizar descripciones de pasos
+  STEP_DEFS[2].desc = `${t.reserva.toLocaleString('es-CO')} EUR para confirmar cupo`;
+  const idxTiq = STEP_DEFS.findIndex(s => s.tiqOnly);
+  if (idxTiq > -1 && t.tiquete > 0) STEP_DEFS[idxTiq].desc = `${t.tiquete.toLocaleString('es-CO')} EUR · Vuelo BOG–MAD–BOG`;
+  const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
+  if (idxFinal > -1) STEP_DEFS[idxFinal].desc = `${t.final.toLocaleString('es-CO')} EUR antes jul 2026`;
+  buildSteps();
+  buildBreakdown(t);
+}
+
+function buildBreakdown(t) {
+  function bkRow(nombre, sub, amt) {
+    return `<div class="bkrow"><span class="bk-name"><strong>${nombre}</strong><span class="bk-sub">(${sub})</span></span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
+  }
+  function totalRow(label, amt) {
+    return `<div class="bkrow"><span>${label}</span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
+  }
+
+  // Reserva
+  const br = document.getElementById('breakdown-reserva');
+  if (br) {
+    if (t.total > 1) {
+      br.innerHTML = allParticipants.map(raw => {
+        const p = normalizeParticipant(raw) || raw;
+        return bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', 1000);
+      }).join('') + totalRow('Total reserva', t.reserva);
+      br.style.display = 'block';
+    } else { br.style.display = 'none'; }
+  }
+
+  // Tiquete
+  const bt = document.getElementById('breakdown-tiquete');
+  if (bt) {
+    const tiqPax = allParticipants.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
+    if (tiqPax.length > 1) {
+      bt.innerHTML = tiqPax.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', 1000)).join('') + totalRow('Total tiquete', t.tiquete);
+      bt.style.display = 'block';
+    } else { bt.style.display = 'none'; }
+  }
+
+  // Pago final
+  const bf = document.getElementById('breakdown-final');
+  if (bf) {
+    if (t.total > 1) {
+      bf.innerHTML = allParticipants.map(raw => {
+        const p = normalizeParticipant(raw) || raw;
+        const esJug = (p.tipo || '').toLowerCase().includes('jug');
+        const hab = (p.habitacion || '').toLowerCase();
+        const amt = esJug ? 1790 : (hab.includes('doble') ? 1190 : 1510);
+        const sub = esJug ? 'Jugador' : `Acompañante · hab. ${hab.includes('doble') ? 'doble' : 'sencilla'}`;
+        return bkRow(p.nombre || 'Participante', sub, amt);
+      }).join('') + totalRow('Total pago final', t.final);
+      bf.style.display = 'block';
+    } else { bf.style.display = 'none'; }
+  }
+}
+
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim().toLowerCase();
@@ -812,6 +943,7 @@ async function doLogin() {
       document.getElementById('ptabs').innerHTML = '';
     }
     loadParticipant(participants[0]);
+    applyPaymentTotals(calcPaymentTotals());
   } catch (e) {
     errEl.textContent = defaultErr;
     errEl.style.display = 'block';
@@ -826,6 +958,7 @@ function buildParticipantTabs(participants) {
   container.style.display = 'block';
   tabsEl.innerHTML = '';
   participants.forEach((raw, i) => {
+    const p = normalizeParticipant(raw) || raw;
     const p = normalizeParticipant(raw) || raw;
     const tab = document.createElement('button');
     tab.className = 'ptab' + (i === 0 ? ' active' : '');
@@ -867,6 +1000,21 @@ function loadParticipant(p) {
 
   updateDatosResumen(participant);
   updatePermisoDoc(participant);
+
+  // Mostrar acompañantes si el participante actual es Jugador y hay otros vinculados
+  const secEl = document.getElementById('companions-section');
+  const namesEl = document.getElementById('companions-names');
+  if (secEl && namesEl) {
+    const acompanantes = allParticipants
+      .map(raw => normalizeParticipant(raw) || raw)
+      .filter(c => c.nombre !== participant.nombre && !(c.tipo || '').toLowerCase().includes('jug'));
+    if (acompanantes.length > 0) {
+      namesEl.innerHTML = acompanantes.map(c => `<strong>${c.nombre}</strong>`).join(' · ');
+      secEl.style.display = '';
+    } else {
+      secEl.style.display = 'none';
+    }
+  }
 
   // Leer paso_actual de Sheets y marcar pasos completados
   const pasoActual = parseInt(participant.paso_actual) || 1;
