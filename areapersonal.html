@@ -1001,33 +1001,42 @@ async function doLogin() {
   errEl.style.display = 'none';
   try {
     const buscarUrl = APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email) + '&_t=' + Date.now();
-    console.log('[LOGIN] url:', buscarUrl);
     const res = await fetch(buscarUrl, { redirect: 'follow' });
     const rawText = await res.text();
-    console.log('[LOGIN] status:', res.status, 'text:', rawText.slice(0, 400));
     let data; try { data = JSON.parse(rawText); } catch(e2) { data = null; }
-    const participants = extractParticipants(data);
-    if (participants.length === 0) throw new Error('not_found');
-    // Todos los participantes del mismo grupo comparten el mismo proceso:
-    // usar el paso máximo entre todos para que todos vean el progreso correcto
-    const maxPaso = Math.max(...participants.map(p => parseInt((normalizeParticipant(p)||p).paso_actual)||1));
-    const normalizedAll = participants.map(p => {
-      const n = normalizeParticipant(p) || p;
-      n.paso_actual = String(maxPaso);
-      return n;
-    });
+    const rawParticipants = extractParticipants(data);
+    if (rawParticipants.length === 0) throw new Error('not_found');
+
+    // Normalizar todos y calcular el paso del grupo (el mayor entre todos)
+    allParticipants = rawParticipants.map(p => normalizeParticipant(p) || p);
+    const grupoPaso = Math.max(...allParticipants.map(p => parseInt(p.paso_actual) || 1));
+
+    // Determinar conTiq del grupo (si algún participante tiene tiquete)
+    conTiq = allParticipants.some(p => p.tiquete_aereo === 'Con tiquete');
+
     document.getElementById('login-gate').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
-    allParticipants = normalizedAll;
-    currentIndex = 0;
-    if (normalizedAll.length > 1) {
-      buildParticipantTabs(normalizedAll);
+
+    if (allParticipants.length > 1) {
+      buildParticipantTabs(allParticipants);
     } else {
       document.getElementById('ptabs-container').style.display = 'none';
       document.getElementById('ptabs').innerHTML = '';
     }
-    loadParticipant(normalizedAll[0]);
+
+    // Cargar info personal del primer participante (jugador si existe)
+    const primerJug = allParticipants.find(p => p.tipo === 'Jugador') || allParticipants[0];
+    loadParticipant(primerJug);
+
+    // Aplicar pasos y pagos UNA sola vez para todo el grupo
+    document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
+    document.getElementById('tc-text').innerHTML = getTyC();
+    const tiqOptin = document.getElementById('tiq-optin');
+    if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
+    const tc = document.getElementById('tc-chk');
+    if (tc) { tc.checked = grupoPaso > 2; onTC(); }
     applyPaymentTotals(calcPaymentTotals());
+    applyPasoActual(grupoPaso);
     document.getElementById('section-tabs').style.display = 'flex';
   } catch (e) {
     console.error('[LOGIN ERROR]', e);
@@ -1063,12 +1072,13 @@ function buildParticipantTabs(participants) {
   });
 }
 
+// Solo actualiza la info personal del participante (nombre, resumen, vinculados).
+// Los pasos y pagos son globales para el grupo y NO se tocan aquí.
 function loadParticipant(p) {
   const participant = normalizeParticipant(p) || p;
   nombre = participant.nombre || 'Participante';
-  participantEmail = participant.email || ''; // Guardar email para uploads
+  participantEmail = participant.email || '';
   tipo = (participant.tipo || 'Jugador').toLowerCase();
-  conTiq = participant.tiquete_aereo === 'Con tiquete';
   programa = participant.programa || '';
   habitacion = participant.habitacion || '';
 
@@ -1077,16 +1087,6 @@ function loadParticipant(p) {
   document.getElementById('ref1').textContent = nombre;
   const cartaNombre = document.getElementById('carta-nombre');
   if (cartaNombre) cartaNombre.textContent = nombre;
-  document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
-  document.getElementById('tc-text').innerHTML = getTyC();
-  const tiqOptin = document.getElementById('tiq-optin');
-  if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
-
-  const tc = document.getElementById('tc-chk');
-  if (tc) {
-    tc.checked = (parseInt(participant.paso_actual) || 1) > 2;
-    onTC();
-  }
 
   updateDatosResumen(participant);
   updatePermisoDoc(participant);
@@ -1102,7 +1102,6 @@ function loadParticipant(p) {
   if (secEl && namesEl) {
     const esJug = tipo.includes('jug');
     const vinculados = allParticipants
-      .map(raw => normalizeParticipant(raw) || raw)
       .filter(c => c.nombre !== participant.nombre &&
         (esJug ? !(c.tipo || '').toLowerCase().includes('jug') : (c.tipo || '').toLowerCase().includes('jug'))
       );
@@ -1114,10 +1113,6 @@ function loadParticipant(p) {
       secEl.style.display = 'none';
     }
   }
-
-  // Leer paso_actual de Sheets y marcar pasos completados
-  const pasoActual = parseInt(participant.paso_actual) || 1;
-  applyPasoActual(pasoActual);
 }
 
 function applyPasoActual(paso) {
