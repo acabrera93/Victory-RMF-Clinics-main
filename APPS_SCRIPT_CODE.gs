@@ -280,6 +280,7 @@ function doPost(e) {
         if (parsed.action === 'publicar_comunicado') return publicarComunicado(parsed);
         if (parsed.action === 'eliminar_comunicado') return eliminarComunicado(parsed);
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
+        if (parsed.action === 'registrar_pago') return registrarPago(parsed);
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
@@ -814,6 +815,70 @@ function getAdminFinanciero() {
   } catch(err) {
     Logger.log('getAdminFinanciero error: ' + err);
     return sendResponse(500, { error: err.toString() });
+  }
+}
+
+// ───── REGISTRAR PAGO EN HOJA PAGOS ──────────────────────────────────────────
+function registrarPago(data) {
+  try {
+    var nombre  = String(data.nombre  || '').trim();
+    var tipo    = String(data.tipo    || '').trim(); // Reserva | Tiquete | Pago Final
+    var fecha   = String(data.fecha   || '').trim(); // YYYY-MM-DD
+    var eur     = parseFloat(data.eur)  || 0;
+    var cop     = parseFloat(data.cop)  || 0;
+    var estado  = String(data.estado  || 'Parcial').trim();
+    var paquete = String(data.paquete || 'Estándar').trim();
+
+    if (!nombre || !tipo || !fecha || eur <= 0)
+      return sendResponse(400, { ok: false, error: 'nombre, tipo, fecha y eur son requeridos' });
+
+    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+
+    var parts = fecha.split('-');
+    var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+
+    var lastRow = pagosSheet.getLastRow();
+    var startRow = 6;
+    var numRows = lastRow - startRow + 1;
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, 7).getValues() : [];
+
+    var nombreLower = nombre.toLowerCase();
+    var tipoLower   = tipo.toLowerCase();
+    var inBlock = false;
+    var targetSheetRow = -1;
+
+    for (var i = 0; i < allData.length; i++) {
+      var cellA = String(allData[i][0] || '').trim();
+      var cellG = String(allData[i][6] || '').trim();
+
+      if (cellA) {
+        if (cellA.toLowerCase() === nombreLower) {
+          inBlock = true;
+        } else if (inBlock) {
+          break; // otro participante → bloque terminó sin match
+        }
+      }
+
+      if (inBlock && cellG.toLowerCase() === tipoLower) {
+        targetSheetRow = startRow + i;
+        break;
+      }
+    }
+
+    var newRow = [nombre, fechaDate, cop > 0 ? cop : '', eur, estado, paquete, tipo];
+
+    if (targetSheetRow > 0) {
+      pagosSheet.getRange(targetSheetRow, 1, 1, 7).setValues([newRow]);
+    } else {
+      pagosSheet.appendRow(newRow);
+    }
+
+    return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
+  } catch (err) {
+    Logger.log('registrarPago error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
 
