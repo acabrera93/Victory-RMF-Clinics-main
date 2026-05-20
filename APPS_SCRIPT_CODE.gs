@@ -747,19 +747,14 @@ function getAdminFinanciero() {
       };
     }
 
-    // ── Contar jugadores y acompañantes desde sus hojas (col A desde fila 6)
-    function countNonEmpty(sheetName) {
-      var sh = getSheetCI(ss, sheetName);
-      if (!sh || sh.getLastRow() < 6) return 0;
-      var vals = sh.getRange(6, 1, sh.getLastRow() - 5, 1).getValues();
-      var cnt = 0;
-      for (var k = 0; k < vals.length; k++) {
-        if (String(vals[k][0] || '').trim()) cnt++;
-      }
-      return cnt;
-    }
-    result.kpis.jugadores    = countNonEmpty('Jugadores');
-    result.kpis.acompanantes = countNonEmpty('Acompañantes');
+    // ── Jugadores: celda B6 de hoja Jugadores
+    // ── Acompañantes: suma B6+C6+D6 de hoja Acompañantes
+    var jugSheet   = getSheetCI(ss, 'Jugadores');
+    var acompSheet = getSheetCI(ss, 'Acompañantes');
+    result.kpis.jugadores    = jugSheet   ? num(jugSheet.getRange('B6').getValue())   : 0;
+    result.kpis.acompanantes = acompSheet ? (num(acompSheet.getRange('B6').getValue())
+                                           + num(acompSheet.getRange('C6').getValue())
+                                           + num(acompSheet.getRange('D6').getValue())) : 0;
 
     // ── Pagos recibidos + pagos individuales — hoja "Pagos"
     var pagosSheet = getSheetCI(ss, 'Pagos');
