@@ -75,7 +75,17 @@ function buscarParticipantes(email) {
       if (data[i][emailCol].toString().toLowerCase().trim() !== emailNorm) continue;
       const participant = {};
       for (let j = 0; j < headers.length; j++) {
-        if (headers[j]) participant[String(headers[j])] = String(data[i][j] == null ? '' : data[i][j]);
+        if (!headers[j]) continue;
+        let val = data[i][j];
+        if (val instanceof Date) {
+          const yyyy = val.getFullYear();
+          const mm = String(val.getMonth() + 1).padStart(2, '0');
+          const dd = String(val.getDate()).padStart(2, '0');
+          val = yyyy + '-' + mm + '-' + dd;
+        } else {
+          val = String(val == null ? '' : val);
+        }
+        participant[String(headers[j])] = val;
       }
       participants.push(participant);
     }
@@ -83,7 +93,7 @@ function buscarParticipantes(email) {
     Logger.log('buscarParticipantes: encontrados=' + participants.length);
     if (participants.length === 0) {
       // Debug temporal: devolver qué hay en las primeras filas
-      const sample = data.slice(1, 6).map(row => row[emailCol] ? String(row[emailCol]).toLowerCase().trim() : '(vacío)');
+      const sample = data.slice(1, 6).map(row => row[emailCol] ? String(row[emailCol]).toLowerCase().trim() : '(vacio)');
       return ContentService.createTextOutput(JSON.stringify({ _debug: true, buscando: emailNorm, emailCol: emailCol, encabezado: String(headers[emailCol]), muestras: sample }))
         .setMimeType(ContentService.MimeType.JSON);
     }
