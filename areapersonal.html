@@ -144,7 +144,46 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .comun-fecha{font-size:11px;color:var(--muted);margin-bottom:4px}
 .comun-titulo{font-weight:600;color:var(--navy);margin-bottom:8px;font-size:15px}
 .comun-body{color:#334155;font-size:14px;line-height:1.55;white-space:pre-wrap}
-@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}}
+/* Admin panel */
+.admin-subnav{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.asnav-btn{padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.asnav-btn:hover{background:rgba(30,91,168,.06);color:var(--navy)}
+.asnav-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+.metric-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px 20px}
+.mc-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;font-weight:500}
+.mc-value{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--navy);line-height:1}
+.mc-sub{font-size:12px;color:var(--muted);margin-top:5px}
+.mc-blue .mc-value{color:var(--blue)}
+.mc-green .mc-value{color:#166534}
+.mc-orange .mc-value{color:#c2410c}
+.ptable-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+.ptable{width:100%;border-collapse:collapse;font-size:13px}
+.ptable th{background:var(--navy);color:#fff;padding:11px 14px;text-align:left;font-weight:500;white-space:nowrap}
+.ptable td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+.ptable tr:last-child td{border-bottom:none}
+.ptable tr:hover td{background:rgba(30,91,168,.03);cursor:default}
+.paso-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(30,91,168,.1);color:var(--blue)}
+.paso-done{background:rgba(22,101,52,.1);color:#166534}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:14px;padding:28px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-title{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mfield label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:4px}
+.mfield input,.mfield select,.mfield textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--navy);outline:none;transition:border-color .2s;background:#fff}
+.mfield input:focus,.mfield select:focus,.mfield textarea:focus{border-color:var(--blue)}
+.mfield.full{grid-column:1/-1}
+.comun-admin-item{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:#fff}
+.comun-admin-body{flex:1;min-width:0}
+.comun-admin-titulo{font-weight:600;color:var(--navy);font-size:14px}
+.comun-admin-fecha{font-size:11px;color:var(--muted);margin-bottom:2px}
+.comun-admin-preview{font-size:12px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
+.btn-del{padding:6px 12px;border:1px solid #fca5a5;background:#fef2f2;color:#dc2626;border-radius:6px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.btn-del:hover{background:#dc2626;color:#fff;border-color:#dc2626}
+.foto-upload-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
+.foto-upload-zone:hover,.foto-upload-zone.drag{border-color:var(--blue);background:rgba(30,91,168,.04)}
+@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}.modal-grid{grid-template-columns:1fr}.mfield.full{grid-column:1}}
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes badge-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
 /* LOGIN GATE */
@@ -276,6 +315,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <button class="stab" data-section="fotos" onclick="switchSection('fotos')">📸 Fotos</button>
     <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Comunicaciones</button>
     <button class="stab" data-section="saber" onclick="switchSection('saber')">📋 Lo que debo saber</button>
+    <button class="stab" id="stab-admin" data-section="admin" onclick="switchSection('admin')" style="display:none;background:var(--navy);color:#fff">⚙ Admin</button>
   </div>
 
   <div class="steps" id="steps-row"></div>
@@ -818,8 +858,240 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
   </div>
 
+  <!-- PANEL ADMIN -->
+  <div class="panel" id="panel-admin">
+    <div class="card" style="padding:18px 24px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="ctitle" style="margin-bottom:0">Panel de Administración</div>
+        <span style="font-size:11px;color:var(--muted);background:rgba(30,91,168,.08);padding:3px 10px;border-radius:10px">Solo visible para admins</span>
+      </div>
+      <div class="admin-subnav">
+        <button class="asnav-btn active" data-asec="dashboard" onclick="adminSection('dashboard')">Dashboard</button>
+        <button class="asnav-btn" data-asec="participantes" onclick="adminSection('participantes')">Participantes</button>
+        <button class="asnav-btn" data-asec="pagos" onclick="adminSection('pagos')">Pagos</button>
+        <button class="asnav-btn" data-asec="comisiones" onclick="adminSection('comisiones')">Comisiones</button>
+        <button class="asnav-btn" data-asec="comunicados" onclick="adminSection('comunicados')">Comunicados</button>
+        <button class="asnav-btn" data-asec="galeria" onclick="adminSection('galeria')">Galería</button>
+        <button class="asnav-btn" id="stab-acceso" data-asec="acceso" onclick="adminSection('acceso')" style="display:none;margin-left:auto;border-color:var(--navy);color:var(--navy)">🔐 Acceso</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="admin-sec-dashboard">
+      <div id="admin-metrics" class="metric-grid">
+        <p style="color:var(--muted);grid-column:1/-1">Cargando datos...</p>
+      </div>
+      <!-- Barra de recaudación -->
+      <div class="card" id="admin-recaudacion-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div class="ctitle" style="margin-bottom:0">Recaudación</div>
+          <div style="display:flex;gap:6px">
+            <button id="toggle-eur" onclick="toggleCurrency('eur')" class="asnav-btn active" style="padding:5px 14px;font-size:12px">EUR €</button>
+            <button id="toggle-cop" onclick="toggleCurrency('cop')" class="asnav-btn" style="padding:5px 14px;font-size:12px">COP $</button>
+          </div>
+        </div>
+        <div id="admin-recaudacion-bars"></div>
+      </div>
+      <!-- Bottom grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="admin-bottom-grid">
+        <div class="card">
+          <div class="ctitle">Por paso (participantes)</div>
+          <div id="admin-pasos-chart"><p style="color:var(--muted)">Cargando...</p></div>
+        </div>
+        <div class="card">
+          <div class="ctitle">Ingresos por paquete</div>
+          <div id="admin-paquetes-chart"><p style="color:var(--muted)">Cargando...</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGOS -->
+    <div id="admin-sec-pagos" style="display:none">
+      <div id="admin-pagos-summary" class="metric-grid" style="margin-bottom:16px"></div>
+      <div class="card">
+        <div class="ctitle">Pagos recibidos</div>
+        <div class="ptable-wrap">
+          <table class="ptable" id="admin-pagos-table">
+            <thead><tr><th>Nombre / Familia</th><th>Fecha</th><th>EUR</th><th>COP</th><th>Paquete</th><th>Concepto</th><th>Estado</th></tr></thead>
+            <tbody id="admin-pagos-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMISIONES -->
+    <div id="admin-sec-comisiones" style="display:none">
+      <div class="card">
+        <div class="ctitle">Comisiones comerciales</div>
+        <div class="ptable-wrap">
+          <table class="ptable">
+            <thead><tr><th>Comercial</th><th>Comisión/Jugador</th><th>Jugadores</th><th>Total</th><th>Estado</th><th>Notas</th></tr></thead>
+            <tbody id="admin-comisiones-body"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARTICIPANTES -->
+    <div id="admin-sec-participantes" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+          <div class="ctitle" style="margin-bottom:0;flex:1">Participantes</div>
+          <input id="admin-search" type="text" placeholder="Buscar nombre o email..."
+                 style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px;transition:border-color .2s"
+                 onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
+                 oninput="filterAdminTable()">
+          <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">Recargar</button>
+        </div>
+        <div class="ptable-wrap">
+          <table class="ptable" id="admin-ptable">
+            <thead>
+              <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
+            </thead>
+            <tbody id="admin-ptable-body">
+              <tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMUNICADOS -->
+    <div id="admin-sec-comunicados" style="display:none">
+      <div class="card">
+        <div class="ctitle">Publicar nuevo comunicado</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:5px">Título</label>
+            <input id="comun-titulo-input" type="text" placeholder="Ej. Información importante sobre el viaje"
+                   style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s"
+                   onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:5px">Mensaje</label>
+            <textarea id="comun-mensaje-input" rows="6" placeholder="Escribe el comunicado aquí..."
+                      style="width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;outline:none;transition:border-color .2s;line-height:1.6"
+                      onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"></textarea>
+          </div>
+
+          <!-- DESTINATARIOS -->
+          <div style="background:rgba(30,91,168,.04);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:16px 18px">
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--navy);display:block;margin-bottom:12px">Destinatarios</label>
+            <div style="display:flex;flex-wrap:wrap;gap:10px" id="comun-dest-options">
+              <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;background:#fff;font-size:13px;color:var(--navy)" id="dest-opt-todos">
+                <input type="radio" name="comun-dest" value="todos" checked onchange="onComunDestChange()" style="accent-color:var(--blue)"> 👥 Todos los participantes
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;background:#fff;font-size:13px;color:var(--navy)" id="dest-opt-con_tiquete">
+                <input type="radio" name="comun-dest" value="con_tiquete" onchange="onComunDestChange()" style="accent-color:var(--blue)"> ✈️ Solo con tiquete aéreo
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;background:#fff;font-size:13px;color:var(--navy)" id="dest-opt-sin_tiquete">
+                <input type="radio" name="comun-dest" value="sin_tiquete" onchange="onComunDestChange()" style="accent-color:var(--blue)"> 🛫 Solo sin tiquete aéreo
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;background:#fff;font-size:13px;color:var(--navy)" id="dest-opt-individual">
+                <input type="radio" name="comun-dest" value="individual" onchange="onComunDestChange()" style="accent-color:var(--blue)"> 👤 Individual
+              </label>
+            </div>
+            <!-- Selector individual -->
+            <div id="comun-individual-wrap" style="display:none;margin-top:12px">
+              <label style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:5px">Seleccionar participante</label>
+              <select id="comun-individual-select"
+                      style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--navy);background:#fff;outline:none;transition:border-color .2s"
+                      onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''">
+                <option value="">— Selecciona un participante —</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <button onclick="adminPublicarComunicado()"
+                    style="padding:12px 28px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background .2s"
+                    onmouseover="this.style.background='var(--blue-light)'" onmouseout="this.style.background='var(--blue)'">
+              Publicar y enviar comunicado
+            </button>
+            <div id="comun-publish-status" style="display:none;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Comunicados publicados</div>
+        <div id="admin-comun-list"><p style="color:var(--muted)">Cargando...</p></div>
+      </div>
+    </div>
+
+    <!-- GALERÍA -->
+    <div id="admin-sec-galeria" style="display:none">
+      <div class="card">
+        <div class="ctitle">Subir fotos al álbum del viaje</div>
+        <div class="foto-upload-zone" id="foto-drop-zone" onclick="document.getElementById('foto-upload-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="adminHandleFotoDrop(event)">
+          <div style="font-size:36px;margin-bottom:10px">📸</div>
+          <div style="font-weight:500;color:var(--navy);margin-bottom:5px">Haz clic o arrastra fotos aquí</div>
+          <div style="font-size:12px;color:var(--muted)">JPG, PNG, WEBP · máx. 8 MB por imagen · múltiples archivos</div>
+          <input type="file" id="foto-upload-input" accept="image/*" multiple style="display:none" onchange="adminHandleFotoUpload(this.files)">
+        </div>
+        <div id="foto-upload-progress" style="display:none;margin-bottom:16px;font-size:13px"></div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6">Las fotos se suben directamente a la carpeta del álbum en Drive y aparecen en el tab Fotos de todos los participantes automáticamente.</p>
+      </div>
+    </div>
+
+    <!-- ACCESO (solo super admin) -->
+    <div id="admin-sec-acceso" style="display:none">
+      <div class="card">
+        <div class="ctitle">Gestión de acceso al panel</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Administra qué personas pueden entrar al panel de administración y si solo pueden <strong>ver</strong> o también <strong>editar</strong> datos. El super admin (<strong>alejandro.cabrera@fundacionrevel.net</strong>) siempre tiene acceso total.</p>
+
+        <!-- Agregar nuevo acceso -->
+        <div style="background:rgba(30,91,168,.04);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:18px;margin-bottom:20px">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:12px">Agregar acceso</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:2;min-width:200px">
+              <label style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:5px">Correo electrónico</label>
+              <input id="acceso-email-input" type="email" placeholder="correo@ejemplo.com"
+                     style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s"
+                     onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''">
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:5px">Permiso</label>
+              <select id="acceso-rol-input"
+                      style="width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;background:#fff;color:var(--navy)">
+                <option value="ver">Solo ver</option>
+                <option value="editar">Ver y editar</option>
+              </select>
+            </div>
+            <button onclick="adminAgregarAcceso()"
+                    style="padding:10px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;height:40px">
+              Agregar
+            </button>
+          </div>
+          <div id="acceso-add-status" style="display:none;margin-top:10px;font-size:13px"></div>
+        </div>
+
+        <!-- Lista de accesos -->
+        <div id="acceso-list"><p style="color:var(--muted);font-size:13px">Cargando...</p></div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /wrap -->
 </div><!-- /main-content -->
+
+<!-- MODAL EDITAR PARTICIPANTE -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal-box">
+    <div class="modal-title">
+      <span>Editar participante</span>
+      <button onclick="closeEditModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px">×</button>
+    </div>
+    <div class="modal-grid" id="edit-modal-fields"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;flex-wrap:wrap">
+      <button onclick="closeEditModal()" style="padding:10px 22px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;color:var(--muted)">Cancelar</button>
+      <button onclick="saveEditModal()" style="padding:10px 28px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Guardar cambios</button>
+    </div>
+    <div id="edit-modal-status" style="margin-top:12px;display:none;font-size:13px"></div>
+  </div>
+</div>
 
 <script>
 // ── CONFIG (mismo webhook que preinscripción; Make filtra por body.action) ───
@@ -828,6 +1100,8 @@ const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju'
 // ── GOOGLE APPS SCRIPT UPLOAD URL ───────────────────────────────────────────
 // REEMPLAZA ESTA URL CON LA DE TU GOOGLE APPS SCRIPT DEPLOYMENTS
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+const ADMIN_EMAILS = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
+const SUPER_ADMIN = 'alejandro.cabrera@fundacionrevel.net';
 // (Después de desplegar tu Apps Script, copia la URL de implementación aquí)
 
 /** Mismo criterio que preinscripcion.html: evita preflight CORS desde GitHub Pages. */
@@ -852,6 +1126,9 @@ let tipo = 'jugador';
 let conTiq = false;
 let grupoPaso = 1;
 let programa = '';
+let adminLoaded = false;
+let adminData = [];
+let adminCurrentRow = null;
 let habitacion = '';
 let fotosLoaded = false;
 let saberLoaded = false;
@@ -1230,12 +1507,32 @@ async function doLogin() {
     applyPaymentTotals(calcPaymentTotals());
     applyPasoActual(grupoPaso);
     document.getElementById('section-tabs').style.display = 'flex';
+    if (ADMIN_EMAILS.includes(participantEmail)) {
+      document.getElementById('stab-admin').style.display = '';
+    }
     checkNuevosComunicados();
     const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam && ['fotos','comunicaciones','saber'].includes(tabParam)) {
+    if (tabParam && ['fotos','comunicaciones','saber','admin'].includes(tabParam)) {
       setTimeout(() => switchSection(tabParam), 150);
     }
   } catch (e) {
+    const emailNorm = email.toLowerCase().trim();
+    // Admin hardcodeado
+    if (ADMIN_EMAILS.includes(emailNorm)) {
+      participantEmail = emailNorm;
+      showAdminOnly();
+      return;
+    }
+    // Admin añadido dinámicamente via panel de Acceso
+    try {
+      const accesoRes = await fetch(APPS_SCRIPT_URL + '?action=admin_acceso_check&email=' + encodeURIComponent(emailNorm) + '&_t=' + Date.now(), { redirect: 'follow' });
+      const accesoData = await accesoRes.json();
+      if (accesoData && accesoData.found) {
+        participantEmail = emailNorm;
+        showAdminOnly();
+        return;
+      }
+    } catch(_) {}
     errEl.textContent = defaultErr;
     errEl.style.display = 'block';
     btn.disabled = false;
@@ -1881,6 +2178,7 @@ function switchSection(section) {
     if (section === 'comunicaciones') { clearComunBadge(); if (!comunLoaded) loadComunicaciones(); }
     if (section === 'saber' && !saberLoaded) loadSaber();
     if (section === 'saber') loadClima();
+    if (section === 'admin' && !adminLoaded) loadAdmin();
   }
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -2098,6 +2396,691 @@ function loadClima() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 // Todo se inicializa en loadParticipant() después del login exitoso.
+
+// ── ADMIN PANEL ───────────────────────────────────────────────────────────────
+function showAdminOnly() {
+  document.getElementById('login-gate').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+  document.getElementById('ptabs-container').style.display = 'none';
+  document.getElementById('steps-row').style.display = 'none';
+  document.getElementById('dn').textContent = 'Admin';
+  document.getElementById('section-tabs').style.display = 'flex';
+  document.getElementById('stab-admin').style.display = '';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-admin').classList.add('active');
+  document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.section === 'admin'));
+  loadAdmin();
+}
+
+let adminFinData = null;
+let adminCurrency = 'eur';
+let adminAccesoList = [];
+
+function isEditAdmin() {
+  if (participantEmail === SUPER_ADMIN) return true;
+  return adminAccesoList.some(a => a.email === participantEmail && a.rol === 'editar');
+}
+
+function adminSection(section) {
+  document.querySelectorAll('.asnav-btn').forEach(b => b.classList.toggle('active', b.dataset.asec === section));
+  document.querySelectorAll('[id^="admin-sec-"]').forEach(el => el.style.display = 'none');
+  const el = document.getElementById('admin-sec-' + section);
+  if (el) el.style.display = '';
+  if (section === 'comunicados') loadAdminComunicados();
+  if (section === 'pagos' && adminFinData) renderAdminPagos(adminFinData);
+  if (section === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
+  if (section === 'acceso') loadAdminAcceso();
+}
+
+function loadAdmin(force) {
+  if (adminLoaded && !force) return;
+  adminLoaded = true;
+  document.getElementById('admin-metrics').innerHTML = '<p style="color:var(--muted);grid-column:1/-1">Cargando datos...</p>';
+  const t = Date.now();
+  Promise.all([
+    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&_t=' + t, { redirect: 'follow' }).then(r => r.json()),
+    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + t, { redirect: 'follow' }).then(r => r.json()),
+    fetch(APPS_SCRIPT_URL + '?action=admin_acceso&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => [])
+  ])
+  .then(([parts, fin, acceso]) => {
+    adminData = Array.isArray(parts) ? parts : [];
+    adminFinData = fin && !fin.error ? fin : null;
+    adminAccesoList = Array.isArray(acceso) ? acceso : [];
+    renderAdminDashboard(adminData, adminFinData);
+    renderAdminTable(adminData);
+    applyAdminPermissions();
+    // Mostrar botón Acceso solo al super admin
+    const stabAcceso = document.getElementById('stab-acceso');
+    if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
+  })
+  .catch(() => {
+    document.getElementById('admin-metrics').innerHTML = '<p style="color:#dc2626;grid-column:1/-1">Error de conexión.</p>';
+  });
+}
+
+function applyAdminPermissions() {
+  const canEdit = isEditAdmin();
+  // Galería — deshabilitar zona de subida si no puede editar
+  const dropZone = document.getElementById('foto-drop-zone');
+  if (dropZone) {
+    if (!canEdit) {
+      dropZone.style.pointerEvents = 'none';
+      dropZone.style.opacity = '.45';
+      dropZone.title = 'Solo el administrador con permisos de edición puede subir fotos.';
+    } else {
+      dropZone.style.pointerEvents = '';
+      dropZone.style.opacity = '';
+    }
+  }
+  // Comunicados — formulario de publicación
+  const comunTitulo = document.getElementById('comun-titulo-input');
+  const comunMensaje = document.getElementById('comun-mensaje-input');
+  const comunBtn = document.querySelector('[onclick="adminPublicarComunicado()"]');
+  if (!canEdit) {
+    if (comunTitulo) comunTitulo.disabled = true;
+    if (comunMensaje) comunMensaje.disabled = true;
+    if (comunBtn) { comunBtn.disabled = true; comunBtn.style.opacity = '.45'; comunBtn.title = 'Solo lectura.'; }
+  }
+}
+
+const TASA_EUR_COP = 4350;
+
+function fmtEur(n) { return (n||0).toLocaleString('es-CO') + ' €'; }
+function fmtCop(n) { return '$ ' + Math.round((n||0) * TASA_EUR_COP).toLocaleString('es-CO'); }
+function fmtVal(n) { return adminCurrency === 'eur' ? fmtEur(n) : fmtCop(n); }
+
+function toggleCurrency(c) {
+  adminCurrency = c;
+  document.getElementById('toggle-eur').classList.toggle('active', c === 'eur');
+  document.getElementById('toggle-cop').classList.toggle('active', c === 'cop');
+  if (adminFinData) renderRecaudacion(adminFinData);
+}
+
+function statusChip(estado) {
+  const s = (estado || '').toLowerCase();
+  if (s === 'completo' || s === 'pagado') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(22,101,52,.12);color:#166534">${estado}</span>`;
+  if (s === 'parcial' || s === 'abono') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(217,119,6,.12);color:#92400e">${estado}</span>`;
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(239,68,68,.1);color:#991b1b">${estado}</span>`;
+}
+
+function renderAdminDashboard(rows, fin) {
+  const valid = rows.filter(r => { const n = normalizeParticipant(r) || {}; return n.nombre || n.email || r['2'] || r['3']; });
+  const total = valid.length;
+  const jugadores = valid.filter(r => { const n = normalizeParticipant(r) || {}; return (n.tipo || '').toLowerCase().includes('jug'); }).length;
+  const acomp = total - jugadores;
+  const conTiquete = valid.filter(r => { const n = normalizeParticipant(r) || {}; return (n.tiquete_aereo || '').toLowerCase().includes('con'); }).length;
+  const paso7 = valid.filter(r => { const n = normalizeParticipant(r) || {}; return parseInt(n.paso_actual || 1) >= 7; }).length;
+  const pasoCount = {};
+  valid.forEach(r => { const n = normalizeParticipant(r) || {}; const p = parseInt(n.paso_actual || 1) || 1; pasoCount[p] = (pasoCount[p] || 0) + 1; });
+
+  // KPI cards — use financial data if available, otherwise calculate from participants
+  const kpis = fin && fin.kpis && fin.kpis.participantes ? fin.kpis : null;
+  const recibidos = fin && fin.pagos_recibidos ? fin.pagos_recibidos : {};
+  const ingresos = kpis ? kpis.ingresos : 0;
+  const costos = kpis ? kpis.costos : 0;
+  const beneficio = kpis ? kpis.beneficio : 0;
+  const margen = kpis ? (typeof kpis.margen === 'number' && kpis.margen <= 1 ? kpis.margen : kpis.margen / 100) : 0;
+  const margenPct = kpis ? Math.round(margen * 100) : 0;
+  const totalComisiones = fin && Array.isArray(fin.comisiones) ? fin.comisiones.reduce((s, c) => s + (c.total || 0), 0) : 0;
+  const comisionesPendientes = fin && Array.isArray(fin.comisiones) ? fin.comisiones.filter(c => (c.estado||'').toLowerCase() === 'pendiente').reduce((s, c) => s + (c.total || 0), 0) : 0;
+  const pctCostos = ingresos > 0 ? Math.round(costos / ingresos * 100) : 0;
+
+  document.getElementById('admin-metrics').innerHTML = `
+    <div class="metric-card">
+      <div class="mc-label">Participantes</div>
+      <div style="display:flex;align-items:baseline;gap:6px;line-height:1">
+        <span class="mc-value">${jugadores}</span>
+        <span style="font-size:20px;color:var(--muted);font-weight:300">+</span>
+        <span class="mc-value">${acomp}</span>
+      </div>
+      <div class="mc-sub">${jugadores} jugadores · ${acomp} acompañantes</div>
+    </div>
+    <div class="metric-card mc-blue">
+      <div class="mc-label">Ingresos brutos</div>
+      <div class="mc-value" style="font-size:26px">${(ingresos||0).toLocaleString('es-CO')}€</div>
+      <div class="mc-sub">${conTiquete} con tiquete · ${total - conTiquete} sin tiquete</div>
+    </div>
+    <div class="metric-card" style="border-color:rgba(194,65,12,.2)">
+      <div class="mc-label" style="color:#9a3412">Costo del programa</div>
+      <div class="mc-value" style="font-size:26px;color:#c2410c">${(costos||0).toLocaleString('es-CO')}€</div>
+      <div class="mc-sub">${pctCostos}% de los ingresos brutos</div>
+    </div>
+    <div class="metric-card mc-orange">
+      <div class="mc-label">Comisiones</div>
+      <div class="mc-value" style="font-size:26px">${totalComisiones.toLocaleString('es-CO')}€</div>
+      <div class="mc-sub">${comisionesPendientes.toLocaleString('es-CO')}€ pendientes de pago</div>
+    </div>
+    <div class="metric-card" style="background:linear-gradient(135deg,var(--navy),#1e5ba8);border:none">
+      <div class="mc-label" style="color:rgba(255,255,255,.6)">Beneficio</div>
+      <div class="mc-value" style="font-size:26px;color:#fff">${(beneficio||0).toLocaleString('es-CO')}€</div>
+      <div class="mc-sub" style="color:rgba(255,255,255,.5)">Margen ${kpis ? margenPct + '%' : '—'}</div>
+    </div>
+  `;
+
+  // Recaudación bars
+  if (ingresos > 0) {
+    const pctRec = Math.min(100, Math.round(recaudado / ingresos * 100));
+    const pctCosto = Math.min(100, Math.round(costos / ingresos * 100));
+    document.getElementById('admin-recaudacion-card').style.display = '';
+    renderRecaudacion(fin);
+  }
+
+  // Pasos chart
+  let pasosHtml = '<div style="display:flex;flex-direction:column;gap:10px">';
+  const pasoLabels = {1:'Pre-insc.',2:'T&C',3:'Reserva',4:'Tiquete',5:'Pago final',6:'Documentos',7:'Completado'};
+  const pasoColors = {7:'#166534'};
+  for (let i = 1; i <= 7; i++) {
+    const cnt = pasoCount[i] || 0;
+    const pct = total > 0 ? Math.round(cnt / total * 100) : 0;
+    const color = pasoColors[i] || 'var(--blue)';
+    pasosHtml += `<div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;color:var(--muted);width:90px;flex-shrink:0">P${i} ${pasoLabels[i]}</div><div style="flex:1;height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:5px;transition:width .6s ease"></div></div><div style="font-size:12px;font-weight:600;color:var(--navy);width:24px;text-align:right">${cnt}</div></div>`;
+  }
+  pasosHtml += '</div>';
+  document.getElementById('admin-pasos-chart').innerHTML = pasosHtml;
+
+  // Paquetes chart
+  if (fin && fin.paquetes && fin.paquetes.length) {
+    const maxTotal = Math.max(...fin.paquetes.map(p => p.total));
+    const paqColors = ['var(--blue)','#166534','#c2410c','#7c3aed'];
+    let paqHtml = '<div style="display:flex;flex-direction:column;gap:12px">';
+    fin.paquetes.forEach((p, i) => {
+      const pct = maxTotal > 0 ? Math.round(p.total / maxTotal * 100) : 0;
+      paqHtml += `<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;color:var(--navy);font-weight:500">${p.nombre}</span>
+          <span style="font-size:12px;color:var(--muted)">${p.cantidad} × ${p.precio.toLocaleString('es-CO')}€ = <strong>${p.total.toLocaleString('es-CO')}€</strong></span>
+        </div>
+        <div style="height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${paqColors[i%4]};border-radius:5px;transition:width .6s ease"></div></div>
+      </div>`;
+    });
+    paqHtml += '</div>';
+    document.getElementById('admin-paquetes-chart').innerHTML = paqHtml;
+  } else {
+    document.getElementById('admin-paquetes-chart').innerHTML = '<p style="color:var(--muted)">Sin datos de paquetes.</p>';
+  }
+}
+
+function renderRecaudacion(fin) {
+  if (!fin || !fin.kpis) return;
+  const ingresos = fin.kpis.ingresos || 0;
+  const costos = fin.kpis.costos || 0;
+  const recaudado = (fin.pagos_recibidos || {}).total_eur || 0;
+  const beneficio = fin.kpis.beneficio || 0;
+  const isCop = adminCurrency === 'cop';
+  const fmt = v => isCop ? '$ ' + Math.round(v * TASA_EUR_COP).toLocaleString('es-CO') : v.toLocaleString('es-CO') + ' €';
+  const pctRec = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
+  const pctCosto = ingresos > 0 ? Math.min(100, Math.round(costos / ingresos * 100)) : 0;
+  const pctBenef = ingresos > 0 ? Math.min(100, Math.round(beneficio / ingresos * 100)) : 0;
+  document.getElementById('admin-recaudacion-bars').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:500;color:var(--navy)">Recaudado vs Ingresos totales</span>
+          <span style="font-size:13px;font-weight:700;color:var(--blue)">${fmt(recaudado)} <span style="color:var(--muted);font-weight:400">/ ${fmt(ingresos)}</span></span>
+        </div>
+        <div style="height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
+          <div style="height:100%;width:${pctRec}%;background:var(--blue);border-radius:7px;transition:width .8s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+            ${pctRec > 8 ? `<span style="font-size:10px;color:#fff;font-weight:700">${pctRec}%</span>` : ''}
+          </div>
+        </div>
+        ${pctRec <= 8 ? `<div style="font-size:11px;color:var(--muted);margin-top:3px">${pctRec}% recaudado</div>` : ''}
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:500;color:var(--navy)">Costos vs Ingresos totales</span>
+          <span style="font-size:13px;font-weight:700;color:#c2410c">${fmt(costos)} <span style="color:var(--muted);font-weight:400">/ ${fmt(ingresos)}</span></span>
+        </div>
+        <div style="height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
+          <div style="height:100%;width:${pctCosto}%;background:#c2410c;border-radius:7px;transition:width .8s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+            ${pctCosto > 8 ? `<span style="font-size:10px;color:#fff;font-weight:700">${pctCosto}%</span>` : ''}
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:500;color:var(--navy)">Beneficio bruto estimado</span>
+          <span style="font-size:13px;font-weight:700;color:#166534">${fmt(beneficio)} <span style="color:var(--muted);font-weight:400">(${Math.round(fin.kpis.margen <= 1 ? fin.kpis.margen*100 : fin.kpis.margen)}%)</span></span>
+        </div>
+        <div style="height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
+          <div style="height:100%;width:${pctBenef}%;background:#166534;border-radius:7px;transition:width .8s ease"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminPagos(fin) {
+  if (!fin) return;
+  const recibidos = fin.pagos_recibidos || {};
+  const pagos = fin.pagos_lista || [];
+  const totalEur = recibidos.total_eur || 0;
+  const totalCop = recibidos.total_cop || 0;
+  document.getElementById('admin-pagos-summary').innerHTML = `
+    <div class="metric-card mc-blue"><div class="mc-label">Total recaudado</div><div class="mc-value" style="font-size:26px">${totalEur.toLocaleString('es-CO')}€</div><div class="mc-sub">$ ${(totalCop||Math.round(totalEur*TASA_EUR_COP)).toLocaleString('es-CO')} COP</div></div>
+    <div class="metric-card mc-green"><div class="mc-label">Pagos completos</div><div class="mc-value">${recibidos.completos || 0}</div><div class="mc-sub">Proceso completo</div></div>
+    <div class="metric-card mc-orange"><div class="mc-label">Pagos parciales</div><div class="mc-value">${recibidos.parciales || 0}</div><div class="mc-sub">En proceso de pago</div></div>
+    <div class="metric-card"><div class="mc-label">Transacciones</div><div class="mc-value">${pagos.length}</div><div class="mc-sub">Registros en sheet</div></div>
+  `;
+  if (!pagos.length) {
+    document.getElementById('admin-pagos-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No hay pagos registrados.</td></tr>';
+    return;
+  }
+  document.getElementById('admin-pagos-body').innerHTML = pagos.map(p => `
+    <tr>
+      <td style="font-weight:500">${p.nombre}</td>
+      <td style="font-size:12px;color:var(--muted)">${p.fecha}</td>
+      <td style="font-weight:600;color:var(--blue)">${p.eur.toLocaleString('es-CO')} €</td>
+      <td style="font-size:12px;color:var(--muted)">$ ${(p.cop||0).toLocaleString('es-CO')}</td>
+      <td style="font-size:12px">${p.paquete}</td>
+      <td style="font-size:12px;color:var(--muted)">${p.notas}</td>
+      <td>${statusChip(p.estado)}</td>
+    </tr>`).join('');
+}
+
+function renderAdminComisiones(fin) {
+  if (!fin || !fin.comisiones) return;
+  const comisiones = fin.comisiones;
+  if (!comisiones.length) {
+    document.getElementById('admin-comisiones-body').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No hay comisiones registradas.</td></tr>';
+    return;
+  }
+  document.getElementById('admin-comisiones-body').innerHTML = comisiones.map(c => `
+    <tr>
+      <td style="font-weight:500">${c.comercial}</td>
+      <td style="font-weight:600;color:var(--blue)">${c.comision_jugador.toLocaleString('es-CO')} €</td>
+      <td>${c.jugadores}</td>
+      <td style="font-weight:700;color:var(--navy)">${c.total.toLocaleString('es-CO')} €</td>
+      <td>${statusChip(c.estado)}</td>
+      <td style="font-size:12px;color:var(--muted)">${c.notas}</td>
+    </tr>`).join('');
+}
+
+function renderAdminTable(rows) {
+  const tbody = document.getElementById('admin-ptable-body');
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map((row, i) => {
+    const n = normalizeParticipant(row) || {};
+    const nb = n.nombre || row['2'] || '';
+    const tp = n.tipo || row['1'] || '';
+    const em = n.email || row['3'] || '';
+    const ph = n.phone || row['4'] || '';
+    const tiq = (n.tiquete_aereo || '').toLowerCase().includes('con') ? '<span style="color:var(--blue)">✈ Sí</span>' : '<span style="color:var(--muted)">—</span>';
+    const hab = n.habitacion || '';
+    const paso = n.paso_actual || '1';
+    const cls = parseInt(paso) >= 7 ? 'paso-pill paso-done' : 'paso-pill';
+    const origIdx = adminData.indexOf(row);
+    return `<tr>
+      <td style="font-weight:500">${nb}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${tp.toLowerCase().includes('jug')?'rgba(30,91,168,.1)':'rgba(22,101,52,.08)'};color:${tp.toLowerCase().includes('jug')?'var(--blue)':'#166534'}">${tp}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${em}</td>
+      <td style="font-size:12px">${ph}</td>
+      <td style="text-align:center">${tiq}</td>
+      <td style="font-size:12px">${hab}</td>
+      <td><span class="${cls}">${paso}</span></td>
+      <td>${isEditAdmin() ? `<button onclick="openEditModal(${origIdx})" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy);transition:background .2s" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterAdminTable() {
+  const q = (document.getElementById('admin-search').value || '').toLowerCase();
+  if (!q) { renderAdminTable(adminData); return; }
+  renderAdminTable(adminData.filter(row => {
+    const n = normalizeParticipant(row) || {};
+    return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q);
+  }));
+}
+
+// Base fields shared by all participants
+const EDIT_FIELDS_BASE = [
+  {key:'nombre',label:'Nombre',type:'text'},{key:'email',label:'Email',type:'email'},
+  {key:'phone',label:'Teléfono',type:'text'},{key:'pais',label:'País',type:'text'},
+  {key:'pasaporte',label:'Pasaporte',type:'text'},{key:'ciudad',label:'Ciudad',type:'text'},
+  {key:'salud_alergias',label:'Condiciones médicas y alergias',type:'text',full:true},
+  {key:'tiquete_aereo',label:'Tiquete aéreo',type:'select',options:['Con tiquete','Sin tiquete']},
+  {key:'paso_actual',label:'Paso actual',type:'text'}
+];
+// Extra fields only for jugadores
+const EDIT_FIELDS_JUGADOR = [
+  {key:'fecha_nacimiento',label:'Fecha de nacimiento',type:'text'},
+  {key:'posicion',label:'Posición',type:'text'},
+  {key:'club_colegio',label:'Club / Colegio',type:'text'},
+  {key:'acudiente',label:'Nombre del acudiente',type:'text'},
+  {key:'relacion',label:'Relación con el acudiente',type:'text'},
+];
+// Extra fields only for acompañantes
+const EDIT_FIELDS_ACOMP = [
+  {key:'jugador_acompanado',label:'Jugador que acompaña',type:'text',full:true},
+  {key:'habitacion',label:'Habitación',type:'select',options:['Doble','Sencilla','']},
+];
+// Keep EDIT_FIELDS as alias for legacy references
+const EDIT_FIELDS = [...EDIT_FIELDS_BASE, ...EDIT_FIELDS_JUGADOR, ...EDIT_FIELDS_ACOMP];
+
+function getEditFields(esJugador) {
+  if (esJugador) return [...EDIT_FIELDS_BASE.slice(0,5), ...EDIT_FIELDS_JUGADOR, ...EDIT_FIELDS_BASE.slice(5)];
+  return [...EDIT_FIELDS_BASE, ...EDIT_FIELDS_ACOMP];
+}
+
+function openEditModal(idx) {
+  const row = adminData[idx];
+  if (!row) return;
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  adminCurrentRow = { ...row, _idx: idx };
+  const n = normalizeParticipant(row) || {};
+  const esJugador = (n.tipo || '').toLowerCase().includes('jug');
+  const fields = getEditFields(esJugador);
+  document.getElementById('edit-modal-fields').innerHTML = fields.map(f => {
+    const val = n[f.key] != null ? n[f.key] : (row[f.key] || '');
+    const cls = 'mfield' + (f.full ? ' full' : '');
+    if (f.type === 'select') {
+      const opts = f.options.map(o => `<option value="${o}"${o===val?' selected':''}>${o||'(sin selección)'}</option>`).join('');
+      return `<div class="${cls}"><label>${f.label}</label><select id="ef-${f.key}">${opts}</select></div>`;
+    }
+    return `<div class="${cls}"><label>${f.label}</label><input type="${f.type}" id="ef-${f.key}" value="${String(val).replace(/"/g,'&quot;')}"></div>`;
+  }).join('');
+  document.getElementById('edit-modal-status').style.display = 'none';
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  adminCurrentRow = null;
+}
+
+function saveEditModal() {
+  if (!adminCurrentRow) return;
+  const statusEl = document.getElementById('edit-modal-status');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Guardando...</span>';
+  const payload = { action: 'actualizar_participante', _row: adminCurrentRow._row };
+  // Pass all original keys so backend can match column headers
+  Object.keys(adminCurrentRow).forEach(k => { if (k !== '_idx') payload[k] = adminCurrentRow[k]; });
+  // Override with edited values using normalized key names
+  const n2 = normalizeParticipant(adminCurrentRow) || {};
+  const esJugador2 = (n2.tipo || '').toLowerCase().includes('jug');
+  getEditFields(esJugador2).forEach(f => {
+    const el = document.getElementById('ef-' + f.key);
+    if (el) payload[f.key] = el.value;
+  });
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload), redirect:'follow' })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        statusEl.innerHTML = '<span style="color:var(--green)">Guardado correctamente.</span>';
+        EDIT_FIELDS.forEach(f => { const el = document.getElementById('ef-' + f.key); if (el) adminData[adminCurrentRow._idx][f.key] = el.value; });
+        renderAdminTable(adminData);
+        setTimeout(closeEditModal, 1200);
+      } else {
+        statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
+      }
+    })
+    .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
+}
+
+function loadAdminComunicados() {
+  const el = document.getElementById('admin-comun-list');
+  el.innerHTML = '<p style="color:var(--muted)">Cargando...</p>';
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&_t=' + Date.now(), { redirect:'follow' })
+    .then(r => r.json())
+    .then(msgs => {
+      if (!msgs || !msgs.length) { el.innerHTML = '<p style="color:var(--muted)">No hay comunicados publicados.</p>'; return; }
+      const destLabels = {todos:'👥 Todos',con_tiquete:'✈️ Con tiquete',sin_tiquete:'🛫 Sin tiquete'};
+      el.innerHTML = msgs.map(m => {
+        const dest = m.destinatario || 'todos';
+        const destText = destLabels[dest] || ('👤 ' + dest);
+        return `<div class="comun-admin-item">
+          <div class="comun-admin-body">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span class="comun-admin-fecha">${m.fecha || ''}</span>
+              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(30,91,168,.1);color:var(--blue);font-weight:500">${destText}</span>
+            </div>
+            <div class="comun-admin-titulo">${m.titulo || ''}</div>
+            <div class="comun-admin-preview">${m.mensaje || ''}</div>
+          </div>
+          ${isEditAdmin() ? `<button class="btn-del" onclick="adminDeleteComunicado(this,'${encodeURIComponent(m.titulo||'')}','${encodeURIComponent(m.fecha||'')}')">Eliminar</button>` : ''}
+        </div>`;
+      }).join('');
+    })
+    .catch(() => { el.innerHTML = '<p style="color:var(--muted)">Error al cargar.</p>'; });
+}
+
+function onComunDestChange() {
+  const val = document.querySelector('input[name="comun-dest"]:checked')?.value || 'todos';
+  const wrap = document.getElementById('comun-individual-wrap');
+  wrap.style.display = val === 'individual' ? '' : 'none';
+  // Highlight active option
+  ['todos','con_tiquete','sin_tiquete','individual'].forEach(k => {
+    const lbl = document.getElementById('dest-opt-' + k);
+    if (lbl) lbl.style.borderColor = (k === val) ? 'var(--blue)' : '';
+  });
+  // Populate individual select if needed
+  if (val === 'individual') {
+    const sel = document.getElementById('comun-individual-select');
+    if (sel.options.length <= 1 && adminData.length) {
+      adminData.forEach(row => {
+        const n = normalizeParticipant(row) || {};
+        const nombre = n.nombre || row['2'] || '';
+        const email = n.email || row['3'] || '';
+        if (!email) return;
+        const opt = document.createElement('option');
+        opt.value = email;
+        opt.textContent = nombre + ' (' + email + ')';
+        sel.appendChild(opt);
+      });
+    }
+  }
+}
+
+function adminPublicarComunicado() {
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  const titulo = document.getElementById('comun-titulo-input').value.trim();
+  const mensaje = document.getElementById('comun-mensaje-input').value.trim();
+  const statusEl = document.getElementById('comun-publish-status');
+  const destVal = document.querySelector('input[name="comun-dest"]:checked')?.value || 'todos';
+  let destinatario = destVal;
+  if (destVal === 'individual') {
+    destinatario = document.getElementById('comun-individual-select').value;
+    if (!destinatario) { statusEl.style.display='block'; statusEl.innerHTML='<span style="color:#dc2626">Selecciona un participante.</span>'; return; }
+  }
+  if (!titulo || !mensaje) { statusEl.style.display='block'; statusEl.innerHTML='<span style="color:#dc2626">Completa el título y el mensaje.</span>'; return; }
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Publicando...</span>';
+  const today = new Date();
+  const fecha = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'publicar_comunicado',titulo,mensaje,fecha,destinatario}), redirect:'follow' })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        const destLabel = {todos:'todos los participantes',con_tiquete:'participantes con tiquete',sin_tiquete:'participantes sin tiquete'}[destVal] || destinatario;
+        statusEl.innerHTML = `<span style="color:var(--green)">✅ Comunicado publicado y enviado a <strong>${destLabel}</strong>.</span>`;
+        document.getElementById('comun-titulo-input').value = '';
+        document.getElementById('comun-mensaje-input').value = '';
+        const todosRadio = document.querySelector('input[name="comun-dest"][value="todos"]');
+        if (todosRadio) { todosRadio.checked = true; onComunDestChange(); }
+        comunLoaded = false;
+        loadAdminComunicados();
+      } else {
+        statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error||'desconocido'}</span>`;
+      }
+    })
+    .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
+}
+
+function adminDeleteComunicado(btn, encodedTitulo, encodedFecha) {
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  if (!confirm('¿Eliminar este comunicado?')) return;
+  const titulo = decodeURIComponent(encodedTitulo);
+  const fecha = decodeURIComponent(encodedFecha);
+  btn.disabled = true;
+  btn.textContent = '...';
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_comunicado',titulo,fecha}), redirect:'follow' })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) { btn.closest('.comun-admin-item').remove(); comunLoaded = false; }
+      else { btn.disabled=false; btn.textContent='Eliminar'; alert('Error: ' + (res.error||'desconocido')); }
+    })
+    .catch(() => { btn.disabled=false; btn.textContent='Eliminar'; });
+}
+
+// ── ACCESO MANAGEMENT ─────────────────────────────────────────────────────────
+
+function loadAdminAcceso() {
+  const el = document.getElementById('acceso-list');
+  if (!el) return;
+  el.innerHTML = '<p style="color:var(--muted);font-size:13px">Cargando...</p>';
+  fetch(APPS_SCRIPT_URL + '?action=admin_acceso&_t=' + Date.now(), { redirect: 'follow' })
+    .then(r => r.json())
+    .then(list => {
+      adminAccesoList = Array.isArray(list) ? list : [];
+      renderAdminAcceso();
+    })
+    .catch(() => { el.innerHTML = '<p style="color:#dc2626;font-size:13px">Error al cargar.</p>'; });
+}
+
+function renderAdminAcceso() {
+  const el = document.getElementById('acceso-list');
+  if (!el) return;
+  // Super admin always at top as non-removable
+  const superRow = `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid rgba(30,91,168,.25);border-radius:8px;margin-bottom:8px;background:rgba(30,91,168,.04)">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--navy)">${SUPER_ADMIN}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Super administrador</div>
+      </div>
+      <span style="padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(30,91,168,.12);color:var(--blue)">Ver y editar</span>
+    </div>`;
+  if (!adminAccesoList.length) {
+    el.innerHTML = superRow + '<p style="color:var(--muted);font-size:13px;margin-top:8px">No hay otros accesos configurados.</p>';
+    return;
+  }
+  el.innerHTML = superRow + adminAccesoList.map((a, i) => {
+    const rolLabel = a.rol === 'editar' ? 'Ver y editar' : 'Solo ver';
+    const rolColor = a.rol === 'editar' ? 'rgba(22,101,52,.12)' : 'rgba(30,91,168,.1)';
+    const rolTextColor = a.rol === 'editar' ? '#166534' : 'var(--blue)';
+    return `
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:#fff">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:var(--navy)">${a.email}</div>
+        ${a.nombre ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${a.nombre}</div>` : ''}
+      </div>
+      <select onchange="adminCambiarRolAcceso('${a.email}', this.value)"
+              style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--navy);background:#fff;cursor:pointer">
+        <option value="ver"${a.rol !== 'editar' ? ' selected' : ''}>Solo ver</option>
+        <option value="editar"${a.rol === 'editar' ? ' selected' : ''}>Ver y editar</option>
+      </select>
+      <button onclick="adminEliminarAcceso('${a.email}', this)" class="btn-del">Eliminar</button>
+    </div>`;
+  }).join('');
+}
+
+function adminAgregarAcceso() {
+  const email = (document.getElementById('acceso-email-input').value || '').trim().toLowerCase();
+  const rol = document.getElementById('acceso-rol-input').value;
+  const statusEl = document.getElementById('acceso-add-status');
+  if (!email || !email.includes('@')) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = '<span style="color:#dc2626">Introduce un correo válido.</span>';
+    return;
+  }
+  if (email === SUPER_ADMIN) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = '<span style="color:#dc2626">El super admin ya tiene acceso total.</span>';
+    return;
+  }
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Guardando...</span>';
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'add', email, rol }),
+    redirect: 'follow'
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        statusEl.innerHTML = '<span style="color:var(--green)">Acceso agregado correctamente.</span>';
+        document.getElementById('acceso-email-input').value = '';
+        loadAdminAcceso();
+      } else {
+        statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
+      }
+    })
+    .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
+}
+
+function adminEliminarAcceso(email, btn) {
+  if (!confirm(`¿Eliminar acceso de ${email}?`)) return;
+  btn.disabled = true;
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'remove', email }),
+    redirect: 'follow'
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) { adminAccesoList = adminAccesoList.filter(a => a.email !== email); renderAdminAcceso(); }
+      else { btn.disabled = false; alert('Error: ' + (res.error || 'desconocido')); }
+    })
+    .catch(() => { btn.disabled = false; });
+}
+
+function adminCambiarRolAcceso(email, nuevoRol) {
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'update', email, rol: nuevoRol }),
+    redirect: 'follow'
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        const found = adminAccesoList.find(a => a.email === email);
+        if (found) found.rol = nuevoRol;
+      }
+    })
+    .catch(() => {});
+}
+
+function adminHandleFotoDrop(event) {
+  event.preventDefault();
+  document.getElementById('foto-drop-zone').classList.remove('drag');
+  if (event.dataTransfer.files.length) adminHandleFotoUpload(event.dataTransfer.files);
+}
+
+function adminHandleFotoUpload(files) {
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  const progressEl = document.getElementById('foto-upload-progress');
+  progressEl.style.display = 'block';
+  const fileArr = Array.from(files).filter(f => f.type.startsWith('image/') && f.size <= 8 * 1024 * 1024);
+  if (!fileArr.length) { progressEl.innerHTML = '<span style="color:#dc2626">No hay imágenes válidas (máx 8 MB).</span>'; return; }
+  let done = 0, errors = 0;
+  progressEl.innerHTML = `<span style="color:var(--blue)">Subiendo ${fileArr.length} foto(s)... (0/${fileArr.length})</span>`;
+  fileArr.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const base64 = ev.target.result.split(',')[1];
+      const ext = file.name.split('.').pop().toLowerCase();
+      const fileName = 'foto_' + Date.now() + '_' + Math.random().toString(36).slice(2,7) + '.' + ext;
+      fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'subir_foto_drive',base64,fileName,mimeType:file.type}), redirect:'follow' })
+        .then(r => r.json())
+        .then(res => {
+          done++;
+          if (!res.ok) errors++;
+          if (done < fileArr.length) { progressEl.innerHTML = `<span style="color:var(--blue)">Subiendo... (${done}/${fileArr.length})</span>`; return; }
+          progressEl.innerHTML = errors === 0
+            ? `<span style="color:var(--green)">${done} foto(s) subidas. Aparecerán en la galería de todos los participantes.</span>`
+            : `<span style="color:#d97706">${done - errors} subidas, ${errors} con error.</span>`;
+          fotosLoaded = false; // Force refresh on next visit
+        })
+        .catch(() => { done++; errors++; if (done===fileArr.length) progressEl.innerHTML=`<span style="color:#dc2626">Error al subir.</span>`; });
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 </script>
 
