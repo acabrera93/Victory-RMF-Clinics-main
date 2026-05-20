@@ -24,17 +24,20 @@ const SABER_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_SABER"; // Carpeta "RMF_Clini
 
 // ───── GET HANDLER (fotos, saber, comunicaciones) ──────────────────────────────
 function doGet(e) {
-  const action = (e.parameter || {}).action || '';
+  const params = e.parameter || {};
+  const action = params.action || '';
+  Logger.log('doGet action=' + action + ' params=' + JSON.stringify(params));
   try {
     if (action === 'fotos') return listFiles(FOTOS_FOLDER_ID, 'image');
     if (action === 'saber') return listFiles(SABER_FOLDER_ID, 'all');
     if (action === 'comunicaciones') return getComunicaciones();
-    if (action === 'buscar') return buscarParticipantes((e.parameter || {}).email || '');
-    return ContentService.createTextOutput(JSON.stringify([]))
+    if (action === 'buscar') return buscarParticipantes(params.email || '');
+    // Si llegamos aquí, action no fue reconocida — devolver debug
+    return ContentService.createTextOutput(JSON.stringify({ _debug: true, msg: 'accion_no_reconocida', action: action, params: params }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     Logger.log('doGet error: ' + err);
-    return ContentService.createTextOutput(JSON.stringify({ error: err.toString() }))
+    return ContentService.createTextOutput(JSON.stringify({ _debug: true, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -88,7 +91,7 @@ function buscarParticipantes(email) {
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     Logger.log('buscarParticipantes error: ' + err);
-    return ContentService.createTextOutput(JSON.stringify([]))
+    return ContentService.createTextOutput(JSON.stringify({ _debug: true, catch_error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
