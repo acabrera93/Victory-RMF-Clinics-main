@@ -2454,6 +2454,10 @@ function loadAdmin(force) {
     applyAdminPermissions();
     const stabAcceso = document.getElementById('stab-acceso');
     if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
+  })
+  .catch(err => {
+    console.error('loadAdmin error:', err);
+    document.getElementById('admin-metrics').innerHTML = '<p style="color:#dc2626;grid-column:1/-1">Error inesperado al cargar el panel. Revisa la consola para más detalles.</p>';
   });
 }
 
@@ -2558,8 +2562,6 @@ function renderAdminDashboard(rows, fin) {
 
   // Recaudación bars
   if (ingresos > 0) {
-    const pctRec = Math.min(100, Math.round(recaudado / ingresos * 100));
-    const pctCosto = Math.min(100, Math.round(costos / ingresos * 100));
     document.getElementById('admin-recaudacion-card').style.display = '';
     renderRecaudacion(fin);
   }
