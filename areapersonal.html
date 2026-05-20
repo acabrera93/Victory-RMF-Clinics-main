@@ -2438,23 +2438,22 @@ function loadAdmin(force) {
   document.getElementById('admin-metrics').innerHTML = '<p style="color:var(--muted);grid-column:1/-1">Cargando datos...</p>';
   const t = Date.now();
   Promise.all([
-    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&_t=' + t, { redirect: 'follow' }).then(r => r.json()),
-    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + t, { redirect: 'follow' }).then(r => r.json()),
+    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => []),
+    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
     fetch(APPS_SCRIPT_URL + '?action=admin_acceso&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => [])
   ])
   .then(([parts, fin, acceso]) => {
     adminData = Array.isArray(parts) ? parts : [];
     adminFinData = fin && !fin.error ? fin : null;
     adminAccesoList = Array.isArray(acceso) ? acceso : [];
+    if (!adminData.length && !adminFinData) {
+      document.getElementById('admin-metrics').innerHTML = '<p style="color:#dc2626;grid-column:1/-1">Error de conexión. Verifica que el Apps Script esté desplegado correctamente.</p>';
+    }
     renderAdminDashboard(adminData, adminFinData);
     renderAdminTable(adminData);
     applyAdminPermissions();
-    // Mostrar botón Acceso solo al super admin
     const stabAcceso = document.getElementById('stab-acceso');
     if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
-  })
-  .catch(() => {
-    document.getElementById('admin-metrics').innerHTML = '<p style="color:#dc2626;grid-column:1/-1">Error de conexión.</p>';
   });
 }
 
