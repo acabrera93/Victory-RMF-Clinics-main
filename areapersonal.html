@@ -2575,6 +2575,12 @@ function renderAdminDashboard(rows, fin) {
   const recaudado = recibidos.total_eur || 0;
   const pctRec = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
 
+  // Tasa media EUR→COP real calculada de pagos con ambos valores
+  const pagosConTasa = (fin && fin.pagos_lista ? fin.pagos_lista : []).filter(p => p.cop > 0 && p.eur > 0);
+  const tasaMedia = pagosConTasa.length > 0
+    ? Math.round(pagosConTasa.reduce((s, p) => s + (p.cop / p.eur), 0) / pagosConTasa.length)
+    : 0;
+
   document.getElementById('admin-metrics').innerHTML = `
     <div class="kpi-card kc-navy">
       <span class="kpi-icon">👥</span>
@@ -2601,6 +2607,12 @@ function renderAdminDashboard(rows, fin) {
       <div class="kc-label" style="color:rgba(255,255,255,.6)">Beneficio bruto</div>
       <div class="kc-val" style="font-size:30px;color:#fff">${(beneficio||0).toLocaleString('es-CO')}€</div>
       <div class="kc-sub" style="color:rgba(255,255,255,.5)">Margen ${kpis ? margenPct + '%' : '—'}</div>
+    </div>
+    <div class="kpi-card kc-blue">
+      <span class="kpi-icon">💱</span>
+      <div class="kc-label">Tasa real EUR → COP</div>
+      <div class="kc-val" style="font-size:28px;color:var(--blue)">${tasaMedia > 0 ? tasaMedia.toLocaleString('es-CO') : '—'}</div>
+      <div class="kc-sub">${pagosConTasa.length > 0 ? `Media de ${pagosConTasa.length} pago${pagosConTasa.length > 1 ? 's' : ''} con COP registrado` : 'Sin pagos en COP aún'}</div>
     </div>
   `;
 
@@ -2754,9 +2766,15 @@ function renderAdminPagos(fin) {
 
   const conPago  = allNombres.filter(n => pagoMap[n.toLowerCase().trim()]).length;
   const sinPago  = allNombres.length - conPago;
+  const completos = allNombres.filter(n => {
+    const pp = pagoMap[n.toLowerCase().trim()] || {};
+    const pagos = Object.values(pp);
+    return pagos.length > 0 && pagos.every(p => (p.estado || '').toLowerCase() === 'completo');
+  }).length;
 
   document.getElementById('admin-pagos-summary').innerHTML = `
     <div class="metric-card mc-blue"><div class="mc-label">Total recaudado</div><div class="mc-value" style="font-size:26px">${totalEur.toLocaleString('es-CO')}€</div><div class="mc-sub">$ ${(totalCop||Math.round(totalEur*TASA_EUR_COP)).toLocaleString('es-CO')} COP</div></div>
+    <div class="metric-card" style="border-top:3px solid #166534"><div class="mc-label">Pagos completos</div><div class="mc-value" style="color:#166534">${completos}</div><div class="mc-sub">Todos sus pagos en Completo</div></div>
     <div class="metric-card mc-green"><div class="mc-label">Con algún pago</div><div class="mc-value">${conPago}</div><div class="mc-sub">Al menos 1 pago registrado</div></div>
     <div class="metric-card"><div class="mc-label">Sin pago aún</div><div class="mc-value" style="color:#dc2626">${sinPago}</div><div class="mc-sub">Pendientes</div></div>
     <div class="metric-card mc-orange"><div class="mc-label">Total participantes</div><div class="mc-value">${allNombres.length}</div><div class="mc-sub">Presupuesto + inscripción</div></div>
@@ -2854,7 +2872,7 @@ function renderAdminTable(rows) {
       <td style="text-align:center">${tiq}</td>
       <td style="font-size:12px">${hab}</td>
       <td><span class="${cls}">${paso}</span></td>
-      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button><button onclick="openPagosModal(${origIdx})" style="padding:5px 10px;border:1px solid rgba(22,101,52,.3);border-radius:6px;background:rgba(22,101,52,.06);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:#166534">💳 Pagos</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
     </tr>`;
   }).join('');
 }
