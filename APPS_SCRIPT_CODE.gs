@@ -884,6 +884,7 @@ function registrarPago(data) {
     var tipoLower   = tipo.toLowerCase();
     var inBlock = false;
     var targetSheetRow = -1;
+    var blockPagoFinalRow = -1; // tracks Pago Final row within this participant's block
 
     for (var i = 0; i < allData.length; i++) {
       var cellA = String(allData[i][0] || '').trim();
@@ -897,21 +898,33 @@ function registrarPago(data) {
         }
       }
 
-      if (inBlock && cellG.toLowerCase() === tipoLower) {
-        targetSheetRow = startRow + i;
-        break;
+      if (inBlock) {
+        if (cellG.toLowerCase() === tipoLower) {
+          targetSheetRow = startRow + i;
+          break;
+        }
+        if (cellG.toLowerCase() === 'pago final') {
+          blockPagoFinalRow = startRow + i;
+        }
       }
     }
 
     var newRow = [nombre, fechaDate, cop > 0 ? cop : '', eur, estado, paquete, tipo];
 
     if (targetSheetRow > 0) {
+      // Row already exists — update it
       pagosSheet.getRange(targetSheetRow, 1, 1, 7).setValues([newRow]);
+    } else if (blockPagoFinalRow > 0) {
+      // Participant found but this tipo has no row yet — insert before Pago Final
+      pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
+      pagosSheet.getRange(blockPagoFinalRow, 1, 1, 7).setValues([newRow]);
     } else {
-      // Insert before summary row: find last row where col G (tipo) has a value
+      // Participant not in sheet at all — insert before summary row
+      var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
       var lastDataRow = startRow - 1;
       for (var k = 0; k < allData.length; k++) {
-        if (String(allData[k][6] || '').trim()) lastDataRow = startRow + k;
+        var gv = String(allData[k][6] || '').trim().toLowerCase();
+        if (tiposValidos[gv]) lastDataRow = startRow + k;
       }
       var insertRow = lastDataRow + 1;
       pagosSheet.insertRowsBefore(insertRow, 1);
@@ -952,13 +965,16 @@ function sincronizarParticipantes() {
       });
     }
 
-    // Find insert point: last row where col G (tipo) has a value — insert before summary
+    // Find insert point: last row with a known tipo (Reserva/Tiquete/Pago Final) in col G
+    // Ignores summary row and any other non-participant content below
     var insertRow = 6;
     if (lastRow >= 6) {
       var colGData = pagosSheet.getRange(6, 7, lastRow - 5, 1).getValues();
       var lastGRow = 5;
+      var tiposValidos2 = { 'reserva': true, 'tiquete': true, 'pago final': true };
       for (var k = 0; k < colGData.length; k++) {
-        if (String(colGData[k][0] || '').trim()) lastGRow = 6 + k;
+        var gv2 = String(colGData[k][0] || '').trim().toLowerCase();
+        if (tiposValidos2[gv2]) lastGRow = 6 + k;
       }
       insertRow = lastGRow + 1;
     }
