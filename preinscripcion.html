@@ -441,5 +441,24 @@ function reiniciar() {
   window.scrollTo({top:0, behavior:'smooth'});
 }
 </script>
+
+<!-- WhatsApp flotante -->
+<style>
+.wa-float{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none}
+.wa-float .wa-bubble{background:#25D366;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.45);transition:transform .2s,box-shadow .2s}
+.wa-float:hover .wa-bubble{transform:scale(1.1);box-shadow:0 6px 22px rgba(37,211,102,.55)}
+.wa-float .wa-label{background:#fff;color:#0b1f3a;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:7px 14px;border-radius:20px;box-shadow:0 2px 12px rgba(0,0,0,.15);white-space:nowrap;opacity:0;transform:translateX(8px);transition:opacity .2s,transform .2s;pointer-events:none}
+.wa-float:hover .wa-label{opacity:1;transform:translateX(0)}
+</style>
+<a class="wa-float" href="https://wa.me/34620301690?text=Hola%20Victory%2C%20tengo%20preguntas%20sobre%20la%20pre-inscripci%C3%B3n%20al%20programa%20RMF%20Clinic%202026" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">
+  <span class="wa-label">¿Necesitas ayuda?</span>
+  <span class="wa-bubble">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 3C8.82 3 3 8.82 3 16c0 2.34.63 4.54 1.73 6.44L3 29l6.72-1.71A13 13 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3z" fill="#fff"/>
+      <path d="M21.94 19.06c-.29-.15-1.73-.85-2-.95-.27-.1-.46-.15-.66.15-.2.29-.75.95-.92 1.14-.17.2-.34.22-.63.07-.29-.15-1.22-.45-2.33-1.43-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.2-.29.29-.49.1-.2.05-.37-.02-.51-.07-.15-.66-1.59-.9-2.18-.24-.57-.48-.5-.66-.5h-.56c-.2 0-.51.07-.78.37-.27.29-1.02 1-1.02 2.44s1.04 2.83 1.19 3.02c.15.2 2.05 3.13 4.97 4.39.69.3 1.23.48 1.65.61.69.22 1.32.19 1.82.12.55-.08 1.73-.71 1.97-1.39.24-.68.24-1.27.17-1.39-.07-.12-.27-.2-.56-.34z" fill="#25D366"/>
+    </svg>
+  </span>
+</a>
+
 </body>
 </html>
