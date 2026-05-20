@@ -1039,7 +1039,6 @@ async function doLogin() {
     applyPasoActual(grupoPaso);
     document.getElementById('section-tabs').style.display = 'flex';
   } catch (e) {
-    console.error('[LOGIN ERROR]', e);
     errEl.textContent = defaultErr;
     errEl.style.display = 'block';
     btn.disabled = false;
