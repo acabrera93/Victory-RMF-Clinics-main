@@ -1007,19 +1007,26 @@ async function doLogin() {
     console.log('[LOGIN] status:', res.status, 'text:', rawText.slice(0, 400));
     let data; try { data = JSON.parse(rawText); } catch(e2) { data = null; }
     const participants = extractParticipants(data);
-    console.log('[LOGIN] participants:', participants.length);
     if (participants.length === 0) throw new Error('not_found');
+    // Todos los participantes del mismo grupo comparten el mismo proceso:
+    // usar el paso máximo entre todos para que todos vean el progreso correcto
+    const maxPaso = Math.max(...participants.map(p => parseInt((normalizeParticipant(p)||p).paso_actual)||1));
+    const normalizedAll = participants.map(p => {
+      const n = normalizeParticipant(p) || p;
+      n.paso_actual = String(maxPaso);
+      return n;
+    });
     document.getElementById('login-gate').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
-    allParticipants = participants;
+    allParticipants = normalizedAll;
     currentIndex = 0;
-    if (participants.length > 1) {
-      buildParticipantTabs(participants);
+    if (normalizedAll.length > 1) {
+      buildParticipantTabs(normalizedAll);
     } else {
       document.getElementById('ptabs-container').style.display = 'none';
       document.getElementById('ptabs').innerHTML = '';
     }
-    loadParticipant(participants[0]);
+    loadParticipant(normalizedAll[0]);
     applyPaymentTotals(calcPaymentTotals());
     document.getElementById('section-tabs').style.display = 'flex';
   } catch (e) {
