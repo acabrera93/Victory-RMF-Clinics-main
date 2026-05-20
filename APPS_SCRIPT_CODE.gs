@@ -29,7 +29,11 @@ function doGet(e) {
   Logger.log('doGet action=' + action + ' params=' + JSON.stringify(params));
   try {
     if (action === 'fotos') return listFiles(FOTOS_FOLDER_ID, 'image');
-    if (action === 'saber') return listFiles(SABER_FOLDER_ID, 'all');
+    if (action === 'saber') {
+      if (!SABER_FOLDER_ID || SABER_FOLDER_ID.indexOf('REEMPLAZAR') >= 0)
+        return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);
+      return listFiles(SABER_FOLDER_ID, 'all');
+    }
     if (action === 'comunicaciones') return getComunicaciones();
     if (action === 'buscar') return buscarParticipantes(params.email || '');
     if (action === 'admin_participantes') return getAdminParticipantes();
