@@ -78,6 +78,12 @@ function buscarParticipantes(email) {
     }
 
     Logger.log('buscarParticipantes: encontrados=' + participants.length);
+    if (participants.length === 0) {
+      // Debug temporal: devolver qué hay en las primeras filas
+      const sample = data.slice(1, 6).map(row => row[emailCol] ? String(row[emailCol]).toLowerCase().trim() : '(vacío)');
+      return ContentService.createTextOutput(JSON.stringify({ _debug: true, buscando: emailNorm, emailCol: emailCol, encabezado: String(headers[emailCol]), muestras: sample }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     return ContentService.createTextOutput(JSON.stringify(participants))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
