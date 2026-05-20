@@ -704,13 +704,22 @@ function actualizarParticipante(data) {
   }
 }
 
+function getSheetCI(ss, name) {
+  var nl = name.toLowerCase();
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getName().toLowerCase() === nl) return sheets[i];
+  }
+  return null;
+}
+
 function getAdminFinanciero() {
   try {
     const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+
     const str = function(v) { return String(v == null ? '' : v).trim(); };
     const num = function(v) {
       if (typeof v === 'number') return v;
-      // Handle European format: remove thousands dots, replace comma decimal
       var s = str(v).replace(/[€$\s]/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.');
       return parseFloat(s) || 0;
     };
@@ -719,131 +728,88 @@ function getAdminFinanciero() {
       return str(v);
     };
 
-    // Scan all sheets — find the one with the KPI summary row (participantes 50-500, ingresos >100000)
-    var sheets = ss.getSheets();
-    var vals = null;
-    for (var s = 0; s < sheets.length; s++) {
-      var sv = sheets[s].getDataRange().getValues();
-      for (var ii = 0; ii < sv.length; ii++) {
-        var rr = sv[ii];
-        var n0 = typeof rr[0] === 'number' ? rr[0] : num(rr[0]);
-        var n1 = typeof rr[1] === 'number' ? rr[1] : num(rr[1]);
-        if (n0 > 50 && n0 < 500 && n1 > 100000) { vals = sv; break; }
-      }
-      if (vals) break;
-    }
-    if (!vals) vals = sheets[0].getDataRange().getValues();
-
     const result = { kpis: {}, pagos_recibidos: {}, paquetes: [], comisiones: [], pagos_lista: [] };
 
-    // --- First pass: find header rows for comisiones and pagos ---
-    var comHdr = null; // { row_idx, col: {comercial, comision_jugador, jugadores, total, estado, notas} }
-    var pagHdr = null; // { row_idx, col: {nombre, fecha, cop, eur, estado, paquete, notas} }
-
-    for (var i = 0; i < vals.length; i++) {
-      var rh = vals[i].map(function(c) { return str(c).toLowerCase(); });
-      // Comisiones header: must have "comercial" AND ("estado pago" or "estado")
-      if (!comHdr && rh.indexOf('comercial') >= 0 && (rh.indexOf('estado pago') >= 0 || rh.indexOf('estado') >= 0)) {
-        comHdr = { row_idx: i, col: {
-          comercial: rh.indexOf('comercial'),
-          comision_jugador: Math.max(rh.findIndex(function(h){ return h.indexOf('comisi') >= 0 && h.indexOf('jug') >= 0; }), 0),
-          jugadores: Math.max(rh.indexOf('jugadores'), 2),
-          total: Math.max(rh.findIndex(function(h){ return h.indexOf('total') >= 0 && h.indexOf('comis') >= 0; }), 3),
-          estado: Math.max(rh.indexOf('estado pago') >= 0 ? rh.indexOf('estado pago') : rh.indexOf('estado'), 4),
-          notas: Math.max(rh.indexOf('notas'), 5)
-        }};
-      }
-      // Pagos header: must have "fecha pago" (or "fecha") AND ("valor eur" or "eur")
-      if (!pagHdr && (rh.indexOf('fecha pago') >= 0 || rh.indexOf('fecha') >= 0) &&
-          rh.some(function(h){ return h.indexOf('eur') >= 0; })) {
-        var eurIdx = rh.findIndex(function(h){ return h.indexOf('valor eur') >= 0 || h === 'eur'; });
-        if (eurIdx < 0) eurIdx = rh.findIndex(function(h){ return h.indexOf('eur') >= 0; });
-        pagHdr = { row_idx: i, col: {
-          nombre: rh.indexOf('nombre') >= 0 ? rh.indexOf('nombre') : 0,
-          fecha: rh.indexOf('fecha pago') >= 0 ? rh.indexOf('fecha pago') : rh.indexOf('fecha'),
-          cop: Math.max(rh.findIndex(function(h){ return h.indexOf('cop') >= 0 || h.indexOf('valor cop') >= 0; }), eurIdx - 1),
-          eur: eurIdx,
-          estado: Math.max(rh.indexOf('estado'), eurIdx + 1),
-          paquete: Math.max(rh.indexOf('paquete'), eurIdx + 2),
-          notas: Math.max(rh.indexOf('notas') >= 0 ? rh.indexOf('notas') : rh.indexOf('concepto'), eurIdx + 3)
-        }};
-      }
+    // ── KPIs — hoja "Dashboard" fila 6: A=participantes, B=ingresos, C=costos, D=beneficio, E=margen
+    var dashSheet = getSheetCI(ss, 'Dashboard');
+    if (dashSheet) {
+      var kpi = dashSheet.getRange('A6:E6').getValues()[0];
+      var rawMargen = kpi[4];
+      result.kpis = {
+        participantes: num(kpi[0]),
+        ingresos:      num(kpi[1]),
+        costos:        num(kpi[2]),
+        beneficio:     num(kpi[3]),
+        margen: typeof rawMargen === 'number'
+          ? (rawMargen > 1 ? rawMargen / 100 : rawMargen)
+          : (parseFloat(str(rawMargen).replace(',','.').replace('%','')) / 100 || 0)
+      };
     }
 
-    // --- Second pass: extract all data ---
-    for (var i = 0; i < vals.length; i++) {
-      var row = vals[i];
-      var c0 = str(row[0]);
-
-      // KPI summary row: participantes (50–500) + ingresos (>100000)
-      var kpi0 = typeof row[0] === 'number' ? row[0] : num(row[0]);
-      var kpi1 = typeof row[1] === 'number' ? row[1] : num(row[1]);
-      if (kpi0 > 50 && kpi0 < 500 && kpi1 > 100000) {
-        var rawMargen = row[4];
-        var margenVal = typeof rawMargen === 'number'
-          ? (rawMargen > 1 ? rawMargen / 100 : rawMargen)
-          : (parseFloat(str(rawMargen).replace(',','.').replace('%','')) / 100 || 0);
-        result.kpis = { participantes: kpi0, ingresos: kpi1, costos: num(row[2]), beneficio: num(row[3]), margen: margenVal };
-      }
-
-      // Pagos recibidos summary (labels in any column — scan all cells)
-      for (var j = 0; j < row.length; j++) {
-        var cj = str(row[j]);
-        if (cj === 'Total pagos recibidos (COP)' || cj === 'Total pagos recibidos') {
-          result.pagos_recibidos.total_eur = num(row[j + 1]);
-          result.pagos_recibidos.total_cop = num(row[j + 2]);
-        }
-        if (cj === 'Jugadores con pago completo') result.pagos_recibidos.completos = num(row[j + 1]);
-        if (cj === 'Jugadores con pago parcial')  result.pagos_recibidos.parciales  = num(row[j + 1]);
-      }
-
-      // Revenue by package — scan all cells for Redcol/Paquete
-      for (var j = 0; j < row.length; j++) {
-        var cj = str(row[j]);
-        if ((cj.indexOf('Redcol') === 0 || cj.indexOf('Paquete') === 0) && num(row[j + 1]) > 0 && num(row[j + 2]) > 0) {
-          result.paquetes.push({ nombre: cj, precio: num(row[j + 1]), cantidad: num(row[j + 2]), total: num(row[j + 3]) });
-          break;
-        }
-      }
-
-      // Comisiones — use header-based columns
-      if (comHdr && i > comHdr.row_idx) {
-        var cc = comHdr.col;
-        var comercial = str(row[cc.comercial]);
-        var estado = str(row[cc.estado]);
-        if (comercial && (estado === 'Pendiente' || estado === 'Pagado')) {
-          result.comisiones.push({
-            comercial: comercial,
-            comision_jugador: num(row[cc.comision_jugador]),
-            jugadores: num(row[cc.jugadores]),
-            total: num(row[cc.total]),
-            estado: estado,
-            notas: str(row[cc.notas])
+    // ── Pagos recibidos + pagos individuales — hoja "Pagos"
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (pagosSheet) {
+      // Resumen fila 32: C=COP, D=EUR, F32=completos, F33=parciales
+      result.pagos_recibidos = {
+        total_eur:  num(pagosSheet.getRange('D32').getValue()),
+        total_cop:  num(pagosSheet.getRange('C32').getValue()),
+        completos:  num(pagosSheet.getRange('F32').getValue()),
+        parciales:  num(pagosSheet.getRange('F33').getValue())
+      };
+      // Pagos individuales desde fila 6: A=nombre, B=fecha, C=COP, D=EUR, E=estado, F=paquete, G=concepto
+      var lastPagRow = pagosSheet.getLastRow();
+      if (lastPagRow >= 6) {
+        var pagData = pagosSheet.getRange('A6:G' + lastPagRow).getValues();
+        for (var i = 0; i < pagData.length; i++) {
+          var r = pagData[i];
+          var nombre = str(r[0]);
+          var eurAmt = num(r[3]);
+          if (!nombre || eurAmt <= 0) continue;
+          var fechaVal = r[1];
+          if (!fechaVal || (!(fechaVal instanceof Date) && !str(fechaVal).match(/\d/))) continue;
+          result.pagos_lista.push({
+            nombre: nombre, fecha: fmtDate(fechaVal),
+            cop: num(r[2]), eur: eurAmt,
+            estado: str(r[4]), paquete: str(r[5]), notas: str(r[6])
           });
         }
       }
+    }
 
-      // Pagos individuales — use header-based columns
-      if (pagHdr && i > pagHdr.row_idx) {
-        var pc = pagHdr.col;
-        var nombre = str(row[pc.nombre]);
-        var fechaVal = row[pc.fecha];
-        if (nombre && fechaVal && (fechaVal instanceof Date || str(fechaVal).match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/))) {
-          var eurAmt = num(row[pc.eur]);
-          if (eurAmt > 0) {
-            result.pagos_lista.push({
-              nombre: nombre,
-              fecha: fmtDate(fechaVal),
-              cop: num(row[pc.cop]),
-              eur: eurAmt,
-              estado: str(row[pc.estado]),
-              paquete: str(row[pc.paquete]),
-              notas: str(row[pc.notas])
-            });
-          }
+    // ── Comisiones — hoja "Comisiones" desde fila 6: A=comercial, B=comisión/jug, C=jugadores, D=total, E=estado
+    var comSheet = getSheetCI(ss, 'Comisiones');
+    if (comSheet) {
+      var lastComRow = comSheet.getLastRow();
+      if (lastComRow >= 6) {
+        var comData = comSheet.getRange('A6:E' + lastComRow).getValues();
+        for (var i = 0; i < comData.length; i++) {
+          var r = comData[i];
+          var comercial = str(r[0]);
+          var estado = str(r[4]);
+          if (!comercial || (estado !== 'Pendiente' && estado !== 'Pagado')) continue;
+          result.comisiones.push({
+            comercial: comercial, comision_jugador: num(r[1]),
+            jugadores: num(r[2]), total: num(r[3]),
+            estado: estado, notas: ''
+          });
         }
       }
     }
+
+    // ── Paquetes — buscar filas Redcol/Paquete en todas las hojas
+    ss.getSheets().forEach(function(sh) {
+      var sv = sh.getDataRange().getValues();
+      sv.forEach(function(row) {
+        for (var j = 0; j < row.length; j++) {
+          var cj = str(row[j]);
+          if ((cj.indexOf('Redcol') === 0 || cj.indexOf('Paquete') === 0) && num(row[j+1]) > 0 && num(row[j+2]) > 0) {
+            result.paquetes.push({ nombre: cj, precio: num(row[j+1]), cantidad: num(row[j+2]), total: num(row[j+3]) });
+            break;
+          }
+        }
+      });
+    });
+
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
     Logger.log('getAdminFinanciero error: ' + err);
