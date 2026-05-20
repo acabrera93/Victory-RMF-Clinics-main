@@ -87,6 +87,11 @@ function buscarParticipantes(email) {
         }
         participant[String(headers[j])] = val;
       }
+      // Incluir paso_actual (col V = índice 21) aunque no tenga cabecera
+      if (!participant['paso_actual']) {
+        const pv = data[i][21];
+        if (pv != null && pv !== '') participant['paso_actual'] = String(pv);
+      }
       participants.push(participant);
     }
 
