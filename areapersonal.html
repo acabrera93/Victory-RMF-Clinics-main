@@ -1001,8 +1001,11 @@ async function doLogin() {
   errEl.style.display = 'none';
   try {
     const res = await fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email), { redirect: 'follow' });
-    const data = await readJsonFlexible(res);
+    const rawText = await res.text();
+    console.log('[LOGIN] status:', res.status, 'text:', rawText.slice(0, 300));
+    let data; try { data = JSON.parse(rawText); } catch(e2) { data = null; }
     const participants = extractParticipants(data);
+    console.log('[LOGIN] participants:', participants.length);
     if (participants.length === 0) throw new Error('not_found');
     document.getElementById('login-gate').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
@@ -1018,6 +1021,7 @@ async function doLogin() {
     applyPaymentTotals(calcPaymentTotals());
     document.getElementById('section-tabs').style.display = 'flex';
   } catch (e) {
+    console.error('[LOGIN ERROR]', e);
     errEl.textContent = defaultErr;
     errEl.style.display = 'block';
     btn.disabled = false;
