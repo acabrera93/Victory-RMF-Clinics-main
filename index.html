@@ -1149,6 +1149,52 @@
   </div>
 </section>
 
+<!-- TESTIMONIOS -->
+<section id="testimonios">
+  <div class="container">
+    <p class="section-label">Familias</p>
+    <h2 class="section-title">LO QUE DICEN LOS PADRES</h2>
+
+    <div class="testimonios-grid">
+      <div class="testimonio-card">
+        <div class="testimonio-stars">★★★★★</div>
+        <p class="testimonio-text">"Mi hijo volvió siendo otra persona. El nivel futbolístico mejoró increíblemente, pero más importante, la madurez y la confianza que ganó no tienen precio."</p>
+        <div class="testimonio-author">
+          <div class="testimonio-avatar">CM</div>
+          <div>
+            <div class="testimonio-name">Carlos Mendoza</div>
+            <div class="testimonio-role">Papá de Sebastián, 15 años · México</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonio-card">
+        <div class="testimonio-stars">★★★★★</div>
+        <p class="testimonio-text">"La app para padres es increíble. Ver fotos y videos del torneo en tiempo real me dio tranquilidad total. El equipo respondía cualquier duda al instante."</p>
+        <div class="testimonio-author">
+          <div class="testimonio-avatar">LG</div>
+          <div>
+            <div class="testimonio-name">Laura Gómez</div>
+            <div class="testimonio-role">Mamá de Tomás, 13 años · Colombia</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonio-card">
+        <div class="testimonio-stars">★★★★★</div>
+        <p class="testimonio-text">"Pensé que era muy costoso. Pero cuando vi lo que incluía — vuelos, hotel, programa deportivo, seguro — me di cuenta que era la mejor inversión que hice por mi hijo."</p>
+        <div class="testimonio-author">
+          <div class="testimonio-avatar">RP</div>
+          <div>
+            <div class="testimonio-name">Roberto Paredes</div>
+            <div class="testimonio-role">Papá de Nicolás, 16 años · Argentina</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- JAPAN GOLF -->
 <section id="japan-golf" style="background:var(--off-white); padding:80px 0;">
   <div class="container">
@@ -1195,52 +1241,6 @@
           <a href="#inscripcion" onclick="document.getElementById('prog-select').value='Japan Golf Travel — 13 días / 5 rondas Japón (Adultos)'" style="display:block; text-align:center; margin-top:16px; padding:12px; background:rgba(30,91,168,0.1); color:var(--blue); font-weight:500; font-size:14px; border-radius:4px; text-decoration:none; border:1px solid rgba(30,91,168,0.25); transition:all 0.2s;" onmouseover="this.style.background='rgba(30,91,168,0.18)'" onmouseout="this.style.background='rgba(30,91,168,0.1)'">
             Solicitar información →
           </a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- TESTIMONIOS -->
-<section id="testimonios">
-  <div class="container">
-    <p class="section-label">Familias</p>
-    <h2 class="section-title">LO QUE DICEN LOS PADRES</h2>
-
-    <div class="testimonios-grid">
-      <div class="testimonio-card">
-        <div class="testimonio-stars">★★★★★</div>
-        <p class="testimonio-text">"Mi hijo volvió siendo otra persona. El nivel futbolístico mejoró increíblemente, pero más importante, la madurez y la confianza que ganó no tienen precio."</p>
-        <div class="testimonio-author">
-          <div class="testimonio-avatar">CM</div>
-          <div>
-            <div class="testimonio-name">Carlos Mendoza</div>
-            <div class="testimonio-role">Papá de Sebastián, 15 años · México</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="testimonio-card">
-        <div class="testimonio-stars">★★★★★</div>
-        <p class="testimonio-text">"La app para padres es increíble. Ver fotos y videos del torneo en tiempo real me dio tranquilidad total. El equipo respondía cualquier duda al instante."</p>
-        <div class="testimonio-author">
-          <div class="testimonio-avatar">LG</div>
-          <div>
-            <div class="testimonio-name">Laura Gómez</div>
-            <div class="testimonio-role">Mamá de Tomás, 13 años · Colombia</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="testimonio-card">
-        <div class="testimonio-stars">★★★★★</div>
-        <p class="testimonio-text">"Pensé que era muy costoso. Pero cuando vi lo que incluía — vuelos, hotel, programa deportivo, seguro — me di cuenta que era la mejor inversión que hice por mi hijo."</p>
-        <div class="testimonio-author">
-          <div class="testimonio-avatar">RP</div>
-          <div>
-            <div class="testimonio-name">Roberto Paredes</div>
-            <div class="testimonio-role">Papá de Nicolás, 16 años · Argentina</div>
-          </div>
         </div>
       </div>
     </div>
@@ -1424,7 +1424,8 @@ async function handleSubmit(e) {
       body: JSON.stringify(payload)
     });
 
-    showStatus('success', '✅ ¡Solicitud enviada! Hemos enviado la información del programa a tu correo electrónico. Por favor revisa tu bandeja de entrada y también la carpeta de correo no deseado o spam, ya que a veces los correos automáticos llegan ahí.');
+    showStatus('success', '✅ ¡Solicitud enviada! Revisa tu correo electrónico.');
+    document.getElementById('spam-modal').style.display = 'flex';
     btn.innerHTML = '✓ Solicitud enviada';
     btn.style.background = '#1a3a60';
     ['f-nombre','f-jugador','f-phone','f-email'].forEach(id => {
@@ -1546,6 +1547,22 @@ function showStatus(type, msg, onClick) {
 
 
 
+
+<!-- MODAL SPAM AVISO -->
+<div id="spam-modal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;max-width:440px;width:100%;padding:36px 32px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.3);position:relative;">
+    <div style="font-size:52px;margin-bottom:16px;">📬</div>
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:#0b1f3a;margin-bottom:10px;">¡Revisa tu bandeja de spam!</h3>
+    <p style="font-size:14px;color:#4a6080;line-height:1.7;margin-bottom:8px;">Te hemos enviado un correo con la información del programa.</p>
+    <div style="background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:16px 18px;margin:16px 0 24px;text-align:left;">
+      <div style="font-weight:700;color:#92400e;font-size:14px;margin-bottom:6px;">⚠️ Atención</div>
+      <div style="font-size:13px;color:#78350f;line-height:1.65;">Los correos automáticos a veces llegan a la carpeta de <strong>correo no deseado</strong> o <strong>spam</strong>. Si no lo ves en tu bandeja principal, búscalo ahí y márcalo como <strong>"No es spam"</strong>.</div>
+    </div>
+    <button onclick="document.getElementById('spam-modal').style.display='none'" style="width:100%;padding:14px;background:#0b1f3a;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;" onmouseover="this.style.background='#162d57'" onmouseout="this.style.background='#0b1f3a'">
+      Entendido, lo revisaré ahora
+    </button>
+  </div>
+</div>
 
 <!-- WhatsApp flotante -->
 <style>

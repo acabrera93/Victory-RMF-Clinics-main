@@ -13,7 +13,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .nav-logos{display:flex;align-items:center;gap:14px}
 .nav-logos img{height:36px;filter:brightness(0)invert(1)}
 .nav-tag{color:rgba(255,255,255,.5);font-size:13px}
-.wrap{max-width:820px;margin:0 auto;padding:36px 20px 80px}
+.wrap{max-width:1060px;margin:0 auto;padding:36px 20px 80px}
 .hero{background:var(--navy);border-radius:12px;padding:32px;margin-bottom:28px;text-align:center}
 .hero h1{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#fff;letter-spacing:1px;margin-bottom:8px}
 .hero p{font-size:14px;color:rgba(255,255,255,.6);line-height:1.6}
@@ -30,7 +30,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .form-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:18px;display:none;animation:fadeIn .3s ease}
 .form-card.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.ctitle{font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.ctitle{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--navy);margin-bottom:18px;display:flex;align-items:center;gap:10px}
 .ctitle::after{content:'';flex:1;height:1px;background:rgba(30,91,168,.15)}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 .form-full{margin-bottom:16px}
@@ -65,6 +65,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 <body>
 
 <nav>
+  <a href="index.html" style="display:inline-flex;align-items:center;gap:7px;color:#fff;font-size:13px;font-weight:500;text-decoration:none;opacity:.8;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.8'">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 12L6 8l4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Volver al inicio
+  </a>
   <div class="nav-logos">
     <img src="https://i.imgur.com/o6ey8V4.png" alt="Victory">
     <img src="https://i.imgur.com/SzxB8ru.png" alt="RMF">
@@ -273,8 +277,18 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div class="scheck">✅</div>
     <h2>¡Pre-inscripción recibida!</h2>
     <p id="success-msg">Hemos recibido tu pre-inscripción. Te enviamos un correo con las instrucciones para acceder a tu Área Personal, donde podrás gestionar pagos y documentos.</p>
+
+    <div style="display:flex;align-items:flex-start;gap:14px;background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:18px 20px;margin:0 auto 28px;max-width:480px;text-align:left;">
+      <span style="font-size:26px;flex-shrink:0;line-height:1;">📬</span>
+      <div>
+        <div style="font-weight:700;color:#92400e;font-size:15px;margin-bottom:6px;">¡Revisa tu carpeta de spam!</div>
+        <div style="font-size:13px;color:#78350f;line-height:1.6;">El correo con tus instrucciones de acceso puede haber llegado a tu carpeta de <strong>correo no deseado</strong> o <strong>spam</strong>. Ábrela y márcalo como "No es spam" para continuar con el proceso.</div>
+      </div>
+    </div>
+
     <a href="areapersonal.html" class="btn-area">Ir al Área Personal →</a>
     <button class="btn-otro" onclick="reiniciar()">Inscribir a otro participante con el mismo correo</button>
+    <p id="reiniciar-cuenta" style="margin-top:14px;font-size:12px;color:var(--muted);">El formulario se reiniciará en <strong id="cuenta-num">4</strong> segundos...</p>
   </div>
 
 </div>
@@ -417,6 +431,13 @@ async function submitForm(tipo) {
       `Recibimos la pre-inscripción de <strong>${payload.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con las instrucciones para acceder a tu <strong>Área Personal</strong>.`;
     document.getElementById('success').classList.add('active');
     window.scrollTo({top:0, behavior:'smooth'});
+    let cuenta = 4;
+    document.getElementById('cuenta-num').textContent = cuenta;
+    const cuentaInterval = setInterval(() => {
+      cuenta--;
+      document.getElementById('cuenta-num').textContent = cuenta;
+      if (cuenta <= 0) { clearInterval(cuentaInterval); reiniciar(); }
+    }, 1000);
   } catch(e) {
     btn.disabled = false;
     btn.textContent = tipo === 'jugador' ? 'Enviar pre-inscripción del jugador →' : 'Enviar pre-inscripción del acompañante →';
@@ -438,6 +459,12 @@ function reiniciar() {
   document.getElementById('form-acompanante').classList.remove('active');
   document.getElementById('form-jugador').style.display = '';
   document.getElementById('form-acompanante').style.display = '';
+  ['j-nombre','j-email','j-phone','j-jugador','j-club','j-ciudad','j-pasaporte','j-fnac','j-acudiente','j-salud'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['a-nombre','a-email','a-phone','a-ciudad','a-pasaporte','a-fnac','a-jugador','p2-nombre','p2-pasaporte'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   window.scrollTo({top:0, behavior:'smooth'});
 }
 </script>
