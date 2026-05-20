@@ -707,51 +707,76 @@ function actualizarParticipante(data) {
 function getAdminFinanciero() {
   try {
     const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
-    const sheet = ss.getSheets()[0];
-    const vals = sheet.getDataRange().getValues();
     const str = function(v) { return String(v == null ? '' : v).trim(); };
     const num = function(v) {
       if (typeof v === 'number') return v;
-      return parseFloat(str(v).replace(/[^0-9.-]/g, '')) || 0;
+      // Handle European format: remove thousands dots, replace comma decimal
+      var s = str(v).replace(/[€$\s]/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.');
+      return parseFloat(s) || 0;
     };
     const fmtDate = function(v) {
       if (v instanceof Date) return String(v.getDate()).padStart(2,'0') + '/' + String(v.getMonth()+1).padStart(2,'0') + '/' + v.getFullYear();
       return str(v);
     };
+
+    // Scan all sheets — find the one with the KPI summary row (participantes 50-500, ingresos >100000)
+    var sheets = ss.getSheets();
+    var vals = null;
+    for (var s = 0; s < sheets.length; s++) {
+      var sv = sheets[s].getDataRange().getValues();
+      for (var ii = 0; ii < sv.length; ii++) {
+        var rr = sv[ii];
+        var n0 = typeof rr[0] === 'number' ? rr[0] : num(rr[0]);
+        var n1 = typeof rr[1] === 'number' ? rr[1] : num(rr[1]);
+        if (n0 > 50 && n0 < 500 && n1 > 100000) { vals = sv; break; }
+      }
+      if (vals) break;
+    }
+    if (!vals) vals = sheets[0].getDataRange().getValues();
+
     const result = { kpis: {}, pagos_recibidos: {}, paquetes: [], comisiones: [], pagos_lista: [] };
 
     for (var i = 0; i < vals.length; i++) {
       var row = vals[i];
       var c0 = str(row[0]);
-      var c1 = str(row[1]);
       var c4 = str(row[4]);
 
-      // KPI summary row: first col is participantes count (>50), second col is ingresos (>100000)
-      if (typeof row[0] === 'number' && row[0] > 50 && row[0] < 500 && typeof row[1] === 'number' && row[1] > 100000) {
+      // KPI summary row: participantes (50–500) + ingresos (>100000)
+      var kpi0 = typeof row[0] === 'number' ? row[0] : num(row[0]);
+      var kpi1 = typeof row[1] === 'number' ? row[1] : num(row[1]);
+      if (kpi0 > 50 && kpi0 < 500 && kpi1 > 100000) {
+        var rawMargen = row[4];
+        var margenVal = typeof rawMargen === 'number'
+          ? (rawMargen > 1 ? rawMargen / 100 : rawMargen)
+          : (parseFloat(str(rawMargen).replace(',','.').replace('%','')) / 100 || 0);
         result.kpis = {
-          participantes: row[0],
-          ingresos: row[1],
+          participantes: kpi0,
+          ingresos: kpi1,
           costos: num(row[2]),
           beneficio: num(row[3]),
-          margen: typeof row[4] === 'number' ? row[4] : (parseFloat(str(row[4]).replace(',','.').replace('%','')) / 100 || 0)
+          margen: margenVal
         };
       }
+
       // Pagos recibidos summary
       if (c0 === 'Total pagos recibidos (COP)' || c0 === 'Total pagos recibidos') {
         result.pagos_recibidos.total_eur = num(row[1]);
         result.pagos_recibidos.total_cop = num(row[2]);
       }
       if (c0 === 'Jugadores con pago completo') result.pagos_recibidos.completos = num(row[1]);
-      if (c0 === 'Jugadores con pago parcial') result.pagos_recibidos.parciales = num(row[1]);
-      // Revenue by package
-      if ((c0.indexOf('Redcol') === 0 || c0.indexOf('Paquete') === 0) && typeof row[1] === 'number' && row[1] > 0 && typeof row[2] === 'number') {
-        result.paquetes.push({ nombre: c0, precio: row[1], cantidad: num(row[2]), total: num(row[3]) });
+      if (c0 === 'Jugadores con pago parcial')  result.pagos_recibidos.parciales  = num(row[1]);
+
+      // Revenue by package (Redcol / Paquete rows)
+      if ((c0.indexOf('Redcol') === 0 || c0.indexOf('Paquete') === 0) && num(row[1]) > 0 && num(row[2]) > 0) {
+        result.paquetes.push({ nombre: c0, precio: num(row[1]), cantidad: num(row[2]), total: num(row[3]) });
       }
-      // Commissions (rows with Estado Pago = Pendiente/Pagado in col 4)
-      if (c0 && typeof row[2] === 'number' && row[2] > 0 && (c4 === 'Pendiente' || c4 === 'Pagado')) {
+
+      // Commissions: col E is exactly "Pendiente" or "Pagado"
+      if (c0 && num(row[2]) > 0 && (c4 === 'Pendiente' || c4 === 'Pagado')) {
         result.comisiones.push({ comercial: c0, comision_jugador: num(row[1]), jugadores: num(row[2]), total: num(row[3]), estado: c4, notas: str(row[5]) });
       }
-      // Individual payments (rows with date in col 1 and EUR amount > 0 in col 3)
+
+      // Individual payments: col B is a date, col D (EUR) > 0
       if (c0 && row[1] && (row[1] instanceof Date || str(row[1]).match(/\d{1,2}\/\d{1,2}\/\d{2,4}/))) {
         var eurAmt = num(row[3]);
         if (eurAmt > 0) {
