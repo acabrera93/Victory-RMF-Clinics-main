@@ -18,8 +18,7 @@
 const PARENT_FOLDER_ID = "1E_7wpNt-KgEKyVL9Za2h3J-ne0IXYRUh"; // ID de carpeta "RMF_Clinic_2026_Uploads"
 const SHEET_ID = "1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss"; // Tu Google Sheet actual
 
-// Crear estas carpetas en el Drive de victorysportsweb@gmail.com y reemplazar los IDs:
-const FOTOS_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_FOTOS"; // Carpeta "RMF_Clinic_2026_Fotos"
+const FOTOS_FOLDER_ID = "1VZxd3FdN8YLU2MpM-CJJIpy2IAb6FCFE"; // Carpeta fotos del viaje en Drive
 const SABER_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_SABER"; // Carpeta "RMF_Clinic_2026_Saber"
 
 // ───── GET HANDLER (fotos, saber, comunicaciones) ──────────────────────────────
@@ -124,7 +123,7 @@ function listFiles(folderId, filter) {
       name: f.getName(),
       mimeType: mime,
       url: f.getUrl(),
-      viewUrl: 'https://drive.google.com/uc?export=view&id=' + f.getId()
+      viewUrl: 'https://drive.google.com/thumbnail?id=' + f.getId() + '&sz=w800'
     });
   }
   return ContentService.createTextOutput(JSON.stringify(result))
@@ -145,6 +144,109 @@ function getComunicaciones() {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// ───── SETUP TRIGGER (ejecutar UNA VEZ desde el editor) ──────────────────────
+// Selecciona esta función y haz clic en ▶ Run para crear el trigger automáticamente
+function crearTriggerComunicados() {
+  // Eliminar trigger anterior si existe
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'notificarNuevoComunicado') ScriptApp.deleteTrigger(t);
+  });
+  // Crear trigger de edición sobre el Sheet
+  ScriptApp.newTrigger('notificarNuevoComunicado')
+    .forSpreadsheet(SHEET_ID)
+    .onEdit()
+    .create();
+  Logger.log('Trigger creado correctamente.');
+}
+
+// ───── NOTIFICAR NUEVO COMUNICADO ─────────────────────────────────────────────
+function notificarNuevoComunicado(e) {
+  try {
+    // Solo actuar si el edit fue en la columna C (Mensaje) de la hoja Comunicaciones
+    if (!e || !e.range) return;
+    if (e.range.getSheet().getName() !== 'Comunicaciones') return;
+    if (e.range.getColumn() !== 3) return; // columna C = índice 3
+
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName('Comunicaciones');
+    if (!sheet) return;
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
+
+    // Tomar los datos de la fila editada (no siempre la última)
+    const editedRow = e.range.getRow();
+    const rowData = data[editedRow - 1]; // -1 porque data es 0-indexed
+    if (!rowData) return;
+    const fecha  = String(rowData[0] || '');
+    const titulo = String(rowData[1] || '').trim();
+    const mensaje = String(rowData[2] || '').trim();
+    if (!titulo || !mensaje) return;
+
+    // Control de deduplicación por contenido — evita reenviar el mismo comunicado
+    const props = PropertiesService.getScriptProperties();
+    const currentHash = titulo + '|||' + mensaje;
+    const lastHash = props.getProperty('comun_last_hash') || '';
+    if (currentHash === lastHash) return;
+
+    // Obtener emails únicos de participantes desde la hoja principal
+    const mainSheet = ss.getSheets()[0];
+    const mainData  = mainSheet.getDataRange().getValues();
+    const headers   = mainData[0] || [];
+    let emailCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') {
+        emailCol = j; break;
+      }
+    }
+    if (emailCol < 0) emailCol = 3;
+
+    const emails = [];
+    const seen = new Set();
+    for (let i = 1; i < mainData.length; i++) {
+      const em = String(mainData[i][emailCol] || '').toLowerCase().trim();
+      if (em && em.includes('@') && !seen.has(em)) { seen.add(em); emails.push(em); }
+    }
+
+    const link = 'https://victory-rmf-clinics.netlify.app/areapersonal.html?tab=comunicaciones';
+    const subject = '⚠ Nuevo comunicado';
+    const preview = mensaje.length > 180 ? mensaje.substring(0, 180).trim() + '...' : mensaje;
+    const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">'
+      + '<div style="background:#1e5ba8;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
+      + '<table cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto">'
+      + '<tr>'
+      + '<td style="vertical-align:middle;padding:0"><img src="https://drive.google.com/uc?export=view&id=1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="48" style="display:block;height:48px;width:auto"></td>'
+      + '<td style="vertical-align:middle;padding:0 14px"><div style="width:1px;height:36px;background:rgba(255,255,255,0.45)"></div></td>'
+      + '<td style="vertical-align:middle;padding:0"><img src="https://drive.google.com/uc?export=view&id=1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundacion Revel" height="48" style="display:block;height:48px;width:auto"></td>'
+      + '</tr>'
+      + '</table>'
+      + '<h2 style="color:#fff;margin:0;font-size:18px">Real Madrid Foundation Clinic 2026</h2></div>'
+      + '<div style="background:#f8fafc;padding:24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
+      + '<p style="color:#334155;margin-top:0">Tienes un nuevo comunicado del equipo Revel:</p>'
+      + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:16px 0">'
+      + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">' + fecha + '</p>'
+      + '<h3 style="color:#1e3a5f;margin:0 0 12px;font-size:16px">' + titulo + '</h3>'
+      + '<p style="color:#334155;margin:0;line-height:1.6;white-space:pre-wrap">' + preview + '</p></div>'
+      + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin-top:4px">Ver mensaje completo en tu área personal →</a>'
+      + '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Equipo Revel · Real Madrid Foundation Clinic 2026</p></div></div>';
+
+    const adminEmail = 'alejandro.cabrera@fundacionrevel.net';
+    emails.forEach(function(em) {
+      try { GmailApp.sendEmail(em, subject, 'Tienes un nuevo comunicado: ' + link, { htmlBody: htmlBody, replyTo: adminEmail, name: 'Real Madrid Foundation Clinic' }); }
+      catch(err) { Logger.log('Error enviando a ' + em + ': ' + err); }
+    });
+
+    // Email al admin
+    const adminHtml = htmlBody;
+    GmailApp.sendEmail(adminEmail, '[Admin] Comunicado enviado — ' + titulo, '', { htmlBody: adminHtml, name: 'Real Madrid Foundation Clinic' });
+
+    props.setProperty('comun_last_hash', currentHash);
+  } catch(err) {
+    Logger.log('notificarNuevoComunicado error: ' + err);
+  }
+}
+
 // ───── ACTUALIZAR PASO (todas las filas del mismo email) ───────────────────────
 function actualizarPasoTodos(email, pasoActual) {
   try {
@@ -156,6 +258,9 @@ function actualizarPasoTodos(email, pasoActual) {
     let updated = 0;
     for (let i = 1; i < data.length; i++) {
       if (data[i][emailCol].toString().toLowerCase().trim() === emailNorm) {
+        const pasoActual_num = parseInt(pasoActual) || 0;
+        const pasoActualSheet = parseInt(data[i][pasoCol]) || 0;
+        if (pasoActual_num <= pasoActualSheet) continue; // nunca retroceder
         sheet.getRange(i + 1, pasoCol + 1).setValue(pasoActual);
         updated++;
       }
