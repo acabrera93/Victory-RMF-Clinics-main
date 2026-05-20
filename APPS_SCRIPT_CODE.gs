@@ -18,18 +18,140 @@
 const PARENT_FOLDER_ID = "1E_7wpNt-KgEKyVL9Za2h3J-ne0IXYRUh"; // ID de carpeta "RMF_Clinic_2026_Uploads"
 const SHEET_ID = "1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss"; // Tu Google Sheet actual
 
+// Crear estas carpetas en el Drive de victorysportsweb@gmail.com y reemplazar los IDs:
+const FOTOS_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_FOTOS"; // Carpeta "RMF_Clinic_2026_Fotos"
+const SABER_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_SABER"; // Carpeta "RMF_Clinic_2026_Saber"
+
+// ───── GET HANDLER (fotos, saber, comunicaciones) ──────────────────────────────
+function doGet(e) {
+  const action = (e.parameter || {}).action || '';
+  try {
+    if (action === 'fotos') return listFiles(FOTOS_FOLDER_ID, 'image');
+    if (action === 'saber') return listFiles(SABER_FOLDER_ID, 'all');
+    if (action === 'comunicaciones') return getComunicaciones();
+    if (action === 'buscar') return buscarParticipantes((e.parameter || {}).email || '');
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('doGet error: ' + err);
+    return ContentService.createTextOutput(JSON.stringify({ error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function buscarParticipantes(email) {
+  try {
+    const emailNorm = email.toString().toLowerCase().trim();
+    if (!emailNorm) return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    const headers = data[0];
+    const emailCol = 3; // Columna D (0-indexed) = Email
+
+    const participants = [];
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][emailCol]) continue;
+      if (data[i][emailCol].toString().toLowerCase().trim() !== emailNorm) continue;
+      const participant = {};
+      for (let j = 0; j < headers.length; j++) {
+        if (headers[j]) participant[String(headers[j])] = String(data[i][j] == null ? '' : data[i][j]);
+      }
+      participants.push(participant);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(participants))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('buscarParticipantes error: ' + err);
+    return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function listFiles(folderId, filter) {
+  const folder = DriveApp.getFolderById(folderId);
+  const files = folder.getFiles();
+  const result = [];
+  while (files.hasNext()) {
+    const f = files.next();
+    const mime = f.getMimeType();
+    if (filter === 'image' && !mime.startsWith('image/')) continue;
+    result.push({
+      id: f.getId(),
+      name: f.getName(),
+      mimeType: mime,
+      url: f.getUrl(),
+      viewUrl: 'https://drive.google.com/uc?export=view&id=' + f.getId()
+    });
+  }
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getComunicaciones() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Comunicaciones');
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify([]))
+    .setMimeType(ContentService.MimeType.JSON);
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return ContentService.createTextOutput(JSON.stringify([]))
+    .setMimeType(ContentService.MimeType.JSON);
+  const result = data.slice(1).reverse()
+    .filter(r => r[0])
+    .map(r => ({ fecha: String(r[0]), titulo: String(r[1] || ''), mensaje: String(r[2] || '') }));
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ───── ACTUALIZAR PASO (todas las filas del mismo email) ───────────────────────
+function actualizarPasoTodos(email, pasoActual) {
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
+    const data = sheet.getDataRange().getValues();
+    const emailCol = 3;  // Columna D (índice 0)
+    const pasoCol  = 21; // Columna V (índice 0) = paso_actual
+    const emailNorm = email.toString().toLowerCase().trim();
+    let updated = 0;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][emailCol].toString().toLowerCase().trim() === emailNorm) {
+        sheet.getRange(i + 1, pasoCol + 1).setValue(pasoActual);
+        updated++;
+      }
+    }
+    return sendResponse(200, { ok: true, updated });
+  } catch (err) {
+    Logger.log('actualizarPasoTodos error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
 // ───── MAIN HANDLER ────────────────────────────────────────────────────────────
 function doPost(e) {
   try {
-    const contentType = e.contentType;
+    const contentType = (e.contentType || '');
 
-    if (contentType.includes('application/json')) {
-      return handleJsonUpload(e);
-    } else if (contentType.includes('multipart/form-data')) {
+    // text/plain se usa para evitar CORS preflight desde el browser
+    if (contentType.includes('multipart/form-data')) {
       return handleMultipartUpload(e);
-    } else {
-      return sendResponse(400, { ok: false, error: 'Content-Type no soportado' });
     }
+
+    // Intentar parsear body como JSON (application/json o text/plain)
+    const body = e.postData ? e.postData.contents : '';
+    if (body) {
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed.action === 'actualizar_paso' && parsed.email && parsed.paso_actual) {
+          return actualizarPasoTodos(parsed.email, parsed.paso_actual);
+        }
+        if (parsed.base64 || parsed.email) return handleJsonUpload(e);
+      } catch (_) {}
+    }
+
+    return sendResponse(400, { ok: false, error: 'No se pudo procesar la solicitud' });
   } catch (err) {
     Logger.log('Error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });

@@ -107,7 +107,28 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .bkrow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(30,91,168,.08)}
 .bkrow:last-child{border-bottom:none;font-weight:700;color:var(--navy);padding-top:9px;margin-top:3px;font-size:14px}
 .bkrow .bk-name{color:var(--text)}.bkrow .bk-sub{color:var(--muted);font-size:12px;margin-left:4px}.bkrow .bk-amt{font-weight:600;color:var(--navy);white-space:nowrap}
-@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}}
+/* Section tabs */
+.section-tabs{display:flex;gap:4px;margin-bottom:16px;padding:4px;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.stab{flex:1;padding:10px 8px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);background:transparent;transition:all .2s;font-family:'DM Sans',sans-serif}
+.stab.active{background:var(--blue);color:#fff}
+.stab:hover:not(.active){background:rgba(30,91,168,.09);color:var(--navy);transform:translateY(-1px)}
+.stab:active:not(.active){transform:translateY(0);background:rgba(30,91,168,.14)}
+/* Fotos gallery */
+.fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:16px}
+.foto-item{display:block;border-radius:8px;overflow:hidden;aspect-ratio:4/3}
+.foto-item img{width:100%;height:100%;object-fit:cover;transition:transform .2s;cursor:pointer}
+.foto-item img:hover{transform:scale(1.04)}
+/* Saber list */
+.saber-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.saber-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--navy);font-size:14px;transition:background .2s}
+.saber-item:hover{background:rgba(30,91,168,.05)}
+/* Communications feed */
+.comun-feed{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.comun-msg{padding:16px 18px;border:1px solid var(--border);border-radius:8px;background:#f8fafc}
+.comun-fecha{font-size:11px;color:var(--muted);margin-bottom:4px}
+.comun-titulo{font-weight:600;color:var(--navy);margin-bottom:8px;font-size:15px}
+.comun-body{color:#334155;font-size:14px;line-height:1.55;white-space:pre-wrap}
+@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}}
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 /* LOGIN GATE */
 #login-gate{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -175,7 +196,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
   <!-- TABS DE PARTICIPANTES (si hay más de uno) -->
   <div id="ptabs-container" style="display:none;margin-bottom:8px">
-    <p style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:10px">Participantes vinculados</p>
+    <p style="font-size:12px;color:var(--navy);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px">Participantes vinculados</p>
     <div class="ptabs" id="ptabs"></div>
   </div>
 
@@ -200,15 +221,22 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="dres-item"><div class="dres-l">Nombre</div><div class="dres-v" id="d-nombre">-</div></div>
       <div class="dres-item"><div class="dres-l">Fecha de nacimiento</div><div class="dres-v" id="d-fecha">-</div></div>
       <div class="dres-item"><div class="dres-l">Correo electrónico</div><div class="dres-v" id="d-email">-</div></div>
-      <div class="dres-item"><div class="dres-l">Posición</div><div class="dres-v" id="d-posicion">-</div></div>
+      <div class="dres-item" id="d-posicion-item"><div class="dres-l">Posición</div><div class="dres-v" id="d-posicion">-</div></div>
       <div class="dres-item" style="grid-column:1/-1"><div class="dres-l">Club / colegio</div><div class="dres-v" id="d-club">-</div></div>
-      <div class="dres-item" id="companions-section" style="grid-column:1/-1;display:none;"><div class="dres-l">Acompañantes</div><div class="dres-v" id="companions-names">-</div></div>
+      <div class="dres-item" id="companions-section" style="grid-column:1/-1;display:none;"><div class="dres-l" id="companions-label">Acompañantes</div><div class="dres-v" id="companions-names">-</div></div>
       </div>
       <div class="dres-logo">
         <img src="https://i.ibb.co/nMxyz0Kn/F-REAL-MADRID-WORLD-CHALLENGE-2026.png" alt="Team Revel" referrerpolicy="no-referrer">
         <span>Team Revel</span>
       </div>
     </div>
+  </div>
+
+  <div class="section-tabs" id="section-tabs" style="display:none">
+    <button class="stab active" data-section="proceso" onclick="switchSection('proceso')">Mi Proceso</button>
+    <button class="stab" data-section="fotos" onclick="switchSection('fotos')">📸 Fotos</button>
+    <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Comunicaciones</button>
+    <button class="stab" data-section="saber" onclick="switchSection('saber')">📋 Lo que debo saber</button>
   </div>
 
   <div class="steps" id="steps-row"></div>
@@ -373,6 +401,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <input type="file" id="comp-tiquete-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'tiquete')">
         </div>
         <div class="dstatus" id="comp-tiquete-status">⏳ Pendiente</div>
+        <button id="comp-tiquete-btn" onclick="enviarComprobante('tiquete')" style="width:100%;margin-top:12px;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:none;">✓ Confirmar pago de tiquete →</button>
+        <div id="comp-tiquete-validando" style="display:none;margin-top:12px;background:rgba(30,91,168,0.08);border:1px solid rgba(30,91,168,0.2);border-radius:8px;padding:14px;text-align:center;font-size:14px;color:var(--blue);">⏳ <strong>Comprobante en validación</strong><br><span style="font-size:12px;color:var(--muted);">Nuestro equipo revisará y confirmará en máx. 24 horas.</span></div>
       </div>
     </div>
   </div>
@@ -420,6 +450,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <input type="file" id="comp-final-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'final')">
         </div>
         <div class="dstatus" id="comp-final-status">⏳ Pendiente</div>
+        <button id="comp-final-btn" onclick="enviarComprobante('final')" style="width:100%;margin-top:12px;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:none;">✓ Confirmar pago final →</button>
+        <div id="comp-final-validando" style="display:none;margin-top:12px;background:rgba(30,91,168,0.08);border:1px solid rgba(30,91,168,0.2);border-radius:8px;padding:14px;text-align:center;font-size:14px;color:var(--blue);">⏳ <strong>Comprobante en validación</strong><br><span style="font-size:12px;color:var(--muted);">Nuestro equipo revisará y confirmará en máx. 24 horas.</span></div>
       </div>
     </div>
   </div>
@@ -462,7 +494,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="dicon">📄</div>
         <div style="flex:1">
           <div class="dtitle">Registro civil de nacimiento</div>
-          <div class="ddesc"><strong>Requerido solo si incluye tiquete aéreo.</strong> Original o copia autenticada por notario. Necesario para viajes internacionales de menores de edad.</div>
+          <div class="ddesc"><strong>Requerido solo si incluye tiquete aéreo.</strong> Original o copia autenticada por notario. Necesario para viajes internacionales.</div>
           <div class="dstatus" id="ds4">⏳ Pendiente</div>
           <div class="upload" onclick="document.getElementById('di4').click()">
             <div style="font-size:22px">📎</div>
@@ -480,6 +512,15 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="dstatus" id="ds3" style="color:var(--blue)">📌 Se generará al aceptar T&C en el paso 2</div>
           <div id="tc-ok-doc" style="display:none" class="ok-box">✅ T&C aceptados el <span id="tc-fecha">—</span></div>
         </div>
+      </div>
+      <!-- BOTÓN FINALIZAR -->
+      <div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);text-align:center;">
+        <p style="font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6">Cuando hayas subido tus documentos, haz clic para completar tu inscripción.</p>
+        <button onclick="finalizarInscripcion()" style="padding:16px 40px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer;letter-spacing:.3px;transition:all .2s;box-shadow:0 4px 16px rgba(30,91,168,.3);"
+          onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(30,91,168,.4)'"
+          onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(30,91,168,.3)'">
+          🎉 ¡Completar mi inscripción!
+        </button>
       </div>
     </div>
   </div>
@@ -549,6 +590,43 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
   </div>
 
+  <!-- FOTOS DEL VIAJE -->
+  <div class="panel" id="panel-fotos">
+    <div class="card">
+      <div class="ctitle">Fotos del Viaje</div>
+      <div id="fotos-grid" class="fotos-grid">
+        <p style="color:var(--muted)">Cargando fotos...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMUNICACIONES -->
+  <div class="panel" id="panel-comunicaciones">
+    <div class="card">
+      <div class="ctitle">Comunicaciones</div>
+      <div id="comun-feed" class="comun-feed">
+        <p style="color:var(--muted)">Cargando comunicados...</p>
+      </div>
+    </div>
+    <div class="card" style="text-align:center;margin-top:16px;padding:28px 24px">
+      <p style="color:var(--muted);margin-bottom:16px">¿Tienes alguna pregunta? Escríbenos directamente por WhatsApp.</p>
+      <a href="https://wa.me/34620301690?text=Hola%20Victory%2C%20tengo%20una%20pregunta%20sobre%20el%20programa%20RMF%202026" target="_blank" rel="noopener" style="background:#25D366;color:#fff;display:inline-block;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500;">
+        💬 Escribir por WhatsApp
+      </a>
+      <p style="color:var(--muted);font-size:12px;margin-top:16px">Horario de atención: Lunes a Viernes, 9am – 6pm</p>
+    </div>
+  </div>
+
+  <!-- LO QUE DEBES SABER -->
+  <div class="panel" id="panel-saber">
+    <div class="card">
+      <div class="ctitle">Lo que debes saber antes del viaje</div>
+      <div id="saber-list" class="saber-list">
+        <p style="color:var(--muted)">Cargando información...</p>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /wrap -->
 </div><!-- /main-content -->
 
@@ -558,7 +636,7 @@ const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju'
 
 // ── GOOGLE APPS SCRIPT UPLOAD URL ───────────────────────────────────────────
 // REEMPLAZA ESTA URL CON LA DE TU GOOGLE APPS SCRIPT DEPLOYMENTS
-const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/victory.com.es/s/AKfycbwrapSSZNW09cQvffVBQFdT65FGeyACNxTkfC2W0sZXY9BuDV9G9rZrkr4fepmtxdvcCA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
 // (Después de desplegar tu Apps Script, copia la URL de implementación aquí)
 
 /** Mismo criterio que preinscripcion.html: evita preflight CORS desde GitHub Pages. */
@@ -578,11 +656,14 @@ function postMakeWebhook(baseUrl, payload) {
 let allParticipants = [];
 let currentIndex = 0;
 let nombre = 'Participante';
-let participantEmail = ''; // Nuevo: guardar email para uploads
+let participantEmail = '';
 let tipo = 'jugador';
 let conTiq = false;
 let programa = '';
 let habitacion = '';
+let fotosLoaded = false;
+let saberLoaded = false;
+let comunLoaded = false;
 
 /** Normaliza nombres de campo para comparar claves de Sheets/Make (tildes, espacios, /, guiones). */
 function normFieldName(s) {
@@ -632,7 +713,7 @@ function normalizeParticipant(raw) {
     '1':'tipo','2':'nombre','3':'email','4':'phone','5':'pais','6':'pasaporte',
     '7':'fecha_nacimiento','8':'posicion','9':'club_colegio','10':'ciudad',
     '11':'salud_alergias','12':'acudiente','13':'relacion','14':'tiquete_aereo',
-    '15':'programa','16':'habitacion'
+    '15':'programa','16':'habitacion','22':'paso_actual'
   };
   if (Object.keys(raw).some(k => /^\d+$/.test(k) && Number(k) < 20)) {
     const remapped = { ...raw };
@@ -788,21 +869,12 @@ function updatePermisoDoc(u) {
   const el = document.getElementById('permiso-doc');
   const elReg = document.getElementById('registro-civil-doc');
   if (!el) return;
-  const tipoL = (u.tipo || '').toLowerCase();
-  if (tipoL.includes('acompa')) {
-    el.style.display = 'none';
-    if (elReg) elReg.style.display = 'none';
-    return;
-  }
-  const age = edadDesdeISO(u.fecha_nacimiento);
-  // Si no hay fecha o es dudoso, mostrar documentos por seguridad
-  const esMenor = age === null ? true : age < 18;
-  // Verificar tiquete tanto del global como del campo del participante
-  const tiqRawU = (u.tiquete_aereo || '').toLowerCase();
-  const tieneTiquete = conTiq || tiqRawU.includes('con tiquete') || tiqRawU.includes('con');
-  // Permiso y registro civil: solo con tiquete incluido
-  el.style.display = (esMenor && tieneTiquete) ? '' : 'none';
-  if (elReg) elReg.style.display = (esMenor && tieneTiquete) ? '' : 'none';
+  const grupoTieneTiquete = allParticipants.some(raw => {
+    const p = normalizeParticipant(raw) || raw;
+    return p.tiquete_aereo === 'Con tiquete';
+  });
+  el.style.display = grupoTieneTiquete ? '' : 'none';
+  if (elReg) elReg.style.display = grupoTieneTiquete ? '' : 'none';
 }
 
 // ── CÁLCULO DE TOTALES POR GRUPO ──────────────────────────────────────────────
@@ -928,10 +1000,10 @@ async function doLogin() {
   btn.textContent = 'Buscando...';
   errEl.style.display = 'none';
   try {
-    const res = await postMakeWebhook(WEBHOOK_URL, { action: 'buscar', email });
+    const res = await fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email), { redirect: 'follow' });
     const data = await readJsonFlexible(res);
     const participants = extractParticipants(data);
-    if (!res.ok || participants.length === 0) throw new Error('not_found');
+    if (participants.length === 0) throw new Error('not_found');
     document.getElementById('login-gate').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
     allParticipants = participants;
@@ -944,6 +1016,7 @@ async function doLogin() {
     }
     loadParticipant(participants[0]);
     applyPaymentTotals(calcPaymentTotals());
+    document.getElementById('section-tabs').style.display = 'flex';
   } catch (e) {
     errEl.textContent = defaultErr;
     errEl.style.display = 'block';
@@ -957,8 +1030,12 @@ function buildParticipantTabs(participants) {
   const tabsEl = document.getElementById('ptabs');
   container.style.display = 'block';
   tabsEl.innerHTML = '';
-  participants.forEach((raw, i) => {
-    const p = normalizeParticipant(raw) || raw;
+  const sorted = [...participants].sort((a, b) => {
+    const aJug = (normalizeParticipant(a) || a).tipo === 'Jugador' ? 0 : 1;
+    const bJug = (normalizeParticipant(b) || b).tipo === 'Jugador' ? 0 : 1;
+    return aJug - bJug;
+  });
+  sorted.forEach((raw, i) => {
     const p = normalizeParticipant(raw) || raw;
     const tab = document.createElement('button');
     tab.className = 'ptab' + (i === 0 ? ' active' : '');
@@ -967,7 +1044,7 @@ function buildParticipantTabs(participants) {
       document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       currentIndex = i;
-      loadParticipant(participants[i]);
+      loadParticipant(sorted[i]);
     };
     tabsEl.appendChild(tab);
   });
@@ -994,22 +1071,31 @@ function loadParticipant(p) {
 
   const tc = document.getElementById('tc-chk');
   if (tc) {
-    tc.checked = false;
+    tc.checked = (parseInt(participant.paso_actual) || 1) > 2;
     onTC();
   }
 
   updateDatosResumen(participant);
   updatePermisoDoc(participant);
 
-  // Mostrar acompañantes si el participante actual es Jugador y hay otros vinculados
+  // Ocultar posición si el participante es acompañante
+  const posicionItem = document.getElementById('d-posicion-item');
+  if (posicionItem) posicionItem.style.display = tipo.includes('jug') ? '' : 'none';
+
+  // Mostrar vinculados: jugador ve acompañantes, acompañante ve jugadores
   const secEl = document.getElementById('companions-section');
   const namesEl = document.getElementById('companions-names');
+  const labelEl = document.getElementById('companions-label');
   if (secEl && namesEl) {
-    const acompanantes = allParticipants
+    const esJug = tipo.includes('jug');
+    const vinculados = allParticipants
       .map(raw => normalizeParticipant(raw) || raw)
-      .filter(c => c.nombre !== participant.nombre && !(c.tipo || '').toLowerCase().includes('jug'));
-    if (acompanantes.length > 0) {
-      namesEl.innerHTML = acompanantes.map(c => `<strong>${c.nombre}</strong>`).join(' · ');
+      .filter(c => c.nombre !== participant.nombre &&
+        (esJug ? !(c.tipo || '').toLowerCase().includes('jug') : (c.tipo || '').toLowerCase().includes('jug'))
+      );
+    if (vinculados.length > 0) {
+      if (labelEl) labelEl.textContent = esJug ? 'Acompañantes' : 'Jugadores';
+      namesEl.innerHTML = vinculados.map(c => `<strong>${c.nombre}</strong>`).join(' · ');
       secEl.style.display = '';
     } else {
       secEl.style.display = 'none';
@@ -1072,6 +1158,10 @@ function goPanel(id) {
   const el = document.getElementById(id);
   if (el) { el.classList.add('active'); curPanel = id; }
   buildSteps();
+  // Restore "Mi Proceso" tab state when navigating within the process flow
+  document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.section === 'proceso'));
+  const stepsRow = document.getElementById('steps-row');
+  if (stepsRow) stepsRow.style.display = '';
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
@@ -1350,12 +1440,12 @@ function uploadDocumento(inp, tipoDocumento) {
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify(payload)
     })
       .then(() => {
         if (statusEl) {
-          statusEl.innerHTML = `✅ ${file.name}`;
+          statusEl.innerHTML = `✅ ${file.name} <button onclick="resetDocumento('${tipoDocumento}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
           statusEl.classList.add('ok');
           statusEl.style.color = 'var(--green)';
         }
@@ -1369,6 +1459,15 @@ function uploadDocumento(inp, tipoDocumento) {
       });
   };
   reader.readAsDataURL(file);
+}
+
+function resetDocumento(tipoDocumento) {
+  const statusId = { pasaporte:'ds1', permiso:'ds2', registro_civil:'ds4' }[tipoDocumento];
+  const inputId  = { pasaporte:'di1', permiso:'di2', registro_civil:'di4' }[tipoDocumento];
+  const statusEl = document.getElementById(statusId);
+  if (statusEl) { statusEl.innerHTML = '⏳ Pendiente'; statusEl.style.color = ''; statusEl.classList.remove('ok'); }
+  const inp = document.getElementById(inputId);
+  if (inp) { inp.value = ''; inp.click(); }
 }
 
 function uploadComprobante(inp, tipoPago) {
@@ -1404,14 +1503,21 @@ function uploadComprobante(inp, tipoPago) {
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify(payload)
     })
       .then(() => {
         if (statusEl) {
-          statusEl.innerHTML = `✅ ${file.name}`;
+          statusEl.innerHTML = `✅ ${file.name} <button onclick="resetComprobante('${tipoPago}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
           statusEl.classList.add('ok');
           statusEl.style.color = 'var(--green)';
+        }
+        const btn = document.getElementById(`comp-${tipoPago}-btn`);
+        if (btn) {
+          btn.style.display = 'block';
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+          btn.style.background = 'var(--blue)';
         }
       })
       .catch(err => {
@@ -1423,6 +1529,34 @@ function uploadComprobante(inp, tipoPago) {
       });
   };
   reader.readAsDataURL(file);
+}
+
+function resetComprobante(tipoPago) {
+  const statusId = { reserva:'comp-reserva-status', tiquete:'comp-tiquete-status', final:'comp-final-status' }[tipoPago];
+  const inputId  = { reserva:'comp-reserva-input',  tiquete:'comp-tiquete-input',  final:'comp-final-input'  }[tipoPago];
+  const statusEl = document.getElementById(statusId);
+  if (statusEl) { statusEl.innerHTML = '⏳ Pendiente'; statusEl.style.color = ''; statusEl.classList.remove('ok'); }
+  const btn = document.getElementById(`comp-${tipoPago}-btn`);
+  if (btn) btn.style.display = 'none';
+  const inp = document.getElementById(inputId);
+  if (inp) { inp.value = ''; inp.click(); }
+}
+
+function enviarComprobante(tipoPago) {
+  const pasoMap = { reserva: 4, tiquete: 5, final: 6 };
+  const paso = pasoMap[tipoPago];
+  actualizarPaso(paso);
+  const btn = document.getElementById(`comp-${tipoPago}-btn`);
+  if (btn) btn.style.display = 'none';
+  const validando = document.getElementById(`comp-${tipoPago}-validando`);
+  if (validando) validando.style.display = 'block';
+  setTimeout(() => {
+    if (tipoPago === 'reserva' && !conTiq) {
+      applyPasoActual(5);
+    } else {
+      applyPasoActual(paso);
+    }
+  }, 1500);
 }
 
 // ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
@@ -1485,7 +1619,7 @@ function toggleTiqueteDesdeWelcome() {
 // ── ACTUALIZAR PASO EN SHEETS ─────────────────────────────────────────────────
 function actualizarPaso(nuevoPaso) {
   if (!participantEmail) return;
-  fetch(WEBHOOK_URL, {
+  fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
@@ -1497,6 +1631,105 @@ function actualizarPaso(nuevoPaso) {
 function continuarAReserva() {
   actualizarPaso(3);
   goPanel('panel2');
+}
+
+function finalizarInscripcion() {
+  actualizarPaso(7);
+  const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
+  if (idxDocs > -1) STEP_DEFS[idxDocs].done = true;
+  goPanel('panel-done');
+}
+
+// ── SECTION TABS (Fotos / Comunicaciones / Lo que debo saber) ─────────────────
+function switchSection(section) {
+  document.querySelectorAll('.stab').forEach(b =>
+    b.classList.toggle('active', b.dataset.section === section)
+  );
+  const stepsRow = document.getElementById('steps-row');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+  if (section === 'proceso') {
+    stepsRow.style.display = '';
+    const cur = document.getElementById(curPanel);
+    if (cur) cur.classList.add('active');
+  } else {
+    stepsRow.style.display = 'none';
+    const el = document.getElementById('panel-' + section);
+    if (el) el.classList.add('active');
+    if (section === 'fotos' && !fotosLoaded) loadFotos();
+    if (section === 'comunicaciones' && !comunLoaded) loadComunicaciones();
+    if (section === 'saber' && !saberLoaded) loadSaber();
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function loadFotos() {
+  fotosLoaded = true;
+  fetch(APPS_SCRIPT_URL + '?action=fotos', { redirect: 'follow' })
+    .then(r => r.json())
+    .then(files => {
+      const grid = document.getElementById('fotos-grid');
+      if (!files || !files.length) {
+        grid.innerHTML = '<p style="color:var(--muted)">Las fotos del viaje estarán disponibles pronto.</p>';
+        return;
+      }
+      grid.innerHTML = files.map(f =>
+        `<a class="foto-item" href="${f.url}" target="_blank" rel="noopener">
+          <img src="${f.viewUrl}" alt="${f.name}" loading="lazy">
+        </a>`
+      ).join('');
+    })
+    .catch(() => {
+      document.getElementById('fotos-grid').innerHTML =
+        '<p style="color:var(--muted)">Las fotos del viaje estarán disponibles pronto.</p>';
+    });
+}
+
+function loadComunicaciones() {
+  comunLoaded = true;
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones', { redirect: 'follow' })
+    .then(r => r.json())
+    .then(msgs => {
+      const feed = document.getElementById('comun-feed');
+      if (!msgs || !msgs.length) {
+        feed.innerHTML = '<p style="color:var(--muted)">No hay comunicados aún. Los mensajes del equipo Victory aparecerán aquí.</p>';
+        return;
+      }
+      feed.innerHTML = msgs.map(m =>
+        `<div class="comun-msg">
+          <div class="comun-fecha">${m.fecha || ''}</div>
+          <div class="comun-titulo">${m.titulo || ''}</div>
+          <div class="comun-body">${m.mensaje || ''}</div>
+        </div>`
+      ).join('');
+    })
+    .catch(() => {
+      document.getElementById('comun-feed').innerHTML =
+        '<p style="color:var(--muted)">No hay comunicados aún.</p>';
+    });
+}
+
+function loadSaber() {
+  saberLoaded = true;
+  fetch(APPS_SCRIPT_URL + '?action=saber', { redirect: 'follow' })
+    .then(r => r.json())
+    .then(files => {
+      const list = document.getElementById('saber-list');
+      if (!files || !files.length) {
+        list.innerHTML = '<p style="color:var(--muted)">La información de viaje estará disponible pronto.</p>';
+        return;
+      }
+      list.innerHTML = files.map(f => {
+        const icon = f.mimeType && f.mimeType.includes('pdf') ? '📄'
+          : f.mimeType && f.mimeType.includes('image') ? '🖼️'
+          : f.mimeType && f.mimeType.includes('video') ? '🎬' : '📎';
+        return `<a class="saber-item" href="${f.url}" target="_blank" rel="noopener">${icon} ${f.name}</a>`;
+      }).join('');
+    })
+    .catch(() => {
+      document.getElementById('saber-list').innerHTML =
+        '<p style="color:var(--muted)">La información de viaje estará disponible pronto.</p>';
+    });
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
