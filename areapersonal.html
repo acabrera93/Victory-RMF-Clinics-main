@@ -1000,9 +1000,11 @@ async function doLogin() {
   btn.textContent = 'Buscando...';
   errEl.style.display = 'none';
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email), { redirect: 'follow' });
+    const buscarUrl = APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email) + '&_t=' + Date.now();
+    console.log('[LOGIN] url:', buscarUrl);
+    const res = await fetch(buscarUrl, { redirect: 'follow' });
     const rawText = await res.text();
-    console.log('[LOGIN] status:', res.status, 'text:', rawText.slice(0, 300));
+    console.log('[LOGIN] status:', res.status, 'text:', rawText.slice(0, 400));
     let data; try { data = JSON.parse(rawText); } catch(e2) { data = null; }
     const participants = extractParticipants(data);
     console.log('[LOGIN] participants:', participants.length);
