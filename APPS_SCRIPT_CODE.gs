@@ -45,13 +45,26 @@ function buscarParticipantes(email) {
     if (!emailNorm) return ContentService.createTextOutput(JSON.stringify([]))
       .setMimeType(ContentService.MimeType.JSON);
 
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
+    // Usar siempre la primera hoja (hoja principal de participantes)
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     if (data.length < 2) return ContentService.createTextOutput(JSON.stringify([]))
       .setMimeType(ContentService.MimeType.JSON);
 
     const headers = data[0];
-    const emailCol = 3; // Columna D (0-indexed) = Email
+
+    // Encontrar columna email por nombre de cabecera
+    let emailCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') {
+        emailCol = j;
+        break;
+      }
+    }
+    // Fallback a columna D (índice 3) si no se encontró por cabecera
+    if (emailCol < 0) emailCol = 3;
+    Logger.log('buscarParticipantes: emailCol=' + emailCol + ' buscando: ' + emailNorm);
 
     const participants = [];
     for (let i = 1; i < data.length; i++) {
@@ -64,6 +77,7 @@ function buscarParticipantes(email) {
       participants.push(participant);
     }
 
+    Logger.log('buscarParticipantes: encontrados=' + participants.length);
     return ContentService.createTextOutput(JSON.stringify(participants))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -110,7 +124,7 @@ function getComunicaciones() {
 // ───── ACTUALIZAR PASO (todas las filas del mismo email) ───────────────────────
 function actualizarPasoTodos(email, pasoActual) {
   try {
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     const emailCol = 3;  // Columna D (índice 0)
     const pasoCol  = 21; // Columna V (índice 0) = paso_actual
