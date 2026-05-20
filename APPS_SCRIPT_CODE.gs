@@ -747,6 +747,20 @@ function getAdminFinanciero() {
       };
     }
 
+    // ── Contar jugadores y acompañantes desde sus hojas (col A desde fila 6)
+    function countNonEmpty(sheetName) {
+      var sh = getSheetCI(ss, sheetName);
+      if (!sh || sh.getLastRow() < 6) return 0;
+      var vals = sh.getRange(6, 1, sh.getLastRow() - 5, 1).getValues();
+      var cnt = 0;
+      for (var k = 0; k < vals.length; k++) {
+        if (String(vals[k][0] || '').trim()) cnt++;
+      }
+      return cnt;
+    }
+    result.kpis.jugadores    = countNonEmpty('Jugadores');
+    result.kpis.acompanantes = countNonEmpty('Acompañantes');
+
     // ── Pagos recibidos + pagos individuales — hoja "Pagos"
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (pagosSheet) {

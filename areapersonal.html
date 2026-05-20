@@ -2546,13 +2546,15 @@ function renderAdminDashboard(rows, fin) {
   const comisionesPendientes = fin && Array.isArray(fin.comisiones) ? fin.comisiones.filter(c => (c.estado||'').toLowerCase() === 'pendiente').reduce((s, c) => s + (c.total || 0), 0) : 0;
   const pctCostos = ingresos > 0 ? Math.round(costos / ingresos * 100) : 0;
 
-  const displayTotal = kpis && kpis.participantes ? kpis.participantes : total;
+  const displayTotal  = kpis && kpis.participantes  ? kpis.participantes  : total;
+  const displayJug    = kpis && kpis.jugadores != null ? kpis.jugadores    : jugadores;
+  const displayAcomp  = kpis && kpis.acompanantes != null ? kpis.acompanantes : acomp;
 
   document.getElementById('admin-metrics').innerHTML = `
     <div class="metric-card">
       <div class="mc-label">Participantes</div>
       <div class="mc-value" style="font-size:38px">${displayTotal}</div>
-      <div class="mc-sub">${jugadores} jugadores · ${acomp} acompañantes (en sheet)</div>
+      <div class="mc-sub">${displayJug} jugadores · ${displayAcomp} acompañantes</div>
     </div>
     <div class="metric-card mc-blue">
       <div class="mc-label">Ingresos brutos</div>
