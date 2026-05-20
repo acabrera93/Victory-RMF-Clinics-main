@@ -927,11 +927,14 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div id="admin-sec-pagos" style="display:none">
       <div id="admin-pagos-summary" class="metric-grid" style="margin-bottom:16px"></div>
       <div class="card">
-        <div class="ctitle">Pagos recibidos</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div class="ctitle" style="margin-bottom:0">Pagos por participante</div>
+          <input id="pagos-search" type="text" placeholder="Buscar participante..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
+        </div>
         <div class="ptable-wrap">
           <table class="ptable" id="admin-pagos-table">
-            <thead><tr><th>Nombre / Familia</th><th>Fecha</th><th>EUR</th><th>COP</th><th>Paquete</th><th>Concepto</th><th>Estado</th></tr></thead>
-            <tbody id="admin-pagos-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
+            <thead><tr><th>Participante</th><th>Reserva</th><th>Tiquete</th><th>Pago Final</th><th>Total EUR</th><th></th></tr></thead>
+            <tbody id="admin-pagos-body"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1160,6 +1163,7 @@ let adminLoaded = false;
 let adminData = [];
 let adminCurrentRow = null;
 let pagoCurrentIdx = null;
+let pagoCurrentNombre = null;
 let habitacion = '';
 let fotosLoaded = false;
 let saberLoaded = false;
@@ -2536,6 +2540,7 @@ function toggleCurrency(c) {
 
 function statusChip(estado) {
   const s = (estado || '').toLowerCase();
+  if (!s || s === 'sin pago' || s === 'pendiente') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#f1f5f9;color:var(--muted)">Sin pago</span>`;
   if (s === 'completo' || s === 'pagado') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(22,101,52,.12);color:#166534">${estado}</span>`;
   if (s === 'parcial' || s === 'abono') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(217,119,6,.12);color:#92400e">${estado}</span>`;
   return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(239,68,68,.1);color:#991b1b">${estado}</span>`;
@@ -2733,26 +2738,85 @@ function renderAdminPagos(fin) {
   const pagos = fin.pagos_lista || [];
   const totalEur = recibidos.total_eur || 0;
   const totalCop = recibidos.total_cop || 0;
+
+  // Lista combinada: nombres del sheet de presupuesto (Pagos) + cualquier nuevo de inscripción
+  const pagosNombres = fin.pagos_nombres || [];
+  const seenNombres = new Set(pagosNombres.map(n => n.toLowerCase()));
+  const allNombres = [...pagosNombres];
+  (adminData || []).forEach(r => {
+    const n = normalizeParticipant(r) || {};
+    const nombre = n.nombre || r['Nombre'] || '';
+    if (nombre && !seenNombres.has(nombre.toLowerCase())) {
+      allNombres.push(nombre);
+      seenNombres.add(nombre.toLowerCase());
+    }
+  });
+
+  // Mapa: nombre_lower → { reserva, tiquete, 'pago final' }
+  const pagoMap = {};
+  pagos.forEach(p => {
+    const key = (p.nombre || '').toLowerCase().trim();
+    if (!pagoMap[key]) pagoMap[key] = {};
+    pagoMap[key][(p.notas || '').toLowerCase().trim()] = p;
+  });
+
+  const conPago  = allNombres.filter(n => pagoMap[n.toLowerCase().trim()]).length;
+  const sinPago  = allNombres.length - conPago;
+
   document.getElementById('admin-pagos-summary').innerHTML = `
     <div class="metric-card mc-blue"><div class="mc-label">Total recaudado</div><div class="mc-value" style="font-size:26px">${totalEur.toLocaleString('es-CO')}€</div><div class="mc-sub">$ ${(totalCop||Math.round(totalEur*TASA_EUR_COP)).toLocaleString('es-CO')} COP</div></div>
-    <div class="metric-card mc-green"><div class="mc-label">Pagos completos</div><div class="mc-value">${recibidos.completos || 0}</div><div class="mc-sub">Proceso completo</div></div>
-    <div class="metric-card mc-orange"><div class="mc-label">Pagos parciales</div><div class="mc-value">${recibidos.parciales || 0}</div><div class="mc-sub">En proceso de pago</div></div>
-    <div class="metric-card"><div class="mc-label">Transacciones</div><div class="mc-value">${pagos.length}</div><div class="mc-sub">Registros en sheet</div></div>
+    <div class="metric-card mc-green"><div class="mc-label">Con algún pago</div><div class="mc-value">${conPago}</div><div class="mc-sub">Al menos 1 pago registrado</div></div>
+    <div class="metric-card"><div class="mc-label">Sin pago aún</div><div class="mc-value" style="color:#dc2626">${sinPago}</div><div class="mc-sub">Pendientes</div></div>
+    <div class="metric-card mc-orange"><div class="mc-label">Total participantes</div><div class="mc-value">${allNombres.length}</div><div class="mc-sub">Presupuesto + inscripción</div></div>
   `;
-  if (!pagos.length) {
-    document.getElementById('admin-pagos-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No hay pagos registrados.</td></tr>';
+
+  const fmtPago = (pago) => {
+    if (!pago || !pago.eur) return `<div>${statusChip('')}</div>`;
+    return `<div>${statusChip(pago.estado)}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--navy);margin-top:3px">${pago.eur.toLocaleString('es-CO')} €</div>
+      <div style="font-size:11px;color:var(--muted)">${pago.fecha}</div>`;
+  };
+
+  if (!allNombres.length) {
+    document.getElementById('admin-pagos-body').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
     return;
   }
-  document.getElementById('admin-pagos-body').innerHTML = pagos.map(p => `
-    <tr>
-      <td style="font-weight:500">${p.nombre}</td>
-      <td style="font-size:12px;color:var(--muted)">${p.fecha}</td>
-      <td style="font-weight:600;color:var(--blue)">${p.eur.toLocaleString('es-CO')} €</td>
-      <td style="font-size:12px;color:var(--muted)">$ ${(p.cop||0).toLocaleString('es-CO')}</td>
-      <td style="font-size:12px">${p.paquete}</td>
-      <td style="font-size:12px;color:var(--muted)">${p.notas}</td>
-      <td>${statusChip(p.estado)}</td>
-    </tr>`).join('');
+
+  document.getElementById('admin-pagos-body').innerHTML = allNombres.map(nombre => {
+    const key = nombre.toLowerCase().trim();
+    const pp = pagoMap[key] || {};
+    const reserva   = pp['reserva'];
+    const tiquete   = pp['tiquete'];
+    const pagoFinal = pp['pago final'];
+    const totalPart = (reserva ? reserva.eur||0 : 0) + (tiquete ? tiquete.eur||0 : 0) + (pagoFinal ? pagoFinal.eur||0 : 0);
+    // Buscar en adminData para saber si tiene tiquete y para el botón
+    const origIdx = (adminData || []).findIndex(r => {
+      const n = normalizeParticipant(r) || {};
+      return (n.nombre || r['Nombre'] || '').toLowerCase().trim() === key;
+    });
+    const adRow = origIdx >= 0 ? (normalizeParticipant(adminData[origIdx]) || {}) : {};
+    const conTiq = adRow.tiquete_aereo ? adRow.tiquete_aereo.toLowerCase().includes('con') : true;
+    const btnClick = `openPagosModal(${origIdx}, '${nombre.replace(/'/g,"\\'")}')`;
+    return `<tr data-nombre="${key}">
+      <td style="font-weight:500">${nombre}<div style="font-size:11px;color:var(--muted);margin-top:2px">${adRow.tipo||''}</div></td>
+      <td>${fmtPago(reserva)}</td>
+      <td>${conTiq ? fmtPago(tiquete) : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
+      <td>${fmtPago(pagoFinal)}</td>
+      <td style="font-weight:700;color:var(--navy)">${totalPart > 0 ? totalPart.toLocaleString('es-CO') + ' €' : '<span style="color:var(--muted)">—</span>'}</td>
+      <td><button onclick="${btnClick}" style="padding:5px 10px;border:1px solid rgba(30,91,168,.3);border-radius:6px;background:rgba(30,91,168,.06);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--blue)">💳 Pagos</button></td>
+    </tr>`;
+  }).join('');
+
+  // Sincronizar: agregar al Pagos sheet cualquier inscrito que no esté (fire & forget)
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({ action: 'sincronizar_participantes' }), redirect:'follow' }).catch(()=>{});
+}
+
+function filtrarTablaPagos(q) {
+  const term = (q || '').toLowerCase().trim();
+  document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
+    tr.style.display = (!term || tr.dataset.nombre.includes(term)) ? '' : 'none';
+  });
 }
 
 function renderAdminComisiones(fin) {
@@ -2869,14 +2933,23 @@ function closeEditModal() {
 }
 
 // ── MODAL PAGOS ────────────────────────────────────────────────────────────────
-function openPagosModal(idx) {
-  const row = adminData[idx];
-  if (!row) return;
+function openPagosModal(idx, nombreOverride) {
   if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
-  pagoCurrentIdx = idx;
-  const n = normalizeParticipant(row) || {};
-  const nombre = n.nombre || row['Nombre'] || '';
-  const tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
+  let nombre, tieneTiquete;
+  if (idx >= 0 && adminData[idx]) {
+    pagoCurrentIdx = idx;
+    pagoCurrentNombre = null;
+    const row = adminData[idx];
+    const n = normalizeParticipant(row) || {};
+    nombre = n.nombre || row['Nombre'] || nombreOverride || '';
+    tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
+  } else {
+    pagoCurrentIdx = -1;
+    pagoCurrentNombre = nombreOverride || '';
+    nombre = pagoCurrentNombre;
+    tieneTiquete = true; // mostrar los 3 tipos cuando no hay datos de inscripción
+  }
+  if (!nombre) return;
 
   const pagos = adminFinData && adminFinData.pagos_lista
     ? adminFinData.pagos_lista.filter(p => (p.nombre||'').toLowerCase() === nombre.toLowerCase())
@@ -2929,14 +3002,19 @@ function openPagosModal(idx) {
 function closePagosModal() {
   document.getElementById('pagos-modal').classList.remove('open');
   pagoCurrentIdx = null;
+  pagoCurrentNombre = null;
 }
 
 function registrarPagoDesdePanel(tipo) {
-  if (pagoCurrentIdx == null) return;
-  const row = adminData[pagoCurrentIdx];
-  if (!row) return;
-  const n = normalizeParticipant(row) || {};
-  const nombre = n.nombre || row['Nombre'] || '';
+  let nombre;
+  if (pagoCurrentIdx >= 0 && adminData[pagoCurrentIdx]) {
+    const row = adminData[pagoCurrentIdx];
+    const n = normalizeParticipant(row) || {};
+    nombre = n.nombre || row['Nombre'] || '';
+  } else {
+    nombre = pagoCurrentNombre || '';
+  }
+  if (!nombre) return;
   const tid = tipo.replace(' ', '-').toLowerCase();
 
   const fecha = document.getElementById(`pago-${tid}-fecha`).value;
@@ -2971,7 +3049,7 @@ function registrarPagoDesdePanel(tipo) {
         if (i >= 0) adminFinData.pagos_lista[i] = np;
         else adminFinData.pagos_lista.push(np);
       }
-      setTimeout(() => { openPagosModal(pagoCurrentIdx); statusEl.style.display = 'none'; }, 700);
+      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
     } else {
       statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
     }

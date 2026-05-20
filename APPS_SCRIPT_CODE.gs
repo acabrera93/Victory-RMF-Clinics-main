@@ -281,6 +281,7 @@ function doPost(e) {
         if (parsed.action === 'eliminar_comunicado') return eliminarComunicado(parsed);
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
         if (parsed.action === 'registrar_pago') return registrarPago(parsed);
+        if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes();
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
@@ -798,6 +799,18 @@ function getAdminFinanciero() {
       }
       if (sumEur > 0) result.pagos_recibidos.total_eur = sumEur;
       if (sumCop > 0) result.pagos_recibidos.total_cop = sumCop;
+
+      // Recopilar todos los nombres únicos de la hoja Pagos (incluso sin pago aún)
+      var pagosNombres = [];
+      var seenPN = {};
+      for (var i = 0; i < pagData.length; i++) {
+        var cellA = str(pagData[i][0]);
+        if (cellA && !seenPN[cellA.toLowerCase()]) {
+          seenPN[cellA.toLowerCase()] = true;
+          pagosNombres.push(cellA);
+        }
+      }
+      result.pagos_nombres = pagosNombres;
     }
 
     // ── Comisiones — hoja "Comisiones" desde fila 6: A=comercial, B=comisión/jug, C=jugadores, D=total, E=estado
@@ -901,6 +914,51 @@ function registrarPago(data) {
     return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
   } catch (err) {
     Logger.log('registrarPago error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── SINCRONIZAR PARTICIPANTES (inscripción → Pagos) ────────────────────────
+function sincronizarParticipantes() {
+  try {
+    var mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    var mainData = mainSheet.getDataRange().getValues();
+    var headers = mainData[0] || [];
+    var nombreCol = 1, tiqueteCol = 13;
+    for (var j = 0; j < headers.length; j++) {
+      var h = String(headers[j]).toLowerCase();
+      if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0) nombreCol = j;
+      if (h.includes('tiquete') || h.includes('vuelo')) tiqueteCol = j;
+    }
+
+    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+
+    var lastRow = pagosSheet.getLastRow();
+    var existingNames = {};
+    if (lastRow >= 6) {
+      var existingData = pagosSheet.getRange(6, 1, lastRow - 5, 1).getValues();
+      existingData.forEach(function(row) {
+        var n = String(row[0] || '').trim().toLowerCase();
+        if (n) existingNames[n] = true;
+      });
+    }
+
+    var added = 0;
+    for (var i = 1; i < mainData.length; i++) {
+      var nombre = String(mainData[i][nombreCol] || '').trim();
+      if (!nombre || existingNames[nombre.toLowerCase()]) continue;
+      var tieneTiquete = String(mainData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
+      pagosSheet.appendRow([nombre, '', '', 0, 'Pendiente', '', 'Reserva']);
+      if (tieneTiquete) pagosSheet.appendRow(['', '', '', 0, '', '', 'Tiquete']);
+      pagosSheet.appendRow(['', '', '', 0, '', '', 'Pago Final']);
+      existingNames[nombre.toLowerCase()] = true;
+      added++;
+    }
+    return sendResponse(200, { ok: true, added: added });
+  } catch (err) {
+    Logger.log('sincronizarParticipantes error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
