@@ -748,9 +748,14 @@ function getAdminFinanciero() {
     }
 
     // ── Jugadores: celda B6 de hoja Jugadores
-    // ── Acompañantes: suma B6+C6+D6 de hoja Acompañantes
-    var jugSheet   = getSheetCI(ss, 'Jugadores');
-    var acompSheet = getSheetCI(ss, 'Acompañantes');
+    // ── Acompañantes: suma B6+C6+D6 — buscar por nombre parcial por si la ñ tiene codificación diferente
+    var jugSheet = getSheetCI(ss, 'Jugadores');
+    var acompSheet = null;
+    var allSheets = ss.getSheets();
+    for (var si = 0; si < allSheets.length; si++) {
+      var sn = allSheets[si].getName().toLowerCase();
+      if (sn.indexOf('acomp') === 0) { acompSheet = allSheets[si]; break; }
+    }
     result.kpis.jugadores    = jugSheet   ? num(jugSheet.getRange('B6').getValue())   : 0;
     result.kpis.acompanantes = acompSheet ? (num(acompSheet.getRange('B6').getValue())
                                            + num(acompSheet.getRange('C6').getValue())
@@ -784,6 +789,15 @@ function getAdminFinanciero() {
           });
         }
       }
+      // Recalcular totales sumando todos los pagos (completos + parciales)
+      // D32/C32 solo cuentan "Completo" — usar suma real de pagos_lista
+      var sumEur = 0, sumCop = 0;
+      for (var pi = 0; pi < result.pagos_lista.length; pi++) {
+        sumEur += result.pagos_lista[pi].eur;
+        sumCop += result.pagos_lista[pi].cop;
+      }
+      if (sumEur > 0) result.pagos_recibidos.total_eur = sumEur;
+      if (sumCop > 0) result.pagos_recibidos.total_cop = sumCop;
     }
 
     // ── Comisiones — hoja "Comisiones" desde fila 6: A=comercial, B=comisión/jug, C=jugadores, D=total, E=estado

@@ -157,6 +157,19 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .mc-blue .mc-value{color:var(--blue)}
 .mc-green .mc-value{color:#166534}
 .mc-orange .mc-value{color:#c2410c}
+/* Admin KPI cards v2 */
+.kpi-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px}
+.kpi-card.kc-blue{border-top:3px solid var(--blue)}
+.kpi-card.kc-green{border-top:3px solid #16a34a}
+.kpi-card.kc-red{border-top:3px solid #dc2626}
+.kpi-card.kc-navy{border-top:3px solid var(--navy)}
+.kpi-card.kc-dark{background:linear-gradient(135deg,#1e3a5f,#1e5ba8);border:none;padding-top:23px}
+.kpi-icon{font-size:22px;margin-bottom:10px;display:block}
+.kc-label{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin-bottom:4px;font-weight:600}
+.kc-val{font-family:'Bebas Neue',sans-serif;line-height:1.1;color:var(--navy)}
+.kc-sub{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4}
+.kc-bar{height:4px;background:#f1f5f9;border-radius:2px;margin-top:12px;overflow:hidden}
+.kc-bar-fill{height:100%;border-radius:2px;transition:width .7s ease}
 .ptable-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
 .ptable{width:100%;border-collapse:collapse;font-size:13px}
 .ptable th{background:var(--navy);color:#fff;padding:11px 14px;text-align:left;font-weight:500;white-space:nowrap}
@@ -2184,12 +2197,15 @@ function switchSection(section) {
   const stepsRow = document.getElementById('steps-row');
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
 
+  const resumenCard = document.getElementById('datos-resumen-card');
   if (section === 'proceso') {
     stepsRow.style.display = '';
+    if (resumenCard) resumenCard.style.display = '';
     const cur = document.getElementById(curPanel);
     if (cur) cur.classList.add('active');
   } else {
     stepsRow.style.display = 'none';
+    if (resumenCard) resumenCard.style.display = section === 'admin' ? 'none' : '';
     const el = document.getElementById('panel-' + section);
     if (el) el.classList.add('active');
     if (section === 'fotos' && !fotosLoaded) loadFotos();
@@ -2421,6 +2437,7 @@ function showAdminOnly() {
   document.getElementById('main-content').style.display = 'block';
   document.getElementById('ptabs-container').style.display = 'none';
   document.getElementById('steps-row').style.display = 'none';
+  document.getElementById('datos-resumen-card').style.display = 'none';
   document.getElementById('dn').textContent = 'Admin';
   document.getElementById('section-tabs').style.display = 'flex';
   document.getElementById('stab-admin').style.display = '';
@@ -2550,26 +2567,43 @@ function renderAdminDashboard(rows, fin) {
   const displayJug    = kpis && kpis.jugadores != null ? kpis.jugadores    : jugadores;
   const displayAcomp  = kpis && kpis.acompanantes != null ? kpis.acompanantes : acomp;
 
+  const recaudado = recibidos.total_eur || 0;
+  const pctRec = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
+
   document.getElementById('admin-metrics').innerHTML = `
-    <div class="metric-card">
-      <div class="mc-label">Participantes</div>
-      <div class="mc-value" style="font-size:38px">${displayTotal}</div>
-      <div class="mc-sub">${displayJug} jugadores · ${displayAcomp} acompañantes</div>
+    <div class="kpi-card kc-navy">
+      <span class="kpi-icon">👥</span>
+      <div class="kc-label">Participantes</div>
+      <div class="kc-val" style="font-size:48px">${displayTotal}</div>
+      <div class="kc-sub">${displayJug} jugadores · ${displayAcomp} acompañantes</div>
+      <div class="kc-sub">${conTiquete} con tiquete · ${total - conTiquete} sin tiquete</div>
     </div>
-    <div class="metric-card mc-blue">
-      <div class="mc-label">Ingresos brutos</div>
-      <div class="mc-value" style="font-size:26px">${(ingresos||0).toLocaleString('es-CO')}€</div>
-      <div class="mc-sub">${conTiquete} con tiquete · ${total - conTiquete} sin tiquete</div>
+    <div class="kpi-card kc-blue">
+      <span class="kpi-icon">💰</span>
+      <div class="kc-label">Total recaudado</div>
+      <div class="kc-val" style="font-size:30px;color:var(--blue)">${(recaudado||0).toLocaleString('es-CO')}€</div>
+      <div class="kc-sub">de <strong>${(ingresos||0).toLocaleString('es-CO')}€</strong> esperados</div>
+      <div class="kc-bar"><div class="kc-bar-fill" style="width:${pctRec}%;background:var(--blue)"></div></div>
+      <div class="kc-sub" style="margin-top:6px"><strong style="color:var(--blue)">${pctRec}%</strong> del total</div>
     </div>
-    <div class="metric-card" style="border-color:rgba(194,65,12,.2)">
-      <div class="mc-label" style="color:#9a3412">Costo del programa</div>
-      <div class="mc-value" style="font-size:26px;color:#c2410c">${(costos||0).toLocaleString('es-CO')}€</div>
-      <div class="mc-sub">${pctCostos}% de los ingresos brutos</div>
+    <div class="kpi-card kc-green">
+      <span class="kpi-icon">📈</span>
+      <div class="kc-label">Ingresos brutos <span style="font-size:9px;background:rgba(148,163,184,.15);color:var(--muted);padding:1px 6px;border-radius:8px;letter-spacing:.5px;font-weight:600;vertical-align:middle">PROYECTADO</span></div>
+      <div class="kc-val" style="font-size:30px;color:#16a34a">${(ingresos||0).toLocaleString('es-CO')}€</div>
+      <div class="kc-sub">${conTiquete} con tiquete · ${total - conTiquete} sin tiquete</div>
     </div>
-    <div class="metric-card" style="background:linear-gradient(135deg,var(--navy),#1e5ba8);border:none">
-      <div class="mc-label" style="color:rgba(255,255,255,.6)">Beneficio</div>
-      <div class="mc-value" style="font-size:26px;color:#fff">${(beneficio||0).toLocaleString('es-CO')}€</div>
-      <div class="mc-sub" style="color:rgba(255,255,255,.5)">Margen ${kpis ? margenPct + '%' : '—'}</div>
+    <div class="kpi-card kc-red">
+      <span class="kpi-icon">📉</span>
+      <div class="kc-label">Costos del programa <span style="font-size:9px;background:rgba(148,163,184,.15);color:var(--muted);padding:1px 6px;border-radius:8px;letter-spacing:.5px;font-weight:600;vertical-align:middle">PROYECTADO</span></div>
+      <div class="kc-val" style="font-size:30px;color:#dc2626">${(costos||0).toLocaleString('es-CO')}€</div>
+      <div class="kc-sub">${pctCostos}% de ingresos brutos</div>
+      <div class="kc-bar"><div class="kc-bar-fill" style="width:${Math.min(100,pctCostos)}%;background:#dc2626"></div></div>
+    </div>
+    <div class="kpi-card kc-dark">
+      <span class="kpi-icon" style="opacity:.8">✨</span>
+      <div class="kc-label" style="color:rgba(255,255,255,.6)">Beneficio bruto</div>
+      <div class="kc-val" style="font-size:30px;color:#fff">${(beneficio||0).toLocaleString('es-CO')}€</div>
+      <div class="kc-sub" style="color:rgba(255,255,255,.5)">Margen ${kpis ? margenPct + '%' : '—'}</div>
     </div>
   `;
 
