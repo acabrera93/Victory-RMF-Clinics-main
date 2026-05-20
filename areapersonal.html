@@ -2583,14 +2583,6 @@ function renderAdminDashboard(rows, fin) {
       <div class="kc-sub">${displayJug} jugadores · ${displayAcomp} acompañantes</div>
       <div class="kc-sub">${conTiquete} con tiquete · ${total - conTiquete} sin tiquete</div>
     </div>
-    <div class="kpi-card kc-blue">
-      <span class="kpi-icon">💰</span>
-      <div class="kc-label">Total recaudado</div>
-      <div class="kc-val" style="font-size:30px;color:var(--blue)">${(recaudado||0).toLocaleString('es-CO')}€</div>
-      <div class="kc-sub">de <strong>${(ingresos||0).toLocaleString('es-CO')}€</strong> esperados</div>
-      <div class="kc-bar"><div class="kc-bar-fill" style="width:${pctRec}%;background:var(--blue)"></div></div>
-      <div class="kc-sub" style="margin-top:6px"><strong style="color:var(--blue)">${pctRec}%</strong> del total</div>
-    </div>
     <div class="kpi-card kc-green">
       <span class="kpi-icon">📈</span>
       <div class="kc-label">Ingresos brutos <span style="font-size:9px;background:rgba(148,163,184,.15);color:var(--muted);padding:1px 6px;border-radius:8px;letter-spacing:.5px;font-weight:600;vertical-align:middle">PROYECTADO</span></div>

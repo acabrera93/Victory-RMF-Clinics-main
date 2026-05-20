@@ -908,7 +908,14 @@ function registrarPago(data) {
     if (targetSheetRow > 0) {
       pagosSheet.getRange(targetSheetRow, 1, 1, 7).setValues([newRow]);
     } else {
-      pagosSheet.appendRow(newRow);
+      // Insert before summary row: find last row where col G (tipo) has a value
+      var lastDataRow = startRow - 1;
+      for (var k = 0; k < allData.length; k++) {
+        if (String(allData[k][6] || '').trim()) lastDataRow = startRow + k;
+      }
+      var insertRow = lastDataRow + 1;
+      pagosSheet.insertRowsBefore(insertRow, 1);
+      pagosSheet.getRange(insertRow, 1, 1, 7).setValues([newRow]);
     }
 
     return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
@@ -945,16 +952,33 @@ function sincronizarParticipantes() {
       });
     }
 
+    // Find insert point: last row where col G (tipo) has a value — insert before summary
+    var insertRow = 6;
+    if (lastRow >= 6) {
+      var colGData = pagosSheet.getRange(6, 7, lastRow - 5, 1).getValues();
+      var lastGRow = 5;
+      for (var k = 0; k < colGData.length; k++) {
+        if (String(colGData[k][0] || '').trim()) lastGRow = 6 + k;
+      }
+      insertRow = lastGRow + 1;
+    }
+
+    // Build all new participant rows, then insert in a single batch
+    var newRows = [];
     var added = 0;
     for (var i = 1; i < mainData.length; i++) {
       var nombre = String(mainData[i][nombreCol] || '').trim();
       if (!nombre || existingNames[nombre.toLowerCase()]) continue;
       var tieneTiquete = String(mainData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
-      pagosSheet.appendRow([nombre, '', '', 0, 'Pendiente', '', 'Reserva']);
-      if (tieneTiquete) pagosSheet.appendRow(['', '', '', 0, '', '', 'Tiquete']);
-      pagosSheet.appendRow(['', '', '', 0, '', '', 'Pago Final']);
+      newRows.push([nombre, '', '', 0, 'Pendiente', '', 'Reserva']);
+      if (tieneTiquete) newRows.push(['', '', '', 0, '', '', 'Tiquete']);
+      newRows.push(['', '', '', 0, '', '', 'Pago Final']);
       existingNames[nombre.toLowerCase()] = true;
       added++;
+    }
+    if (newRows.length > 0) {
+      pagosSheet.insertRowsBefore(insertRow, newRows.length);
+      pagosSheet.getRange(insertRow, 1, newRows.length, 7).setValues(newRows);
     }
     return sendResponse(200, { ok: true, added: added });
   } catch (err) {
