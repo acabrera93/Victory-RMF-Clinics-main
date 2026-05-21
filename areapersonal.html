@@ -943,11 +943,14 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <!-- COMISIONES -->
     <div id="admin-sec-comisiones" style="display:none">
       <div class="card">
-        <div class="ctitle">Comisiones comerciales</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div class="ctitle" style="margin-bottom:0">Comisiones comerciales</div>
+          <button onclick="openComercialModal()" style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">+ Añadir comercial</button>
+        </div>
         <div class="ptable-wrap">
           <table class="ptable">
-            <thead><tr><th>Comercial</th><th>Comisión/Jugador</th><th>Jugadores</th><th>Total</th><th>Estado</th><th>Notas</th></tr></thead>
-            <tbody id="admin-comisiones-body"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
+            <thead><tr><th>Comercial</th><th>Comisión/Jugador</th><th>Jugadores</th><th>Total</th><th>Estado</th><th>Notas</th><th></th></tr></thead>
+            <tbody id="admin-comisiones-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1117,6 +1120,33 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <button onclick="saveEditModal()" style="padding:10px 28px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Guardar cambios</button>
     </div>
     <div id="edit-modal-status" style="margin-top:12px;display:none;font-size:13px"></div>
+  </div>
+</div>
+
+<!-- MODAL COMERCIAL -->
+<div class="modal-overlay" id="comercial-modal" onclick="if(event.target===this)closeComercialModal()">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">
+      <span id="comercial-modal-title">Añadir comercial</span>
+      <button onclick="closeComercialModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px">×</button>
+    </div>
+    <div class="modal-grid">
+      <div class="mfield full"><label>Nombre del comercial</label><input type="text" id="cm-nombre"></div>
+      <div class="mfield"><label>Comisión por jugador (€)</label><input type="number" id="cm-comision" min="0" step="0.01"></div>
+      <div class="mfield"><label>Número de jugadores</label><input type="number" id="cm-jugadores" min="0" step="1"></div>
+      <div class="mfield"><label>Estado</label>
+        <select id="cm-estado" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:14px;background:#fff">
+          <option value="Pendiente">Pendiente</option>
+          <option value="Pagado">Pagado</option>
+        </select>
+      </div>
+      <div class="mfield full"><label>Notas</label><textarea id="cm-notas" rows="3" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;box-sizing:border-box"></textarea></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;flex-wrap:wrap">
+      <button onclick="closeComercialModal()" style="padding:10px 22px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;color:var(--muted)">Cancelar</button>
+      <button onclick="saveComercialModal()" style="padding:10px 28px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Guardar</button>
+    </div>
+    <div id="comercial-modal-status" style="margin-top:12px;display:none;font-size:13px;padding:10px 14px;border-radius:8px;background:var(--off)"></div>
   </div>
 </div>
 
@@ -2828,17 +2858,18 @@ function renderAdminComisiones(fin) {
   if (!fin || !fin.comisiones) return;
   const comisiones = fin.comisiones;
   if (!comisiones.length) {
-    document.getElementById('admin-comisiones-body').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No hay comisiones registradas.</td></tr>';
+    document.getElementById('admin-comisiones-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No hay comisiones registradas.</td></tr>';
     return;
   }
-  document.getElementById('admin-comisiones-body').innerHTML = comisiones.map(c => `
+  document.getElementById('admin-comisiones-body').innerHTML = comisiones.map((c, i) => `
     <tr>
       <td style="font-weight:500">${c.comercial}</td>
-      <td style="font-weight:600;color:var(--blue)">${c.comision_jugador.toLocaleString('es-CO')} €</td>
-      <td>${c.jugadores}</td>
-      <td style="font-weight:700;color:var(--navy)">${c.total.toLocaleString('es-CO')} €</td>
+      <td style="font-weight:600;color:var(--blue)">${(c.comision_jugador||0).toLocaleString('es-CO')} €</td>
+      <td>${c.jugadores||0}</td>
+      <td style="font-weight:700;color:var(--navy)">${(c.total||0).toLocaleString('es-CO')} €</td>
       <td>${statusChip(c.estado)}</td>
-      <td style="font-size:12px;color:var(--muted)">${c.notas}</td>
+      <td style="font-size:12px;color:var(--muted)">${c.notas||''}</td>
+      <td><button onclick="openComercialModal(${i})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button></td>
     </tr>`).join('');
 }
 
@@ -2935,6 +2966,80 @@ function openEditModal(idx) {
 function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('open');
   adminCurrentRow = null;
+}
+
+// ── MODAL COMERCIAL ────────────────────────────────────────────────────────────
+let comercialCurrentRow = null;
+
+function openComercialModal(idx) {
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  const comisiones = adminFinData && adminFinData.comisiones ? adminFinData.comisiones : [];
+  const c = (idx !== undefined && comisiones[idx]) ? comisiones[idx] : null;
+  comercialCurrentRow = c ? { ...c } : null;
+
+  document.getElementById('comercial-modal-title').textContent = c ? 'Editar comercial' : 'Añadir comercial';
+  document.getElementById('cm-nombre').value = c ? c.comercial : '';
+  document.getElementById('cm-comision').value = c ? (c.comision_jugador || '') : '';
+  document.getElementById('cm-jugadores').value = c ? (c.jugadores || '') : '';
+  document.getElementById('cm-estado').value = c ? (c.estado || 'Pendiente') : 'Pendiente';
+  document.getElementById('cm-notas').value = c ? (c.notas || '') : '';
+  document.getElementById('comercial-modal-status').style.display = 'none';
+  document.getElementById('comercial-modal').classList.add('open');
+}
+
+function closeComercialModal() {
+  document.getElementById('comercial-modal').classList.remove('open');
+  comercialCurrentRow = null;
+}
+
+function saveComercialModal() {
+  const nombre = document.getElementById('cm-nombre').value.trim();
+  if (!nombre) { alert('El nombre del comercial es obligatorio.'); return; }
+  const payload = {
+    action: 'guardar_comercial',
+    comercial: nombre,
+    comision_jugador: parseFloat(document.getElementById('cm-comision').value) || 0,
+    jugadores: parseInt(document.getElementById('cm-jugadores').value) || 0,
+    estado: document.getElementById('cm-estado').value,
+    notas: document.getElementById('cm-notas').value.trim(),
+    _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0
+  };
+  const statusEl = document.getElementById('comercial-modal-status');
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Guardando...';
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.ok) {
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = 'Guardado correctamente.';
+      setTimeout(() => {
+        closeComercialModal();
+        fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + Date.now(), { redirect: 'follow' })
+          .then(r => r.json())
+          .then(fin => {
+            adminFinData = fin && !fin.error ? fin : null;
+            if (adminFinData) {
+              renderAdminComisiones(adminFinData);
+              renderAdminDashboard(adminData, adminFinData);
+            }
+          })
+          .catch(() => {});
+      }, 700);
+    } else {
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = 'Error: ' + (res.error || 'No se pudo guardar.');
+    }
+  })
+  .catch(() => {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'Error de red. Inténtalo de nuevo.';
+  });
 }
 
 // ── MODAL PAGOS ────────────────────────────────────────────────────────────────

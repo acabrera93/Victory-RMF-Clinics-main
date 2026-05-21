@@ -283,6 +283,7 @@ function doPost(e) {
         if (parsed.action === 'registrar_pago') return registrarPago(parsed);
         if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes();
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
+        if (parsed.action === 'guardar_comercial') return guardarComercial(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
       } catch (_) {}
@@ -709,6 +710,38 @@ function actualizarParticipante(data) {
   }
 }
 
+function guardarComercial(data) {
+  try {
+    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var comSheet = getSheetCI(ss, 'Comisiones');
+    if (!comSheet) return sendResponse(404, { ok: false, error: 'Hoja Comisiones no encontrada' });
+
+    var comercial = String(data.comercial || '').trim();
+    if (!comercial) return sendResponse(400, { ok: false, error: 'Nombre del comercial requerido' });
+
+    var comisionJugador = parseFloat(data.comision_jugador) || 0;
+    var jugadores = parseInt(data.jugadores) || 0;
+    var estado = String(data.estado || 'Pendiente').trim();
+    var notas = String(data.notas || '').trim();
+    var total = comisionJugador * jugadores;
+    var rowNum = parseInt(data._row) || 0;
+
+    var newRow = [comercial, comisionJugador, jugadores, total, estado, notas];
+
+    if (rowNum >= 6) {
+      comSheet.getRange(rowNum, 1, 1, 6).setValues([newRow]);
+    } else {
+      var lastRow = Math.max(comSheet.getLastRow(), 5);
+      comSheet.getRange(lastRow + 1, 1, 1, 6).setValues([newRow]);
+    }
+
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('guardarComercial error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
 function getSheetCI(ss, name) {
   var nl = name.toLowerCase();
   var sheets = ss.getSheets();
@@ -816,21 +849,21 @@ function getAdminFinanciero() {
       result.pagos_nombres = pagosNombres;
     }
 
-    // ── Comisiones — hoja "Comisiones" desde fila 6: A=comercial, B=comisión/jug, C=jugadores, D=total, E=estado
+    // ── Comisiones — hoja "Comisiones" desde fila 6: A=comercial, B=comisión/jug, C=jugadores, D=total, E=estado, F=notas
     var comSheet = getSheetCI(ss, 'Comisiones');
     if (comSheet) {
       var lastComRow = comSheet.getLastRow();
       if (lastComRow >= 6) {
-        var comData = comSheet.getRange('A6:E' + lastComRow).getValues();
+        var comData = comSheet.getRange('A6:F' + lastComRow).getValues();
         for (var i = 0; i < comData.length; i++) {
           var r = comData[i];
           var comercial = str(r[0]);
-          var estado = str(r[4]);
-          if (!comercial || (estado !== 'Pendiente' && estado !== 'Pagado')) continue;
+          if (!comercial) continue;
           result.comisiones.push({
+            _row: 6 + i,
             comercial: comercial, comision_jugador: num(r[1]),
             jugadores: num(r[2]), total: num(r[3]),
-            estado: estado, notas: ''
+            estado: str(r[4]), notas: str(r[5])
           });
         }
       }
