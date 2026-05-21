@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memorias — Real Madrid Foundation Clinic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #0b1f3a;
+    --navy-mid: #122847;
+    --navy-light: #1a3a60;
+    --blue: #1e5ba8;
+    --blue-light: #2970d4;
+    --blue-bright: #3b7fd4;
+    --white: #ffffff;
+    --off-white: #f4f6f9;
+    --muted: #64748b;
+    --border: #e2e8f0;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--navy); color: var(--white); min-height: 100vh; }
+
+  /* NAV */
+  nav { display:flex; align-items:center; justify-content:space-between; padding:20px 40px; position:sticky; top:0; z-index:100; background:rgba(11,31,58,.95); backdrop-filter:blur(12px); border-bottom:1px solid rgba(255,255,255,.06); }
+  .nav-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
+  .nav-logo img { height:34px; width:auto; filter:brightness(0) invert(1); opacity:.9; }
+  .nav-logo .sep { width:1px; height:24px; background:rgba(255,255,255,0.15); }
+  .nav-btn { padding:8px 16px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; text-decoration:none; transition:all .2s; border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.8); background:transparent; }
+  .nav-btn:hover { color:#fff; border-color:rgba(255,255,255,.45); background:rgba(255,255,255,.06); }
+
+  /* HERO */
+  .hero { padding: 80px 40px 60px; text-align: center; }
+  .hero-label { font-size:13px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--blue-bright); margin-bottom:16px; }
+  .hero-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(52px,8vw,96px); line-height:1; color:var(--white); margin-bottom:20px; }
+  .hero-sub { font-size:16px; color:rgba(255,255,255,.6); max-width:520px; margin:0 auto; line-height:1.6; }
+
+  /* GRID */
+  .container { max-width:1280px; margin:0 auto; padding:0 40px 80px; }
+  .mem-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .mem-item { position:relative; overflow:hidden; border-radius:6px; aspect-ratio:4/3; cursor:pointer; background:var(--navy-mid); }
+  .mem-item img { width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease,opacity .3s;opacity:.82; }
+  .mem-item:hover img { transform:scale(1.06);opacity:1; }
+  .mem-overlay { position:absolute;inset:0;background:linear-gradient(to top,rgba(11,31,58,.65) 0%,transparent 55%);opacity:0;transition:opacity .3s; }
+  .mem-item:hover .mem-overlay { opacity:1; }
+  .mem-skeleton { background:linear-gradient(90deg,var(--navy-mid) 25%,var(--navy-light) 50%,var(--navy-mid) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite; border-radius:6px;aspect-ratio:4/3; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* LIGHTBOX */
+  #mem-lightbox { display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:9999;align-items:center;justify-content:center; }
+  #mem-lightbox.open { display:flex; }
+  #mem-lb-img { max-width:90vw;max-height:88vh;border-radius:8px;object-fit:contain; }
+  #mem-lb-close { position:absolute;top:20px;right:24px;color:#fff;font-size:28px;cursor:pointer;background:none;border:none;line-height:1;opacity:.8;transition:opacity .2s; }
+  #mem-lb-close:hover { opacity:1; }
+  #mem-lb-prev,#mem-lb-next { position:absolute;top:50%;transform:translateY(-50%);color:#fff;font-size:52px;cursor:pointer;background:none;border:none;line-height:1;padding:0 20px;opacity:.6;transition:opacity .2s; }
+  #mem-lb-prev:hover,#mem-lb-next:hover { opacity:1; }
+  #mem-lb-prev { left:0; }
+  #mem-lb-next { right:0; }
+  #mem-lb-counter { position:absolute;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.5);font-size:13px; }
+
+  /* EMPTY / ERROR */
+  .msg { text-align:center;padding:80px 20px;color:rgba(255,255,255,.4);font-size:15px; }
+
+  @media(max-width:900px) { .mem-grid { grid-template-columns:repeat(3,1fr); } nav { padding:16px 24px; } .hero { padding:60px 24px 40px; } .container { padding:0 24px 60px; } }
+  @media(max-width:600px) { .mem-grid { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <img src="https://i.imgur.com/o6ey8V4.png" alt="Victory Sports" style="filter:brightness(10);opacity:0.95;">
+    <div class="sep"></div>
+    <img src="https://i.imgur.com/NJJe6rz.png" alt="Real Madrid Foundation" style="filter:brightness(10);opacity:0.85;">
+  </a>
+  <a href="index.html" class="nav-btn">← Volver al inicio</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-label">Ediciones anteriores · Real Madrid Foundation Clinic</div>
+  <h1 class="hero-title">MEMORIAS</h1>
+  <p class="hero-sub">Momentos que quedan para siempre. Más de 18 ediciones, más de 1.800 jóvenes colombianos entrenando en la Ciudad Deportiva del Real Madrid.</p>
+</div>
+
+<div class="container">
+  <div class="mem-grid" id="mem-grid">
+    <!-- skeletons mientras carga -->
+    <div class="mem-skeleton"></div>
+    <div class="mem-skeleton"></div>
+    <div class="mem-skeleton"></div>
+    <div class="mem-skeleton"></div>
+    <div class="mem-skeleton"></div>
+    <div class="mem-skeleton"></div>
+    <div class="mem-skeleton"></div>
+    <div class="mem-skeleton"></div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="mem-lightbox" onclick="if(event.target===this)lbClose()">
+  <button id="mem-lb-close" onclick="lbClose()">✕</button>
+  <button id="mem-lb-prev" onclick="lbNav(-1)">&#8249;</button>
+  <img id="mem-lb-img" src="" alt="">
+  <button id="mem-lb-next" onclick="lbNav(1)">&#8250;</button>
+  <div id="mem-lb-counter"></div>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+let fotos = [];
+let idx = 0;
+
+fetch(APPS_SCRIPT_URL + '?action=memorias&_t=' + Date.now(), { redirect: 'follow' })
+  .then(r => r.json())
+  .then(files => {
+    const grid = document.getElementById('mem-grid');
+    if (!Array.isArray(files) || !files.length) {
+      grid.innerHTML = '<div class="msg" style="grid-column:1/-1">Fotos próximamente...</div>';
+      return;
+    }
+    fotos = files;
+    grid.innerHTML = files.map((f, i) =>
+      `<div class="mem-item" onclick="lbOpen(${i})">
+        <img src="${f.viewUrl}" alt="${f.name}" loading="lazy">
+        <div class="mem-overlay"></div>
+      </div>`
+    ).join('');
+  })
+  .catch(() => {
+    document.getElementById('mem-grid').innerHTML =
+      '<div class="msg" style="grid-column:1/-1">No se pudieron cargar las fotos.</div>';
+  });
+
+function lbOpen(i) {
+  idx = i;
+  lbRender();
+  document.getElementById('mem-lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function lbClose() {
+  document.getElementById('mem-lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function lbNav(dir) {
+  idx = (idx + dir + fotos.length) % fotos.length;
+  lbRender();
+}
+function lbRender() {
+  document.getElementById('mem-lb-img').src = fotos[idx].viewUrl;
+  document.getElementById('mem-lb-counter').textContent = (idx + 1) + ' / ' + fotos.length;
+}
+document.addEventListener('keydown', function(e) {
+  if (!document.getElementById('mem-lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape') lbClose();
+  if (e.key === 'ArrowLeft') lbNav(-1);
+  if (e.key === 'ArrowRight') lbNav(1);
+});
+</script>
+</body>
+</html>

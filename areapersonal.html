@@ -1061,6 +1061,15 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div id="foto-upload-progress" style="display:none;margin-bottom:16px;font-size:13px"></div>
         <p style="font-size:13px;color:var(--muted);line-height:1.6">Las fotos se suben directamente a la carpeta del álbum en Drive y aparecen en el tab Fotos de todos los participantes automáticamente.</p>
       </div>
+      <div class="card" style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="ctitle" style="margin-bottom:0">Fotos en el álbum</div>
+          <button onclick="loadAdminFotos(true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer">↻ Actualizar</button>
+        </div>
+        <div id="admin-fotos-grid" class="fotos-grid">
+          <p style="color:var(--muted);font-size:13px">Cargando fotos...</p>
+        </div>
+      </div>
     </div>
 
     <!-- ACCESO (solo super admin) -->
@@ -2509,6 +2518,7 @@ function adminSection(section) {
   if (section === 'pagos' && adminFinData) renderAdminPagos(adminFinData);
   if (section === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
   if (section === 'acceso') loadAdminAcceso();
+  if (section === 'galeria') loadAdminFotos();
 }
 
 function loadAdmin(force) {
@@ -3594,6 +3604,58 @@ function adminCambiarRolAcceso(email, nuevoRol) {
     .catch(() => {});
 }
 
+let adminFotosLoaded = false;
+function loadAdminFotos(force) {
+  if (adminFotosLoaded && !force) return;
+  adminFotosLoaded = true;
+  const grid = document.getElementById('admin-fotos-grid');
+  if (!grid) return;
+  grid.innerHTML = '<p style="color:var(--muted);font-size:13px">Cargando fotos...</p>';
+  fetch(APPS_SCRIPT_URL + '?action=fotos&_t=' + Date.now(), { redirect: 'follow' })
+    .then(r => r.json())
+    .then(files => {
+      if (!Array.isArray(files) || !files.length) {
+        grid.innerHTML = '<p style="color:var(--muted);font-size:13px">No hay fotos aún en el álbum.</p>';
+        return;
+      }
+      grid.innerHTML = files.map(f =>
+        `<div class="foto-item" style="position:relative">
+          <a href="${f.url}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%">
+            <img src="${f.viewUrl}" alt="${f.name}" loading="lazy">
+          </a>
+          <span class="foto-dl-btn" style="opacity:1;bottom:auto;top:8px;right:8px;background:rgba(220,38,38,.85);cursor:pointer" onclick="deleteAdminFoto('${f.id}','${f.name.replace(/'/g,"\\'")}',this)">✕</span>
+        </div>`
+      ).join('');
+    })
+    .catch(() => {
+      grid.innerHTML = '<p style="color:#dc2626;font-size:13px">Error al cargar las fotos.</p>';
+    });
+}
+
+function deleteAdminFoto(fileId, fileName, btn) {
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  if (!confirm('¿Eliminar "' + fileName + '"? Esta acción no se puede deshacer.')) return;
+  btn.textContent = '…';
+  btn.style.pointerEvents = 'none';
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_foto_drive', fileId}), redirect:'follow' })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        btn.closest('.foto-item').remove();
+        fotosLoaded = false;
+      } else {
+        btn.textContent = '✕';
+        btn.style.pointerEvents = '';
+        alert('Error al eliminar: ' + (res.error || 'desconocido'));
+      }
+    })
+    .catch(() => {
+      btn.textContent = '✕';
+      btn.style.pointerEvents = '';
+      alert('Error de conexión al eliminar.');
+    });
+}
+
 function adminHandleFotoDrop(event) {
   event.preventDefault();
   document.getElementById('foto-drop-zone').classList.remove('drag');
@@ -3624,6 +3686,7 @@ function adminHandleFotoUpload(files) {
             ? `<span style="color:var(--green)">${done} foto(s) subidas. Aparecerán en la galería de todos los participantes.</span>`
             : `<span style="color:#d97706">${done - errors} subidas, ${errors} con error.</span>`;
           fotosLoaded = false; // Force refresh on next visit
+          loadAdminFotos(true); // Refresh admin grid
         })
         .catch(() => { done++; errors++; if (done===fileArr.length) progressEl.innerHTML=`<span style="color:#dc2626">Error al subir.</span>`; });
     };
