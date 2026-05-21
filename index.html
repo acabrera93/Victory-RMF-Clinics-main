@@ -411,7 +411,8 @@
   }
 
   /* ─── COMO FUNCIONA ─── */
-  #como-funciona { background: var(--white); }
+  #como-funciona { background: var(--white); padding: 75px 0; }
+  #como-funciona .steps-grid { margin-top: 48px; gap: 36px 80px; }
   .steps-grid {
     display: grid; grid-template-columns: 1fr 1fr;
     gap: 48px 80px;
@@ -798,6 +799,7 @@
     <img src="https://i.imgur.com/97OXnBN.png" alt="Revel Fundación">
   </a>
   <div class="nav-actions">
+    <a href="#faq" class="nav-btn nav-btn-ghost">Preguntas frecuentes</a>
     <a href="areapersonal.html" class="nav-btn nav-btn-ghost">Área Personal</a>
     <a href="preinscripcion.html" class="nav-btn nav-btn-ghost">Pre-inscríbete</a>
     <a href="#inscripcion" class="nav-btn nav-btn-solid">Solicitar información →</a>
@@ -1253,6 +1255,47 @@
   </div>
 </section>
 
+<!-- FAQ -->
+<section id="faq">
+  <div class="container">
+    <p class="section-label">Preguntas frecuentes</p>
+    <h2 class="section-title">LO QUE TODO PADRE PREGUNTA</h2>
+    <div class="faq-grid" style="max-width:800px">
+
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-question">¿Mi hijo viaja solo o con acompañante? <span class="faq-arrow">+</span></div>
+        <div class="faq-answer">Tu hijo viaja en grupo con otros jóvenes latinoamericanos. Nuestro equipo incluye 1 persona de staff por cada 15 niños, acompañando al grupo en todo momento desde el aeropuerto de salida hasta el regreso a Colombia. Nunca están solos.</div>
+      </div>
+
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-question">¿Qué nivel futbolístico se requiere para el RMF Clinic? <span class="faq-arrow">+</span></div>
+        <div class="faq-answer">Pueden participar jugadores de equipos de fútbol, jugadores individuales y alumnos de colegios. El programa está diseñado para jóvenes de 8 a 17 años con distintos niveles. En el proceso de inscripción evaluamos el perfil de tu hijo para asegurarnos de que sea la experiencia correcta.</div>
+      </div>
+
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-question">¿Cómo funciona el pago en dos cuotas? <span class="faq-arrow">+</span></div>
+        <div class="faq-answer">El programa se puede pagar en dos cuotas cómodas. Al reservar pagas la primera cuota para asegurar el cupo, y el saldo restante antes del viaje. Contáctanos para conocer el precio exacto según el programa y tipo de participante.</div>
+      </div>
+
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-question">¿Puedo viajar como acompañante de mi hijo? <span class="faq-arrow">+</span></div>
+        <div class="faq-answer">¡Sí! Tenemos un programa especial para acompañantes con su propio itinerario. Mientras tu hijo entrena, tú tienes días libres para explorar Madrid. Hay opciones de solo actividades o paquete completo con hotel. Solicita información para conocer las opciones disponibles.</div>
+      </div>
+
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-question">¿El partido del Real Madrid está garantizado? <span class="faq-arrow">+</span></div>
+        <div class="faq-answer">La entrada al partido de Liga del Real Madrid C.F. está disponible únicamente para jugadores y está sujeta al calendario oficial de LaLiga para octubre de 2026. En caso de no coincidir con una fecha de local, se coordina una actividad alternativa de igual valor.</div>
+      </div>
+
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-question">¿El tiquete aéreo está incluido en el precio? <span class="faq-arrow">+</span></div>
+        <div class="faq-answer">El precio base no incluye el tiquete aéreo. Sin embargo, gestionamos una reserva de grupo Bogotá–Madrid–Bogotá con tarifa preferencial. También puedes gestionar tu propio tiquete de forma independiente. Contáctanos para más detalles.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- FORMULARIO -->
 <section id="inscripcion">
   <div class="container">
@@ -1277,11 +1320,11 @@
 
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Tu nombre</label>
+              <label class="form-label">Tu nombre y apellido</label>
               <input id="f-nombre" class="form-input" type="text" placeholder="Juan García">
             </div>
             <div class="form-group">
-              <label class="form-label">Nombre del jugador</label>
+              <label class="form-label">Nombre y apellido del jugador</label>
               <input id="f-jugador" class="form-input" type="text" placeholder="Pablo García">
             </div>
           </div>
@@ -1321,11 +1364,8 @@
             <label class="form-label">Programa de interés</label>
             <select id="prog-select" class="form-select">
               <option value="">¿Qué programa le interesa?</option>
-              <option>RMF Clinic — Real Madrid Foundation (Jugador, 8–17 años)</option>
-              <option>RMF Clinic — Real Madrid Foundation (Acompañante padre/madre)</option>
-              <option>Japan Golf Travel — 13 días / 5 rondas Japón (Adultos)</option>
-              <option>Ambos programas — quiero más información</option>
-              <option>No estoy seguro, quiero asesoría personalizada</option>
+              <option>Real Madrid Foundation Clinic</option>
+              <option>Japan Golf Experience</option>
             </select>
           </div>
 
@@ -1472,46 +1512,7 @@ function showStatus(type, msg, onClick) {
 }
 </script>
 
-<!-- FAQ -->
-<section id="faq">
-  <div class="container">
-    <p class="section-label">Preguntas frecuentes</p>
-    <h2 class="section-title">LO QUE TODO PADRE PREGUNTA</h2>
-    <div class="faq-grid" style="max-width:800px">
 
-      <div class="faq-item" onclick="this.classList.toggle('open')">
-        <div class="faq-question">¿Mi hijo viaja solo o con acompañante? <span class="faq-arrow">+</span></div>
-        <div class="faq-answer">Tu hijo viaja en grupo con otros jóvenes latinoamericanos. Nuestro equipo incluye 1 persona de staff por cada 15 niños, acompañando al grupo en todo momento desde el aeropuerto de salida hasta el regreso a Colombia. Nunca están solos.</div>
-      </div>
-
-      <div class="faq-item" onclick="this.classList.toggle('open')">
-        <div class="faq-question">¿Qué nivel futbolístico se requiere para el RMF Clinic? <span class="faq-arrow">+</span></div>
-        <div class="faq-answer">Pueden participar jugadores de equipos de fútbol, jugadores individuales y alumnos de colegios. El programa está diseñado para jóvenes de 8 a 17 años con distintos niveles. En el proceso de inscripción evaluamos el perfil de tu hijo para asegurarnos de que sea la experiencia correcta.</div>
-      </div>
-
-      <div class="faq-item" onclick="this.classList.toggle('open')">
-        <div class="faq-question">¿Cómo funciona el pago en dos cuotas? <span class="faq-arrow">+</span></div>
-        <div class="faq-answer">El programa se puede pagar en dos cuotas cómodas. Al reservar pagas la primera cuota para asegurar el cupo, y el saldo restante antes del viaje. Contáctanos para conocer el precio exacto según el programa y tipo de participante.</div>
-      </div>
-
-      <div class="faq-item" onclick="this.classList.toggle('open')">
-        <div class="faq-question">¿Puedo viajar como acompañante de mi hijo? <span class="faq-arrow">+</span></div>
-        <div class="faq-answer">¡Sí! Tenemos un programa especial para acompañantes con su propio itinerario. Mientras tu hijo entrena, tú tienes días libres para explorar Madrid. Hay opciones de solo actividades o paquete completo con hotel. Solicita información para conocer las opciones disponibles.</div>
-      </div>
-
-      <div class="faq-item" onclick="this.classList.toggle('open')">
-        <div class="faq-question">¿El partido del Real Madrid está garantizado? <span class="faq-arrow">+</span></div>
-        <div class="faq-answer">La entrada al partido de Liga del Real Madrid C.F. está disponible únicamente para jugadores y está sujeta al calendario oficial de LaLiga para octubre de 2026. En caso de no coincidir con una fecha de local, se coordina una actividad alternativa de igual valor.</div>
-      </div>
-
-      <div class="faq-item" onclick="this.classList.toggle('open')">
-        <div class="faq-question">¿El tiquete aéreo está incluido en el precio? <span class="faq-arrow">+</span></div>
-        <div class="faq-answer">El precio base no incluye el tiquete aéreo. Sin embargo, gestionamos una reserva de grupo Bogotá–Madrid–Bogotá con tarifa preferencial. También puedes gestionar tu propio tiquete de forma independiente. Contáctanos para más detalles.</div>
-      </div>
-
-    </div>
-  </div>
-</section>
 
 <!-- FOOTER -->
 <footer>
