@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($bytes = [System.IO.File]::ReadAllBytes\\(\"c:\\\\Users\\\\aleja\\\\Downloads\\\\Victory-RMF-Clinics-main\\\\index.html\"\\); if \\($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF\\) { $bytes = $bytes[3..\\($bytes.Length-1\\)] }; $mojibake = [System.Text.Encoding]::UTF8.GetString\\($bytes\\); $originalBytes = [System.Text.Encoding]::GetEncoding\\(1252\\).GetBytes\\($mojibake\\); $fixed = [System.Text.Encoding]::UTF8.GetString\\($originalBytes\\); [System.IO.File]::WriteAllBytes\\(\"c:\\\\Users\\\\aleja\\\\Downloads\\\\Victory-RMF-Clinics-main\\\\index.html\", [System.Text.Encoding]::UTF8.GetBytes\\($fixed\\)\\); \"Done — \" + [System.IO.File]::ReadAllBytes\\(\"c:\\\\Users\\\\aleja\\\\Downloads\\\\Victory-RMF-Clinics-main\\\\index.html\"\\).Length + \" bytes\")"
+    ]
+  }
+}
