@@ -725,14 +725,38 @@ function guardarComercial(data) {
     var notas = String(data.notas || '').trim();
     var total = comisionJugador * jugadores;
     var rowNum = parseInt(data._row) || 0;
+    var seccion = String(data.seccion || 'jugadores').trim();
 
     var newRow = [comercial, comisionJugador, jugadores, total, estado, notas];
 
     if (rowNum >= 6) {
+      // Update existing row
       comSheet.getRange(rowNum, 1, 1, 6).setValues([newRow]);
     } else {
-      var lastRow = Math.max(comSheet.getLastRow(), 5);
-      comSheet.getRange(lastRow + 1, 1, 1, 6).setValues([newRow]);
+      // New row — insert before the TOTAL row of the target section
+      var lastComRow = comSheet.getLastRow();
+      var colAData = lastComRow >= 6 ? comSheet.getRange('A6:A' + lastComRow).getValues() : [];
+      var inTargetSection = (seccion === 'jugadores');
+      var summaryRow = -1;
+
+      for (var i = 0; i < colAData.length; i++) {
+        var cellA = String(colAData[i][0] || '').trim().toLowerCase();
+        if (!inTargetSection && cellA.indexOf('acomp') >= 0) {
+          if (seccion === 'acompanantes') inTargetSection = true;
+        }
+        if (inTargetSection && cellA.indexOf('total') >= 0) {
+          summaryRow = 6 + i;
+          break;
+        }
+      }
+
+      if (summaryRow >= 6) {
+        comSheet.insertRowsBefore(summaryRow, 1);
+        comSheet.getRange(summaryRow, 1, 1, 6).setValues([newRow]);
+      } else {
+        // Fallback: append at end
+        comSheet.getRange(Math.max(comSheet.getLastRow(), 5) + 1, 1, 1, 6).setValues([newRow]);
+      }
     }
 
     return sendResponse(200, { ok: true });
@@ -849,19 +873,29 @@ function getAdminFinanciero() {
       result.pagos_nombres = pagosNombres;
     }
 
-    // ── Comisiones — hoja "Comisiones" desde fila 6: A=comercial, B=comisión/jug, C=jugadores, D=total, E=estado, F=notas
+    // ── Comisiones — hoja "Comisiones" desde fila 6
+    // Secciones detectadas dinámicamente por col A:
+    //   - Filas con "acomp" → marca inicio de sección acompañantes
+    //   - Filas con "total" → fila resumen (skip)
+    //   - Filas vacías → skip
+    //   - Resto → fila de comercial
     var comSheet = getSheetCI(ss, 'Comisiones');
     if (comSheet) {
       var lastComRow = comSheet.getLastRow();
       if (lastComRow >= 6) {
         var comData = comSheet.getRange('A6:F' + lastComRow).getValues();
+        var seccionActual = 'jugadores';
         for (var i = 0; i < comData.length; i++) {
           var r = comData[i];
-          var comercial = str(r[0]);
-          if (!comercial) continue;
+          var colA = str(r[0]);
+          var colALow = colA.toLowerCase();
+          if (!colA) continue;
+          if (colALow.indexOf('acomp') >= 0) { seccionActual = 'acompanantes'; continue; }
+          if (colALow.indexOf('total') >= 0) continue;
           result.comisiones.push({
             _row: 6 + i,
-            comercial: comercial, comision_jugador: num(r[1]),
+            seccion: seccionActual,
+            comercial: colA, comision_jugador: num(r[1]),
             jugadores: num(r[2]), total: num(r[3]),
             estado: str(r[4]), notas: str(r[5])
           });

@@ -943,13 +943,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <!-- COMISIONES -->
     <div id="admin-sec-comisiones" style="display:none">
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-          <div class="ctitle" style="margin-bottom:0">Comisiones comerciales</div>
-          <button onclick="openComercialModal()" style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">+ Añadir comercial</button>
-        </div>
+        <div class="ctitle">Comisiones comerciales</div>
         <div class="ptable-wrap">
           <table class="ptable">
-            <thead><tr><th>Comercial</th><th>Comisión/Jugador</th><th>Jugadores</th><th>Total</th><th>Estado</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Comercial</th><th>Com./Jug.</th><th>Jugadores</th><th>Total</th><th>Estado</th><th>Notas</th><th></th></tr></thead>
             <tbody id="admin-comisiones-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
           </table>
         </div>
@@ -1131,6 +1128,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <button onclick="closeComercialModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px">×</button>
     </div>
     <div class="modal-grid">
+      <input type="hidden" id="cm-seccion" value="jugadores">
       <div class="mfield full"><label>Nombre del comercial</label><input type="text" id="cm-nombre"></div>
       <div class="mfield"><label>Comisión por jugador (€)</label><input type="number" id="cm-comision" min="0" step="0.01"></div>
       <div class="mfield"><label>Número de jugadores</label><input type="number" id="cm-jugadores" min="0" step="1"></div>
@@ -2854,23 +2852,52 @@ function filtrarTablaPagos(q) {
   });
 }
 
+function renderComercialRow(c, globalIdx) {
+  return `<tr>
+    <td style="font-weight:500">${c.comercial}</td>
+    <td style="font-weight:600;color:var(--blue)">${(c.comision_jugador||0).toLocaleString('es-CO')} €</td>
+    <td>${c.jugadores||0}</td>
+    <td style="font-weight:700;color:var(--navy)">${(c.total||0).toLocaleString('es-CO')} €</td>
+    <td>${statusChip(c.estado)}</td>
+    <td style="font-size:12px;color:var(--muted)">${c.notas||''}</td>
+    <td><button onclick="openComercialModal(${globalIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button></td>
+  </tr>`;
+}
+
+function sectionHeaderRow(label, seccion) {
+  return `<tr style="background:rgba(30,91,168,.04)">
+    <td colspan="6" style="padding:10px 8px 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);border-bottom:2px solid rgba(30,91,168,.25)">${label}</td>
+    <td style="padding:10px 8px 6px;border-bottom:2px solid rgba(30,91,168,.25);text-align:right">
+      <button onclick="openComercialModal(undefined,'${seccion}')" style="padding:4px 12px;background:rgba(30,91,168,.1);color:var(--blue);border:1px solid rgba(30,91,168,.2);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">+ Añadir</button>
+    </td>
+  </tr>`;
+}
+
 function renderAdminComisiones(fin) {
   if (!fin || !fin.comisiones) return;
   const comisiones = fin.comisiones;
-  if (!comisiones.length) {
-    document.getElementById('admin-comisiones-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No hay comisiones registradas.</td></tr>';
-    return;
+  const tbody = document.getElementById('admin-comisiones-body');
+
+  const jugadores = comisiones.filter(c => c.seccion === 'jugadores');
+  const acompanantes = comisiones.filter(c => c.seccion === 'acompanantes');
+
+  let html = '';
+
+  html += sectionHeaderRow('Jugadores', 'jugadores');
+  if (!jugadores.length) {
+    html += `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
+  } else {
+    html += jugadores.map(c => renderComercialRow(c, comisiones.indexOf(c))).join('');
   }
-  document.getElementById('admin-comisiones-body').innerHTML = comisiones.map((c, i) => `
-    <tr>
-      <td style="font-weight:500">${c.comercial}</td>
-      <td style="font-weight:600;color:var(--blue)">${(c.comision_jugador||0).toLocaleString('es-CO')} €</td>
-      <td>${c.jugadores||0}</td>
-      <td style="font-weight:700;color:var(--navy)">${(c.total||0).toLocaleString('es-CO')} €</td>
-      <td>${statusChip(c.estado)}</td>
-      <td style="font-size:12px;color:var(--muted)">${c.notas||''}</td>
-      <td><button onclick="openComercialModal(${i})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button></td>
-    </tr>`).join('');
+
+  html += sectionHeaderRow('Acompañantes', 'acompanantes');
+  if (!acompanantes.length) {
+    html += `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
+  } else {
+    html += acompanantes.map(c => renderComercialRow(c, comisiones.indexOf(c))).join('');
+  }
+
+  tbody.innerHTML = html;
 }
 
 function renderAdminTable(rows) {
@@ -2971,13 +2998,16 @@ function closeEditModal() {
 // ── MODAL COMERCIAL ────────────────────────────────────────────────────────────
 let comercialCurrentRow = null;
 
-function openComercialModal(idx) {
+function openComercialModal(idx, seccion) {
   if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
   const comisiones = adminFinData && adminFinData.comisiones ? adminFinData.comisiones : [];
   const c = (idx !== undefined && comisiones[idx]) ? comisiones[idx] : null;
   comercialCurrentRow = c ? { ...c } : null;
 
-  document.getElementById('comercial-modal-title').textContent = c ? 'Editar comercial' : 'Añadir comercial';
+  const sec = c ? (c.seccion || 'jugadores') : (seccion || 'jugadores');
+  const secLabel = sec === 'acompanantes' ? 'Acompañantes' : 'Jugadores';
+  document.getElementById('comercial-modal-title').textContent = (c ? 'Editar' : 'Añadir') + ' comercial — ' + secLabel;
+  document.getElementById('cm-seccion').value = sec;
   document.getElementById('cm-nombre').value = c ? c.comercial : '';
   document.getElementById('cm-comision').value = c ? (c.comision_jugador || '') : '';
   document.getElementById('cm-jugadores').value = c ? (c.jugadores || '') : '';
@@ -3002,6 +3032,7 @@ function saveComercialModal() {
     jugadores: parseInt(document.getElementById('cm-jugadores').value) || 0,
     estado: document.getElementById('cm-estado').value,
     notas: document.getElementById('cm-notas').value.trim(),
+    seccion: document.getElementById('cm-seccion').value || 'jugadores',
     _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0
   };
   const statusEl = document.getElementById('comercial-modal-status');
