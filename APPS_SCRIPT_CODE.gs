@@ -589,9 +589,12 @@ function enviarEmailsComunicado(params) {
     var emails = [];
     var seen = {};
 
-    // Individual: destinatario is an email address
+    // Individual: destinatario is one or more comma-separated email addresses
     if (destinatario !== 'todos' && destinatario !== 'con_tiquete' && destinatario !== 'sin_tiquete') {
-      if (destinatario.indexOf('@') >= 0) emails.push(destinatario);
+      destinatario.split(',').forEach(function(em) {
+        em = em.trim();
+        if (em.indexOf('@') >= 0 && !seen[em]) { seen[em] = true; emails.push(em); }
+      });
     } else {
       for (var i = 1; i < mainData.length; i++) {
         var em = String(mainData[i][emailCol] || '').toLowerCase().trim();
