@@ -719,15 +719,25 @@ function guardarComercial(data) {
     var comercial = String(data.comercial || '').trim();
     if (!comercial) return sendResponse(400, { ok: false, error: 'Nombre del comercial requerido' });
 
-    var comisionJugador = parseFloat(data.comision_jugador) || 0;
-    var jugadores = parseInt(data.jugadores) || 0;
-    var estado = String(data.estado || 'Pendiente').trim();
-    var notas = String(data.notas || '').trim();
-    var total = comisionJugador * jugadores;
     var rowNum = parseInt(data._row) || 0;
     var seccion = String(data.seccion || 'jugadores').trim();
+    var newRow;
 
-    var newRow = [comercial, comisionJugador, jugadores, total, estado, notas];
+    if (seccion === 'acompanantes') {
+      var comDoble = parseFloat(data.com_doble) || 0;
+      var comSencilla = parseFloat(data.com_sencilla) || 0;
+      var acompDoble = parseInt(data.acomp_doble) || 0;
+      var acompSencilla = parseInt(data.acomp_sencilla) || 0;
+      var total = comDoble * acompDoble + comSencilla * acompSencilla;
+      newRow = [comercial, comDoble, comSencilla, acompDoble, acompSencilla, total];
+    } else {
+      var comisionJugador = parseFloat(data.comision_jugador) || 0;
+      var jugadores = parseInt(data.jugadores) || 0;
+      var estado = String(data.estado || 'Pendiente').trim();
+      var notas = String(data.notas || '').trim();
+      var total = comisionJugador * jugadores;
+      newRow = [comercial, comisionJugador, jugadores, total, estado, notas];
+    }
 
     if (rowNum >= 6) {
       // Update existing row
@@ -892,13 +902,24 @@ function getAdminFinanciero() {
           if (!colA) continue;
           if (colALow.indexOf('acomp') >= 0) { seccionActual = 'acompanantes'; continue; }
           if (colALow.indexOf('total') >= 0) continue;
-          result.comisiones.push({
-            _row: 6 + i,
-            seccion: seccionActual,
-            comercial: colA, comision_jugador: num(r[1]),
-            jugadores: num(r[2]), total: num(r[3]),
-            estado: str(r[4]), notas: str(r[5])
-          });
+          if (colALow === 'comercial') continue; // sub-header dentro de la sección
+          if (seccionActual === 'jugadores') {
+            result.comisiones.push({
+              _row: 6 + i, seccion: 'jugadores',
+              comercial: colA, comision_jugador: num(r[1]),
+              jugadores: num(r[2]), total: num(r[3]),
+              estado: str(r[4]), notas: str(r[5])
+            });
+          } else {
+            // Acompañantes: B=com_doble, C=com_sencilla, D=acomp_doble, E=acomp_sencilla, F=total
+            result.comisiones.push({
+              _row: 6 + i, seccion: 'acompanantes',
+              comercial: colA,
+              com_doble: num(r[1]), com_sencilla: num(r[2]),
+              acomp_doble: num(r[3]), acomp_sencilla: num(r[4]),
+              total: num(r[5])
+            });
+          }
         }
       }
     }
