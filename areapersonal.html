@@ -946,7 +946,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="ctitle">Comisiones comerciales</div>
         <div class="ptable-wrap">
           <table class="ptable">
-            <thead><tr><th>Comercial</th><th>Com./Jug.</th><th>Jugadores</th><th>Total</th><th>Estado</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Comercial</th><th></th><th></th><th></th><th></th><th>Total</th><th></th></tr></thead>
             <tbody id="admin-comisiones-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
           </table>
         </div>
@@ -1130,15 +1130,21 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div class="modal-grid">
       <input type="hidden" id="cm-seccion" value="jugadores">
       <div class="mfield full"><label>Nombre del comercial</label><input type="text" id="cm-nombre"></div>
-      <div class="mfield"><label>Comisión por jugador (€)</label><input type="number" id="cm-comision" min="0" step="0.01"></div>
-      <div class="mfield"><label>Número de jugadores</label><input type="number" id="cm-jugadores" min="0" step="1"></div>
-      <div class="mfield"><label>Estado</label>
+      <!-- Jugadores fields -->
+      <div class="mfield" id="cm-group-jug1"><label>Comisión por jugador (€)</label><input type="number" id="cm-comision" min="0" step="0.01"></div>
+      <div class="mfield" id="cm-group-jug2"><label>Número de jugadores</label><input type="number" id="cm-jugadores" min="0" step="1"></div>
+      <div class="mfield" id="cm-group-jug3"><label>Estado</label>
         <select id="cm-estado" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:14px;background:#fff">
           <option value="Pendiente">Pendiente</option>
           <option value="Pagado">Pagado</option>
         </select>
       </div>
-      <div class="mfield full"><label>Notas</label><textarea id="cm-notas" rows="3" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;box-sizing:border-box"></textarea></div>
+      <div class="mfield full" id="cm-group-jug4"><label>Notas</label><textarea id="cm-notas" rows="2" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;box-sizing:border-box"></textarea></div>
+      <!-- Acompañantes fields -->
+      <div class="mfield" id="cm-group-acomp1" style="display:none"><label>Comisión hab. doble (€)</label><input type="number" id="cm-com-doble" min="0" step="0.01"></div>
+      <div class="mfield" id="cm-group-acomp2" style="display:none"><label>Comisión hab. sencilla (€)</label><input type="number" id="cm-com-sencilla" min="0" step="0.01"></div>
+      <div class="mfield" id="cm-group-acomp3" style="display:none"><label>Nº acomp. doble</label><input type="number" id="cm-acomp-doble" min="0" step="1"></div>
+      <div class="mfield" id="cm-group-acomp4" style="display:none"><label>Nº acomp. sencilla</label><input type="number" id="cm-acomp-sencilla" min="0" step="1"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;flex-wrap:wrap">
       <button onclick="closeComercialModal()" style="padding:10px 22px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;color:var(--muted)">Cancelar</button>
@@ -2694,28 +2700,60 @@ function renderAdminDashboard(rows, fin) {
   const comCard = document.getElementById('admin-comisiones-resumen-card');
   if (fin && fin.comisiones && fin.comisiones.length) {
     comCard.style.display = '';
-    document.getElementById('admin-comisiones-resumen').innerHTML = `
-      <table style="width:100%;border-collapse:collapse">
+    const jugs = fin.comisiones.filter(c => c.seccion === 'jugadores');
+    const acomps = fin.comisiones.filter(c => c.seccion === 'acompanantes');
+    let html = '';
+    if (jugs.length) {
+      html += `<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Jugadores</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
         <thead>
           <tr style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">
             <th style="padding:8px 0;text-align:left;font-weight:500">Comercial</th>
             <th style="padding:8px 0;text-align:right;font-weight:500">Com./jug.</th>
             <th style="padding:8px 0;text-align:right;font-weight:500">Jugadores</th>
-            <th style="padding:8px 0;text-align:right;font-weight:500">Total</th>
             <th style="padding:8px 0;text-align:right;font-weight:500">Estado</th>
+            <th style="padding:8px 0;text-align:right;font-weight:500">Total</th>
           </tr>
         </thead>
         <tbody>
-          ${fin.comisiones.map(c => `
+          ${jugs.map(c => `
             <tr style="border-bottom:1px solid var(--border)">
               <td style="padding:11px 0;font-weight:500;color:var(--navy)">${c.comercial}</td>
-              <td style="padding:11px 0;text-align:right;font-size:13px;color:var(--muted)">${c.comision_jugador.toLocaleString('es-CO')}€</td>
-              <td style="padding:11px 0;text-align:right;font-size:13px">${c.jugadores}</td>
-              <td style="padding:11px 0;text-align:right;font-weight:700;color:var(--blue)">${c.total.toLocaleString('es-CO')}€</td>
+              <td style="padding:11px 0;text-align:right;font-size:13px;color:var(--muted)">${(c.comision_jugador||0).toLocaleString('es-CO')}€</td>
+              <td style="padding:11px 0;text-align:right;font-size:13px">${c.jugadores||0}</td>
               <td style="padding:11px 0;text-align:right">${statusChip(c.estado)}</td>
+              <td style="padding:11px 0;text-align:right;font-weight:700;color:var(--blue)">${(c.total||0).toLocaleString('es-CO')}€</td>
             </tr>`).join('')}
         </tbody>
       </table>`;
+    }
+    if (acomps.length) {
+      html += `<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Acompañantes</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">
+            <th style="padding:8px 0;text-align:left;font-weight:500">Comercial</th>
+            <th style="padding:8px 0;text-align:right;font-weight:500">Com. Doble</th>
+            <th style="padding:8px 0;text-align:right;font-weight:500">Com. Sencilla</th>
+            <th style="padding:8px 0;text-align:right;font-weight:500">Acomp. D</th>
+            <th style="padding:8px 0;text-align:right;font-weight:500">Acomp. S</th>
+            <th style="padding:8px 0;text-align:right;font-weight:500">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${acomps.map(c => `
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:11px 0;font-weight:500;color:var(--navy)">${c.comercial}</td>
+              <td style="padding:11px 0;text-align:right;font-size:13px;color:var(--muted)">${(c.com_doble||0).toLocaleString('es-CO')}€</td>
+              <td style="padding:11px 0;text-align:right;font-size:13px;color:var(--muted)">${(c.com_sencilla||0).toLocaleString('es-CO')}€</td>
+              <td style="padding:11px 0;text-align:right;font-size:13px">${c.acomp_doble||0}</td>
+              <td style="padding:11px 0;text-align:right;font-size:13px">${c.acomp_sencilla||0}</td>
+              <td style="padding:11px 0;text-align:right;font-weight:700;color:var(--blue)">${(c.total||0).toLocaleString('es-CO')}€</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+    document.getElementById('admin-comisiones-resumen').innerHTML = html;
   } else if (comCard) {
     comCard.style.display = 'none';
   }
@@ -2853,6 +2891,18 @@ function filtrarTablaPagos(q) {
 }
 
 function renderComercialRow(c, globalIdx) {
+  const btn = `<button onclick="openComercialModal(${globalIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>`;
+  if (c.seccion === 'acompanantes') {
+    return `<tr>
+      <td style="font-weight:500">${c.comercial}</td>
+      <td style="color:var(--blue);font-size:13px">${(c.com_doble||0).toLocaleString('es-CO')} €</td>
+      <td style="color:var(--blue);font-size:13px">${(c.com_sencilla||0).toLocaleString('es-CO')} €</td>
+      <td style="font-size:13px">${c.acomp_doble||0}</td>
+      <td style="font-size:13px">${c.acomp_sencilla||0}</td>
+      <td style="font-weight:700;color:var(--navy)">${(c.total||0).toLocaleString('es-CO')} €</td>
+      <td>${btn}</td>
+    </tr>`;
+  }
   return `<tr>
     <td style="font-weight:500">${c.comercial}</td>
     <td style="font-weight:600;color:var(--blue)">${(c.comision_jugador||0).toLocaleString('es-CO')} €</td>
@@ -2860,14 +2910,22 @@ function renderComercialRow(c, globalIdx) {
     <td style="font-weight:700;color:var(--navy)">${(c.total||0).toLocaleString('es-CO')} €</td>
     <td>${statusChip(c.estado)}</td>
     <td style="font-size:12px;color:var(--muted)">${c.notas||''}</td>
-    <td><button onclick="openComercialModal(${globalIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button></td>
+    <td>${btn}</td>
   </tr>`;
 }
 
+function sectionColHeaders(seccion) {
+  const s = 'padding:6px 8px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--off)';
+  if (seccion === 'acompanantes') {
+    return `<tr><td style="${s}">Comercial</td><td style="${s}">Com. Doble</td><td style="${s}">Com. Sencilla</td><td style="${s}">Acomp. Doble</td><td style="${s}">Acomp. Sencilla</td><td style="${s}">Total</td><td style="${s}"></td></tr>`;
+  }
+  return `<tr><td style="${s}">Comercial</td><td style="${s}">Com./Jug.</td><td style="${s}">Jugadores</td><td style="${s}">Total</td><td style="${s}">Estado</td><td style="${s}">Notas</td><td style="${s}"></td></tr>`;
+}
+
 function sectionHeaderRow(label, seccion) {
-  return `<tr style="background:rgba(30,91,168,.04)">
-    <td colspan="6" style="padding:10px 8px 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);border-bottom:2px solid rgba(30,91,168,.25)">${label}</td>
-    <td style="padding:10px 8px 6px;border-bottom:2px solid rgba(30,91,168,.25);text-align:right">
+  return `<tr style="background:rgba(30,91,168,.06)">
+    <td colspan="6" style="padding:12px 8px 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);border-top:2px solid rgba(30,91,168,.25)">${label}</td>
+    <td style="padding:12px 8px 6px;border-top:2px solid rgba(30,91,168,.25);text-align:right">
       <button onclick="openComercialModal(undefined,'${seccion}')" style="padding:4px 12px;background:rgba(30,91,168,.1);color:var(--blue);border:1px solid rgba(30,91,168,.2);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">+ Añadir</button>
     </td>
   </tr>`;
@@ -2884,6 +2942,7 @@ function renderAdminComisiones(fin) {
   let html = '';
 
   html += sectionHeaderRow('Jugadores', 'jugadores');
+  html += sectionColHeaders('jugadores');
   if (!jugadores.length) {
     html += `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
   } else {
@@ -2891,6 +2950,7 @@ function renderAdminComisiones(fin) {
   }
 
   html += sectionHeaderRow('Acompañantes', 'acompanantes');
+  html += sectionColHeaders('acompanantes');
   if (!acompanantes.length) {
     html += `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
   } else {
@@ -3009,10 +3069,24 @@ function openComercialModal(idx, seccion) {
   document.getElementById('comercial-modal-title').textContent = (c ? 'Editar' : 'Añadir') + ' comercial — ' + secLabel;
   document.getElementById('cm-seccion').value = sec;
   document.getElementById('cm-nombre').value = c ? c.comercial : '';
-  document.getElementById('cm-comision').value = c ? (c.comision_jugador || '') : '';
-  document.getElementById('cm-jugadores').value = c ? (c.jugadores || '') : '';
-  document.getElementById('cm-estado').value = c ? (c.estado || 'Pendiente') : 'Pendiente';
-  document.getElementById('cm-notas').value = c ? (c.notas || '') : '';
+
+  const isAcomp = sec === 'acompanantes';
+  ['cm-group-jug1','cm-group-jug2','cm-group-jug3','cm-group-jug4'].forEach(id =>
+    document.getElementById(id).style.display = isAcomp ? 'none' : '');
+  ['cm-group-acomp1','cm-group-acomp2','cm-group-acomp3','cm-group-acomp4'].forEach(id =>
+    document.getElementById(id).style.display = isAcomp ? '' : 'none');
+
+  if (isAcomp) {
+    document.getElementById('cm-com-doble').value = c ? (c.com_doble || '') : '';
+    document.getElementById('cm-com-sencilla').value = c ? (c.com_sencilla || '') : '';
+    document.getElementById('cm-acomp-doble').value = c ? (c.acomp_doble || '') : '';
+    document.getElementById('cm-acomp-sencilla').value = c ? (c.acomp_sencilla || '') : '';
+  } else {
+    document.getElementById('cm-comision').value = c ? (c.comision_jugador || '') : '';
+    document.getElementById('cm-jugadores').value = c ? (c.jugadores || '') : '';
+    document.getElementById('cm-estado').value = c ? (c.estado || 'Pendiente') : 'Pendiente';
+    document.getElementById('cm-notas').value = c ? (c.notas || '') : '';
+  }
   document.getElementById('comercial-modal-status').style.display = 'none';
   document.getElementById('comercial-modal').classList.add('open');
 }
@@ -3025,16 +3099,20 @@ function closeComercialModal() {
 function saveComercialModal() {
   const nombre = document.getElementById('cm-nombre').value.trim();
   if (!nombre) { alert('El nombre del comercial es obligatorio.'); return; }
-  const payload = {
-    action: 'guardar_comercial',
-    comercial: nombre,
-    comision_jugador: parseFloat(document.getElementById('cm-comision').value) || 0,
-    jugadores: parseInt(document.getElementById('cm-jugadores').value) || 0,
-    estado: document.getElementById('cm-estado').value,
-    notas: document.getElementById('cm-notas').value.trim(),
-    seccion: document.getElementById('cm-seccion').value || 'jugadores',
-    _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0
-  };
+  const sec = document.getElementById('cm-seccion').value || 'jugadores';
+  const payload = { action: 'guardar_comercial', comercial: nombre, seccion: sec,
+    _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0 };
+  if (sec === 'acompanantes') {
+    payload.com_doble = parseFloat(document.getElementById('cm-com-doble').value) || 0;
+    payload.com_sencilla = parseFloat(document.getElementById('cm-com-sencilla').value) || 0;
+    payload.acomp_doble = parseInt(document.getElementById('cm-acomp-doble').value) || 0;
+    payload.acomp_sencilla = parseInt(document.getElementById('cm-acomp-sencilla').value) || 0;
+  } else {
+    payload.comision_jugador = parseFloat(document.getElementById('cm-comision').value) || 0;
+    payload.jugadores = parseInt(document.getElementById('cm-jugadores').value) || 0;
+    payload.estado = document.getElementById('cm-estado').value;
+    payload.notas = document.getElementById('cm-notas').value.trim();
+  }
   const statusEl = document.getElementById('comercial-modal-status');
   statusEl.style.display = 'block';
   statusEl.style.color = 'var(--muted)';
