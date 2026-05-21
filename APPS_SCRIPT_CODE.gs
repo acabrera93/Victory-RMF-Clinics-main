@@ -20,6 +20,7 @@ const SHEET_ID = "1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss"; // Tu Google Sh
 
 const FOTOS_FOLDER_ID = "1VZxd3FdN8YLU2MpM-CJJIpy2IAb6FCFE"; // Carpeta fotos del viaje en Drive
 const SABER_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_SABER"; // Carpeta "RMF_Clinic_2026_Saber"
+const MEMORIAS_FOLDER_ID = "1Przikh__b-4CEhcR738XmhQLNdFgBoce"; // Carpeta galería memorias (ediciones anteriores)
 const BUDGET_SHEET_ID = "1nMPrqnDUVwaoG42B84T8rCBvE7hKLo5nFLbrYWb58XQ"; // Sheet presupuesto/finanzas
 
 // ───── GET HANDLER (fotos, saber, comunicaciones) ──────────────────────────────
@@ -29,6 +30,7 @@ function doGet(e) {
   Logger.log('doGet action=' + action + ' params=' + JSON.stringify(params));
   try {
     if (action === 'fotos') return listFiles(FOTOS_FOLDER_ID, 'image');
+    if (action === 'memorias') return listFiles(MEMORIAS_FOLDER_ID, 'image');
     if (action === 'saber') {
       if (!SABER_FOLDER_ID || SABER_FOLDER_ID.indexOf('REEMPLAZAR') >= 0)
         return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);
@@ -285,6 +287,7 @@ function doPost(e) {
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'guardar_comercial') return guardarComercial(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
+        if (parsed.action === 'eliminar_foto_drive') return eliminarFotoDrive(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
       } catch (_) {}
     }
@@ -1181,6 +1184,18 @@ function subirFotoDrive(data) {
     return sendResponse(200, { ok: true, url: file.getUrl(), id: file.getId() });
   } catch (err) {
     Logger.log('subirFotoDrive error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function eliminarFotoDrive(data) {
+  try {
+    if (!data.fileId) return sendResponse(400, { ok: false, error: 'fileId requerido' });
+    const file = DriveApp.getFileById(data.fileId);
+    file.setTrashed(true);
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('eliminarFotoDrive error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
