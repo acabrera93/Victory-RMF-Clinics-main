@@ -37,6 +37,7 @@ function doGet(e) {
       return listFiles(SABER_FOLDER_ID, 'all');
     }
     if (action === 'comunicaciones') return getComunicaciones();
+    if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
     if (action === 'admin_participantes') return getAdminParticipantes();
     if (action === 'admin_financiero') return getAdminFinanciero();
@@ -1197,5 +1198,89 @@ function eliminarFotoDrive(data) {
   } catch (err) {
     Logger.log('eliminarFotoDrive error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── ÁREA COMERCIAL ──────────────────────────────────────────────────────────
+function getComercialData(email) {
+  try {
+    const emailNorm = email.toString().toLowerCase().trim();
+    if (!emailNorm) return ContentService.createTextOutput(JSON.stringify({ found: false }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const comSheet = getSheetCI(ss, 'Comisiones');
+    if (!comSheet) return ContentService.createTextOutput(JSON.stringify({ found: false }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    const lastRow = comSheet.getLastRow();
+    if (lastRow < 6) return ContentService.createTextOutput(JSON.stringify({ found: false }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    const str = function(v) { return String(v == null ? '' : v).trim(); };
+    const num = function(v) {
+      if (typeof v === 'number') return v;
+      var s = str(v).replace(/[€$\s]/g, '').replace(/\.(?=\d{3})/g, '').replace(',', '.');
+      return parseFloat(s) || 0;
+    };
+
+    // Find comercial name by email in H:I (DATOS COMERCIALES section, starts row 6)
+    const hiData = comSheet.getRange('H6:I' + lastRow).getValues();
+    let nombre = null;
+    for (let i = 0; i < hiData.length; i++) {
+      if (str(hiData[i][1]).toLowerCase() === emailNorm) {
+        nombre = str(hiData[i][0]);
+        break;
+      }
+    }
+    if (!nombre) return ContentService.createTextOutput(JSON.stringify({ found: false }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    // Read commission data from A:F, filtered by this comercial's name
+    const comData = comSheet.getRange('A6:F' + lastRow).getValues();
+    const nombreLower = nombre.toLowerCase();
+    const jugadores = [];
+    const acompanantes = [];
+    let seccion = 'jugadores';
+
+    for (let i = 0; i < comData.length; i++) {
+      const r = comData[i];
+      const colA = str(r[0]);
+      const colALow = colA.toLowerCase();
+      if (!colA) continue;
+      if (colALow.indexOf('acomp') >= 0) { seccion = 'acompanantes'; continue; }
+      if (colALow.indexOf('total') >= 0) continue;
+      if (colALow === 'comercial') continue;
+      if (colALow !== nombreLower) continue;
+
+      if (seccion === 'jugadores') {
+        jugadores.push({
+          comision_jugador: num(r[1]),
+          jugadores: num(r[2]),
+          total: num(r[3]),
+          estado: str(r[4]),
+          notas: str(r[5])
+        });
+      } else {
+        acompanantes.push({
+          com_doble:    num(r[1]),
+          com_sencilla: num(r[2]),
+          acomp_doble:  num(r[3]),
+          acomp_sencilla: num(r[4]),
+          total: num(r[5])
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      found: true,
+      nombre: nombre,
+      jugadores: jugadores,
+      acompanantes: acompanantes
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('getComercialData error: ' + err);
+    return ContentService.createTextOutput(JSON.stringify({ found: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }

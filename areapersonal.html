@@ -11,7 +11,7 @@
 body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--text)}
 nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .nav-logos{display:flex;align-items:center;gap:14px}
-.nav-logos img{height:36px;filter:brightness(0)invert(1)}
+.nav-logos img{height:72px;filter:brightness(0)invert(1)}
 .nav-tag{color:rgba(255,255,255,.5);font-size:13px}
 .wrap{max-width:1060px;margin:0 auto;padding:40px 32px 80px}
 /* welcome */
@@ -199,6 +199,22 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 @media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}.modal-grid{grid-template-columns:1fr}.mfield.full{grid-column:1}}
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes badge-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+/* COMERCIAL DASHBOARD */
+.com-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.com-kpi-val{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--navy);line-height:1}
+.com-kpi-val.blue{color:var(--blue)}
+.com-kpi-label{font-size:13px;color:var(--muted);margin-top:5px}
+.com-kpi-sub{font-size:12px;color:#94a3b8;margin-top:3px}
+.com-table{width:100%;border-collapse:collapse;font-size:13px}
+.com-table th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:0 8px 10px 0;border-bottom:1px solid var(--border)}
+.com-table th:last-child,.com-table td:last-child{text-align:right;padding-right:0}
+.com-table td{padding:11px 8px 11px 0;border-bottom:1px solid var(--border);color:#334155;vertical-align:middle}
+.com-table tr:last-child td{border-bottom:none}
+.com-total-row td{font-weight:700;color:var(--navy);padding-top:13px;border-top:2px solid var(--border)}
+.com-status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.com-status-pend{background:#fef3c7;color:#92400e}
+.com-status-pag{background:#d1fae5;color:#065f46}
+@media(max-width:640px){.com-kpi-row{grid-template-columns:1fr 1fr}.com-kpi-row .card:nth-child(3){grid-column:1/-1}}
 /* LOGIN GATE */
 #login-gate{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-box{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;text-align:center}
@@ -235,17 +251,17 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 <div id="login-gate">
   <div class="login-box">
     <div class="login-logos">
-      <img src="https://drive.google.com/uc?export=view&id=173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory">
-      <img src="https://drive.google.com/uc?export=view&id=1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF">
-      <img src="https://drive.google.com/uc?export=view&id=1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="EFI">
-      <img src="https://drive.google.com/uc?export=view&id=1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel">
+      <img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory">
+      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF">
+      <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="EFI">
+      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel">
     </div>
     <div class="login-title">Área Personal</div>
-    <div class="login-sub">RMF Clinic 2026 · Madrid, España<br>Ingresa el correo electrónico con el que te pre-inscribiste para acceder a tu información.</div>
+    <div class="login-sub">RMF Clinic 2026 · Madrid, España<br>Ingresa el correo electrónico con el que te inscribiste para acceder a tu información.</div>
     <input class="login-input" id="login-email" type="email" placeholder="tucorreo@ejemplo.com" onkeydown="if(event.key==='Enter') doLogin()">
     <button class="login-btn" id="login-btn" onclick="doLogin()">Acceder →</button>
-    <div class="login-err" id="login-err">No encontramos ninguna pre-inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.</div>
-    <div class="login-footer">¿Aún no te has pre-inscrito? <a href="preinscripcion.html" style="color:var(--blue-light)">Ir al formulario →</a></div>
+    <div class="login-err" id="login-err">No encontramos ninguna inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.</div>
+    <div class="login-footer">¿Aún no te has inscrito? <a href="preinscripcion.html" style="color:var(--blue-light)">Ir al formulario →</a></div>
   </div>
 </div>
 
@@ -257,10 +273,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     Volver al inicio
   </a>
   <div class="nav-logos">
-    <img src="https://drive.google.com/uc?export=view&id=173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory">
-    <img src="https://drive.google.com/uc?export=view&id=1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF">
-    <img src="https://drive.google.com/uc?export=view&id=1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="EFI">
-    <img src="https://drive.google.com/uc?export=view&id=1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel">
+    <img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory">
+    <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF">
+    <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="EFI">
+    <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel">
   </div>
   <div class="nav-tag">Área Personal · RMF Clinic 2026</div>
 </nav>
@@ -306,7 +322,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <div class="card" id="datos-resumen-card">
-    <div class="ctitle">Resumen de pre-inscripción</div>
+    <div class="ctitle">Resumen de inscripción</div>
     <div class="dres-outer">
       <div class="dres-grid">
       <div class="dres-item"><div class="dres-l">Nombre</div><div class="dres-v" id="d-nombre">-</div></div>
@@ -329,6 +345,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Comunicaciones</button>
     <button class="stab" data-section="saber" onclick="switchSection('saber')">📋 Lo que debo saber</button>
     <button class="stab" id="stab-admin" data-section="admin" onclick="switchSection('admin')" style="display:none;background:var(--navy);color:#fff">⚙ Admin</button>
+    <button class="stab" id="stab-comercial" data-section="comercial" onclick="switchSection('comercial')" style="display:none">💼 Mis Comisiones</button>
   </div>
 
   <div class="steps" id="steps-row"></div>
@@ -340,7 +357,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <!-- Opción agregar tiquete (solo si vino sin tiquete) — PRIMERO -->
       <div id="tiq-optin" style="display:none" class="tiq-box">
         <h4>✈️ ¿Deseas agregar el tiquete aéreo?</h4>
-        <p>No lo incluiste en la pre-inscripción. Puedes agregarlo ahora — costo aprox. <strong>~1.150 EUR</strong> por persona (vuelo grupal BOG–MAD–BOG, fecha fija).</p>
+        <p>No lo incluiste en la inscripción. Puedes agregarlo ahora — costo aprox. <strong>~1.150 EUR</strong> por persona (vuelo grupal BOG–MAD–BOG, fecha fija).</p>
         <div class="tiq-btns">
           <button class="btn-tiq-yes" id="btn-tiq-si" onclick="setTiquete(true)">✈️ Sí, agregar tiquete</button>
           <button class="btn-tiq-no" onclick="setTiquete(false)">No, gestiono mi tiquete</button>
@@ -627,9 +644,9 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
       <!-- Logos -->
       <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin:24px 0 20px;padding-bottom:18px;border-bottom:1px solid var(--border);">
-        <img src="https://drive.google.com/uc?export=view&id=1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" height="36" style="filter:brightness(0);opacity:0.65;" alt="RMF">
+        <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" height="36" style="filter:brightness(0);opacity:0.65;" alt="RMF">
         <div style="width:1px;height:30px;background:var(--border);"></div>
-        <img src="https://drive.google.com/uc?export=view&id=1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" height="36" style="opacity:0.75;" alt="Revel">
+        <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" height="36" style="opacity:0.75;" alt="Revel">
       </div>
 
       <p style="font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic;">Madrid, octubre 2026</p>
@@ -670,7 +687,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div class="card">
       <div class="ctitle">Proceso completado</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-        <div style="background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:12px;font-size:13px;color:var(--green);">✅ Pre-inscripción confirmada</div>
+        <div style="background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:12px;font-size:13px;color:var(--green);">✅ Inscripción confirmada</div>
         <div style="background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:12px;font-size:13px;color:var(--green);">✅ Términos y Condiciones</div>
         <div style="background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:12px;font-size:13px;color:var(--green);">✅ Pago de reserva</div>
         <div style="background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:12px;font-size:13px;color:var(--green);">✅ Documentación enviada</div>
@@ -680,6 +697,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         💬 Escribir al equipo por WhatsApp
       </a>
     </div>
+  </div>
+
+  <!-- PANEL COMERCIAL -->
+  <div class="panel" id="panel-comercial">
+    <div id="comercial-content"><p style="color:var(--muted);font-size:14px;padding:20px 0">Cargando comisiones...</p></div>
   </div>
 
   <!-- FOTOS DEL VIAJE -->
@@ -1176,7 +1198,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 </div>
 
 <script>
-// ── CONFIG (mismo webhook que preinscripción; Make filtra por body.action) ───
+// ── CONFIG (mismo webhook que inscripción; Make filtra por body.action) ───
 const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
 
 // ── GOOGLE APPS SCRIPT UPLOAD URL ───────────────────────────────────────────
@@ -1541,7 +1563,7 @@ function buildBreakdown(t) {
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim().toLowerCase();
   const errEl = document.getElementById('login-err');
-  const defaultErr = 'No encontramos ninguna pre-inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.';
+  const defaultErr = 'No encontramos ninguna inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.';
   errEl.textContent = defaultErr;
   if (!email || !email.includes('@')) {
     errEl.textContent = 'Introduce un correo electrónico válido.';
@@ -1553,18 +1575,28 @@ async function doLogin() {
   btn.textContent = 'Buscando...';
   errEl.style.display = 'none';
   try {
-    const buscarUrl = APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email) + '&_t=' + Date.now();
-    const res = await fetch(buscarUrl, { redirect: 'follow' });
-    const rawText = await res.text();
+    // Buscar participante y comercial en paralelo
+    const [rawText, comercialJson] = await Promise.all([
+      fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.text()),
+      fetch(APPS_SCRIPT_URL + '?action=comercial_login&email=' + encodeURIComponent(email) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json()).catch(() => ({ found: false }))
+    ]);
+
     let data; try { data = JSON.parse(rawText); } catch(e2) { data = null; }
     const rawParticipants = extractParticipants(data);
-    if (rawParticipants.length === 0) throw new Error('not_found');
+    const isComercial = !!(comercialJson && comercialJson.found);
 
-    // Normalizar todos y calcular el paso del grupo (el mayor entre todos)
+    // Sin participantes y sin comercial → verificar admin o mostrar error
+    if (rawParticipants.length === 0 && !isComercial) throw new Error('not_found');
+
+    // Comercial sin participantes → panel de comisiones únicamente
+    if (rawParticipants.length === 0 && isComercial) {
+      showComercialOnly(comercialJson);
+      return;
+    }
+
+    // Participante normal (con o sin rol comercial) — flujo existente
     allParticipants = rawParticipants.map(p => normalizeParticipant(p) || p);
     grupoPaso = Math.max(...allParticipants.map(p => parseInt(p.paso_actual) || 1));
-
-    // Determinar conTiq del grupo (si algún participante tiene tiquete)
     conTiq = allParticipants.some(p => p.tiquete_aereo === 'Con tiquete');
 
     document.getElementById('login-gate').style.display = 'none';
@@ -1577,11 +1609,9 @@ async function doLogin() {
       document.getElementById('ptabs').innerHTML = '';
     }
 
-    // Cargar info personal del primer participante (jugador si existe)
     const primerJug = allParticipants.find(p => p.tipo === 'Jugador') || allParticipants[0];
     loadParticipant(primerJug);
 
-    // Aplicar pasos y pagos UNA sola vez para todo el grupo
     document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
     document.getElementById('tc-text').innerHTML = getTyC();
     const tiqOptin = document.getElementById('tiq-optin');
@@ -1594,20 +1624,23 @@ async function doLogin() {
     if (ADMIN_EMAILS.includes(participantEmail)) {
       document.getElementById('stab-admin').style.display = '';
     }
+    // Si también es comercial, mostrar tab de comisiones
+    if (isComercial) {
+      window._comercialData = comercialJson;
+      document.getElementById('stab-comercial').style.display = '';
+    }
     checkNuevosComunicados();
     const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam && ['fotos','comunicaciones','saber','admin'].includes(tabParam)) {
+    if (tabParam && ['fotos','comunicaciones','saber','admin','comercial'].includes(tabParam)) {
       setTimeout(() => switchSection(tabParam), 150);
     }
   } catch (e) {
     const emailNorm = email.toLowerCase().trim();
-    // Admin hardcodeado
     if (ADMIN_EMAILS.includes(emailNorm)) {
       participantEmail = emailNorm;
       showAdminOnly();
       return;
     }
-    // Admin añadido dinámicamente via panel de Acceso
     try {
       const accesoRes = await fetch(APPS_SCRIPT_URL + '?action=admin_acceso_check&email=' + encodeURIComponent(emailNorm) + '&_t=' + Date.now(), { redirect: 'follow' });
       const accesoData = await accesoRes.json();
@@ -1694,7 +1727,7 @@ function loadParticipant(p) {
 
 function applyPasoActual(paso) {
   // Marcar pasos completados según número de paso
-  STEP_DEFS[0].done = true; // Pre-inscripción siempre done
+  STEP_DEFS[0].done = true; // Inscripción siempre done
   STEP_DEFS[1].done = paso >= 2; // T&C
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
   if (idxReserva > -1) STEP_DEFS[idxReserva].done = paso >= 3;
@@ -1714,7 +1747,7 @@ function applyPasoActual(paso) {
 
 // ── STEPS ────────────────────────────────────────────────────────────────────
 const STEP_DEFS = [
-  {title:'Pre-inscripción', desc:'Completada', panel:null, done:true},
+  {title:'Inscripción', desc:'Completada', panel:null, done:true},
   {title:'Términos y Condiciones', desc:'Lee y acepta los T&C', panel:'panel-tc'},
   {title:'Pago de reserva', desc:'1.000 EUR para confirmar cupo', panel:'panel2'},
   {title:'Pago tiquete',    desc:'Vuelo BOG–MAD–BOG', panel:'panel-tiq', tiqOnly:true},
@@ -2266,6 +2299,7 @@ function switchSection(section) {
     if (section === 'saber' && !saberLoaded) loadSaber();
     if (section === 'saber') loadClima();
     if (section === 'admin' && !adminLoaded) loadAdmin();
+    if (section === 'comercial') renderComercialPanel();
   }
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -2483,6 +2517,75 @@ function loadClima() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 // Todo se inicializa en loadParticipant() después del login exitoso.
+
+// ── COMERCIAL PANEL ───────────────────────────────────────────────────────────
+function showComercialOnly(data) {
+  document.getElementById('login-gate').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+  document.getElementById('ptabs-container').style.display = 'none';
+  document.getElementById('steps-row').style.display = 'none';
+  document.getElementById('datos-resumen-card').style.display = 'none';
+  document.getElementById('welcome-guide').style.display = 'none';
+  document.getElementById('welcome-collapsed').style.display = 'none';
+  document.getElementById('dn').textContent = data.nombre;
+  document.getElementById('dtipo').textContent = '💼 Comercial';
+  document.getElementById('btn-toggle-tiq').style.display = 'none';
+  document.getElementById('section-tabs').style.display = 'none';
+  window._comercialData = data;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-comercial').classList.add('active');
+  renderComercialPanel();
+}
+
+function renderComercialPanel() {
+  const data = window._comercialData;
+  if (!data || !data.found) return;
+  const jugs   = data.jugadores    || [];
+  const acomps = data.acompanantes || [];
+  const totalJugs   = jugs.reduce(function(s,r){ return s+(r.total||0); }, 0);
+  const totalAcomps = acomps.reduce(function(s,r){ return s+(r.total||0); }, 0);
+  const totalGlobal = totalJugs + totalAcomps;
+  function fmt(n){ return (n||0).toLocaleString('es-CO')+' €'; }
+  function statusBadge(e){ var cls=(e||'').toLowerCase().includes('pag')?'com-status-pag':'com-status-pend'; return '<span class="com-status '+cls+'">'+(e||'Pendiente')+'</span>'; }
+
+  var jugSubLabel = jugs.length ? jugs.map(function(r){ return r.jugadores+' jug. × '+fmt(r.comision_jugador); }).join(' · ') : 'Sin jugadores aún';
+  var activeAcomps = acomps.filter(function(r){ return r.acomp_doble>0||r.acomp_sencilla>0; });
+  var acompSubLabel = activeAcomps.length ? activeAcomps.map(function(r){ var p=[]; if(r.acomp_doble>0)p.push(r.acomp_doble+' doble'); if(r.acomp_sencilla>0)p.push(r.acomp_sencilla+' sencilla'); return p.join(', '); }).join(' · ') : 'Sin acompañantes aún';
+
+  var html = '';
+  // KPI row
+  html += '<div class="com-kpi-row">'
+    +'<div class="card"><div class="ctitle">Jugadores</div><div class="com-kpi-val">'+fmt(totalJugs)+'</div><div class="com-kpi-label">Total comisiones jugadores</div><div class="com-kpi-sub">'+jugSubLabel+'</div></div>'
+    +'<div class="card"><div class="ctitle">Acompañantes</div><div class="com-kpi-val">'+fmt(totalAcomps)+'</div><div class="com-kpi-label">Total comisiones acompañantes</div><div class="com-kpi-sub">'+acompSubLabel+'</div></div>'
+    +'<div class="card" style="border:2px solid var(--blue)"><div class="ctitle" style="color:var(--blue)">Total Global</div><div class="com-kpi-val blue">'+fmt(totalGlobal)+'</div><div class="com-kpi-label">Suma total de comisiones</div></div>'
+    +'</div>';
+
+  // Jugadores detail
+  html += '<div class="card" style="margin-bottom:16px"><div class="ctitle">Detalle — Jugadores</div>';
+  if (jugs.length) {
+    html += '<table class="com-table"><thead><tr><th>Jugadores</th><th>Com./Jugador</th><th>Estado</th><th>Total</th></tr></thead><tbody>';
+    jugs.forEach(function(r){
+      html += '<tr><td>'+r.jugadores+'</td><td>'+fmt(r.comision_jugador)+'</td><td>'+statusBadge(r.estado)+'</td><td><strong>'+fmt(r.total)+'</strong></td></tr>';
+    });
+    if (jugs.length > 1) html += '<tr class="com-total-row"><td colspan="3">Total jugadores</td><td>'+fmt(totalJugs)+'</td></tr>';
+    html += '</tbody></table>';
+  } else { html += '<p style="color:var(--muted);font-size:14px">Sin datos de jugadores.</p>'; }
+  html += '</div>';
+
+  // Acompañantes detail
+  html += '<div class="card"><div class="ctitle">Detalle — Acompañantes</div>';
+  if (activeAcomps.length) {
+    html += '<table class="com-table"><thead><tr><th>Com. Doble</th><th>Com. Sencilla</th><th>Hab. Doble</th><th>Hab. Sencilla</th><th>Subtotal</th></tr></thead><tbody>';
+    activeAcomps.forEach(function(r){
+      html += '<tr><td>'+fmt(r.com_doble)+'</td><td>'+fmt(r.com_sencilla)+'</td><td>'+r.acomp_doble+'</td><td>'+r.acomp_sencilla+'</td><td><strong>'+fmt(r.total)+'</strong></td></tr>';
+    });
+    if (activeAcomps.length > 1) html += '<tr class="com-total-row"><td colspan="4">Total acompañantes</td><td>'+fmt(totalAcomps)+'</td></tr>';
+    html += '</tbody></table>';
+  } else { html += '<p style="color:var(--muted);font-size:14px">Sin acompañantes asignados.</p>'; }
+  html += '</div>';
+
+  document.getElementById('comercial-content').innerHTML = html;
+}
 
 // ── ADMIN PANEL ───────────────────────────────────────────────────────────────
 function showAdminOnly() {
@@ -2763,6 +2866,14 @@ function renderAdminDashboard(rows, fin) {
         </tbody>
       </table>`;
     }
+    const totalJugs  = jugs.reduce((s, c) => s + (c.total||0), 0);
+    const totalAcomps = acomps.reduce((s, c) => s + (c.total||0), 0);
+    const totalGlobal = totalJugs + totalAcomps;
+    html += `<div style="display:flex;justify-content:flex-end;align-items:center;gap:20px;padding:10px 0;border-top:1px solid var(--border);margin-top:4px">
+      <span style="font-size:15px;color:var(--muted)">Jugadores <strong style="color:var(--navy);font-weight:500">${totalJugs.toLocaleString('es-CO')}€</strong></span>
+      <span style="font-size:15px;color:var(--muted)">Acompañantes <strong style="color:var(--navy);font-weight:500">${totalAcomps.toLocaleString('es-CO')}€</strong></span>
+      <span style="font-size:15px;font-weight:700;color:var(--blue)">Total: ${totalGlobal.toLocaleString('es-CO')}€</span>
+    </div>`;
     document.getElementById('admin-comisiones-resumen').innerHTML = html;
   } else if (comCard) {
     comCard.style.display = 'none';
