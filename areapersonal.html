@@ -1817,7 +1817,7 @@ async function fetchTasa() {
     const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json');
     const d = await r.json();
     if (d && d.eur && d.eur.cop) {
-      tasa = Math.max(Math.round(parseFloat(d.eur.cop) * 1.007), TASA_FALLBACK);
+      tasa = Math.round(parseFloat(d.eur.cop) * 1.007);
       updateTasaFecha();
       updateCalcs(); return;
     }
@@ -1827,7 +1827,7 @@ async function fetchTasa() {
     const r2 = await fetch('https://open.er-api.com/v6/latest/EUR');
     const d2 = await r2.json();
     if (d2 && d2.rates && d2.rates.COP) {
-      tasa = Math.max(Math.round(parseFloat(d2.rates.COP) * 1.007), TASA_FALLBACK);
+      tasa = Math.round(parseFloat(d2.rates.COP) * 1.007);
       updateTasaFecha();
       updateCalcs(); return;
     }
