@@ -5,7 +5,8 @@ const PRECACHE = [
   '/memorias.html',
   '/preinscripcion.html',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/icon-180.png'
 ];
 
 self.addEventListener('install', e => {
