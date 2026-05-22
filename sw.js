@@ -1,4 +1,4 @@
-const CACHE = 'rmf-v2';
+const CACHE = 'rmf-v3';
 const PRECACHE = [
   '/areapersonal.html',
   '/index.html',
@@ -6,7 +6,8 @@ const PRECACHE = [
   '/preinscripcion.html',
   '/manifest.json',
   '/icon.svg',
-  '/icon-180.png'
+  '/icon-180.png',
+  '/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', e => {
