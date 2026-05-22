@@ -1570,6 +1570,76 @@ function showStatus(type, msg, onClick) {
   .incluye-layout { grid-template-columns: 1fr; }
   .testimonios-grid { grid-template-columns: 1fr; }
 }
+@media (max-width: 900px) {
+  body { padding-top: 120px; }
+  .nav-top { padding: 10px 16px; }
+  .nav-logo img { height: 26px; }
+  .nav-bottom {
+    padding: 6px 12px 8px;
+    gap: 6px;
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav-bottom::-webkit-scrollbar { display: none; }
+  .nav-btn { font-size: 11px; padding: 6px 12px; white-space: nowrap; flex-shrink: 0; }
+  .form-layout { grid-template-columns: 1fr; gap: 40px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+}
+
+@media (max-width: 600px) {
+  body { padding-top: 108px; }
+  .nav-top { padding: 8px 12px; }
+  .nav-logo img { height: 20px; }
+  .container { padding: 0 16px; }
+  section { padding: 56px 0; }
+  .section-title { font-size: clamp(28px, 9vw, 48px); }
+
+  #hero {
+    display: flex !important;
+    flex-direction: column;
+    min-height: unset;
+    padding: 0;
+  }
+  #hero .container {
+    display: flex !important;
+    grid-template-columns: unset !important;
+    flex-direction: column;
+    gap: 0 !important;
+    padding-top: 40px !important;
+    padding-bottom: 36px !important;
+  }
+  #hero .container > div:last-child {
+    display: none !important;
+  }
+  .cupos-badge {
+    display: inline-flex;
+    margin-top: 16px;
+    width: fit-content;
+  }
+  .hero-left {
+    padding: 0 !important;
+  }
+  .hero-title { font-size: clamp(42px, 14vw, 72px); }
+  .hero-sub { font-size: 14px; margin-bottom: 28px; }
+  .hero-actions { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .btn-primary { width: 100%; justify-content: center; padding: 14px 20px; }
+  .hero-trust { margin-top: 24px; }
+
+  .form-grid { grid-template-columns: 1fr; }
+  .form-card { padding: 22px 14px; }
+  .form-layout { grid-template-columns: 1fr; gap: 32px; }
+  .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+  .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+
+  #programas .container > div[style*="grid-template-columns:repeat(3"] {
+    grid-template-columns: 1fr !important;
+  }
+  #itinerario .container > div[style*="repeat(3"] {
+    grid-template-columns: 1fr !important;
+  }
+}
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=Hola%20Victory%2C%20necesito%20m%C3%A1s%20informaci%C3%B3n%20sobre%20el%20programa%20RMF%20Clinic%202026" target="_blank" rel="noopener"
    style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:#25D366;border-radius:50%;text-decoration:none;transition:transform .25s;"
