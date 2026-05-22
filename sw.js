@@ -1,4 +1,4 @@
-const CACHE = 'rmf-v1';
+const CACHE = 'rmf-v2';
 const PRECACHE = [
   '/areapersonal.html',
   '/index.html',
