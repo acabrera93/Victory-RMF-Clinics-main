@@ -1,0 +1,25 @@
+{
+  "name": "RMF Clinic 2026 · Victory Sports",
+  "short_name": "RMF Clinic",
+  "description": "Área personal del programa Real Madrid Foundation Clinic 2026",
+  "start_url": "/areapersonal.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1f3a",
+  "theme_color": "#0b1f3a",
+  "orientation": "portrait-primary",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
