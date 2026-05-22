@@ -59,7 +59,27 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .btn-area{display:inline-flex;align-items:center;gap:8px;padding:14px 30px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .2s}
 .btn-area:hover{background:#162d57;transform:translateY(-1px);box-shadow:0 6px 20px rgba(11,31,58,.25)}
 .btn-otro{display:block;margin-top:16px;font-size:13px;color:var(--blue-light);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif}
-@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.type-grid,.form-grid{grid-template-columns:1fr}.hero h1{font-size:28px}.hero{padding:24px 20px}}
+@media (max-width: 600px) {
+  nav { padding: 10px 14px; gap: 8px; flex-wrap: wrap; }
+  .nav-logos { gap: 8px; }
+  .nav-logos img { height: 26px; }
+  .nav-tag { display: none; }
+  .wrap { padding: 16px 12px 60px; }
+  .hero { padding: 24px 16px; border-radius: 8px; }
+  .hero h1 { font-size: 26px; }
+  .hero p { font-size: 13px; }
+  .hero-note { font-size: 12px; padding: 12px; }
+  .type-grid { grid-template-columns: 1fr; gap: 12px; }
+  .type-card { padding: 20px 16px; }
+  .type-icon { font-size: 34px; }
+  .type-title { font-size: 20px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-card { padding: 20px 14px; }
+  .radio-group { flex-direction: column; gap: 8px; }
+  .radio-opt { min-width: unset; }
+  .btn-submit { font-size: 15px; padding: 14px; }
+  .success-screen { padding: 40px 20px; }
+}
 </style>
 </head>
 <body>
