@@ -1,19 +1,14 @@
-const CACHE = 'rmf-v3';
-const PRECACHE = [
-  '/areapersonal.html',
-  '/index.html',
-  '/memorias.html',
-  '/preinscripcion.html',
-  '/manifest.json',
-  '/icon.svg',
-  '/icon-180.png',
-  '/apple-touch-icon.png'
-];
+const CACHE = 'rmf-v4';
 
 self.addEventListener('install', e => {
+  // Precache only the main HTML pages — icon files cached on demand
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(PRECACHE))
+      .then(c => Promise.allSettled([
+        c.add('/areapersonal.html'),
+        c.add('/index.html'),
+        c.add('/manifest.json')
+      ]))
       .then(() => self.skipWaiting())
   );
 });
@@ -28,7 +23,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
-  // Never intercept API calls or external resources
   if (
     url.includes('script.google.com') ||
     url.includes('googleapis.com') ||
@@ -38,7 +32,6 @@ self.addEventListener('fetch', e => {
     e.request.method !== 'GET'
   ) return;
 
-  // Network-first: try live, fall back to cache
   e.respondWith(
     fetch(e.request)
       .then(res => {
