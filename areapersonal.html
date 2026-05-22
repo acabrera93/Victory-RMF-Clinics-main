@@ -3868,6 +3868,147 @@ function adminHandleFotoUpload(files) {
   .welcome h1 { font-size: 20px; }
   .badge { font-size: 11px; padding: 4px 10px; }
 }
+@media (max-width: 900px) {
+  nav { padding: 10px 16px; gap: 8px; }
+  .nav-logos img { height: 28px; }
+  .wrap { padding: 20px 14px 80px; }
+  .welcome { padding: 18px 16px; flex-direction: column; align-items: flex-start; gap: 10px; }
+  .welcome h1 { font-size: 22px; }
+  .calc-row { grid-template-columns: 1fr; }
+  .pay-grid { grid-template-columns: 1fr; }
+  .cresult { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .crvalue { font-size: 34px; }
+}
+
+@media (max-width: 600px) {
+  nav { padding: 8px 12px; }
+  .nav-logos { gap: 8px; }
+  .nav-logos img { height: 20px; }
+  .nav-tag { display: none; }
+  .wrap { padding: 14px 10px 80px; }
+
+  .welcome { border-radius: 8px; padding: 14px 14px; }
+  .welcome h1 { font-size: 18px; }
+  .badge { font-size: 10px; padding: 3px 10px; }
+
+  .steps {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-radius: 8px;
+  }
+  .steps::-webkit-scrollbar { display: none; }
+  .step { min-width: 72px; padding: 10px 6px; }
+  .stitle { font-size: 10px; }
+  .sdesc { display: none; }
+
+  .card { padding: 14px 12px; border-radius: 10px; }
+  .ctitle { font-size: 12px; }
+
+  .section-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .section-tabs::-webkit-scrollbar { display: none; }
+  .stab { min-width: 88px; font-size: 11px; padding: 8px 6px; white-space: nowrap; }
+
+  .fotos-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+
+  .brow { flex-direction: column; gap: 1px; padding: 8px 0; }
+  .bkey { font-size: 11px; }
+  .bval { font-size: 13px; }
+
+  .pay-grid { grid-template-columns: 1fr; gap: 10px; }
+  .pay-opt { padding: 14px; }
+  .ptitle { font-size: 14px; }
+  .pdesc { font-size: 12px; }
+  .pamount-value { font-size: 16px; }
+
+  .calc-row { grid-template-columns: 1fr; gap: 10px; }
+  .cinput { font-size: 18px; }
+
+  .cresult { padding: 14px 16px; flex-direction: column; align-items: flex-start; }
+  .crvalue { font-size: 32px; }
+
+  .tiq-btns { flex-direction: column; }
+  .btn-tiq-yes, .btn-tiq-no { width: 100%; text-align: center; padding: 11px; }
+
+  .doc-item { flex-direction: column; gap: 8px; }
+  .bold-btn { font-size: 13px; padding: 13px; }
+
+  .breakdown-box { padding: 10px 12px; }
+  .bkrow { flex-wrap: wrap; gap: 2px; }
+
+  .lb-arrow { width: 40px; height: 40px; font-size: 24px; }
+  .lb-prev { left: 6px; }
+  .lb-next { right: 6px; }
+}
+@media (max-width: 900px) {
+  nav { padding: 10px 16px; gap: 8px; }
+  .nav-logos img { height: 28px; }
+  .wrap { padding: 20px 14px 80px; }
+  .welcome { padding: 18px 16px; flex-direction: column; align-items: flex-start; gap: 10px; }
+  .welcome h1 { font-size: 22px; }
+  .calc-row { grid-template-columns: 1fr; }
+  .pay-grid { grid-template-columns: 1fr; }
+  .cresult { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .crvalue { font-size: 34px; }
+}
+
+@media (max-width: 600px) {
+  nav { padding: 8px 12px; }
+  .nav-logos { gap: 8px; }
+  .nav-logos img { height: 20px; }
+  .nav-tag { display: none; }
+  .wrap { padding: 14px 10px 80px; }
+  .welcome { border-radius: 8px; padding: 14px; }
+  .welcome h1 { font-size: 18px; }
+  .badge { font-size: 10px; padding: 3px 10px; }
+  .steps {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-radius: 8px;
+  }
+  .steps::-webkit-scrollbar { display: none; }
+  .step { min-width: 72px; padding: 10px 6px; }
+  .stitle { font-size: 10px; }
+  .sdesc { display: none; }
+  .card { padding: 14px 12px; border-radius: 10px; }
+  .ctitle { font-size: 12px; }
+  .section-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .section-tabs::-webkit-scrollbar { display: none; }
+  .stab { min-width: 88px; font-size: 11px; padding: 8px 6px; white-space: nowrap; }
+  .fotos-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .brow { flex-direction: column; gap: 1px; padding: 8px 0; }
+  .bkey { font-size: 11px; }
+  .bval { font-size: 13px; }
+  .pay-grid { grid-template-columns: 1fr; gap: 10px; }
+  .pay-opt { padding: 14px; }
+  .ptitle { font-size: 14px; }
+  .pdesc { font-size: 12px; }
+  .pamount-value { font-size: 16px; }
+  .calc-row { grid-template-columns: 1fr; gap: 10px; }
+  .cinput { font-size: 18px; }
+  .cresult { padding: 14px 16px; flex-direction: column; align-items: flex-start; }
+  .crvalue { font-size: 32px; }
+  .tiq-btns { flex-direction: column; }
+  .btn-tiq-yes, .btn-tiq-no { width: 100%; text-align: center; padding: 11px; }
+  .doc-item { flex-direction: column; gap: 8px; }
+  .bold-btn { font-size: 13px; padding: 13px; }
+  .breakdown-box { padding: 10px 12px; }
+  .bkrow { flex-wrap: wrap; gap: 2px; }
+  .lb-arrow { width: 40px; height: 40px; font-size: 24px; }
+  .lb-prev { left: 6px; }
+  .lb-next { right: 6px; }
+}
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=Hola%20Victory%2C%20necesito%20ayuda%20con%20mi%20proceso%20RMF%20Clinic%202026" target="_blank" rel="noopener"
    style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:#25D366;border-radius:50%;text-decoration:none;transition:transform .25s;"
