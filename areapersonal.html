@@ -3831,6 +3831,43 @@ function adminHandleFotoUpload(files) {
 @keyframes wa-pulse{0%,100%{box-shadow:0 8px 28px rgba(37,211,102,.65)}50%{box-shadow:0 8px 28px rgba(37,211,102,.65),0 0 0 16px rgba(37,211,102,.2)}}
 #wa-circle{animation:wa-pulse 3s ease-in-out infinite}
 #wa-circle:hover{transform:scale(1.08);animation:none}
+@media (max-width: 900px) {
+  nav { padding: 12px 20px; }
+  .nav-logos img { height: 28px; }
+  .wrap { padding: 24px 16px 80px; }
+  .welcome { padding: 20px; flex-direction: column; align-items: flex-start; }
+  .welcome h1 { font-size: 24px; }
+  .calc-row { grid-template-columns: 1fr; }
+  .pay-grid { grid-template-columns: 1fr; }
+  .cresult { flex-direction: column; align-items: flex-start; }
+  .crvalue { font-size: 36px; }
+}
+
+@media (max-width: 600px) {
+  nav { padding: 10px 14px; gap: 8px; }
+  .nav-logos { gap: 8px; }
+  .nav-logos img { height: 22px; }
+  .nav-tag { display: none; }
+  .wrap { padding: 16px 12px 80px; }
+  .steps {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .steps::-webkit-scrollbar { display: none; }
+  .step { min-width: 90px; padding: 12px 8px; }
+  .stitle { font-size: 11px; }
+  .sdesc { display: none; }
+  .card { padding: 18px 14px; }
+  .section-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .section-tabs::-webkit-scrollbar { display: none; }
+  .stab { min-width: 100px; font-size: 12px; padding: 9px 6px; }
+  .fotos-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .brow { flex-direction: column; gap: 2px; }
+  .bval { font-size: 14px; }
+  .welcome h1 { font-size: 20px; }
+  .badge { font-size: 11px; padding: 4px 10px; }
+}
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=Hola%20Victory%2C%20necesito%20ayuda%20con%20mi%20proceso%20RMF%20Clinic%202026" target="_blank" rel="noopener"
    style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:#25D366;border-radius:50%;text-decoration:none;transition:transform .25s;"
