@@ -3841,12 +3841,34 @@ function adminHandleFotoUpload(files) {
   </svg>
 </a>
 
-<div id="ios-install" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#0b1f3a; color:#fff; padding:16px 20px; border-radius:12px; font-size:14px; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.4); z-index:9999; width:90%; max-width:340px;">
-  <strong>Instala la app</strong><br>
-  Toca <strong>compartir</strong> <span style="font-size:18px;">⎙</span> y luego<br>
-  <strong>"Añadir a pantalla de inicio"</strong>
-  <br><br>
-  <button onclick="document.getElementById('ios-install').style.display='none'" style="background:rgba(255,255,255,0.15); border:none; color:#fff; padding:6px 16px; border-radius:6px; cursor:pointer;">Entendido</button>
+<div id="ios-install" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#0b1f3a; color:#fff; padding:20px 24px 32px; border-radius:20px 20px 0 0; font-size:14px; text-align:center; box-shadow:0 -4px 32px rgba(0,0,0,0.5); z-index:10000;">
+  <div style="width:36px;height:4px;background:rgba(255,255,255,0.25);border-radius:2px;margin:0 auto 16px;"></div>
+  <div style="font-size:17px;font-weight:700;margin-bottom:12px;">Instala la app en tu iPhone</div>
+  <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:left;">
+    <div style="flex-shrink:0;width:38px;height:38px;background:rgba(90,157,224,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 16V4M12 4L8 8M12 4L16 8" stroke="#5a9de0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" stroke="#5a9de0" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-weight:600;font-size:14px;">1. Pulsa el botón Compartir</div>
+      <div style="color:rgba(255,255,255,0.55);font-size:12px;margin-top:2px;">El icono de la flecha hacia arriba, en la barra inferior de Safari</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:18px;text-align:left;">
+    <div style="flex-shrink:0;width:38px;height:38px;background:rgba(90,157,224,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="3" width="18" height="18" rx="4" stroke="#5a9de0" stroke-width="2"/>
+        <path d="M12 8v8M8 12h8" stroke="#5a9de0" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <div style="font-weight:600;font-size:14px;">2. Toca "Añadir a pantalla de inicio"</div>
+      <div style="color:rgba(255,255,255,0.55);font-size:12px;margin-top:2px;">Desplázate hacia abajo en el menú hasta encontrarlo</div>
+    </div>
+  </div>
+  <button onclick="document.getElementById('ios-install').style.display='none'" style="width:100%;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;">Entendido</button>
 </div>
 
 <script>
@@ -3866,9 +3888,26 @@ function adminHandleFotoUpload(files) {
 
   const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const esSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const esChromeIOS = esIOS && /CriOS/i.test(navigator.userAgent);
   const yaInstalada = window.navigator.standalone === true;
-  if (esIOS && esSafari && !yaInstalada) {
-    document.getElementById('ios-install').style.display = 'block';
+
+  if (!yaInstalada && esIOS) {
+    const panel = document.getElementById('ios-install');
+    if (esChromeIOS) {
+      // Chrome en iOS no puede instalar PWAs — pedir que abran en Safari
+      panel.innerHTML = `
+        <div style="width:36px;height:4px;background:rgba(255,255,255,0.25);border-radius:2px;margin:0 auto 16px;"></div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:12px;">Instala la app en tu iPhone</div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:18px;text-align:left;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:6px;">Abre esta página en Safari</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.6;">En iPhone, la instalación solo funciona desde <strong style="color:#fff;">Safari</strong>. Chrome no lo permite.<br><br>Pulsa los tres puntos <strong style="color:#fff;">···</strong> arriba a la derecha y selecciona <strong style="color:#fff;">"Abrir en Safari"</strong>.</div>
+        </div>
+        <button onclick="document.getElementById('ios-install').style.display='none'" style="width:100%;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;">Entendido</button>
+      `;
+      panel.style.display = 'block';
+    } else if (esSafari) {
+      panel.style.display = 'block';
+    }
   }
 </script>
 
