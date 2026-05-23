@@ -130,6 +130,8 @@ function listFiles(folderId, filter) {
     const f = files.next();
     const mime = f.getMimeType();
     if (filter === 'image' && !mime.startsWith('image/')) continue;
+    // Ensure publicly accessible regardless of how the file was uploaded
+    try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(_) {}
     result.push({
       id: f.getId(),
       name: f.getName(),
