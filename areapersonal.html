@@ -319,8 +319,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
       <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">📋 Mi Proceso — pagos y documentos</span>
       <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">📸 Fotos del viaje</span>
-      <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">💬 Comunicaciones del equipo</span>
-      <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">📖 Lo que debo saber</span>
+      <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">💬 Mensajes del equipo</span>
+      <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">📖 Prepárate</span>
     </div>
     <p style="font-size:12px;color:rgba(255,255,255,.55);margin:0;">💡 Empieza por <strong style="color:rgba(255,255,255,.85);">Mi Proceso</strong> y sigue cada paso en orden. ¿Dudas? Escríbenos por WhatsApp.</p>
   </div>
@@ -351,8 +351,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <div class="section-tabs" id="section-tabs" style="display:none">
     <button class="stab active" data-section="proceso" onclick="switchSection('proceso')">Mi Proceso</button>
     <button class="stab" data-section="fotos" onclick="switchSection('fotos')">📸 Fotos</button>
-    <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Comunicaciones</button>
-    <button class="stab" data-section="saber" onclick="switchSection('saber')">📋 Lo que debo saber</button>
+    <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Mensajes</button>
+    <button class="stab" data-section="saber" onclick="switchSection('saber')">📋 Prepárate</button>
     <button class="stab" id="stab-admin" data-section="admin" onclick="switchSection('admin')" style="display:none;background:var(--navy);color:#fff">⚙ Admin</button>
     <button class="stab" id="stab-comercial" data-section="comercial" onclick="switchSection('comercial')" style="display:none">💼 Mis Comisiones</button>
   </div>
@@ -733,7 +733,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <!-- COMUNICACIONES -->
   <div class="panel" id="panel-comunicaciones">
     <div class="card">
-      <div class="ctitle">Comunicaciones</div>
+      <div class="ctitle">Mensajes</div>
       <div id="comun-feed" class="comun-feed">
         <p style="color:var(--muted)">Cargando comunicados...</p>
       </div>
@@ -1817,7 +1817,7 @@ async function fetchTasa() {
     const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json');
     const d = await r.json();
     if (d && d.eur && d.eur.cop) {
-      tasa = Math.round(parseFloat(d.eur.cop) * 1.007);
+      tasa = Math.round(parseFloat(d.eur.cop) * 1.005);
       updateTasaFecha();
       updateCalcs(); return;
     }
@@ -1827,7 +1827,7 @@ async function fetchTasa() {
     const r2 = await fetch('https://open.er-api.com/v6/latest/EUR');
     const d2 = await r2.json();
     if (d2 && d2.rates && d2.rates.COP) {
-      tasa = Math.round(parseFloat(d2.rates.COP) * 1.007);
+      tasa = Math.round(parseFloat(d2.rates.COP) * 1.005);
       updateTasaFecha();
       updateCalcs(); return;
     }
