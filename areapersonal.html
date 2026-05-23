@@ -361,7 +361,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <div class="steps" id="steps-row"></div>
 
   <!-- PANEL 2: T&C + CALCULADORA + PAGO RESERVA -->
-  <div class="panel active" id="panel-tc">
+  <div class="panel section-anchor active" id="panel-tc">
 
     <div class="card">
       <!-- Opción agregar tiquete (solo si vino sin tiquete) — PRIMERO -->
@@ -1790,7 +1790,7 @@ function goPanel(id) {
   document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.section === 'proceso'));
   const stepsRow = document.getElementById('steps-row');
   if (stepsRow) stepsRow.style.display = '';
-  window.scrollTo({top:0, behavior:'smooth'});
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── TASA ─────────────────────────────────────────────────────────────────────
