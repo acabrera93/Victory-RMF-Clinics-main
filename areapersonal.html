@@ -223,6 +223,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .com-status-pend{background:#fef3c7;color:#92400e}
 .com-status-pag{background:#d1fae5;color:#065f46}
 @media(max-width:640px){.com-kpi-row{grid-template-columns:1fr 1fr}.com-kpi-row .card:nth-child(3){grid-column:1/-1}}
+.section-anchor { scroll-margin-top: 80px; }
 /* LOGIN GATE */
 #login-gate{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-box{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;text-align:center}
@@ -385,7 +386,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
   </div>
 
-  <div class="panel" id="panel2">
+  <div class="panel section-anchor" id="panel2">
 
     <div class="card">
       <div class="ctitle">Calculadora EUR → COP</div>
@@ -473,7 +474,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <!-- PANEL TIQUETE (solo si aplica) -->
-  <div class="panel" id="panel-tiq">
+  <div class="panel section-anchor" id="panel-tiq">
     <div class="card">
       <div class="ctitle">Pago del tiquete aéreo</div>
       <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
@@ -526,7 +527,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <!-- PANEL 3: PAGO FINAL -->
-  <div class="panel" id="panel3">
+  <div class="panel section-anchor" id="panel3">
     <div class="card">
       <div class="ctitle">Pago final del programa</div>
       <div style="text-align:center;padding:20px 0 24px">
@@ -575,7 +576,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <!-- PANEL 4: DOCUMENTACIÓN -->
-  <div class="panel" id="panel4">
+  <div class="panel section-anchor" id="panel4">
     <div class="card">
       <div class="ctitle">Documentación requerida</div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6">Necesitamos los siguientes documentos para completar tu inscripción. Puedes subirlos aquí o enviarlos a <strong>alejandro.cabrera@fundacionrevel.net</strong>.</p>
@@ -644,7 +645,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <!-- PANEL 6: BIENVENIDO A MADRID -->
-  <div class="panel" id="panel-done">
+  <div class="panel section-anchor" id="panel-done">
 
     <!-- Carta de bienvenida — PRIMERO -->
     <div class="card" style="position:relative;overflow:hidden;border:1.5px solid rgba(30,91,168,0.2);box-shadow:0 4px 24px rgba(11,31,58,0.08);">
@@ -702,19 +703,19 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div style="background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:12px;font-size:13px;color:var(--green);">✅ Documentación enviada</div>
       </div>
       <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:16px;">Nuestro equipo revisará tu documentación y te contactará en máx. <strong>48 horas hábiles</strong> con la confirmación final.</p>
-      <a href="https://wa.me/34620301690?text=Hola%20Alejandro%2C%20acabo%20de%20completar%20mi%20proceso%20RMF%20Clinic%202026" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:13px 24px;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500;">
+      <a href="https://wa.me/34620301690?text=%C2%A1Hola!%20Quiero%20mas%20informaci%C3%B3n%20sobre%20los%20programas%20deportivos" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:13px 24px;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500;">
         💬 Escribir al equipo por WhatsApp
       </a>
     </div>
   </div>
 
   <!-- PANEL COMERCIAL -->
-  <div class="panel" id="panel-comercial">
+  <div class="panel section-anchor" id="panel-comercial">
     <div id="comercial-content"><p style="color:var(--muted);font-size:14px;padding:20px 0">Cargando comisiones...</p></div>
   </div>
 
   <!-- FOTOS DEL VIAJE -->
-  <div class="panel" id="panel-fotos">
+  <div class="panel section-anchor" id="panel-fotos">
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
         <div class="ctitle" style="margin-bottom:0">Fotos del Viaje</div>
@@ -731,7 +732,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <!-- COMUNICACIONES -->
-  <div class="panel" id="panel-comunicaciones">
+  <div class="panel section-anchor" id="panel-comunicaciones">
     <div class="card">
       <div class="ctitle">Mensajes</div>
       <div id="comun-feed" class="comun-feed">
@@ -740,7 +741,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
     <div class="card" style="text-align:center;margin-top:16px;padding:28px 24px">
       <p style="color:var(--muted);margin-bottom:16px">¿Tienes alguna pregunta? Escríbenos directamente por WhatsApp.</p>
-      <a href="https://wa.me/34620301690?text=Hola%20Victory%2C%20tengo%20una%20pregunta%20sobre%20el%20programa%20RMF%202026" target="_blank" rel="noopener" style="background:#25D366;color:#fff;display:inline-block;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500;">
+      <a href="https://wa.me/34620301690?text=%C2%A1Hola!%20Quiero%20mas%20informaci%C3%B3n%20sobre%20los%20programas%20deportivos" target="_blank" rel="noopener" style="background:#25D366;color:#fff;display:inline-block;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500;">
         💬 Escribir por WhatsApp
       </a>
       <p style="color:var(--muted);font-size:12px;margin-top:16px">Horario de atención: Lunes a Viernes, 9am – 6pm</p>
@@ -748,7 +749,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <!-- LO QUE DEBES SABER -->
-  <div class="panel" id="panel-saber">
+  <div class="panel section-anchor" id="panel-saber">
 
     <!-- CLIMA -->
     <div class="card" style="margin-bottom:18px;">
@@ -903,7 +904,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 
   <!-- PANEL ADMIN -->
-  <div class="panel" id="panel-admin">
+  <div class="panel section-anchor" id="panel-admin">
     <div class="card" style="padding:18px 24px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div class="ctitle" style="margin-bottom:0">Panel de Administración</div>
@@ -2297,12 +2298,12 @@ function switchSection(section) {
     stepsRow.style.display = '';
     if (resumenCard) resumenCard.style.display = '';
     const cur = document.getElementById(curPanel);
-    if (cur) cur.classList.add('active');
+    if (cur) { cur.classList.add('active'); cur.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } else {
     stepsRow.style.display = 'none';
     if (resumenCard) resumenCard.style.display = section === 'admin' ? 'none' : '';
     const el = document.getElementById('panel-' + section);
-    if (el) el.classList.add('active');
+    if (el) { el.classList.add('active'); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     if (section === 'fotos' && !fotosLoaded) loadFotos();
     if (section === 'comunicaciones') { clearComunBadge(); if (!comunLoaded) loadComunicaciones(); }
     if (section === 'saber' && !saberLoaded) loadSaber();
@@ -2310,7 +2311,6 @@ function switchSection(section) {
     if (section === 'admin' && !adminLoaded) loadAdmin();
     if (section === 'comercial') renderComercialPanel();
   }
-  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 let lbFiles = [];
@@ -4010,7 +4010,7 @@ function adminHandleFotoUpload(files) {
   .lb-next { right: 6px; }
 }
 </style>
-<a id="wa-circle" href="https://wa.me/34620301690?text=Hola%20Victory%2C%20necesito%20ayuda%20con%20mi%20proceso%20RMF%20Clinic%202026" target="_blank" rel="noopener"
+<a id="wa-circle" href="https://wa.me/34620301690?text=%C2%A1Hola!%20Quiero%20mas%20informaci%C3%B3n%20sobre%20los%20programas%20deportivos" target="_blank" rel="noopener"
    style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:#25D366;border-radius:50%;text-decoration:none;transition:transform .25s;"
    onmouseenter="document.getElementById('wa-tip').style.display='block'"
    onmouseleave="document.getElementById('wa-tip').style.display='none'">
