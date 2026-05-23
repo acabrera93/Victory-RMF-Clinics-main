@@ -2335,9 +2335,10 @@ function loadFotos() {
         </div>`
       ).join('');
     })
-    .catch(() => {
+    .catch(err => {
+      console.error('loadFotos error:', err);
       document.getElementById('fotos-grid').innerHTML =
-        '<p style="color:var(--muted)">Las fotos del viaje estarán disponibles pronto.</p>';
+        '<p style="color:var(--muted)">No se pudieron cargar las fotos. Revisa tu conexión e intenta de nuevo.</p>';
     });
 }
 
