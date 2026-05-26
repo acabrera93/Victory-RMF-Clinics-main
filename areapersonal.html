@@ -1179,6 +1179,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                 </tbody>
               </table>
             </div>
+            <!-- TARJETAS MÓVIL — JUGADORES -->
+            <div class="com-mobile-section">
+              <div class="com-mobile-cards" id="com-mobile-jug"></div>
+            </div>
           </div>
 
           <!-- ACOMPAÑANTES -->
@@ -1199,6 +1203,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                   <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr>
                 </tbody>
               </table>
+            </div>
+            <!-- TARJETAS MÓVIL — ACOMPAÑANTES -->
+            <div class="com-mobile-section">
+              <div class="com-mobile-cards" id="com-mobile-acomp"></div>
             </div>
           </div>
 
@@ -3832,6 +3840,77 @@ function renderFilaAcompanante(nombre, comDoble, comSencilla, numAcomp, total) {
     </tr>`;
 }
 
+const avatarColores = [
+  'linear-gradient(135deg,#1e5ba8,#3b7fd4)',
+  'linear-gradient(135deg,#16a34a,#22c55e)',
+  'linear-gradient(135deg,#7c3aed,#a855f7)',
+  'linear-gradient(135deg,#ea580c,#f97316)',
+  'linear-gradient(135deg,#0d9488,#2dd4bf)'
+];
+
+function iniciales(nombre) {
+  return nombre.trim().split(' ').slice(0,2).map(p => p[0].toUpperCase()).join('');
+}
+
+function renderMobileJugador(nombre, comPorJug, numJugadores, estado, total, idx) {
+  const color = avatarColores[idx % avatarColores.length];
+  const estadoClase = estado === 'Pagado' ? 'paid' : 'pending';
+  const valClase = total > 0 ? (estado === 'Pagado' ? 'green' : 'blue') : 'zero';
+  return `
+    <div class="com-mobile-card">
+      <div class="com-mobile-card-name">
+        ${nombre}
+        <div class="com-mobile-avatar" style="background:${color}">${iniciales(nombre)}</div>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Com. por jugador</span>
+        <span class="com-mobile-val">${comPorJug}€</span>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Jugadores inscritos</span>
+        <span class="com-mobile-val">${numJugadores}</span>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Estado</span>
+        <span class="com-status ${estadoClase}">
+          <span class="com-status-dot"></span>${estado}
+        </span>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Total jugadores</span>
+        <span class="com-mobile-val ${valClase}">${total.toLocaleString('es-ES')}€</span>
+      </div>
+    </div>`;
+}
+
+function renderMobileAcompanante(nombre, comDoble, comSencilla, numAcomp, total, idx) {
+  const color = avatarColores[idx % avatarColores.length];
+  const valClase = total > 0 ? 'green' : 'zero';
+  return `
+    <div class="com-mobile-card">
+      <div class="com-mobile-card-name">
+        ${nombre}
+        <div class="com-mobile-avatar" style="background:${color}">${iniciales(nombre)}</div>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Com. hab. doble</span>
+        <span class="com-mobile-val">${comDoble}€</span>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Com. hab. sencilla</span>
+        <span class="com-mobile-val">${comSencilla}€</span>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Acompañantes inscritos</span>
+        <span class="com-mobile-val">${numAcomp}</span>
+      </div>
+      <div class="com-mobile-row">
+        <span class="com-mobile-key">Total acompañantes</span>
+        <span class="com-mobile-val ${valClase}">${total.toLocaleString('es-ES')}€</span>
+      </div>
+    </div>`;
+}
+
 function renderAdminComisiones(fin) {
   if (!fin || !fin.comisiones) return;
   const comisiones = fin.comisiones;
@@ -3863,6 +3942,36 @@ function renderAdminComisiones(fin) {
           c.total || 0
         )).join('')
       : `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
+  }
+
+  // Jugadores móvil
+  const mobileJug = document.getElementById('com-mobile-jug');
+  if (mobileJug) {
+    mobileJug.innerHTML = jugadores.length
+      ? jugadores.map((c, i) => renderMobileJugador(
+          c.comercial,
+          c.comision_jugador || 0,
+          c.jugadores || 0,
+          c.estado || 'Pendiente',
+          c.total || 0,
+          i
+        )).join('')
+      : '<p style="color:var(--muted);font-size:13px;padding:8px 0">Sin comerciales registrados.</p>';
+  }
+
+  // Acompañantes móvil
+  const mobileAcomp = document.getElementById('com-mobile-acomp');
+  if (mobileAcomp) {
+    mobileAcomp.innerHTML = acompanantes.length
+      ? acompanantes.map((c, i) => renderMobileAcompanante(
+          c.comercial,
+          c.com_doble || 0,
+          c.com_sencilla || 0,
+          (c.acomp_doble || 0) + (c.acomp_sencilla || 0),
+          c.total || 0,
+          i
+        )).join('')
+      : '<p style="color:var(--muted);font-size:13px;padding:8px 0">Sin comerciales registrados.</p>';
   }
 
   const totalJug   = jugadores.reduce((s, c) => s + (c.total || 0), 0);
@@ -4917,6 +5026,36 @@ html, body {
 }
 img, video, iframe, table {
   max-width: 100%;
+}
+/* ── COMISIONES MÓVIL ── */
+.com-mobile-section { display: none; }
+
+@media (max-width: 768px) {
+  .com-table-wrap { display: none; }
+  .com-mobile-section { display: block; }
+
+  .com-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .com-total-pill { align-self: flex-start; }
+
+  .com-mobile-cards { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 12px; }
+
+  .com-mobile-card { background: #fff; border: 1px solid rgba(11,31,58,0.08); border-radius: 10px; padding: 12px; }
+  .com-mobile-card-name { font-size: 14px; font-weight: 700; color: #0b1f3a; margin-bottom: 9px; padding-bottom: 8px; border-bottom: 1px solid rgba(11,31,58,0.07); display: flex; align-items: center; justify-content: space-between; }
+  .com-mobile-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0; }
+
+  .com-mobile-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(11,31,58,0.05); }
+  .com-mobile-row:last-child { border-bottom: none; }
+  .com-mobile-key { font-size: 10px; color: #64748b; }
+  .com-mobile-val { font-size: 12px; font-weight: 600; color: #0b1f3a; }
+  .com-mobile-val.blue  { color: #1e5ba8; font-size: 14px; }
+  .com-mobile-val.green { color: #16a34a; font-size: 14px; }
+  .com-mobile-val.zero  { color: #94a3b8; }
+
+  .com-footer { flex-direction: column; gap: 0; }
+  .com-footer-item { padding: 9px 0; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; }
+  .com-footer-item:last-child { border-bottom: none; padding-bottom: 2px; }
+  .com-footer-label { font-size: 9px; }
+  .com-footer-val { font-size: 16px; }
 }
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=%C2%A1Hola!%20Quiero%20mas%20informaci%C3%B3n%20sobre%20los%20programas%20deportivos" target="_blank" rel="noopener"
