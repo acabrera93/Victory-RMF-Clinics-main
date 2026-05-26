@@ -280,6 +280,89 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .dres-logo img{width:140px;height:140px;object-fit:contain;background:transparent}
 .dres-logo span{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
 @media(max-width:600px){.dres-outer{flex-direction:column}.dres-logo{width:100%;flex-direction:row;gap:10px}.dres-logo img{width:60px;height:60px}.dres-grid{grid-template-columns:1fr}}
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  background: transparent;
+  padding: 4px 0;
+}
+.kpi-card {
+  border-radius: 10px;
+  padding: 18px 16px;
+  background: #0b1f3a;
+  border: 0.5px solid rgba(255,255,255,0.09);
+  display: flex;
+  flex-direction: column;
+  transition: background 0.2s;
+}
+.kpi-card:hover { background: #122847; }
+.kpi-card.highlight { background: #1a3a6e; border-color: rgba(59,127,212,0.5); }
+.kpi-card.highlight:hover { background: #1e4580; }
+.kpi-icon-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  height: 34px;
+}
+.kpi-icon {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-badge {
+  font-size: 10px; font-weight: 500;
+  padding: 3px 7px; border-radius: 20px;
+  display: flex; align-items: center; gap: 3px;
+  white-space: nowrap;
+}
+.kpi-badge.up   { background: rgba(22,163,74,0.2);   color: #4ade80; }
+.kpi-badge.down { background: rgba(239,68,68,0.2);   color: #f87171; }
+.kpi-badge.neutral { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
+.kpi-badge.gold { background: rgba(250,204,21,0.15); color: #fbbf24; }
+.kpi-label {
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 14px;
+}
+.kpi-value {
+  font-size: 24px; font-weight: 600;
+  color: #fff; letter-spacing: -0.5px;
+  line-height: 1; margin-bottom: 8px;
+  display: flex; align-items: center;
+}
+.kpi-value.green { color: #4ade80; }
+.kpi-value.red   { color: #f87171; }
+.kpi-value.teal  { color: #2dd4bf; }
+.kpi-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.5; flex: 1;
+}
+.kpi-bar-wrap {
+  height: 3px; border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  margin-top: 10px; overflow: hidden;
+}
+.kpi-bar { height: 100%; border-radius: 10px; }
+.kpi-tiq-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+}
+.kpi-tiq-row:last-child { border-bottom: none; }
+.kpi-tiq-label { font-size: 10px; color: rgba(255,255,255,0.35); }
+.kpi-tiq-val   { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); }
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
@@ -951,8 +1034,57 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <!-- DASHBOARD -->
     <div id="admin-sec-dashboard">
-      <div id="admin-metrics" class="metric-grid">
-        <p style="color:var(--muted);grid-column:1/-1">Cargando datos...</p>
+      <div id="admin-metrics" class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon-row">
+            <div class="kpi-icon" style="background:rgba(100,116,139,0.2)"><svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <span class="kpi-badge neutral">2026</span>
+          </div>
+          <div class="kpi-label">Participantes</div>
+          <div class="kpi-value" id="kpi-participantes">—</div>
+          <div class="kpi-sub" style="margin-bottom:8px" id="kpi-participantes-sub">—</div>
+          <div class="kpi-tiq-row"><span class="kpi-tiq-label">Con tiquete</span><span class="kpi-tiq-val" id="kpi-con-tiquete">—</span></div>
+          <div class="kpi-tiq-row"><span class="kpi-tiq-label">Sin tiquete</span><span class="kpi-tiq-val" id="kpi-sin-tiquete">—</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-row">
+            <div class="kpi-icon" style="background:rgba(22,163,74,0.15)"><svg width="16" height="16" fill="none" stroke="#4ade80" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+            <span class="kpi-badge up" id="kpi-ingresos-badge">—</span>
+          </div>
+          <div class="kpi-label">Ingresos brutos</div>
+          <div class="kpi-value green" id="kpi-ingresos">—</div>
+          <div class="kpi-sub">Proyectado</div>
+          <div class="kpi-bar-wrap"><div class="kpi-bar" style="width:100%;background:#4ade80;opacity:0.5"></div></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-row">
+            <div class="kpi-icon" style="background:rgba(239,68,68,0.15)"><svg width="16" height="16" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+            <span class="kpi-badge down" id="kpi-costos-badge">—</span>
+          </div>
+          <div class="kpi-label">Costos del programa</div>
+          <div class="kpi-value red" id="kpi-costos">—</div>
+          <div class="kpi-sub" id="kpi-costos-sub">—</div>
+          <div class="kpi-bar-wrap"><div class="kpi-bar" id="kpi-costos-bar" style="background:#f87171;opacity:0.6"></div></div>
+        </div>
+        <div class="kpi-card highlight">
+          <div class="kpi-icon-row">
+            <div class="kpi-icon" style="background:rgba(59,127,212,0.25)"><svg width="16" height="16" fill="none" stroke="#93c5fd" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+            <span class="kpi-badge gold" id="kpi-beneficio-badge">—</span>
+          </div>
+          <div class="kpi-label">Beneficio bruto</div>
+          <div class="kpi-value" id="kpi-beneficio">—</div>
+          <div class="kpi-sub">Proyectado</div>
+          <div class="kpi-bar-wrap"><div class="kpi-bar" id="kpi-beneficio-bar" style="background:#93c5fd"></div></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon-row">
+            <div class="kpi-icon" style="background:rgba(13,148,136,0.15)"><svg width="16" height="16" fill="none" stroke="#2dd4bf" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
+            <span class="kpi-badge neutral">Media</span>
+          </div>
+          <div class="kpi-label">Tasa EUR → COP</div>
+          <div class="kpi-value teal" id="kpi-tasa">—</div>
+          <div class="kpi-sub" id="kpi-tasa-sub">—</div>
+        </div>
       </div>
       <!-- Barra de recaudación -->
       <div class="card" id="admin-recaudacion-card" style="display:none">
@@ -3141,7 +3273,7 @@ function adminSection(section) {
 function loadAdmin(force) {
   if (adminLoaded && !force) return;
   adminLoaded = true;
-  document.getElementById('admin-metrics').innerHTML = '<p style="color:var(--muted);grid-column:1/-1">Cargando datos...</p>';
+  document.getElementById('kpi-participantes').textContent = '…';
   const t = Date.now();
   Promise.all([
     fetch(APPS_SCRIPT_URL + '?action=admin_participantes&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => []),
@@ -3153,7 +3285,7 @@ function loadAdmin(force) {
     adminFinData = fin && !fin.error ? fin : null;
     adminAccesoList = Array.isArray(acceso) ? acceso : [];
     if (!adminData.length && !adminFinData) {
-      document.getElementById('admin-metrics').innerHTML = '<p style="color:#dc2626;grid-column:1/-1">Error de conexión. Verifica que el Apps Script esté desplegado correctamente.</p>';
+      document.getElementById('kpi-participantes').textContent = 'Error';
     }
     renderAdminDashboard(adminData, adminFinData);
     renderAdminTable(adminData);
@@ -3163,7 +3295,7 @@ function loadAdmin(force) {
   })
   .catch(err => {
     console.error('loadAdmin error:', err);
-    document.getElementById('admin-metrics').innerHTML = '<p style="color:#dc2626;grid-column:1/-1">Error inesperado al cargar el panel. Revisa la consola para más detalles.</p>';
+    document.getElementById('kpi-participantes').textContent = 'Error';
   });
 }
 
@@ -3248,40 +3380,33 @@ function renderAdminDashboard(rows, fin) {
     ? Math.round(pagosConTasa.reduce((s, p) => s + (p.cop / p.eur), 0) / pagosConTasa.length)
     : 0;
 
-  document.getElementById('admin-metrics').innerHTML = `
-    <div class="kpi-card kc-navy">
-      <span class="kpi-icon">👥</span>
-      <div class="kc-label">Participantes</div>
-      <div class="kc-val" style="font-size:48px">${displayTotal}</div>
-      <div class="kc-sub">${displayJug} jugadores · ${displayAcomp} acompañantes</div>
-      <div class="kc-sub">${conTiquete} con tiquete · ${total - conTiquete} sin tiquete</div>
-    </div>
-    <div class="kpi-card kc-green">
-      <span class="kpi-icon">📈</span>
-      <div class="kc-label">Ingresos brutos <span style="font-size:9px;background:rgba(148,163,184,.15);color:var(--muted);padding:1px 6px;border-radius:8px;letter-spacing:.5px;font-weight:600;vertical-align:middle">PROYECTADO</span></div>
-      <div class="kc-val" style="font-size:30px;color:#16a34a">${(ingresos||0).toLocaleString('es-CO')}€</div>
-      <div class="kc-sub">${conTiquete} con tiquete · ${total - conTiquete} sin tiquete</div>
-    </div>
-    <div class="kpi-card kc-red">
-      <span class="kpi-icon">📉</span>
-      <div class="kc-label">Costos del programa <span style="font-size:9px;background:rgba(148,163,184,.15);color:var(--muted);padding:1px 6px;border-radius:8px;letter-spacing:.5px;font-weight:600;vertical-align:middle">PROYECTADO</span></div>
-      <div class="kc-val" style="font-size:30px;color:#dc2626">${(costos||0).toLocaleString('es-CO')}€</div>
-      <div class="kc-sub">${pctCostos}% de ingresos brutos</div>
-      <div class="kc-bar"><div class="kc-bar-fill" style="width:${Math.min(100,pctCostos)}%;background:#dc2626"></div></div>
-    </div>
-    <div class="kpi-card kc-dark">
-      <span class="kpi-icon" style="opacity:.8">✨</span>
-      <div class="kc-label" style="color:rgba(255,255,255,.6)">Beneficio bruto</div>
-      <div class="kc-val" style="font-size:30px;color:#fff">${(beneficio||0).toLocaleString('es-CO')}€</div>
-      <div class="kc-sub" style="color:rgba(255,255,255,.5)">Margen ${kpis ? margenPct + '%' : '—'}</div>
-    </div>
-    <div class="kpi-card kc-blue">
-      <span class="kpi-icon">💱</span>
-      <div class="kc-label">Tasa real EUR → COP</div>
-      <div class="kc-val" style="font-size:28px;color:var(--blue)">${tasaMedia > 0 ? tasaMedia.toLocaleString('es-CO') : '—'}</div>
-      <div class="kc-sub">${pagosConTasa.length > 0 ? `Media de ${pagosConTasa.length} pago${pagosConTasa.length > 1 ? 's' : ''} con COP registrado` : 'Sin pagos en COP aún'}</div>
-    </div>
-  `;
+  const totalParticipantes = displayTotal;
+  const ingresosBrutos = ingresos || 0;
+  const costosTotales = costos || 0;
+  const beneficioBruto = beneficio || 0;
+  const tasaEurCop = tasaMedia;
+
+  document.getElementById('kpi-participantes').textContent = totalParticipantes;
+  document.getElementById('kpi-participantes-sub').textContent = displayJug + ' jugadores · ' + displayAcomp + ' acompañante(s)';
+  document.getElementById('kpi-con-tiquete').textContent = conTiquete;
+  document.getElementById('kpi-sin-tiquete').textContent = total - conTiquete;
+
+  document.getElementById('kpi-ingresos').textContent = ingresosBrutos.toLocaleString('es-ES') + '€';
+  document.getElementById('kpi-ingresos-badge').textContent = conTiquete + ' con tiquete';
+
+  document.getElementById('kpi-costos').textContent = costosTotales.toLocaleString('es-ES') + '€';
+  const pctCostosKpi = ingresosBrutos > 0 ? Math.round((costosTotales / ingresosBrutos) * 100) : 0;
+  document.getElementById('kpi-costos-sub').textContent = pctCostosKpi + '% de ingresos brutos';
+  document.getElementById('kpi-costos-badge').textContent = pctCostosKpi + '%';
+  document.getElementById('kpi-costos-bar').style.width = pctCostosKpi + '%';
+
+  document.getElementById('kpi-beneficio').textContent = beneficioBruto.toLocaleString('es-ES') + '€';
+  const pctMargenKpi = ingresosBrutos > 0 ? Math.round((beneficioBruto / ingresosBrutos) * 100) : 0;
+  document.getElementById('kpi-beneficio-badge').textContent = 'Margen ' + pctMargenKpi + '%';
+  document.getElementById('kpi-beneficio-bar').style.width = pctMargenKpi + '%';
+
+  document.getElementById('kpi-tasa').textContent = tasaEurCop > 0 ? tasaEurCop.toLocaleString('es-ES') : '—';
+  document.getElementById('kpi-tasa-sub').textContent = pagosConTasa.length > 0 ? 'Media de ' + pagosConTasa.length + ' pago' + (pagosConTasa.length > 1 ? 's' : '') + ' con COP' : 'Sin pagos en COP aún';
 
   // Recaudación bars
   if (ingresos > 0) {
