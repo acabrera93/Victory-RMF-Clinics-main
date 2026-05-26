@@ -1622,6 +1622,12 @@ async function doLogin() {
     errEl.style.display = 'block';
     return;
   }
+  // Admin emails — skip sheet lookups entirely and go straight to the admin gate
+  if (ADMIN_EMAILS.includes(email)) {
+    participantEmail = email;
+    showAdminOnly();
+    return;
+  }
   const btn = document.getElementById('login-btn');
   btn.disabled = true;
   btn.textContent = 'Buscando...';
