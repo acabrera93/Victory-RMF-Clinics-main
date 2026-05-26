@@ -2492,8 +2492,13 @@ async function loginWithBiometric() {
   }
 }
 
+function _isMobileDevice() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 async function _offerBiometric(section, proceedFn) {
   _bioSection = section;
+  if (!_isMobileDevice()) { proceedFn(); return; }
   const available = await isBiometricAvailable();
   if (!available || localStorage.getItem('biometric_cred_' + section) || _bioOfferShownThisSession) {
     proceedFn();
