@@ -586,6 +586,11 @@ function getAdminParticipantes() {
         }
         obj[h] = val;
       }
+      // Garantizar paso_actual desde columna V (índice 21) si no vino por cabecera
+      if (!obj['paso_actual']) {
+        const pv = row[21];
+        if (pv != null && pv !== '') obj['paso_actual'] = String(pv);
+      }
       result.push(obj);
     }
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
