@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Área Personal — RMF Clinic 2026 · Victory Sports</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0b1f3a">
@@ -1098,15 +1098,34 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div id="admin-recaudacion-bars"></div>
       </div>
       <!-- Bottom grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="admin-bottom-grid">
-        <div class="card">
-          <div class="ctitle">Por paso (participantes)</div>
-          <div id="admin-pasos-chart"><p style="color:var(--muted)">Cargando...</p></div>
+      <div class="kpi2-grid" id="admin-bottom-grid">
+
+        <!-- POR PASO -->
+        <div class="kpi2-card">
+          <div class="kpi2-card-header">
+            <span class="kpi2-card-title">Por paso · Participantes</span>
+            <span class="kpi2-card-badge" id="paso-total-badge">— total</span>
+          </div>
+          <div class="paso-list" id="paso-list">
+            <!-- generado dinámicamente -->
+          </div>
         </div>
-        <div class="card">
-          <div class="ctitle">Ingresos por paquete</div>
-          <div id="admin-paquetes-chart"><p style="color:var(--muted)">Cargando...</p></div>
+
+        <!-- INGRESOS POR PAQUETE -->
+        <div class="kpi2-card">
+          <div class="kpi2-card-header">
+            <span class="kpi2-card-title">Ingresos por paquete</span>
+            <span class="kpi2-card-badge" id="paq-total-badge">—</span>
+          </div>
+          <div class="paq-list" id="paq-list">
+            <!-- generado dinámicamente -->
+          </div>
+          <div class="paq-footer">
+            <span class="paq-footer-label">Total ingresos proyectados</span>
+            <span class="paq-footer-val" id="paq-total-footer">—</span>
+          </div>
         </div>
+
       </div>
       <!-- Comisiones resumen -->
       <div class="card" id="admin-comisiones-resumen-card" style="display:none;margin-top:16px">
@@ -1135,12 +1154,69 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <!-- COMISIONES -->
     <div id="admin-sec-comisiones" style="display:none">
       <div class="card">
-        <div class="ctitle">Comisiones comerciales</div>
-        <div class="ptable-wrap">
-          <table class="ptable">
-            <thead><tr><th>Comercial</th><th></th><th></th><th></th><th></th><th>Total</th><th></th></tr></thead>
-            <tbody id="admin-comisiones-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
-          </table>
+        <div class="com-wrap">
+          <div class="com-header">
+            <div class="com-title">Comisiones comerciales</div>
+            <div class="com-total-pill">Total: <span id="com-total-general">—</span></div>
+          </div>
+
+          <!-- JUGADORES -->
+          <div class="com-section">
+            <div class="com-section-label">Jugadores</div>
+            <div class="com-table-wrap">
+              <table class="com-table">
+                <thead>
+                  <tr>
+                    <th>Comercial</th>
+                    <th class="right">Com. / Jug.</th>
+                    <th class="right">Jugadores</th>
+                    <th class="right">Estado</th>
+                    <th class="right">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="com-tabla-jugadores">
+                  <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ACOMPAÑANTES -->
+          <div class="com-section">
+            <div class="com-section-label">Acompañantes</div>
+            <div class="com-table-wrap">
+              <table class="com-table">
+                <thead>
+                  <tr>
+                    <th>Comercial</th>
+                    <th class="right">Com. doble</th>
+                    <th class="right">Com. sencilla</th>
+                    <th class="right">Acomp.</th>
+                    <th class="right">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="com-tabla-acompanantes">
+                  <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- RESUMEN FOOTER -->
+          <div class="com-footer">
+            <div class="com-footer-item">
+              <div class="com-footer-label">Jugadores</div>
+              <div class="com-footer-val blue" id="com-total-jug">—</div>
+            </div>
+            <div class="com-footer-item">
+              <div class="com-footer-label">Acompañantes</div>
+              <div class="com-footer-val" id="com-total-acomp">—</div>
+            </div>
+            <div class="com-footer-item">
+              <div class="com-footer-label">Total comisiones</div>
+              <div class="com-footer-val green" id="com-total-footer">—</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -3415,37 +3491,41 @@ function renderAdminDashboard(rows, fin) {
   }
 
   // Pasos chart
-  let pasosHtml = '<div style="display:flex;flex-direction:column;gap:10px">';
   const pasoLabels = {1:'Pre-insc.',2:'T&C',3:'Reserva',4:'Tiquete',5:'Pago final',6:'Documentos',7:'Completado'};
-  const pasoColors = {7:'#166534'};
-  for (let i = 1; i <= 7; i++) {
-    const cnt = pasoCount[i] || 0;
-    const pct = total > 0 ? Math.round(cnt / total * 100) : 0;
-    const color = pasoColors[i] || 'var(--blue)';
-    pasosHtml += `<div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;color:var(--muted);width:90px;flex-shrink:0">P${i} ${pasoLabels[i]}</div><div style="flex:1;height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:5px;transition:width .6s ease"></div></div><div style="font-size:12px;font-weight:600;color:var(--navy);width:24px;text-align:right">${cnt}</div></div>`;
+  const pasoListEl = document.getElementById('paso-list');
+  if (pasoListEl) {
+    let pasosHtml = '';
+    for (let i = 1; i <= 7; i++) {
+      pasosHtml += renderPasoRow('P' + i, pasoLabels[i], pasoCount[i] || 0);
+    }
+    pasoListEl.innerHTML = pasosHtml;
   }
-  pasosHtml += '</div>';
-  document.getElementById('admin-pasos-chart').innerHTML = pasosHtml;
+  const pasoBadge = document.getElementById('paso-total-badge');
+  if (pasoBadge) pasoBadge.textContent = total + ' total';
 
   // Paquetes chart
-  if (fin && fin.paquetes && fin.paquetes.length) {
-    const maxTotal = Math.max(...fin.paquetes.map(p => p.total));
-    const paqColors = ['var(--blue)','#166534','#c2410c','#7c3aed'];
-    let paqHtml = '<div style="display:flex;flex-direction:column;gap:12px">';
-    fin.paquetes.forEach((p, i) => {
-      const pct = maxTotal > 0 ? Math.round(p.total / maxTotal * 100) : 0;
-      paqHtml += `<div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:12px;color:var(--navy);font-weight:500">${p.nombre}</span>
-          <span style="font-size:12px;color:var(--muted)">${p.cantidad} × ${p.precio.toLocaleString('es-CO')}€ = <strong>${p.total.toLocaleString('es-CO')}€</strong></span>
-        </div>
-        <div style="height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${paqColors[i%4]};border-radius:5px;transition:width .6s ease"></div></div>
-      </div>`;
-    });
-    paqHtml += '</div>';
-    document.getElementById('admin-paquetes-chart').innerHTML = paqHtml;
-  } else {
-    document.getElementById('admin-paquetes-chart').innerHTML = '<p style="color:var(--muted)">Sin datos de paquetes.</p>';
+  const paqListEl = document.getElementById('paq-list');
+  const paqColorMap = {
+    'redcol 1-30': '#1e5ba8', 'redcol 31+': '#16a34a',
+    'standard': '#ea580c', 'premium': '#7c3aed'
+  };
+  const paqFallbackColors = ['#1e5ba8','#16a34a','#ea580c','#7c3aed'];
+  if (paqListEl) {
+    if (fin && fin.paquetes && fin.paquetes.length) {
+      const maxPaqTotal = Math.max(...fin.paquetes.map(p => p.total));
+      const totalPaqGlobal = fin.paquetes.reduce((s, p) => s + (p.total || 0), 0);
+      paqListEl.innerHTML = fin.paquetes.map((p, i) => {
+        const key = (p.nombre || '').toLowerCase().trim();
+        const color = paqColorMap[key] || paqFallbackColors[i % 4];
+        return renderPaqRow(p.nombre, p.cantidad, p.precio, p.total, color, maxPaqTotal);
+      }).join('');
+      const paqBadge = document.getElementById('paq-total-badge');
+      const paqFooter = document.getElementById('paq-total-footer');
+      if (paqBadge) paqBadge.textContent = fin.paquetes.reduce((s,p) => s+(p.cantidad||0), 0) + ' inscritos';
+      if (paqFooter) paqFooter.textContent = totalPaqGlobal.toLocaleString('es-ES') + '€';
+    } else {
+      paqListEl.innerHTML = '<p style="color:var(--muted);padding:16px;font-size:13px">Sin datos de paquetes.</p>';
+    }
   }
 
   // Comisiones resumen
@@ -3692,50 +3772,112 @@ function renderComercialRow(c, globalIdx) {
   </tr>`;
 }
 
-function sectionColHeaders(seccion) {
-  const s = 'padding:6px 8px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);background:var(--off)';
-  if (seccion === 'acompanantes') {
-    return `<tr><td style="${s}">Comercial</td><td style="${s}">Com. Doble</td><td style="${s}">Com. Sencilla</td><td style="${s}">Acomp. Doble</td><td style="${s}">Acomp. Sencilla</td><td style="${s}">Total</td><td style="${s}"></td></tr>`;
-  }
-  return `<tr><td style="${s}">Comercial</td><td style="${s}">Com./Jug.</td><td style="${s}">Jugadores</td><td style="${s}">Total</td><td style="${s}">Estado</td><td style="${s}">Notas</td><td style="${s}"></td></tr>`;
+// Pasos
+function renderPasoRow(codigo, label, count) {
+  const activo = count > 0;
+  return `
+    <div class="paso-row">
+      <span class="paso-code">${codigo}</span>
+      <span class="paso-label">${label}</span>
+      <div class="paso-toggle ${activo ? 'on' : 'off'}"></div>
+      <span class="paso-count ${activo ? 'active' : ''}">${count}</span>
+    </div>`;
 }
 
-function sectionHeaderRow(label, seccion) {
-  return `<tr style="background:rgba(30,91,168,.06)">
-    <td colspan="6" style="padding:12px 8px 6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);border-top:2px solid rgba(30,91,168,.25)">${label}</td>
-    <td style="padding:12px 8px 6px;border-top:2px solid rgba(30,91,168,.25);text-align:right">
-      <button onclick="openComercialModal(undefined,'${seccion}')" style="padding:4px 12px;background:rgba(30,91,168,.1);color:var(--blue);border:1px solid rgba(30,91,168,.2);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">+ Añadir</button>
-    </td>
-  </tr>`;
+// Paquetes
+function renderPaqRow(nombre, cantidad, precio, total, color, maxTotal) {
+  const pct = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+  return `
+    <div class="paq-row">
+      <div class="paq-top">
+        <div class="paq-info">
+          <div class="paq-name">
+            <div class="paq-dot" style="background:${color}"></div>
+            ${nombre}
+          </div>
+          <div class="paq-formula">${cantidad} × ${precio.toLocaleString('es-ES')}€</div>
+        </div>
+        <div class="paq-amount">${total.toLocaleString('es-ES')}€</div>
+      </div>
+      <div class="paq-bar-wrap">
+        <div class="paq-bar" style="width:${pct}%;background:${color}"></div>
+      </div>
+    </div>`;
+}
+
+function renderFilaJugador(nombre, comPorJug, numJugadores, estado, total) {
+  const estadoClase = estado === 'Pagado' ? 'paid' : estado === 'Parcial' ? 'partial' : 'pending';
+  return `
+    <tr>
+      <td><div class="com-name">${nombre}</div><div class="com-name-sub">Comercial activo/a</div></td>
+      <td style="text-align:right"><span class="com-amt">${comPorJug}€</span></td>
+      <td style="text-align:right"><span class="com-count">${numJugadores}</span></td>
+      <td style="text-align:right">
+        <span class="com-status ${estadoClase}">
+          <span class="com-status-dot"></span>${estado}
+        </span>
+      </td>
+      <td><div class="${total > 0 ? 'com-total-cell' : 'com-zero'}">${total.toLocaleString('es-ES')}€</div></td>
+    </tr>`;
+}
+
+function renderFilaAcompanante(nombre, comDoble, comSencilla, numAcomp, total) {
+  return `
+    <tr>
+      <td><div class="com-name">${nombre}</div><div class="com-name-sub">Comercial activo/a</div></td>
+      <td style="text-align:right"><span class="com-amt">${comDoble}€</span></td>
+      <td style="text-align:right"><span class="com-amt">${comSencilla}€</span></td>
+      <td style="text-align:right"><span class="com-count">${numAcomp}</span></td>
+      <td><div class="${total > 0 ? 'com-total-cell' : 'com-zero'}">${total.toLocaleString('es-ES')}€</div></td>
+    </tr>`;
 }
 
 function renderAdminComisiones(fin) {
   if (!fin || !fin.comisiones) return;
   const comisiones = fin.comisiones;
-  const tbody = document.getElementById('admin-comisiones-body');
 
   const jugadores = comisiones.filter(c => c.seccion === 'jugadores');
   const acompanantes = comisiones.filter(c => c.seccion === 'acompanantes');
 
-  let html = '';
-
-  html += sectionHeaderRow('Jugadores', 'jugadores');
-  html += sectionColHeaders('jugadores');
-  if (!jugadores.length) {
-    html += `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
-  } else {
-    html += jugadores.map(c => renderComercialRow(c, comisiones.indexOf(c))).join('');
+  const tbodyJug = document.getElementById('com-tabla-jugadores');
+  if (tbodyJug) {
+    tbodyJug.innerHTML = jugadores.length
+      ? jugadores.map(c => renderFilaJugador(
+          c.comercial,
+          c.comision_jugador || 0,
+          c.jugadores || 0,
+          c.estado || 'Pendiente',
+          c.total || 0
+        )).join('')
+      : `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
   }
 
-  html += sectionHeaderRow('Acompañantes', 'acompanantes');
-  html += sectionColHeaders('acompanantes');
-  if (!acompanantes.length) {
-    html += `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
-  } else {
-    html += acompanantes.map(c => renderComercialRow(c, comisiones.indexOf(c))).join('');
+  const tbodyAcomp = document.getElementById('com-tabla-acompanantes');
+  if (tbodyAcomp) {
+    tbodyAcomp.innerHTML = acompanantes.length
+      ? acompanantes.map(c => renderFilaAcompanante(
+          c.comercial,
+          c.com_doble || 0,
+          c.com_sencilla || 0,
+          (c.acomp_doble || 0) + (c.acomp_sencilla || 0),
+          c.total || 0
+        )).join('')
+      : `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin comerciales registrados.</td></tr>`;
   }
 
-  tbody.innerHTML = html;
+  const totalJug   = jugadores.reduce((s, c) => s + (c.total || 0), 0);
+  const totalAcomp = acompanantes.reduce((s, c) => s + (c.total || 0), 0);
+  const totalGlobal = totalJug + totalAcomp;
+  const fmt = n => (n || 0).toLocaleString('es-ES') + '€';
+
+  const elGen   = document.getElementById('com-total-general');
+  const elJug   = document.getElementById('com-total-jug');
+  const elAcomp = document.getElementById('com-total-acomp');
+  const elFooter = document.getElementById('com-total-footer');
+  if (elGen)    elGen.textContent    = fmt(totalGlobal);
+  if (elJug)    elJug.textContent    = fmt(totalJug);
+  if (elAcomp)  elAcomp.textContent  = fmt(totalAcomp);
+  if (elFooter) elFooter.textContent = fmt(totalGlobal);
 }
 
 function renderAdminTable(rows) {
@@ -4662,6 +4804,119 @@ function adminHandleFotoUpload(files) {
   .lb-arrow { width: 40px; height: 40px; font-size: 24px; }
   .lb-prev { left: 6px; }
   .lb-next { right: 6px; }
+}
+/* ── COMISIONES COMERCIALES ── */
+.com-wrap { font-family: 'DM Sans', sans-serif; }
+.com-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.com-title { font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--navy); display: flex; align-items: center; gap: 10px; }
+.com-title::after { content: ''; display: block; width: 60px; height: 1px; background: rgba(11,31,58,0.15); }
+.com-total-pill { background: #0b1f3a; color: #fff; font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; }
+.com-total-pill span { color: #5a9de0; font-size: 14px; }
+
+.com-section { margin-bottom: 20px; }
+.com-section-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: #1e5ba8; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.com-section-label::after { content: ''; flex: 1; height: 1px; background: rgba(30,91,168,0.2); }
+
+.com-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; border: 1px solid rgba(11,31,58,0.08); }
+.com-table { width: 100%; border-collapse: collapse; min-width: 480px; }
+.com-table thead th { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #64748b; padding: 8px 12px; text-align: left; background: #f8fafc; border-bottom: 1px solid rgba(11,31,58,0.08); white-space: nowrap; }
+.com-table thead th.right { text-align: right; }
+.com-table tbody tr { border-bottom: 1px solid rgba(11,31,58,0.06); transition: background 0.15s; }
+.com-table tbody tr:last-child { border-bottom: none; }
+.com-table tbody tr:hover { background: #f8fafc; }
+.com-table tbody td { padding: 12px; vertical-align: middle; }
+
+.com-name { font-size: 14px; font-weight: 600; color: #0b1f3a; }
+.com-name-sub { font-size: 11px; color: #64748b; margin-top: 1px; }
+.com-amt { font-size: 13px; color: #64748b; }
+.com-count { font-size: 13px; font-weight: 500; color: #0b1f3a; }
+
+.com-status { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.com-status.pending { background: #fef3c7; color: #92400e; }
+.com-status.paid    { background: #dcfce7; color: #166534; }
+.com-status.partial { background: #dbeafe; color: #1e40af; }
+.com-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+.com-total-cell { font-size: 16px; font-weight: 700; color: #1e5ba8; text-align: right; }
+.com-zero { font-size: 16px; font-weight: 700; color: #94a3b8; text-align: right; }
+
+.com-footer { background: #0b1f3a; border-radius: 10px; padding: 16px; display: flex; gap: 0; margin-top: 16px; }
+.com-footer-item { flex: 1; padding: 0 16px; border-right: 1px solid rgba(255,255,255,0.08); }
+.com-footer-item:first-child { padding-left: 0; }
+.com-footer-item:last-child { border-right: none; padding-right: 0; }
+.com-footer-label { font-size: 9px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 4px; }
+.com-footer-val { font-size: 18px; font-weight: 700; color: #fff; }
+.com-footer-val.blue  { color: #5a9de0; }
+.com-footer-val.green { color: #4ade80; }
+
+@media (max-width: 600px) {
+  .com-header { flex-direction: column; align-items: flex-start; }
+  .com-table { min-width: 420px; }
+  .com-name { font-size: 13px; }
+  .com-total-cell, .com-zero { font-size: 14px; }
+  .com-footer { flex-direction: column; gap: 12px; }
+  .com-footer-item { padding: 0 0 12px 0; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .com-footer-item:last-child { padding-bottom: 0; border-bottom: none; }
+  .com-footer-val { font-size: 16px; }
+}
+/* ── PASOS E INGRESOS POR PAQUETE ── */
+.kpi2-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.kpi2-card { background: #fff; border: 1px solid rgba(11,31,58,0.08); border-radius: 12px; overflow: hidden; }
+.kpi2-card-header { padding: 14px 16px 10px; border-bottom: 1px solid rgba(11,31,58,0.07); display: flex; align-items: center; justify-content: space-between; }
+.kpi2-card-title { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #64748b; }
+.kpi2-card-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #0b1f3a; color: #5a9de0; }
+
+.paso-list { padding: 4px 0; }
+.paso-row { display: flex; align-items: center; padding: 9px 16px; gap: 12px; border-bottom: 1px solid rgba(11,31,58,0.05); transition: background 0.15s; }
+.paso-row:last-child { border-bottom: none; }
+.paso-row:hover { background: #f8fafc; }
+.paso-code { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; color: #94a3b8; width: 28px; flex-shrink: 0; }
+.paso-label { font-size: 13px; color: #0b1f3a; flex: 1; }
+.paso-toggle { width: 28px; height: 16px; border-radius: 20px; flex-shrink: 0; position: relative; }
+.paso-toggle.off { background: #e2e8f0; }
+.paso-toggle.on  { background: #1e5ba8; }
+.paso-toggle.off::after { content: ''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+.paso-toggle.on::after  { content: ''; position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+.paso-count { font-size: 14px; font-weight: 700; color: #94a3b8; width: 20px; text-align: right; flex-shrink: 0; }
+.paso-count.active { color: #1e5ba8; }
+
+.paq-list { padding: 6px 0; }
+.paq-row { padding: 10px 16px 8px; border-bottom: 1px solid rgba(11,31,58,0.06); }
+.paq-row:last-child { border-bottom: none; }
+.paq-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
+.paq-info { flex: 1; }
+.paq-name { font-size: 12px; font-weight: 600; color: #0b1f3a; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.paq-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.paq-formula { font-size: 11px; color: #64748b; }
+.paq-amount { font-size: 15px; font-weight: 700; color: #0b1f3a; white-space: nowrap; }
+.paq-bar-wrap { height: 4px; border-radius: 10px; background: #f1f5f9; overflow: hidden; }
+.paq-bar { height: 100%; border-radius: 10px; }
+.paq-footer { padding: 12px 16px; background: #0b1f3a; display: flex; justify-content: space-between; align-items: center; }
+.paq-footer-label { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.35); }
+.paq-footer-val { font-size: 20px; font-weight: 700; color: #5a9de0; }
+
+@media (max-width: 768px) {
+  .kpi2-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .kpi2-card-header { padding: 11px 12px 8px; }
+  .paso-row { padding: 8px 12px; gap: 8px; }
+  .paso-label { font-size: 12px; }
+  .paq-row { padding: 9px 12px 7px; }
+  .paq-amount { font-size: 13px; }
+  .paq-footer { padding: 10px 12px; }
+  .paq-footer-val { font-size: 17px; }
+}
+/* Evitar scroll horizontal y desbordamiento en móvil */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+* {
+  box-sizing: border-box;
+}
+img, video, iframe, table {
+  max-width: 100%;
 }
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=%C2%A1Hola!%20Quiero%20mas%20informaci%C3%B3n%20sobre%20los%20programas%20deportivos" target="_blank" rel="noopener"

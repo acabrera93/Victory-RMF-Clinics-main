@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Victory Sports — Experiencias Deportivas Internacionales</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -844,13 +844,34 @@
         <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel Fundación">
       </a>
     </div>
-    <div class="nav-links">
+    <div class="nav-links" id="nav-links">
       <a href="memorias.html" class="nav-link">Memorias</a>
       <a href="#faq" class="nav-link">FAQ</a>
       <div class="nav-divider"></div>
       <a href="areapersonal.html" class="nav-cta">Área Personal</a>
       <a href="preinscripcion.html" class="nav-cta">Inscríbete</a>
       <a href="#inscripcion" class="nav-cta">Solicitar información →</a>
+    </div>
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Abrir menú">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav-drawer" id="nav-drawer">
+    <div class="nav-drawer-logos">
+      <a href="#" class="nav-logo-link">
+        <img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory Sports" style="filter:brightness(10);opacity:0.9;">
+        <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation">
+        <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
+        <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel Fundación">
+      </a>
+    </div>
+    <div class="nav-drawer-sep"></div>
+    <div class="nav-drawer-links">
+      <a href="memorias.html" class="nav-drawer-link">Memorias</a>
+      <a href="#faq" class="nav-drawer-link">FAQ</a>
+      <a href="areapersonal.html" class="nav-drawer-cta">Área Personal</a>
+      <a href="preinscripcion.html" class="nav-drawer-cta">Inscríbete</a>
+      <a href="#inscripcion" class="nav-drawer-cta">Solicitar información →</a>
     </div>
   </div>
 </nav>
@@ -1640,6 +1661,95 @@ function showStatus(type, msg, onClick) {
     grid-template-columns: 1fr !important;
   }
 }
+/* Hamburger + Drawer */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  margin-left: 8px;
+}
+.nav-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: rgba(255,255,255,0.85);
+  border-radius: 2px;
+  transition: all 0.25s;
+}
+.nav-drawer {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(11,31,58,0.98);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 20px 24px 28px;
+  z-index: 999;
+}
+.nav-drawer.open { display: block; }
+.nav-drawer-logos .nav-logo-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.nav-drawer-logos img { height: 22px; width: auto; object-fit: contain; }
+.nav-drawer-sep {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin-bottom: 16px;
+}
+.nav-drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-drawer-link {
+  color: rgba(255,255,255,0.75);
+  font-size: 15px;
+  font-weight: 400;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.nav-drawer-link:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.nav-drawer-cta {
+  display: block;
+  text-align: center;
+  margin-top: 6px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(30,91,168,0.85);
+  border: 1px solid rgba(255,255,255,0.12);
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.nav-drawer-cta:hover { background: rgba(30,91,168,1); }
+@media (max-width: 768px) {
+  .nav-hamburger { display: flex; }
+  #nav-links { display: none !important; }
+  nav { position: relative; }
+}
+/* Evitar scroll horizontal y desbordamiento en móvil */
+html {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+img, video, iframe, table {
+  max-width: 100%;
+}
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=Hola%20Victory%2C%20necesito%20m%C3%A1s%20informaci%C3%B3n%20sobre%20el%20programa%20RMF%20Clinic%202026" target="_blank" rel="noopener"
    style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:#25D366;border-radius:50%;text-decoration:none;transition:transform .25s;"
@@ -1651,5 +1761,20 @@ function showStatus(type, msg, onClick) {
   </svg>
 </a>
 
+<script>
+(function() {
+  var btn = document.getElementById('nav-hamburger');
+  var drawer = document.getElementById('nav-drawer');
+  if (!btn || !drawer) return;
+  btn.addEventListener('click', function() {
+    drawer.classList.toggle('open');
+  });
+  drawer.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', function() {
+      drawer.classList.remove('open');
+    });
+  });
+})();
+</script>
 </body>
 </html>

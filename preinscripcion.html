@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Inscripción — RMF Clinic 2026 · Victory Sports</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -87,6 +87,14 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   .success-screen h2 { font-size: 26px; }
   .success-screen p { font-size: 13px; }
   .btn-area { padding: 12px 24px; font-size: 14px; }
+}
+/* Evitar scroll horizontal y desbordamiento en móvil */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+img, video, iframe, table {
+  max-width: 100%;
 }
 </style>
 </head>
