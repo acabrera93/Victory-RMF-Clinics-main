@@ -1672,10 +1672,12 @@ async function doLogin() {
     if (tc) { tc.checked = grupoPaso > 2; onTC(); }
     applyPaymentTotals(calcPaymentTotals());
     applyPasoActual(grupoPaso);
-    document.getElementById('section-tabs').style.display = 'flex';
+    // Admin emails siempre van al flujo gateado, aunque también estén en la hoja de participantes
     if (ADMIN_EMAILS.includes(participantEmail)) {
-      document.getElementById('stab-admin').style.display = '';
+      showAdminOnly();
+      return;
     }
+    document.getElementById('section-tabs').style.display = 'flex';
     // Si también es comercial, mostrar tab de comisiones
     if (isComercial) {
       window._comercialData = comercialJson;
@@ -2351,8 +2353,10 @@ function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLin
   document.getElementById('pwd-err').textContent = '';
   document.getElementById('pwd-form').style.display = '';
   document.getElementById('pwd-forgot-form').style.display = 'none';
-  document.getElementById('pwd-biometric-offer').style.display = 'none';
-  document.getElementById('pwd-biometric-wrap').style.display = 'none';
+  const _bioOffer = document.getElementById('pwd-biometric-offer');
+  if (_bioOffer) _bioOffer.style.display = 'none';
+  const _bioWrap = document.getElementById('pwd-biometric-wrap');
+  if (_bioWrap) _bioWrap.style.display = 'none';
 }
 
 async function openPasswordGate(section) {
@@ -2366,13 +2370,19 @@ async function openPasswordGate(section) {
   } else {
     _pwdMode = 'verify';
     _pwdSetUI({ title: section === 'admin' ? 'Panel de Administración' : 'Área Comercial', subtitle: 'Introduce la contraseña para continuar.', forgotLink: true });
-    // Show biometric button if credential is registered and authenticator is available
+  }
+  // Show gate immediately — before async biometric check
+  const gateEl = document.getElementById('pwd-gate');
+  if (gateEl) gateEl.classList.add('open');
+  setTimeout(() => { const inp = document.getElementById('pwd-input'); if (inp) inp.focus(); }, 80);
+
+  // Async: show biometric button if credential registered and authenticator available
+  if (section !== 'comercial' || hasComercialPwd) {
     if (localStorage.getItem('biometric_cred_' + section) && await isBiometricAvailable()) {
-      document.getElementById('pwd-biometric-wrap').style.display = '';
+      const bioWrap = document.getElementById('pwd-biometric-wrap');
+      if (bioWrap) bioWrap.style.display = '';
     }
   }
-  document.getElementById('pwd-gate').classList.add('open');
-  setTimeout(() => document.getElementById('pwd-input').focus(), 80);
 }
 
 function _openMustChange() {
