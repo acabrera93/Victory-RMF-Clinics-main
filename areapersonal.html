@@ -3459,14 +3459,32 @@ function renderAdminPagos(fin) {
   const sinPago  = allNombres.length - conPago;
   const completos = allNombres.filter(n => {
     const pp = pagoMap[n.toLowerCase().trim()] || {};
-    const pagos = Object.values(pp);
-    return pagos.length > 0 && pagos.every(p => (p.estado || '').toLowerCase() === 'completo');
+    const reserva   = pp['reserva'];
+    const pagoFinal = pp['pago final'];
+    const tiquete   = pp['tiquete'];
+    const isCompleto = p => p && (p.estado || '').toLowerCase() === 'completo';
+    // Reserva y Pago Final obligatorios
+    if (!isCompleto(reserva) || !isCompleto(pagoFinal)) return false;
+    // Si tiene Tiquete registrado, también debe estar Completo
+    if (tiquete && !isCompleto(tiquete)) return false;
+    return true;
+  }).length;
+  const parciales = allNombres.filter(n => {
+    const pp = pagoMap[n.toLowerCase().trim()] || {};
+    if (!Object.keys(pp).length) return false; // sin ningún pago → no es parcial
+    const reserva   = pp['reserva'];
+    const pagoFinal = pp['pago final'];
+    const tiquete   = pp['tiquete'];
+    const isCompleto = p => p && (p.estado || '').toLowerCase() === 'completo';
+    if (!isCompleto(reserva) || !isCompleto(pagoFinal)) return true;
+    if (tiquete && !isCompleto(tiquete)) return true;
+    return false;
   }).length;
 
   document.getElementById('admin-pagos-summary').innerHTML = `
     <div class="metric-card mc-blue"><div class="mc-label">Total recaudado</div><div class="mc-value" style="font-size:26px">${totalEur.toLocaleString('es-CO')}€</div><div class="mc-sub">$ ${(totalCop||Math.round(totalEur*TASA_EUR_COP)).toLocaleString('es-CO')} COP</div></div>
-    <div class="metric-card" style="border-top:3px solid #166534"><div class="mc-label">Pagos completos</div><div class="mc-value" style="color:#166534">${completos}</div><div class="mc-sub">Todos sus pagos en Completo</div></div>
-    <div class="metric-card mc-green"><div class="mc-label">Con algún pago</div><div class="mc-value">${conPago}</div><div class="mc-sub">Al menos 1 pago registrado</div></div>
+    <div class="metric-card" style="border-top:3px solid #166534"><div class="mc-label">Pagos completos</div><div class="mc-value" style="color:#166534">${completos}</div><div class="mc-sub">Reserva + Pago Final (+ Tiquete si aplica)</div></div>
+    <div class="metric-card mc-green"><div class="mc-label">Pagos parciales</div><div class="mc-value">${parciales}</div><div class="mc-sub">Al menos 1 pago pendiente</div></div>
     <div class="metric-card"><div class="mc-label">Sin pago aún</div><div class="mc-value" style="color:#dc2626">${sinPago}</div><div class="mc-sub">Pendientes</div></div>
     <div class="metric-card mc-orange"><div class="mc-label">Total participantes</div><div class="mc-value">${allNombres.length}</div><div class="mc-sub">Presupuesto + inscripción</div></div>
   `;
