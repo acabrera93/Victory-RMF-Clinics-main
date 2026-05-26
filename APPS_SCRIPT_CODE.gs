@@ -18,6 +18,9 @@
 const PARENT_FOLDER_ID = "1E_7wpNt-KgEKyVL9Za2h3J-ne0IXYRUh"; // ID de carpeta "RMF_Clinic_2026_Uploads"
 const SHEET_ID = "1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss"; // Tu Google Sheet actual
 
+const COMERCIAL_PASSWORD_DEFAULT = 'rmfclinic2026'; // Contraseña estándar inicial — ponla en col J de todos los comerciales
+const ADMIN_PASSWORD_DEFAULT = 'rmfclinic2026';    // Contraseña admin inicial — se fuerza cambio en primer acceso
+const ADMIN_EMAILS_LIST = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
 const FOTOS_FOLDER_ID = "1VZxd3FdN8YLU2MpM-CJJIpy2IAb6FCFE"; // Carpeta fotos del viaje en Drive
 const SABER_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_SABER"; // Carpeta "RMF_Clinic_2026_Saber"
 const MEMORIAS_FOLDER_ID = "1Przikh__b-4CEhcR738XmhQLNdFgBoce"; // Carpeta galería memorias (ediciones anteriores)
@@ -43,6 +46,25 @@ function doGet(e) {
     if (action === 'admin_financiero') return getAdminFinanciero();
     if (action === 'admin_acceso') return getAdminAcceso();
     if (action === 'admin_acceso_check') return checkAdminAcceso(params.email || '');
+    if (action === 'verify_reset_token') {
+      const token = params.token || '';
+      const isAdmin = (params.type || '') === 'admin';
+      if (!token) return ContentService.createTextOutput(JSON.stringify({ valid: false })).setMimeType(ContentService.MimeType.JSON);
+      try {
+        const props = PropertiesService.getScriptProperties();
+        const propKey = isAdmin ? ('reset_admin_' + token) : ('reset_' + token);
+        const val = props.getProperty(propKey);
+        if (!val) return ContentService.createTextOutput(JSON.stringify({ valid: false })).setMimeType(ContentService.MimeType.JSON);
+        const parts = val.split('|');
+        if (Date.now() > parseInt(parts[1])) {
+          props.deleteProperty(propKey);
+          return ContentService.createTextOutput(JSON.stringify({ valid: false, reason: 'expired' })).setMimeType(ContentService.MimeType.JSON);
+        }
+        return ContentService.createTextOutput(JSON.stringify({ valid: true, email: parts[0], type: isAdmin ? 'admin' : 'comercial' })).setMimeType(ContentService.MimeType.JSON);
+      } catch(e2) {
+        return ContentService.createTextOutput(JSON.stringify({ valid: false })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
     // Si llegamos aquí, action no fue reconocida — devolver debug
     return ContentService.createTextOutput(JSON.stringify({ _debug: true, msg: 'accion_no_reconocida', action: action, params: params }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -289,6 +311,11 @@ function doPost(e) {
         if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes();
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'guardar_comercial') return guardarComercial(parsed);
+        if (parsed.action === 'check_admin_password') return checkAdminPassword(parsed);
+        if (parsed.action === 'set_admin_password') return setAdminPassword(parsed);
+        if (parsed.action === 'forgot_admin_password') return forgotAdminPassword(parsed);
+        if (parsed.action === 'set_comercial_password') return setComercialPassword(parsed);
+        if (parsed.action === 'forgot_comercial_password') return forgotComercialPassword(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
         if (parsed.action === 'eliminar_foto_drive') return eliminarFotoDrive(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
@@ -1175,6 +1202,153 @@ function guardarAdminAcceso(data) {
   }
 }
 
+// ───── CONTRASEÑAS ────────────────────────────────────────────────────────────
+function checkAdminPassword(data) {
+  try {
+    const stored = PropertiesService.getScriptProperties().getProperty('admin_password') || ADMIN_PASSWORD_DEFAULT;
+    const ok = String(data.password || '') === stored;
+    return sendResponse(200, { ok, must_change: ok && stored === ADMIN_PASSWORD_DEFAULT });
+  } catch(err) {
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function setAdminPassword(data) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const stored = props.getProperty('admin_password') || ADMIN_PASSWORD_DEFAULT;
+    const usingDefault = stored === ADMIN_PASSWORD_DEFAULT;
+    // Validate reset token if provided
+    const resetTokenKey = data.reset_token ? ('reset_admin_' + data.reset_token) : null;
+    const usingToken = resetTokenKey ? (function() {
+      const raw = props.getProperty(resetTokenKey);
+      if (!raw) return false;
+      const parts = raw.split('|');
+      return parts[1] && Date.now() < parseInt(parts[1]);
+    })() : false;
+    // Require current password unless on default or using valid reset token
+    if (!usingDefault && !usingToken) {
+      if (String(data.current_password || '') !== stored)
+        return sendResponse(403, { ok: false, error: 'Contraseña actual incorrecta' });
+    }
+    const newPwd = String(data.new_password || '').trim();
+    if (newPwd.length < 6)
+      return sendResponse(400, { ok: false, error: 'Mínimo 6 caracteres' });
+    if (newPwd === ADMIN_PASSWORD_DEFAULT)
+      return sendResponse(400, { ok: false, error: 'Elige una contraseña diferente a la inicial' });
+    props.setProperty('admin_password', newPwd);
+    if (resetTokenKey) { try { props.deleteProperty(resetTokenKey); } catch(_) {} }
+    return sendResponse(200, { ok: true });
+  } catch(err) {
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function forgotAdminPassword(data) {
+  try {
+    const email = String(data.email || '').toLowerCase().trim();
+    const resetUrl = String(data.reset_url || 'https://victory-rmf-clinics.netlify.app/areapersonal.html');
+    const adminList = ADMIN_EMAILS_LIST.map(e => e.toLowerCase());
+    // Always return ok to prevent email enumeration
+    if (!adminList.includes(email)) return sendResponse(200, { ok: true });
+    const token = Utilities.getUuid().replace(/-/g, '');
+    const expiry = Date.now() + 3600000; // 1 hora
+    PropertiesService.getScriptProperties().setProperty('reset_admin_' + token, email + '|' + expiry);
+    const link = resetUrl + '?reset_admin=' + token;
+    GmailApp.sendEmail(email, 'Restablecer contraseña — Panel de Administración RMF Clinic',
+      'Para restablecer tu contraseña accede a: ' + link, {
+        htmlBody: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">'
+          + '<div style="background:#1e5ba8;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
+          + '<h2 style="color:#fff;margin:0;font-size:18px">Real Madrid Foundation Clinic 2026</h2></div>'
+          + '<div style="background:#f8fafc;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
+          + '<p style="color:#334155;margin-top:0">Hola,</p>'
+          + '<p style="color:#334155">Recibimos una solicitud para restablecer la contraseña del panel de administración.</p>'
+          + '<p style="text-align:center;margin:24px 0">'
+          + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:13px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px">Restablecer contraseña →</a></p>'
+          + '<p style="color:#94a3b8;font-size:12px">Este enlace expira en <strong>1 hora</strong>. Si no lo solicitaste, ignora este correo.</p>'
+          + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Real Madrid Foundation Clinic 2026</p>'
+          + '</div></div>',
+        replyTo: 'alejandro.cabrera@fundacionrevel.net', name: 'Real Madrid Foundation Clinic'
+      });
+    return sendResponse(200, { ok: true });
+  } catch(err) {
+    Logger.log('forgotAdminPassword error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function setComercialPassword(data) {
+  try {
+    const emailNorm = String(data.email || '').toLowerCase().trim();
+    if (!emailNorm) return sendResponse(400, { ok: false, error: 'email requerido' });
+    const newPwd = String(data.new_password || '').trim();
+    if (newPwd.length < 6) return sendResponse(400, { ok: false, error: 'Mínimo 6 caracteres' });
+    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const comSheet = getSheetCI(ss, 'Comisiones');
+    if (!comSheet) return sendResponse(404, { ok: false, error: 'Hoja Comisiones no encontrada' });
+    const lastRow = comSheet.getLastRow();
+    if (lastRow < 6) return sendResponse(404, { ok: false, error: 'Sin datos' });
+    const hiData = comSheet.getRange('H6:I' + lastRow).getValues();
+    for (let i = 0; i < hiData.length; i++) {
+      if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) {
+        comSheet.getRange(6 + i, 10).setValue(newPwd); // Columna J
+        // Invalidar token de reset si se usó
+        if (data.reset_token) {
+          try { PropertiesService.getScriptProperties().deleteProperty('reset_' + data.reset_token); } catch(_) {}
+        }
+        return sendResponse(200, { ok: true });
+      }
+    }
+    return sendResponse(404, { ok: false, error: 'Comercial no encontrado' });
+  } catch(err) {
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function forgotComercialPassword(data) {
+  try {
+    const emailNorm = String(data.email || '').toLowerCase().trim();
+    if (!emailNorm || emailNorm.indexOf('@') < 0) return sendResponse(400, { ok: false, error: 'Email requerido' });
+    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const comSheet = getSheetCI(ss, 'Comisiones');
+    if (!comSheet) return sendResponse(404, { ok: false, error: 'No encontrado' });
+    const lastRow = comSheet.getLastRow();
+    if (lastRow < 6) return sendResponse(404, { ok: false, error: 'No encontrado' });
+    const hiData = comSheet.getRange('H6:I' + lastRow).getValues();
+    let found = false;
+    for (let i = 0; i < hiData.length; i++) {
+      if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) { found = true; break; }
+    }
+    // Devolver ok:true aunque no se encuentre (no revelar si el email existe o no)
+    if (!found) return sendResponse(200, { ok: true });
+    const token = Utilities.getUuid().replace(/-/g, '');
+    const expiry = Date.now() + 3600000; // 1 hora
+    PropertiesService.getScriptProperties().setProperty('reset_' + token, emailNorm + '|' + expiry);
+    const resetUrl = String(data.reset_url || 'https://victory-rmf-clinics.netlify.app/areapersonal.html');
+    const link = resetUrl + '?reset=' + token;
+    const adminEmail = 'alejandro.cabrera@fundacionrevel.net';
+    GmailApp.sendEmail(emailNorm, 'Recupera tu contraseña — Área Comercial RMF Clinic',
+      'Para restablecer tu contraseña accede a: ' + link, {
+        htmlBody: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">'
+          + '<div style="background:#1e5ba8;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
+          + '<h2 style="color:#fff;margin:0;font-size:18px">Real Madrid Foundation Clinic 2026</h2></div>'
+          + '<div style="background:#f8fafc;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
+          + '<p style="color:#334155;margin-top:0">Hola,</p>'
+          + '<p style="color:#334155">Recibimos una solicitud para restablecer la contraseña de tu área comercial.</p>'
+          + '<p style="text-align:center;margin:24px 0">'
+          + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:13px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px">Restablecer contraseña →</a></p>'
+          + '<p style="color:#94a3b8;font-size:12px">Este enlace expira en <strong>1 hora</strong>. Si no lo solicitaste, ignora este correo.</p>'
+          + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Real Madrid Foundation Clinic 2026</p>'
+          + '</div></div>',
+        replyTo: adminEmail, name: 'Real Madrid Foundation Clinic'
+      });
+    return sendResponse(200, { ok: true });
+  } catch(err) {
+    Logger.log('forgotComercialPassword error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
 function subirFotoDrive(data) {
   try {
     if (!data.base64 || !data.fileName) return sendResponse(400, { ok: false, error: 'base64 y fileName requeridos' });
@@ -1226,12 +1400,14 @@ function getComercialData(email) {
       return parseFloat(s) || 0;
     };
 
-    // Find comercial name by email in H:I (DATOS COMERCIALES section, starts row 6)
-    const hiData = comSheet.getRange('H6:I' + lastRow).getValues();
+    // Find comercial name by email in H:J (H=nombre, I=email, J=password)
+    const hiData = comSheet.getRange('H6:J' + lastRow).getValues();
     let nombre = null;
+    let storedPwd = '';
     for (let i = 0; i < hiData.length; i++) {
       if (str(hiData[i][1]).toLowerCase() === emailNorm) {
         nombre = str(hiData[i][0]);
+        storedPwd = str(hiData[i][2]);
         break;
       }
     }
@@ -1277,6 +1453,8 @@ function getComercialData(email) {
     return ContentService.createTextOutput(JSON.stringify({
       found: true,
       nombre: nombre,
+      password: storedPwd,
+      must_change: storedPwd === COMERCIAL_PASSWORD_DEFAULT,
       jugadores: jugadores,
       acompanantes: acompanantes
     })).setMimeType(ContentService.MimeType.JSON);

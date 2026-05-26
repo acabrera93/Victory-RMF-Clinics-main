@@ -224,6 +224,34 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .com-status-pag{background:#d1fae5;color:#065f46}
 @media(max-width:640px){.com-kpi-row{grid-template-columns:1fr 1fr}.com-kpi-row .card:nth-child(3){grid-column:1/-1}}
 .section-anchor { scroll-margin-top: 80px; }
+/* PASSWORD GATE */
+#pwd-gate{display:none;position:fixed;inset:0;background:rgba(11,31,58,.92);z-index:10000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)}
+#pwd-gate.open{display:flex}
+.pwd-box{background:#fff;border-radius:14px;padding:32px 28px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.pwd-box h3{font-size:17px;font-weight:700;color:var(--navy);margin:0 0 6px}
+.pwd-box p{font-size:13px;color:var(--muted);margin:0 0 20px}
+.pwd-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;text-align:center;letter-spacing:2px;margin-bottom:10px;transition:border-color .2s;box-sizing:border-box}
+.pwd-input:focus{border-color:var(--blue)}
+.pwd-err{color:#dc2626;font-size:12px;margin-bottom:10px;min-height:16px}
+.pwd-actions{display:flex;gap:8px}
+.pwd-actions button{flex:1;padding:11px;border-radius:8px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:none}
+.pwd-cancel{background:#fff;border:1.5px solid var(--border)!important;color:var(--muted)}
+.pwd-cancel:hover{background:#f8fafc}
+.pwd-submit{background:var(--blue);color:#fff}
+.pwd-submit:hover{background:#1a4e96}
+.pwd-bio-btn{width:100%;padding:11px;border-radius:8px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:1.5px solid var(--border);background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px}
+.pwd-bio-btn:hover:not(:disabled){background:#f8fafc;border-color:var(--blue)}
+.pwd-bio-btn:disabled{opacity:.6;cursor:not-allowed}
+.pwd-divider{display:flex;align-items:center;gap:10px;margin:0 0 12px;color:var(--muted);font-size:12px}
+.pwd-divider::before,.pwd-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.pwd-offer{background:#f0f7ff;border:1px solid rgba(30,91,168,.18);border-radius:10px;padding:16px;margin-top:4px}
+.pwd-offer p{font-size:13px;color:var(--navy);margin:0 0 12px;font-weight:500;line-height:1.4}
+.pwd-offer-btns{display:flex;gap:8px}
+.pwd-offer-btns button{flex:1;padding:9px;border-radius:7px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:none}
+.pwd-offer-yes{background:var(--blue);color:#fff}
+.pwd-offer-yes:hover{background:#1a4e96}
+.pwd-offer-no{background:#fff;border:1.5px solid var(--border)!important;color:var(--muted)}
+.pwd-offer-no:hover{background:#f8fafc}
 /* LOGIN GATE */
 #login-gate{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-box{background:#fff;border-radius:16px;padding:40px 36px;max-width:440px;width:100%;text-align:center}
@@ -1139,6 +1167,19 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <!-- Lista de accesos -->
         <div id="acceso-list"><p style="color:var(--muted);font-size:13px">Cargando...</p></div>
       </div>
+
+      <!-- Cambiar contraseña admin -->
+      <div class="card" style="margin-top:16px">
+        <div class="ctitle" style="margin-bottom:4px">Mi contraseña de administrador</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Cambia la contraseña que se pide al entrar al panel. La primera vez, la contraseña por defecto es <strong>revel2026admin</strong>.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:340px">
+          <input type="password" id="admin-pwd-current" class="pwd-input" placeholder="Contraseña actual" maxlength="50">
+          <input type="password" id="admin-pwd-new" class="pwd-input" placeholder="Nueva contraseña (mín. 6 caracteres)" maxlength="50">
+          <input type="password" id="admin-pwd-confirm" class="pwd-input" placeholder="Confirmar nueva contraseña" maxlength="50">
+          <div id="admin-pwd-err" style="font-size:12px;min-height:16px"></div>
+          <button onclick="cambiarPasswordAdmin(this)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;align-self:flex-start">Cambiar contraseña</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1216,6 +1257,7 @@ const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju'
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
 const ADMIN_EMAILS = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
 const SUPER_ADMIN = 'alejandro.cabrera@fundacionrevel.net';
+// Las contraseñas se gestionan desde la propia app (admin → panel acceso; comercial → panel comercial)
 // (Después de desplegar tu Apps Script, copia la URL de implementación aquí)
 
 /** Mismo criterio que preinscripcion.html: evita preflight CORS desde GitHub Pages. */
@@ -2285,8 +2327,377 @@ if (localStorage.getItem('guia_cerrada') === '1') {
   document.getElementById('welcome-collapsed').style.display = 'block';
 }
 
+// ── PASSWORD GATE ─────────────────────────────────────────────────────────────
+let _pwdPendingSection = null;
+let _pwdPrevSection = 'proceso';
+let _pwdMode = 'verify'; // 'verify' | 'create' | 'must_change' | 'reset'
+let _pwdResetToken = null;
+let _pwdResetEmail = null;
+// Biometric
+let _bioSection = null;
+let _bioOfferShownThisSession = false;
+let _pendingBioCallback = null;
+
+function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLink }) {
+  document.getElementById('pwd-title').textContent = title || 'Acceso restringido';
+  document.getElementById('pwd-subtitle').textContent = subtitle || '';
+  document.getElementById('pwd-confirm-wrap').style.display = confirm ? '' : 'none';
+  if (confirm) document.getElementById('pwd-confirm').value = '';
+  document.getElementById('pwd-cancel-btn').textContent = cancelText || 'Cancelar';
+  document.getElementById('pwd-cancel-btn').style.display = cancelText === false ? 'none' : '';
+  document.getElementById('pwd-submit-btn').textContent = submitText || 'Entrar';
+  document.getElementById('pwd-forgot-link').style.display = forgotLink ? '' : 'none';
+  document.getElementById('pwd-input').value = '';
+  document.getElementById('pwd-err').textContent = '';
+  document.getElementById('pwd-form').style.display = '';
+  document.getElementById('pwd-forgot-form').style.display = 'none';
+  document.getElementById('pwd-biometric-offer').style.display = 'none';
+  document.getElementById('pwd-biometric-wrap').style.display = 'none';
+}
+
+async function openPasswordGate(section) {
+  _pwdPendingSection = section;
+  const cd = window._comercialData;
+  const hasComercialPwd = !!(cd && cd.password);
+
+  if (section === 'comercial' && !hasComercialPwd) {
+    _pwdMode = 'create';
+    _pwdSetUI({ title: 'Área Comercial', subtitle: 'Primera vez: crea tu contraseña personal (mín. 6 caracteres).', confirm: true, submitText: 'Crear contraseña' });
+  } else {
+    _pwdMode = 'verify';
+    _pwdSetUI({ title: section === 'admin' ? 'Panel de Administración' : 'Área Comercial', subtitle: 'Introduce la contraseña para continuar.', forgotLink: true });
+    // Show biometric button if credential is registered and authenticator is available
+    if (localStorage.getItem('biometric_cred_' + section) && await isBiometricAvailable()) {
+      document.getElementById('pwd-biometric-wrap').style.display = '';
+    }
+  }
+  document.getElementById('pwd-gate').classList.add('open');
+  setTimeout(() => document.getElementById('pwd-input').focus(), 80);
+}
+
+function _openMustChange() {
+  _pwdMode = 'must_change';
+  _pwdSetUI({ title: 'Crea tu contraseña', subtitle: 'Por seguridad, debes crear tu propia contraseña antes de continuar.', confirm: true, cancelText: false, submitText: 'Guardar contraseña' });
+  document.getElementById('pwd-gate').classList.add('open');
+  setTimeout(() => document.getElementById('pwd-input').focus(), 80);
+}
+
+function openResetGate(token, email, type) {
+  _pwdResetToken = token; _pwdResetEmail = email;
+  _pwdMode = 'reset'; _pwdPendingSection = type === 'admin' ? 'admin' : 'comercial';
+  _pwdSetUI({ title: 'Nueva contraseña', subtitle: 'Crea tu nueva contraseña (mín. 6 caracteres).', confirm: true, cancelText: false, submitText: 'Guardar contraseña' });
+  document.getElementById('pwd-gate').classList.add('open');
+  setTimeout(() => document.getElementById('pwd-input').focus(), 80);
+}
+
+function closePasswordGate() {
+  if (_pwdMode === 'must_change' || _pwdMode === 'reset') return; // no se puede cerrar
+  document.getElementById('pwd-gate').classList.remove('open');
+  document.querySelectorAll('.stab').forEach(b =>
+    b.classList.toggle('active', b.dataset.section === _pwdPrevSection)
+  );
+  _pwdPendingSection = null;
+}
+
+// ── BIOMETRIC AUTH (WebAuthn) ──────────────────────────────────────────────────
+async function isBiometricAvailable() {
+  try {
+    return !!(window.PublicKeyCredential &&
+      await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+  } catch(e) { return false; }
+}
+
+async function registerBiometric(section, email) {
+  try {
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: 'Victory RMF Clinics', id: location.hostname },
+        user: {
+          id: new TextEncoder().encode(email || section),
+          name: email || section,
+          displayName: section === 'admin' ? 'Administrador' : 'Comercial'
+        },
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' },   // ES256
+          { alg: -257, type: 'public-key' }   // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required',
+          residentKey: 'discouraged'
+        },
+        timeout: 60000
+      }
+    });
+    const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+    localStorage.setItem('biometric_cred_' + section, credId);
+    return true;
+  } catch(e) { return false; }
+}
+
+async function loginWithBiometric() {
+  const btn = document.getElementById('pwd-bio-btn');
+  const label = document.getElementById('pwd-bio-label');
+  const errEl = document.getElementById('pwd-err');
+  errEl.textContent = '';
+  btn.disabled = true;
+  const origLabel = label.textContent;
+  label.textContent = 'Verificando…';
+  try {
+    const storedId = localStorage.getItem('biometric_cred_' + _pwdPendingSection);
+    const rawId = atob(storedId);
+    const credIdBytes = Uint8Array.from(rawId, c => c.charCodeAt(0));
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ type: 'public-key', id: credIdBytes.buffer }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    if (assertion) {
+      sessionStorage.setItem('auth_' + _pwdPendingSection, '1');
+      document.getElementById('pwd-gate').classList.remove('open');
+      const sec = _pwdPendingSection; _pwdPendingSection = null;
+      switchSection(sec);
+    }
+  } catch(e) {
+    if (e.name === 'NotAllowedError') {
+      errEl.textContent = 'Autenticación cancelada.';
+    } else {
+      // Credential no longer valid — remove it and fall back to password
+      localStorage.removeItem('biometric_cred_' + _pwdPendingSection);
+      document.getElementById('pwd-biometric-wrap').style.display = 'none';
+      errEl.textContent = 'Biométrico no disponible. Usa tu contraseña.';
+    }
+    btn.disabled = false;
+    label.textContent = origLabel;
+  }
+}
+
+async function _offerBiometric(section, proceedFn) {
+  _bioSection = section;
+  const available = await isBiometricAvailable();
+  if (!available || localStorage.getItem('biometric_cred_' + section) || _bioOfferShownThisSession) {
+    proceedFn();
+    return;
+  }
+  _bioOfferShownThisSession = true;
+  _pendingBioCallback = proceedFn;
+  // Transform modal into biometric offer screen
+  document.getElementById('pwd-form').style.display = 'none';
+  document.getElementById('pwd-forgot-form').style.display = 'none';
+  document.getElementById('pwd-biometric-wrap').style.display = 'none';
+  document.getElementById('pwd-biometric-offer').style.display = '';
+  document.getElementById('pwd-title').textContent = 'Acceso más rápido';
+  document.getElementById('pwd-subtitle').textContent = 'Activa Face ID / huella para entrar sin contraseña.';
+}
+
+async function _activateBiometric() {
+  const offerEl = document.getElementById('pwd-biometric-offer');
+  const inner = offerEl.querySelector('.pwd-offer');
+  inner.innerHTML = '<p style="text-align:center;margin:0;color:var(--navy)">Verifica tu identidad…</p>';
+  const email = _bioSection === 'comercial' ? (participantEmail || '') : '';
+  const ok = await registerBiometric(_bioSection, email);
+  if (ok) {
+    inner.innerHTML = '<p style="text-align:center;margin:0;color:#16a34a;font-weight:600">✓ Activado correctamente</p>';
+  } else {
+    inner.innerHTML = '<p style="text-align:center;margin:0;color:#dc2626">No se pudo activar. Inténtalo más tarde.</p>';
+  }
+  setTimeout(() => {
+    offerEl.style.display = 'none';
+    document.getElementById('pwd-gate').classList.remove('open');
+    if (_pendingBioCallback) { _pendingBioCallback(); _pendingBioCallback = null; }
+  }, ok ? 1200 : 1800);
+}
+
+function _declineBiometric() {
+  document.getElementById('pwd-biometric-offer').style.display = 'none';
+  document.getElementById('pwd-gate').classList.remove('open');
+  if (_pendingBioCallback) { _pendingBioCallback(); _pendingBioCallback = null; }
+}
+
+function showForgotPassword() {
+  document.getElementById('pwd-form').style.display = 'none';
+  document.getElementById('pwd-biometric-wrap').style.display = 'none';
+  document.getElementById('pwd-forgot-form').style.display = '';
+  document.getElementById('pwd-forgot-email').value = '';
+  document.getElementById('pwd-forgot-err').textContent = '';
+  const isAdmin = _pwdPendingSection === 'admin';
+  document.getElementById('pwd-title').textContent = isAdmin ? 'Recuperar acceso admin' : 'Recuperar contraseña';
+  document.getElementById('pwd-subtitle').textContent = 'Te enviaremos un enlace para restablecerla.';
+  setTimeout(() => document.getElementById('pwd-forgot-email').focus(), 60);
+}
+
+function hideForgotPassword() {
+  document.getElementById('pwd-forgot-form').style.display = 'none';
+  document.getElementById('pwd-form').style.display = '';
+  const isAdmin = _pwdPendingSection === 'admin';
+  document.getElementById('pwd-title').textContent = isAdmin ? 'Panel de Administración' : 'Área Comercial';
+  document.getElementById('pwd-subtitle').textContent = 'Introduce la contraseña para continuar.';
+  // Restore biometric button if credential was registered
+  if (localStorage.getItem('biometric_cred_' + _pwdPendingSection)) {
+    isBiometricAvailable().then(ok => {
+      if (ok) document.getElementById('pwd-biometric-wrap').style.display = '';
+    });
+  }
+}
+
+async function submitForgotPassword() {
+  const email = document.getElementById('pwd-forgot-email').value.trim();
+  const errEl = document.getElementById('pwd-forgot-err');
+  const btn = document.getElementById('pwd-forgot-btn');
+  errEl.style.color = '#dc2626'; errEl.textContent = '';
+  if (!email || !email.includes('@')) { errEl.textContent = 'Introduce un correo válido.'; return; }
+  btn.textContent = 'Enviando…'; btn.disabled = true;
+  try {
+    const resetUrl = location.origin + location.pathname;
+    const action = _pwdPendingSection === 'admin' ? 'forgot_admin_password' : 'forgot_comercial_password';
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action, email, reset_url: resetUrl }),
+      redirect: 'follow'
+    });
+    errEl.style.color = '#16a34a';
+    errEl.textContent = 'Si el correo está registrado, recibirás el enlace en unos minutos.';
+    btn.textContent = 'Enviado ✓'; // No re-enable — one send per open
+  } catch(e) { errEl.textContent = 'Error de conexión. Inténtalo de nuevo.'; btn.textContent = 'Enviar enlace'; btn.disabled = false; }
+}
+
+async function submitPasswordGate() {
+  const val = document.getElementById('pwd-input').value.trim();
+  const errEl = document.getElementById('pwd-err');
+  const submitBtn = document.getElementById('pwd-submit-btn');
+  errEl.textContent = '';
+  if (!val) { errEl.textContent = 'Introduce una contraseña.'; return; }
+
+  // ── Modos con confirmación (create / must_change / reset) ──
+  if (_pwdMode === 'create' || _pwdMode === 'must_change' || _pwdMode === 'reset') {
+    const confirm = document.getElementById('pwd-confirm').value.trim();
+    if (val.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
+    if (val !== confirm) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
+    const origText = submitBtn.textContent;
+    submitBtn.textContent = 'Guardando…'; submitBtn.disabled = true;
+    const isAdminSection = _pwdPendingSection === 'admin';
+    let body;
+    if (isAdminSection) {
+      body = { action: 'set_admin_password', new_password: val };
+      if (_pwdMode === 'reset' && _pwdResetToken) body.reset_token = _pwdResetToken;
+    } else {
+      const email = _pwdMode === 'reset' ? _pwdResetEmail : participantEmail;
+      body = { action: 'set_comercial_password', email, new_password: val };
+      if (_pwdMode === 'reset' && _pwdResetToken) body.reset_token = _pwdResetToken;
+    }
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(body), redirect: 'follow'
+      }).then(r => r.json());
+      if (res.ok) {
+        if (!isAdminSection && window._comercialData) { window._comercialData.password = val; window._comercialData.must_change = false; }
+        sessionStorage.setItem('auth_' + (isAdminSection ? 'admin' : 'comercial'), '1');
+        if (_pwdMode === 'reset') {
+          // Limpiar token de URL y mostrar login normal
+          const url = new URL(location.href);
+          url.searchParams.delete('reset'); url.searchParams.delete('reset_admin');
+          history.replaceState({}, '', url.toString());
+          document.getElementById('pwd-gate').classList.remove('open');
+          document.getElementById('login-gate').style.display = 'flex';
+          return;
+        }
+        document.getElementById('pwd-gate').classList.remove('open');
+        const sec = _pwdPendingSection; _pwdPendingSection = null;
+        switchSection(sec);
+      } else { errEl.textContent = res.error || 'Error al guardar.'; }
+    } catch(e) { errEl.textContent = 'Error de conexión.'; }
+    finally { submitBtn.textContent = origText; submitBtn.disabled = false; }
+    return;
+  }
+
+  // ── Verificar contraseña ──
+  if (_pwdPendingSection === 'admin') {
+    submitBtn.textContent = 'Verificando…'; submitBtn.disabled = true;
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'check_admin_password', password: val }), redirect: 'follow'
+      }).then(r => r.json());
+      if (res.ok) {
+        if (res.must_change) { _openMustChange(); return; }
+        sessionStorage.setItem('auth_admin', '1');
+        const sec = _pwdPendingSection; _pwdPendingSection = null;
+        await _offerBiometric(sec, () => {
+          document.getElementById('pwd-gate').classList.remove('open');
+          switchSection(sec);
+        });
+      } else {
+        errEl.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
+        document.getElementById('pwd-input').value = ''; document.getElementById('pwd-input').focus();
+      }
+    } catch(e) { errEl.textContent = 'Error de conexión.'; }
+    finally { submitBtn.textContent = 'Entrar'; submitBtn.disabled = false; }
+
+  } else if (_pwdPendingSection === 'comercial') {
+    const stored = window._comercialData?.password || '';
+    if (val === stored) {
+      // Contraseña correcta — ¿debe cambiarla?
+      if (window._comercialData?.must_change) {
+        _openMustChange();
+        return;
+      }
+      sessionStorage.setItem('auth_comercial', '1');
+      const sec = _pwdPendingSection; _pwdPendingSection = null;
+      await _offerBiometric(sec, () => {
+        document.getElementById('pwd-gate').classList.remove('open');
+        switchSection(sec);
+      });
+    } else {
+      errEl.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
+      document.getElementById('pwd-input').value = ''; document.getElementById('pwd-input').focus();
+    }
+  }
+}
+
+// ── Verificar reset token al cargar la página ─────────────────────────────────
+(async function checkResetToken() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('reset');
+  const adminToken = params.get('reset_admin');
+  const activeToken = token || adminToken;
+  const isAdminReset = !!adminToken;
+  if (!activeToken) return;
+  try {
+    const typeParam = isAdminReset ? '&type=admin' : '';
+    const res = await fetch(
+      APPS_SCRIPT_URL + '?action=verify_reset_token&token=' + encodeURIComponent(activeToken) + typeParam + '&_t=' + Date.now(),
+      { redirect: 'follow' }
+    ).then(r => r.json());
+    if (res.valid && res.email) {
+      document.getElementById('login-gate').style.display = 'none';
+      openResetGate(activeToken, res.email, res.type || (isAdminReset ? 'admin' : 'comercial'));
+    } else {
+      const hint = document.createElement('p');
+      hint.style.cssText = 'color:#dc2626;font-size:13px;margin-top:10px;text-align:center';
+      hint.textContent = res.reason === 'expired'
+        ? 'El enlace de recuperación ha expirado. Solicita uno nuevo.'
+        : 'El enlace de recuperación no es válido.';
+      const loginBox = document.querySelector('#login-gate form, #login-gate .login-box');
+      if (loginBox) loginBox.appendChild(hint);
+      const url = new URL(location.href);
+      url.searchParams.delete('reset'); url.searchParams.delete('reset_admin');
+      history.replaceState({}, '', url.toString());
+    }
+  } catch(e) { /* silencioso — se muestra el login normal */ }
+})();
+
 // ── SECTION TABS (Fotos / Comunicaciones / Lo que debo saber) ─────────────────
 function switchSection(section) {
+  if ((section === 'admin' || section === 'comercial') && !sessionStorage.getItem('auth_' + section)) {
+    _pwdPrevSection = document.querySelector('.stab.active')?.dataset.section || 'proceso';
+    openPasswordGate(section);
+    return;
+  }
   document.querySelectorAll('.stab').forEach(b =>
     b.classList.toggle('active', b.dataset.section === section)
   );
@@ -2594,7 +3005,79 @@ function renderComercialPanel() {
   } else { html += '<p style="color:var(--muted);font-size:14px">Sin acompañantes asignados.</p>'; }
   html += '</div>';
 
+  // Cambiar contraseña
+  html += '<div class="card" style="margin-top:16px">'
+    + '<div class="ctitle" style="margin-bottom:4px">Cambiar contraseña</div>'
+    + '<p style="font-size:13px;color:var(--muted);margin-bottom:14px">Actualiza la contraseña de acceso a tu área comercial.</p>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;max-width:340px">'
+    + '<input type="password" id="com-pwd-current" class="pwd-input" placeholder="Contraseña actual" maxlength="50">'
+    + '<input type="password" id="com-pwd-new" class="pwd-input" placeholder="Nueva contraseña (mín. 6 caracteres)" maxlength="50">'
+    + '<input type="password" id="com-pwd-confirm" class="pwd-input" placeholder="Confirmar nueva contraseña" maxlength="50">'
+    + '<div id="com-pwd-err" style="font-size:12px;min-height:16px"></div>'
+    + '<button onclick="cambiarPasswordComercial(this)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;font-family:\'DM Sans\',sans-serif;cursor:pointer;align-self:flex-start">Cambiar contraseña</button>'
+    + '</div></div>';
+
   document.getElementById('comercial-content').innerHTML = html;
+}
+
+async function cambiarPasswordComercial(btn) {
+  const current = (document.getElementById('com-pwd-current')?.value || '').trim();
+  const newPwd  = (document.getElementById('com-pwd-new')?.value || '').trim();
+  const confirm = (document.getElementById('com-pwd-confirm')?.value || '').trim();
+  const errEl   = document.getElementById('com-pwd-err');
+  errEl.style.color = '#dc2626'; errEl.textContent = '';
+  const stored = window._comercialData?.password || '';
+  if (stored && current !== stored) { errEl.textContent = 'Contraseña actual incorrecta.'; return; }
+  if (newPwd.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
+  if (newPwd !== confirm) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
+  const origText = btn.textContent;
+  btn.textContent = 'Guardando…'; btn.disabled = true;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'set_comercial_password', email: participantEmail, new_password: newPwd }),
+      redirect: 'follow'
+    }).then(r => r.json());
+    if (res.ok) {
+      if (window._comercialData) window._comercialData.password = newPwd;
+      sessionStorage.setItem('auth_comercial', '1');
+      errEl.style.color = '#16a34a';
+      errEl.textContent = 'Contraseña actualizada correctamente.';
+      document.getElementById('com-pwd-current').value = '';
+      document.getElementById('com-pwd-new').value = '';
+      document.getElementById('com-pwd-confirm').value = '';
+    } else { errEl.textContent = res.error || 'Error al guardar.'; }
+  } catch(e) { errEl.textContent = 'Error de conexión.'; }
+  finally { btn.textContent = origText; btn.disabled = false; }
+}
+
+async function cambiarPasswordAdmin(btn) {
+  const current = (document.getElementById('admin-pwd-current')?.value || '').trim();
+  const newPwd  = (document.getElementById('admin-pwd-new')?.value || '').trim();
+  const confirm = (document.getElementById('admin-pwd-confirm')?.value || '').trim();
+  const errEl   = document.getElementById('admin-pwd-err');
+  errEl.style.color = '#dc2626'; errEl.textContent = '';
+  if (!current) { errEl.textContent = 'Introduce la contraseña actual.'; return; }
+  if (newPwd.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
+  if (newPwd !== confirm) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
+  const origText = btn.textContent;
+  btn.textContent = 'Guardando…'; btn.disabled = true;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'set_admin_password', current_password: current, new_password: newPwd }),
+      redirect: 'follow'
+    }).then(r => r.json());
+    if (res.ok) {
+      sessionStorage.removeItem('auth_admin'); // Próxima vez pedirá la nueva
+      errEl.style.color = '#16a34a';
+      errEl.textContent = 'Contraseña actualizada. Se pedirá la nueva la próxima vez que accedas.';
+      document.getElementById('admin-pwd-current').value = '';
+      document.getElementById('admin-pwd-new').value = '';
+      document.getElementById('admin-pwd-confirm').value = '';
+    } else { errEl.textContent = res.error || 'Error al guardar.'; }
+  } catch(e) { errEl.textContent = 'Error de conexión.'; }
+  finally { btn.textContent = origText; btn.disabled = false; }
 }
 
 // ── ADMIN PANEL ───────────────────────────────────────────────────────────────
@@ -4110,5 +4593,60 @@ function adminHandleFotoUpload(files) {
   }
 </script>
 
+<!-- PASSWORD GATE MODAL -->
+<div id="pwd-gate">
+  <div class="pwd-box">
+    <h3 id="pwd-title">Acceso restringido</h3>
+    <p id="pwd-subtitle">Introduce la contraseña para continuar.</p>
+
+    <!-- Biometric login -->
+    <div id="pwd-biometric-wrap" style="display:none">
+      <button class="pwd-bio-btn" id="pwd-bio-btn" onclick="loginWithBiometric()">
+        <span>🔐</span> <span id="pwd-bio-label">Entrar con huella / Face ID</span>
+      </button>
+      <div class="pwd-divider">o con contraseña</div>
+    </div>
+
+    <!-- Formulario contraseña -->
+    <div id="pwd-form">
+      <input class="pwd-input" type="password" id="pwd-input" placeholder="Contraseña" maxlength="50"
+             onkeydown="if(event.key==='Enter')submitPasswordGate()" autocomplete="current-password">
+      <div id="pwd-confirm-wrap" style="display:none;margin-top:8px">
+        <input class="pwd-input" type="password" id="pwd-confirm" placeholder="Repite la contraseña" maxlength="50"
+               onkeydown="if(event.key==='Enter')submitPasswordGate()">
+      </div>
+      <div class="pwd-err" id="pwd-err"></div>
+      <div class="pwd-actions">
+        <button class="pwd-cancel" id="pwd-cancel-btn" onclick="closePasswordGate()">Cancelar</button>
+        <button class="pwd-submit" id="pwd-submit-btn" onclick="submitPasswordGate()">Entrar</button>
+      </div>
+      <p id="pwd-forgot-link" style="display:none;margin-top:14px;text-align:center;font-size:12px">
+        <a href="#" onclick="event.preventDefault();showForgotPassword()" style="color:var(--blue);text-decoration:none">¿Olvidaste tu contraseña?</a>
+      </p>
+    </div>
+
+    <!-- Formulario recuperar contraseña -->
+    <div id="pwd-forgot-form" style="display:none">
+      <input class="pwd-input" type="email" id="pwd-forgot-email" placeholder="Tu correo electrónico" maxlength="100"
+             onkeydown="if(event.key==='Enter')submitForgotPassword()">
+      <div class="pwd-err" id="pwd-forgot-err"></div>
+      <div class="pwd-actions">
+        <button class="pwd-cancel" onclick="hideForgotPassword()">← Volver</button>
+        <button class="pwd-submit" id="pwd-forgot-btn" onclick="submitForgotPassword()">Enviar enlace</button>
+      </div>
+    </div>
+
+    <!-- Oferta de activar biométrico (tras login con contraseña) -->
+    <div id="pwd-biometric-offer" style="display:none">
+      <div class="pwd-offer">
+        <p>¿Quieres activar Face ID / huella para entrar sin contraseña la próxima vez?</p>
+        <div class="pwd-offer-btns">
+          <button class="pwd-offer-yes" onclick="_activateBiometric()">Activar</button>
+          <button class="pwd-offer-no" onclick="_declineBiometric()">Ahora no</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
