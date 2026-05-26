@@ -38,58 +38,89 @@
     background: var(--white);
     color: var(--navy);
     overflow-x: hidden;
-    padding-top: 100px;
+    padding-top: 64px;
   }
 
   /* ─── NAV ─── */
   nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    display: flex; flex-direction: column; align-items: stretch;
-    padding: 0;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 200;
     background: rgba(11,31,58,0.97);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(59,127,212,0.15);
-  }
-  .nav-top {
-    display: flex; align-items: center; justify-content: center;
-    padding: 10px 48px;
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .nav-bottom {
-    display: flex; align-items: center; justify-content: center;
-    padding: 6px 48px; gap: 6px;
+  .nav-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
   }
-  .nav-logo {
-    display: flex; align-items: center; gap: 12px;
-    text-decoration: none; flex-shrink: 0;
+  .nav-logos { flex-shrink: 0; }
+  .nav-logo-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
   }
-  .nav-logo img { height: 36px; width: auto; filter: brightness(0) invert(1); opacity: 0.9; }
-  .nav-logo .sep { width: 1px; height: 26px; background: rgba(255,255,255,0.15); }
-  .nav-actions { display: flex; align-items: center; gap: 6px; }
-  .nav-btn {
-    font-family: 'DM Sans', sans-serif;
+  .nav-logo-link img {
+    height: 28px;
+    width: auto;
+    object-fit: contain;
+  }
+  .nav-sep {
+    width: 1px;
+    height: 20px;
+    background: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .nav-link {
+    color: rgba(255,255,255,0.65);
+    font-size: 13px;
+    font-weight: 400;
+    padding: 7px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .nav-link:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.1);
+  }
+  .nav-divider {
+    width: 1px;
+    height: 18px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 6px;
+    flex-shrink: 0;
+  }
+  .nav-cta {
+    background: #1e5ba8;
+    color: #fff;
     font-size: 13px;
     font-weight: 500;
     padding: 8px 18px;
     border-radius: 6px;
-    cursor: pointer;
     text-decoration: none;
-    transition: all 0.2s;
-    letter-spacing: 0.2px;
+    border: 1px solid rgba(59,127,212,0.4);
+    margin-left: 8px;
     white-space: nowrap;
+    transition: background 0.2s;
   }
-  .nav-btn-ghost {
-    color: #fff;
-    background: var(--blue);
-    border: 1px solid transparent;
-  }
-  .nav-btn-ghost:hover { background: var(--blue-light); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30,91,168,0.4); }
-  .nav-btn-solid {
-    color: #fff;
-    background: var(--blue);
-    border: 1px solid transparent;
-  }
-  .nav-btn-solid:hover { background: var(--blue-light); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30,91,168,0.4); }
+  .nav-cta:hover { background: #2970d4; }
 
   /* ─── HERO ─── */
   #hero {
@@ -568,6 +599,8 @@
     border-radius: 8px;
     padding: 28px;
     transition: border-color 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
   }
   .testimonio-card:hover { border-color: var(--blue-light); box-shadow: 0 8px 24px rgba(30,91,168,0.08); }
   .testimonio-stars {
@@ -583,6 +616,7 @@
     line-height: 1.7;
     color: #2a3f58;
     margin-bottom: 20px;
+    flex: 1;
   }
   .testimonio-author { display: flex; align-items: center; gap: 12px; }
   .testimonio-avatar {
@@ -798,24 +832,25 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-top">
-    <a href="#" class="nav-logo">
-      <img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory Sports" style="filter:brightness(10);opacity:0.95;">
-      <div class="sep"></div>
-      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation">
-      <div class="sep"></div>
-      <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
-      <div class="sep"></div>
-      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel Fundación">
-    </a>
-  </div>
-  <div class="nav-bottom">
-    <div class="nav-actions">
-      <a href="memorias.html" class="nav-btn nav-btn-ghost">Memorias</a>
-      <a href="#faq" class="nav-btn nav-btn-ghost">Preguntas frecuentes</a>
-      <a href="areapersonal.html" class="nav-btn nav-btn-ghost">Área Personal</a>
-      <a href="preinscripcion.html" class="nav-btn nav-btn-ghost">Inscríbete</a>
-      <a href="#inscripcion" class="nav-btn nav-btn-solid">Solicitar información</a>
+  <div class="nav-inner">
+    <div class="nav-logos">
+      <a href="#" class="nav-logo-link">
+        <img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory Sports" style="filter:brightness(10);opacity:0.9;">
+        <div class="nav-sep"></div>
+        <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation">
+        <div class="nav-sep"></div>
+        <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
+        <div class="nav-sep"></div>
+        <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel Fundación">
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="memorias.html" class="nav-link">Memorias</a>
+      <a href="#faq" class="nav-link">FAQ</a>
+      <div class="nav-divider"></div>
+      <a href="areapersonal.html" class="nav-cta">Área Personal</a>
+      <a href="preinscripcion.html" class="nav-cta">Inscríbete</a>
+      <a href="#inscripcion" class="nav-cta">Solicitar información →</a>
     </div>
   </div>
 </nav>
@@ -1086,7 +1121,7 @@
           <div class="testimonio-avatar">RP</div>
           <div>
             <div class="testimonio-name">Roberto Paredes</div>
-            <div class="testimonio-role">Papá de Nicolás, 16 años · Colombia</div>
+            <div class="testimonio-role">Papá de Sofía, 16 años · Colombia</div>
           </div>
         </div>
       </div>
@@ -1219,7 +1254,7 @@
 
       <div class="faq-item" onclick="this.classList.toggle('open')">
         <div class="faq-question">¿Mi hijo viaja solo o con acompañante? <span class="faq-arrow">+</span></div>
-        <div class="faq-answer">Tu hijo viaja en grupo con otros jóvenes latinoamericanos. Nuestro equipo incluye 1 persona de staff por cada 15 niños, acompañando al grupo en todo momento desde el aeropuerto de salida hasta el regreso a Colombia. Nunca están solos.</div>
+        <div class="faq-answer">Tu hijo viaja en grupo con otros jóvenes latinoamericanos. Nuestro equipo incluye 1 persona de staff por cada 10 niños, acompañando al grupo en todo momento desde el aeropuerto de salida hasta el regreso a Colombia. Nunca están solos.</div>
       </div>
 
       <div class="faq-item" onclick="this.classList.toggle('open')">
@@ -1533,19 +1568,21 @@ function showStatus(type, msg, onClick) {
 #wa-circle{animation:wa-pulse 3s ease-in-out infinite}
 #wa-circle:hover{transform:scale(1.08);animation:none}
 @media (max-width: 900px) {
-  body { padding-top: 120px; }
-  .nav-top { padding: 10px 16px; }
-  .nav-logo img { height: 26px; }
-  .nav-bottom {
-    padding: 6px 12px 8px;
-    gap: 6px;
+  .nav-inner { padding: 0 16px; height: 56px; }
+  .nav-logo-link img { height: 22px; }
+  .nav-sep { display: none; }
+  .nav-logo-link img:not(:first-child) { display: none; }
+  .nav-logo-link img:first-child { display: block; }
+  .nav-links {
     overflow-x: auto;
-    justify-content: flex-start;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    gap: 2px;
   }
-  .nav-bottom::-webkit-scrollbar { display: none; }
-  .nav-btn { font-size: 11px; padding: 6px 12px; white-space: nowrap; flex-shrink: 0; }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-link { font-size: 11px; padding: 6px 10px; }
+  .nav-cta { font-size: 11px; padding: 7px 12px; margin-left: 4px; }
+  body { padding-top: 56px; }
   .hero-left { padding: 40px 20px 32px; }
   .hero-badges { flex-wrap: wrap; gap: 8px; }
   .hero-right { padding: 0 20px 48px; }
@@ -1554,44 +1591,7 @@ function showStatus(type, msg, onClick) {
 }
 
 @media (max-width: 600px) {
-  body { padding-top: 110px; }
-  .container { padding: 0 16px; }
-  section { padding: 56px 0; }
-  .section-title { font-size: clamp(30px, 9vw, 52px); }
-  .hero-left h1 { font-size: clamp(40px, 13vw, 72px); }
-  .cupos-badge { padding: 10px 14px; }
-  .cupos-text { white-space: nowrap; font-size: 12px; }
-  .form-grid { grid-template-columns: 1fr; }
-  .form-card { padding: 24px 16px; }
-  .footer-grid { grid-template-columns: 1fr; gap: 28px; }
-  .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
-  .programas-grid { grid-template-columns: 1fr; }
-  .steps-grid { grid-template-columns: 1fr; gap: 24px; }
-  .incluye-layout { grid-template-columns: 1fr; }
-  .testimonios-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 900px) {
-  body { padding-top: 120px; }
-  .nav-top { padding: 10px 16px; }
-  .nav-logo img { height: 26px; }
-  .nav-bottom {
-    padding: 6px 12px 8px;
-    gap: 6px;
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .nav-bottom::-webkit-scrollbar { display: none; }
-  .nav-btn { font-size: 11px; padding: 6px 12px; white-space: nowrap; flex-shrink: 0; }
-  .form-layout { grid-template-columns: 1fr; gap: 40px; }
-  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
-}
-
-@media (max-width: 600px) {
-  body { padding-top: 108px; }
-  .nav-top { padding: 8px 12px; }
-  .nav-logo img { height: 20px; }
+  body { padding-top: 56px; }
   .container { padding: 0 16px; }
   section { padding: 56px 0; }
   .section-title { font-size: clamp(28px, 9vw, 48px); }
