@@ -3090,10 +3090,10 @@ function showAdminOnly() {
   document.getElementById('dn').textContent = 'Admin';
   document.getElementById('section-tabs').style.display = 'flex';
   document.getElementById('stab-admin').style.display = '';
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-admin').classList.add('active');
-  document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.section === 'admin'));
-  loadAdmin();
+  // Mostrar proceso vacío por defecto — el password gate se dispara al pulsar el tab admin
+  document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.section === 'proceso'));
+  _pwdPrevSection = 'proceso';
+  openPasswordGate('admin');
 }
 
 let adminFinData = null;

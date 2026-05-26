@@ -18,9 +18,25 @@
 const PARENT_FOLDER_ID = "1E_7wpNt-KgEKyVL9Za2h3J-ne0IXYRUh"; // ID de carpeta "RMF_Clinic_2026_Uploads"
 const SHEET_ID = "1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss"; // Tu Google Sheet actual
 
-const COMERCIAL_PASSWORD_DEFAULT = 'rmfclinic2026'; // Contraseña estándar inicial — ponla en col J de todos los comerciales
-const ADMIN_PASSWORD_DEFAULT = 'rmfclinic2026';    // Contraseña admin inicial — se fuerza cambio en primer acceso
 const ADMIN_EMAILS_LIST = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
+
+// Contraseña inicial leída desde PropertiesService (nunca en código).
+// Configurar ejecutando configurarContraseniaInicial() UNA VEZ desde el editor de Apps Script.
+function getDefaultPassword() {
+  return PropertiesService.getScriptProperties().getProperty('default_password') || '';
+}
+
+// ── Ejecutar UNA VEZ desde el editor para establecer la contraseña inicial ────
+// 1. Cambia el valor de 'nuevaContrasenia' por la contraseña que quieras usar
+// 2. Selecciona esta función y pulsa ▶ Run
+// 3. Borra o comenta el valor antes de hacer commit
+function configurarContraseniaInicial() {
+  const nuevaContrasenia = 'CAMBIAR_ANTES_DE_EJECUTAR';
+  if (!nuevaContrasenia || nuevaContrasenia === 'CAMBIAR_ANTES_DE_EJECUTAR')
+    throw new Error('Escribe la contraseña real antes de ejecutar esta función.');
+  PropertiesService.getScriptProperties().setProperty('default_password', nuevaContrasenia);
+  Logger.log('Contraseña inicial guardada en PropertiesService.');
+}
 const FOTOS_FOLDER_ID = "1VZxd3FdN8YLU2MpM-CJJIpy2IAb6FCFE"; // Carpeta fotos del viaje en Drive
 const SABER_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_SABER"; // Carpeta "RMF_Clinic_2026_Saber"
 const MEMORIAS_FOLDER_ID = "1Przikh__b-4CEhcR738XmhQLNdFgBoce"; // Carpeta galería memorias (ediciones anteriores)
@@ -1205,9 +1221,10 @@ function guardarAdminAcceso(data) {
 // ───── CONTRASEÑAS ────────────────────────────────────────────────────────────
 function checkAdminPassword(data) {
   try {
-    const stored = PropertiesService.getScriptProperties().getProperty('admin_password') || ADMIN_PASSWORD_DEFAULT;
+    const defaultPwd = getDefaultPassword();
+    const stored = PropertiesService.getScriptProperties().getProperty('admin_password') || defaultPwd;
     const ok = String(data.password || '') === stored;
-    return sendResponse(200, { ok, must_change: ok && stored === ADMIN_PASSWORD_DEFAULT });
+    return sendResponse(200, { ok, must_change: ok && !!defaultPwd && stored === defaultPwd });
   } catch(err) {
     return sendResponse(500, { ok: false, error: err.toString() });
   }
@@ -1216,8 +1233,9 @@ function checkAdminPassword(data) {
 function setAdminPassword(data) {
   try {
     const props = PropertiesService.getScriptProperties();
-    const stored = props.getProperty('admin_password') || ADMIN_PASSWORD_DEFAULT;
-    const usingDefault = stored === ADMIN_PASSWORD_DEFAULT;
+    const defaultPwd = getDefaultPassword();
+    const stored = props.getProperty('admin_password') || defaultPwd;
+    const usingDefault = !!defaultPwd && stored === defaultPwd;
     // Validate reset token if provided
     const resetTokenKey = data.reset_token ? ('reset_admin_' + data.reset_token) : null;
     const usingToken = resetTokenKey ? (function() {
@@ -1234,7 +1252,8 @@ function setAdminPassword(data) {
     const newPwd = String(data.new_password || '').trim();
     if (newPwd.length < 6)
       return sendResponse(400, { ok: false, error: 'Mínimo 6 caracteres' });
-    if (newPwd === ADMIN_PASSWORD_DEFAULT)
+    const defaultPwdCheck = getDefaultPassword();
+    if (defaultPwdCheck && newPwd === defaultPwdCheck)
       return sendResponse(400, { ok: false, error: 'Elige una contraseña diferente a la inicial' });
     props.setProperty('admin_password', newPwd);
     if (resetTokenKey) { try { props.deleteProperty(resetTokenKey); } catch(_) {} }
@@ -1454,7 +1473,7 @@ function getComercialData(email) {
       found: true,
       nombre: nombre,
       password: storedPwd,
-      must_change: storedPwd === COMERCIAL_PASSWORD_DEFAULT,
+      must_change: !!getDefaultPassword() && storedPwd === getDefaultPassword(),
       jugadores: jugadores,
       acompanantes: acompanantes
     })).setMimeType(ContentService.MimeType.JSON);
