@@ -895,11 +895,17 @@ function getAdminFinanciero() {
       var lastPagRow = pagosSheet.getLastRow();
       if (lastPagRow >= 6) {
         var pagData = pagosSheet.getRange('A6:G' + lastPagRow).getValues();
+        var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
         for (var i = 0; i < pagData.length; i++) {
           var r = pagData[i];
           var nombre = str(r[0]);
           var eurAmt = num(r[3]);
           if (!nombre || eurAmt <= 0) continue;
+          // Saltar filas de resumen (TOTAL, encabezados, etc.)
+          if (nombre.toLowerCase().indexOf('total') >= 0) continue;
+          // Saltar filas cuyo concepto (col G) no sea un tipo de pago válido
+          var tipoG = str(r[6]).toLowerCase();
+          if (tipoG && !tiposValidos3[tipoG]) continue;
           var fechaVal = r[1];
           if (!fechaVal || (!(fechaVal instanceof Date) && !str(fechaVal).match(/\d/))) continue;
           result.pagos_lista.push({
@@ -924,7 +930,8 @@ function getAdminFinanciero() {
       var seenPN = {};
       for (var i = 0; i < pagData.length; i++) {
         var cellA = str(pagData[i][0]);
-        if (cellA && !seenPN[cellA.toLowerCase()]) {
+        if (!cellA || cellA.toLowerCase().indexOf('total') >= 0) continue;
+        if (!seenPN[cellA.toLowerCase()]) {
           seenPN[cellA.toLowerCase()] = true;
           pagosNombres.push(cellA);
         }
