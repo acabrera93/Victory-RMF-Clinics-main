@@ -1071,6 +1071,25 @@ function registrarPago(data) {
       pagosSheet.getRange(insertRow, 1, 1, 7).setValues([newRow]);
     }
 
+    // Sync paquete across all rows of this participant if paquete changed
+    // Re-read data after possible insertions to get updated row positions
+    var lastRow2 = pagosSheet.getLastRow();
+    var numRows2 = lastRow2 - startRow + 1;
+    if (numRows2 > 0) {
+      var allData2 = pagosSheet.getRange(startRow, 1, numRows2, 7).getValues();
+      var inBlock2 = false;
+      for (var j = 0; j < allData2.length; j++) {
+        var cellA2 = String(allData2[j][0] || '').trim();
+        if (cellA2) {
+          if (cellA2.toLowerCase() === nombreLower) { inBlock2 = true; }
+          else if (inBlock2) { break; }
+        }
+        if (inBlock2 && String(allData2[j][5] || '').trim() !== paquete) {
+          pagosSheet.getRange(startRow + j, 6).setValue(paquete);
+        }
+      }
+    }
+
     return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
   } catch (err) {
     Logger.log('registrarPago error: ' + err);
