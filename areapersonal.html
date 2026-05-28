@@ -3763,10 +3763,10 @@ function renderAdminPagos(fin) {
     const tipoPart = tipoMap[key] || adRow.tipo || '';
     const tipoIsAcomp = tipoPart.toLowerCase().includes('acomp');
     const tipoBadge = tipoPart
-      ? `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};margin-left:6px">${tipoPart}</span>`
+      ? `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${tipoPart}</span>`
       : '';
     return `<tr data-nombre="${key}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}">
-      <td style="font-weight:500">${nombre}${tipoBadge}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">${tipoBadge}<span style="font-weight:500">${nombre}</span></div></td>
       <td>${fmtPago(reserva)}</td>
       <td>${conTiq ? fmtPago(tiquete) : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td>${fmtPago(pagoFinal)}</td>
