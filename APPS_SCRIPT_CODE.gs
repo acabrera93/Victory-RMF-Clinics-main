@@ -889,34 +889,33 @@ function getAdminFinanciero() {
     // ── Pagos recibidos + pagos individuales — hoja "Pagos"
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (pagosSheet) {
-      // Resumen fila 32: C=COP, D=EUR, F32=completos, F33=parciales
+      // Resumen fila 32: D=COP, E=EUR, G32=completos, G33=parciales (col A=tipo agregada)
       result.pagos_recibidos = {
-        total_eur:  num(pagosSheet.getRange('D32').getValue()),
-        total_cop:  num(pagosSheet.getRange('C32').getValue()),
-        completos:  num(pagosSheet.getRange('F32').getValue()),
-        parciales:  num(pagosSheet.getRange('F33').getValue())
+        total_eur:  num(pagosSheet.getRange('E32').getValue()),
+        total_cop:  num(pagosSheet.getRange('D32').getValue()),
+        completos:  num(pagosSheet.getRange('G32').getValue()),
+        parciales:  num(pagosSheet.getRange('G33').getValue())
       };
-      // Pagos individuales desde fila 6: A=nombre, B=fecha, C=COP, D=EUR, E=estado, F=paquete, G=concepto
+      // Pagos individuales desde fila 6: A=tipo, B=nombre, C=fecha, D=COP, E=EUR, F=estado, G=paquete, H=concepto
       var lastPagRow = pagosSheet.getLastRow();
       if (lastPagRow >= 6) {
-        var pagData = pagosSheet.getRange('A6:G' + lastPagRow).getValues();
+        var pagData = pagosSheet.getRange('A6:H' + lastPagRow).getValues();
         var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
         for (var i = 0; i < pagData.length; i++) {
           var r = pagData[i];
-          var nombre = str(r[0]);
-          var eurAmt = num(r[3]);
+          var tipo  = str(r[0]);   // col A = tipo participante
+          var nombre = str(r[1]);  // col B = nombre
+          var eurAmt = num(r[4]);  // col E = EUR
           if (!nombre || eurAmt <= 0) continue;
-          // Saltar filas de resumen (TOTAL, encabezados, etc.)
           if (nombre.toLowerCase().indexOf('total') >= 0) continue;
-          // Saltar filas cuyo concepto (col G) no sea un tipo de pago válido
-          var tipoG = str(r[6]).toLowerCase();
+          var tipoG = str(r[7]).toLowerCase();  // col H = concepto
           if (tipoG && !tiposValidos3[tipoG]) continue;
-          var fechaVal = r[1];
+          var fechaVal = r[2];  // col C = fecha
           if (!fechaVal || (!(fechaVal instanceof Date) && !str(fechaVal).match(/\d/))) continue;
           result.pagos_lista.push({
-            nombre: nombre, fecha: fmtDate(fechaVal),
-            cop: num(r[2]), eur: eurAmt,
-            estado: str(r[4]), paquete: str(r[5]), notas: str(r[6])
+            tipo: tipo, nombre: nombre, fecha: fmtDate(fechaVal),
+            cop: num(r[3]), eur: eurAmt,  // col D = COP
+            estado: str(r[5]), paquete: str(r[6]), notas: str(r[7])  // col F, G, H
           });
         }
       }
@@ -934,7 +933,7 @@ function getAdminFinanciero() {
       var pagosNombres = [];
       var seenPN = {};
       for (var i = 0; i < pagData.length; i++) {
-        var cellA = str(pagData[i][0]);
+        var cellA = str(pagData[i][1]); // col B = nombre
         if (!cellA || cellA.toLowerCase().indexOf('total') >= 0) continue;
         if (!seenPN[cellA.toLowerCase()]) {
           seenPN[cellA.toLowerCase()] = true;
@@ -1030,38 +1029,40 @@ function registrarPago(data) {
     var lastRow = pagosSheet.getLastRow();
     var startRow = 6;
     var numRows = lastRow - startRow + 1;
-    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, 7).getValues() : [];
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, 8).getValues() : [];
 
     var nombreLower = nombre.toLowerCase();
     var tipoLower   = tipo.toLowerCase();
     var inBlock = false;
     var targetSheetRow = -1;
-    var blockPagoFinalRow = -1; // tracks Pago Final row within this participant's block
+    var blockPagoFinalRow = -1;
+    var tipoParticipante = String(data.tipo_participante || '').trim();
 
     for (var i = 0; i < allData.length; i++) {
-      var cellA = String(allData[i][0] || '').trim();
-      var cellG = String(allData[i][6] || '').trim();
+      var cellB = String(allData[i][1] || '').trim(); // col B = nombre
+      var cellH = String(allData[i][7] || '').trim(); // col H = concepto
 
-      if (cellA) {
-        if (cellA.toLowerCase() === nombreLower) {
+      if (cellB) {
+        if (cellB.toLowerCase() === nombreLower) {
           inBlock = true;
+          if (!tipoParticipante) tipoParticipante = String(allData[i][0] || '').trim();
         } else if (inBlock) {
-          break; // otro participante → bloque terminó sin match
+          break;
         }
       }
 
       if (inBlock) {
-        if (cellG.toLowerCase() === tipoLower) {
+        if (cellH.toLowerCase() === tipoLower) {
           targetSheetRow = startRow + i;
           break;
         }
-        if (cellG.toLowerCase() === 'pago final') {
+        if (cellH.toLowerCase() === 'pago final') {
           blockPagoFinalRow = startRow + i;
         }
       }
     }
 
-    var newRow = [nombre, fechaDate, cop > 0 ? cop : '', eur, estado, paquete, tipo];
+    var newRow = [tipoParticipante, nombre, fechaDate, cop > 0 ? cop : '', eur, estado, paquete, tipo];
 
     if (targetSheetRow > 0) {
       // Row already exists — update it
@@ -1075,7 +1076,7 @@ function registrarPago(data) {
       var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
       var lastDataRow = startRow - 1;
       for (var k = 0; k < allData.length; k++) {
-        var gv = String(allData[k][6] || '').trim().toLowerCase();
+        var gv = String(allData[k][7] || '').trim().toLowerCase(); // col H = concepto
         if (tiposValidos[gv]) lastDataRow = startRow + k;
       }
       var insertRow = lastDataRow + 1;
@@ -1088,16 +1089,16 @@ function registrarPago(data) {
     var lastRow2 = pagosSheet.getLastRow();
     var numRows2 = lastRow2 - startRow + 1;
     if (numRows2 > 0) {
-      var allData2 = pagosSheet.getRange(startRow, 1, numRows2, 7).getValues();
+      var allData2 = pagosSheet.getRange(startRow, 1, numRows2, 8).getValues();
       var inBlock2 = false;
       for (var j = 0; j < allData2.length; j++) {
-        var cellA2 = String(allData2[j][0] || '').trim();
-        if (cellA2) {
-          if (cellA2.toLowerCase() === nombreLower) { inBlock2 = true; }
+        var cellB2 = String(allData2[j][1] || '').trim(); // col B = nombre
+        if (cellB2) {
+          if (cellB2.toLowerCase() === nombreLower) { inBlock2 = true; }
           else if (inBlock2) { break; }
         }
-        if (inBlock2 && String(allData2[j][5] || '').trim() !== paquete) {
-          pagosSheet.getRange(startRow + j, 6).setValue(paquete);
+        if (inBlock2 && String(allData2[j][6] || '').trim() !== paquete) { // col G = paquete
+          pagosSheet.getRange(startRow + j, 7).setValue(paquete); // col G = column 7
         }
       }
     }
@@ -1129,22 +1130,21 @@ function sincronizarParticipantes() {
     var lastRow = pagosSheet.getLastRow();
     var existingNames = {};
     if (lastRow >= 6) {
-      var existingData = pagosSheet.getRange(6, 1, lastRow - 5, 1).getValues();
+      var existingData = pagosSheet.getRange(6, 2, lastRow - 5, 1).getValues(); // col B = nombre
       existingData.forEach(function(row) {
         var n = String(row[0] || '').trim().toLowerCase();
         if (n) existingNames[n] = true;
       });
     }
 
-    // Find insert point: last row with a known tipo (Reserva/Tiquete/Pago Final) in col G
-    // Ignores summary row and any other non-participant content below
+    // Find insert point: last row with a known tipo (Reserva/Tiquete/Pago Final) in col H
     var insertRow = 6;
     if (lastRow >= 6) {
-      var colGData = pagosSheet.getRange(6, 7, lastRow - 5, 1).getValues();
+      var colHData = pagosSheet.getRange(6, 8, lastRow - 5, 1).getValues(); // col H = concepto
       var lastGRow = 5;
       var tiposValidos2 = { 'reserva': true, 'tiquete': true, 'pago final': true };
-      for (var k = 0; k < colGData.length; k++) {
-        var gv2 = String(colGData[k][0] || '').trim().toLowerCase();
+      for (var k = 0; k < colHData.length; k++) {
+        var gv2 = String(colHData[k][0] || '').trim().toLowerCase();
         if (tiposValidos2[gv2]) lastGRow = 6 + k;
       }
       insertRow = lastGRow + 1;
@@ -1157,9 +1157,10 @@ function sincronizarParticipantes() {
       var nombre = String(mainData[i][nombreCol] || '').trim();
       if (!nombre || existingNames[nombre.toLowerCase()]) continue;
       var tieneTiquete = String(mainData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
-      newRows.push([nombre, '', '', 0, 'Pendiente', '', 'Reserva']);
-      if (tieneTiquete) newRows.push(['', '', '', 0, '', '', 'Tiquete']);
-      newRows.push(['', '', '', 0, '', '', 'Pago Final']);
+      var tipoP = String(mainData[i][0] || 'Jugador').trim() || 'Jugador'; // col A main = tipo
+      newRows.push([tipoP, nombre, '', '', 0, 'Pendiente', '', 'Reserva']);
+      if (tieneTiquete) newRows.push([tipoP, '', '', '', 0, '', '', 'Tiquete']);
+      newRows.push([tipoP, '', '', '', 0, '', '', 'Pago Final']);
       existingNames[nombre.toLowerCase()] = true;
       added++;
     }

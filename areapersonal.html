@@ -1502,6 +1502,7 @@ let adminData = [];
 let adminCurrentRow = null;
 let pagoCurrentIdx = null;
 let pagoCurrentNombre = null;
+let pagoCurrentTipo = '';
 let habitacion = '';
 let fotosLoaded = false;
 let saberLoaded = false;
@@ -3671,6 +3672,25 @@ function renderAdminPagos(fin) {
     }
   });
 
+  // Mapa tipo: nombre_lower → 'Jugador'/'Acompañante'
+  const tipoMap = {};
+  pagos.forEach(p => { if (p.tipo && p.nombre) tipoMap[p.nombre.toLowerCase().trim()] = p.tipo; });
+  (adminData || []).forEach(r => {
+    const n = normalizeParticipant(r) || {};
+    const key = (n.nombre || r['Nombre'] || '').toLowerCase().trim();
+    if (key && !tipoMap[key]) tipoMap[key] = n.tipo || r['tipo'] || r['Tipo'] || '';
+  });
+
+  // Ordenar: Jugadores primero, luego Acompañantes, alfabético dentro de cada grupo
+  allNombres.sort((a, b) => {
+    const ta = (tipoMap[a.toLowerCase().trim()] || '').toLowerCase();
+    const tb = (tipoMap[b.toLowerCase().trim()] || '').toLowerCase();
+    const oa = ta.includes('acomp') ? 1 : 0;
+    const ob = tb.includes('acomp') ? 1 : 0;
+    if (oa !== ob) return oa - ob;
+    return a.localeCompare(b, 'es');
+  });
+
   // Mapa: nombre_lower → { reserva, tiquete, 'pago final' }
   const pagoMap = {};
   pagos.forEach(p => {
@@ -3740,8 +3760,13 @@ function renderAdminPagos(fin) {
     const adRow = origIdx >= 0 ? (normalizeParticipant(adminData[origIdx]) || {}) : {};
     const conTiq = adRow.tiquete_aereo ? adRow.tiquete_aereo.toLowerCase().includes('con') : true;
     const btnClick = `openPagosModal(${origIdx}, '${nombre.replace(/'/g,"\\'")}')`;
-    return `<tr data-nombre="${key}">
-      <td style="font-weight:500">${nombre}<div style="font-size:11px;color:var(--muted);margin-top:2px">${adRow.tipo||''}</div></td>
+    const tipoPart = tipoMap[key] || adRow.tipo || '';
+    const tipoIsAcomp = tipoPart.toLowerCase().includes('acomp');
+    const tipoBadge = tipoPart
+      ? `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};margin-left:6px">${tipoPart}</span>`
+      : '';
+    return `<tr data-nombre="${key}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}">
+      <td style="font-weight:500">${nombre}${tipoBadge}</td>
       <td>${fmtPago(reserva)}</td>
       <td>${conTiq ? fmtPago(tiquete) : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td>${fmtPago(pagoFinal)}</td>
@@ -3758,7 +3783,7 @@ function renderAdminPagos(fin) {
 function filtrarTablaPagos(q) {
   const term = (q || '').toLowerCase().trim();
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
-    tr.style.display = (!term || tr.dataset.nombre.includes(term)) ? '' : 'none';
+    tr.style.display = (!term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term)) ? '' : 'none';
   });
 }
 
@@ -4160,11 +4185,15 @@ function openPagosModal(idx, nombreOverride) {
     const n = normalizeParticipant(row) || {};
     nombre = n.nombre || row['Nombre'] || nombreOverride || '';
     tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
+    pagoCurrentTipo = n.tipo || row['tipo'] || row['Tipo'] || '';
   } else {
     pagoCurrentIdx = -1;
     pagoCurrentNombre = nombreOverride || '';
     nombre = pagoCurrentNombre;
-    tieneTiquete = true; // mostrar los 3 tipos cuando no hay datos de inscripción
+    tieneTiquete = true;
+    // Buscar tipo en pagos_lista si no hay adminData
+    pagoCurrentTipo = ((adminFinData && adminFinData.pagos_lista) || [])
+      .find(p => (p.nombre || '').toLowerCase() === nombre.toLowerCase())?.tipo || '';
   }
   if (!nombre) return;
 
@@ -4278,7 +4307,7 @@ function registrarPagoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete }),
+    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, tipo_participante: pagoCurrentTipo }),
     redirect: 'follow'
   })
   .then(r => r.json())
