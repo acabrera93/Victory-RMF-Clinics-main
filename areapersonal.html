@@ -3513,10 +3513,17 @@ function renderAdminDashboard(rows, fin) {
   // Paquetes chart
   const paqListEl = document.getElementById('paq-list');
   const paqColorMap = {
+    // Jugadores
     'redcol 1-30': '#1e5ba8', 'redcol 31+': '#16a34a',
-    'standard': '#ea580c', 'premium': '#7c3aed'
+    'standard': '#ea580c', 'premium': '#7c3aed',
+    // Acompañantes — doble
+    'acomp. doble standard': '#0d9488', 'acomp. doble premium': '#0f766e',
+    // Acompañantes — sencilla
+    'acomp. sencilla standard': '#7c3aed', 'acomp. sencilla premium': '#6d28d9',
+    // Acompañantes — actividades
+    'acomp. actividades standard': '#ea580c', 'acomp. actividades premium': '#c2410c'
   };
-  const paqFallbackColors = ['#1e5ba8','#16a34a','#ea580c','#7c3aed'];
+  const paqFallbackColors = ['#1e5ba8','#16a34a','#ea580c','#7c3aed','#0d9488','#7c3aed'];
   if (paqListEl) {
     if (fin && fin.paquetes && fin.paquetes.length) {
       const maxPaqTotal = Math.max(...fin.paquetes.map(p => p.total));
