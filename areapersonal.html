@@ -1908,7 +1908,7 @@ async function doLogin() {
     checkNuevosComunicados();
     const tabParam = new URLSearchParams(window.location.search).get('tab');
     if (tabParam && ['fotos','comunicaciones','saber','admin','comercial'].includes(tabParam)) {
-      setTimeout(() => switchSection(tabParam), 150);
+      setTimeout(() => switchSection(tabParam, true), 150); // no scroll en restauración por URL
     }
   } catch (e) {
     const emailNorm = email.toLowerCase().trim();
@@ -2018,7 +2018,7 @@ function applyPasoActual(paso) {
   const panelMap = {1:'panel-tc', 2:'panel-tc', 3:'panel2', 4:'panel-tiq', 5:'panel3', 6:'panel4', 7:'panel-done'};
   const targetPanel = panelMap[paso] || 'panel-tc';
   buildSteps();
-  goPanel(targetPanel);
+  goPanel(targetPanel, true); // no scroll en carga inicial
 }
 
 // ── STEPS ────────────────────────────────────────────────────────────────────
@@ -2047,7 +2047,7 @@ function buildSteps() {
   });
 }
 
-function goPanel(id) {
+function goPanel(id, noScroll) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   const el = document.getElementById(id);
   if (el) { el.classList.add('active'); curPanel = id; }
@@ -2056,7 +2056,7 @@ function goPanel(id) {
   document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.section === 'proceso'));
   const stepsRow = document.getElementById('steps-row');
   if (stepsRow) stepsRow.style.display = '';
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!noScroll && el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── TASA ─────────────────────────────────────────────────────────────────────
@@ -2929,7 +2929,7 @@ async function submitPasswordGate() {
 })();
 
 // ── SECTION TABS (Fotos / Comunicaciones / Lo que debo saber) ─────────────────
-function switchSection(section) {
+function switchSection(section, noScroll) {
   if ((section === 'admin' || section === 'comercial') && !sessionStorage.getItem('auth_' + section)) {
     _pwdPrevSection = document.querySelector('.stab.active')?.dataset.section || 'proceso';
     openPasswordGate(section);
@@ -2946,12 +2946,12 @@ function switchSection(section) {
     stepsRow.style.display = '';
     if (resumenCard) resumenCard.style.display = '';
     const cur = document.getElementById(curPanel);
-    if (cur) { cur.classList.add('active'); cur.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (cur) { cur.classList.add('active'); if (!noScroll) cur.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } else {
     stepsRow.style.display = 'none';
     if (resumenCard) resumenCard.style.display = section === 'admin' ? 'none' : '';
     const el = document.getElementById('panel-' + section);
-    if (el) { el.classList.add('active'); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (el) { el.classList.add('active'); if (!noScroll) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     if (section === 'fotos' && !fotosLoaded) loadFotos();
     if (section === 'comunicaciones') { clearComunBadge(); if (!comunLoaded) loadComunicaciones(); }
     if (section === 'saber' && !saberLoaded) loadSaber();
@@ -5015,6 +5015,9 @@ function adminHandleFotoUpload(files) {
   .paq-amount { font-size: 13px; }
   .paq-footer { padding: 10px 12px; }
   .paq-footer-val { font-size: 17px; }
+}
+.panel {
+  scroll-margin-top: 80px;
 }
 /* Evitar scroll horizontal y desbordamiento en móvil */
 html, body {
