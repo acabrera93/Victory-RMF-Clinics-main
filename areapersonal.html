@@ -1144,8 +1144,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         </div>
         <div class="ptable-wrap">
           <table class="ptable" id="admin-pagos-table">
-            <thead><tr><th>Participante</th><th>Reserva</th><th>Tiquete</th><th>Pago Final</th><th>Total EUR</th><th></th></tr></thead>
-            <tbody id="admin-pagos-body"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
+            <thead><tr><th>Tipo</th><th>Participante</th><th>Reserva</th><th>Tiquete</th><th>Pago Final</th><th>Total EUR</th><th></th></tr></thead>
+            <tbody id="admin-pagos-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Cargando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -3741,7 +3741,7 @@ function renderAdminPagos(fin) {
   };
 
   if (!allNombres.length) {
-    document.getElementById('admin-pagos-body').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
+    document.getElementById('admin-pagos-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
     return;
   }
 
@@ -3763,10 +3763,11 @@ function renderAdminPagos(fin) {
     const tipoPart = tipoMap[key] || adRow.tipo || '';
     const tipoIsAcomp = tipoPart.toLowerCase().includes('acomp');
     const tipoBadge = tipoPart
-      ? `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${tipoPart}</span>`
-      : '';
+      ? `<span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${tipoPart}</span>`
+      : '<span style="color:var(--muted);font-size:12px">—</span>';
     return `<tr data-nombre="${key}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}">
-      <td><div style="display:flex;align-items:center;gap:8px">${tipoBadge}<span style="font-weight:500">${nombre}</span></div></td>
+      <td>${tipoBadge}</td>
+      <td style="font-weight:500">${nombre}</td>
       <td>${fmtPago(reserva)}</td>
       <td>${conTiq ? fmtPago(tiquete) : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td>${fmtPago(pagoFinal)}</td>
