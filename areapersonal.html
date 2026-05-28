@@ -1170,7 +1170,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                     <th>Comercial</th>
                     <th class="right">Com. / Jug.</th>
                     <th class="right">Jugadores</th>
-                    <th class="right">Estado</th>
                     <th class="right">Total</th>
                   </tr>
                 </thead>
@@ -3756,30 +3755,6 @@ function filtrarTablaPagos(q) {
   });
 }
 
-function renderComercialRow(c, globalIdx) {
-  const btn = `<button onclick="openComercialModal(${globalIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>`;
-  if (c.seccion === 'acompanantes') {
-    return `<tr>
-      <td style="font-weight:500">${c.comercial}</td>
-      <td style="color:var(--blue);font-size:13px">${(c.com_doble||0).toLocaleString('es-CO')} €</td>
-      <td style="color:var(--blue);font-size:13px">${(c.com_sencilla||0).toLocaleString('es-CO')} €</td>
-      <td style="font-size:13px">${c.acomp_doble||0}</td>
-      <td style="font-size:13px">${c.acomp_sencilla||0}</td>
-      <td style="font-weight:700;color:var(--navy)">${(c.total||0).toLocaleString('es-CO')} €</td>
-      <td>${btn}</td>
-    </tr>`;
-  }
-  return `<tr>
-    <td style="font-weight:500">${c.comercial}</td>
-    <td style="font-weight:600;color:var(--blue)">${(c.comision_jugador||0).toLocaleString('es-CO')} €</td>
-    <td>${c.jugadores||0}</td>
-    <td style="font-weight:700;color:var(--navy)">${(c.total||0).toLocaleString('es-CO')} €</td>
-    <td>${statusChip(c.estado)}</td>
-    <td style="font-size:12px;color:var(--muted)">${c.notas||''}</td>
-    <td>${btn}</td>
-  </tr>`;
-}
-
 // Pasos
 function renderPasoRow(codigo, label, count) {
   const activo = count > 0;
@@ -3814,17 +3789,11 @@ function renderPaqRow(nombre, cantidad, precio, total, color, maxTotal) {
 }
 
 function renderFilaJugador(nombre, comPorJug, numJugadores, estado, total) {
-  const estadoClase = estado === 'Pagado' ? 'paid' : estado === 'Parcial' ? 'partial' : 'pending';
   return `
     <tr>
       <td><div class="com-name">${nombre}</div><div class="com-name-sub">Comercial activo/a</div></td>
       <td style="text-align:right"><span class="com-amt">${comPorJug}€</span></td>
       <td style="text-align:right"><span class="com-count">${numJugadores}</span></td>
-      <td style="text-align:right">
-        <span class="com-status ${estadoClase}">
-          <span class="com-status-dot"></span>${estado}
-        </span>
-      </td>
       <td><div class="${total > 0 ? 'com-total-cell' : 'com-zero'}">${total.toLocaleString('es-ES')}€</div></td>
     </tr>`;
 }
@@ -3854,8 +3823,7 @@ function iniciales(nombre) {
 
 function renderMobileJugador(nombre, comPorJug, numJugadores, estado, total, idx) {
   const color = avatarColores[idx % avatarColores.length];
-  const estadoClase = estado === 'Pagado' ? 'paid' : 'pending';
-  const valClase = total > 0 ? (estado === 'Pagado' ? 'green' : 'blue') : 'zero';
+  const valClase = total > 0 ? 'blue' : 'zero';
   return `
     <div class="com-mobile-card">
       <div class="com-mobile-card-name">
@@ -3869,12 +3837,6 @@ function renderMobileJugador(nombre, comPorJug, numJugadores, estado, total, idx
       <div class="com-mobile-row">
         <span class="com-mobile-key">Jugadores inscritos</span>
         <span class="com-mobile-val">${numJugadores}</span>
-      </div>
-      <div class="com-mobile-row">
-        <span class="com-mobile-key">Estado</span>
-        <span class="com-status ${estadoClase}">
-          <span class="com-status-dot"></span>${estado}
-        </span>
       </div>
       <div class="com-mobile-row">
         <span class="com-mobile-key">Total jugadores</span>
@@ -5019,17 +4981,6 @@ function adminHandleFotoUpload(files) {
 .panel {
   scroll-margin-top: 80px;
 }
-/* Evitar scroll horizontal y desbordamiento en móvil */
-html, body {
-  max-width: 100%;
-  overflow-x: hidden;
-}
-* {
-  box-sizing: border-box;
-}
-img, video, iframe, table {
-  max-width: 100%;
-}
 /* ── COMISIONES MÓVIL ── */
 .com-mobile-section { display: none; }
 
@@ -5059,6 +5010,185 @@ img, video, iframe, table {
   .com-footer-item:last-child { border-bottom: none; padding-bottom: 2px; }
   .com-footer-label { font-size: 9px; }
   .com-footer-val { font-size: 16px; }
+}
+html, body { max-width: 100%; overflow-x: hidden; }
+img, video, iframe, table { max-width: 100%; }
+
+/* ── MOBILE FIXES COMPLETOS — areapersonal.html ── */
+
+@media (max-width: 768px) {
+
+  /* NAV */
+  nav {
+    padding: 10px 14px;
+    gap: 8px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+  .nav-logos {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .nav-logos img {
+    height: 28px !important;
+  }
+  .nav-tag { display: none; }
+
+  /* WRAP */
+  .wrap { padding: 16px 12px 80px; }
+
+  /* WELCOME */
+  .welcome {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .welcome h1 { font-size: 22px; }
+  .welcome > div:last-child {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* INSTALL BTN */
+  #btn-instalar {
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: rgba(30,91,168,0.15);
+    border: 1px solid rgba(30,91,168,0.3);
+    color: var(--blue-bright);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* STEPS */
+  .steps {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .steps::-webkit-scrollbar { display: none; }
+  .step {
+    min-width: 72px;
+    flex-shrink: 0;
+    padding: 10px 6px;
+  }
+  .stitle { font-size: 10px; }
+  .sdesc { display: none; }
+
+  /* SECTION TABS */
+  .section-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    gap: 3px;
+  }
+  .section-tabs::-webkit-scrollbar { display: none; }
+  .stab {
+    min-width: 80px;
+    font-size: 11px;
+    padding: 8px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* CARDS */
+  .card { padding: 16px 14px; }
+  .ctitle { font-size: 13px; }
+
+  /* CALCULADORA */
+  .calc-row { grid-template-columns: 1fr; gap: 10px; }
+  .crvalue { font-size: 34px; }
+  .cresult {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  /* PAGO */
+  .pay-grid { grid-template-columns: 1fr; gap: 10px; }
+  .pay-opt { padding: 14px; }
+  .ptitle { font-size: 14px; }
+  .pdesc { font-size: 12px; }
+  .pamount-value { font-size: 16px; }
+  .tiq-btns { flex-direction: column; }
+  .btn-tiq-yes, .btn-tiq-no { width: 100%; padding: 12px; text-align: center; }
+
+  /* DATOS BANCARIOS */
+  .brow { flex-direction: column; gap: 2px; padding: 8px 0; }
+  .bval { font-size: 14px; }
+  .bold-btn { font-size: 14px; padding: 14px; }
+
+  /* TIQUETE GRID 3 COLS → 1 COL */
+  #panel-tiq .card > div[style*="grid-template-columns:1fr 1fr 1fr"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* DOCUMENTOS */
+  .doc-item { flex-direction: column; gap: 8px; padding: 14px; }
+  .dicon { font-size: 22px; }
+  .dtitle { font-size: 14px; }
+  .ddesc { font-size: 13px; }
+
+  /* FOTOS */
+  .fotos-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+
+  /* LIGHTBOX */
+  .lb-arrow { width: 40px; height: 40px; font-size: 22px; }
+  .lb-prev { left: 6px; }
+  .lb-next { right: 6px; }
+
+  /* BREAKDOWN */
+  .breakdown-box { padding: 10px 12px; font-size: 12px; }
+  .bkrow { flex-wrap: wrap; gap: 2px; }
+
+  /* MODAL */
+  .modal-box { padding: 20px 16px; border-radius: 10px; }
+  .modal-grid { grid-template-columns: 1fr; }
+
+  /* LOGIN */
+  .login-box { padding: 28px 20px; }
+  .login-logos img { height: 24px; }
+  .login-title { font-size: 24px; }
+  .login-sub { font-size: 14px; }
+
+  /* ADMIN SUBNAV */
+  .admin-subnav { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .admin-subnav::-webkit-scrollbar { display: none; }
+  .asnav-btn { white-space: nowrap; flex-shrink: 0; font-size: 12px; padding: 7px 12px; }
+
+  /* KPI GRID */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* COM KPI ROW */
+  .com-kpi-row { grid-template-columns: 1fr 1fr; }
+  .com-kpi-row .card:nth-child(3) { grid-column: 1 / -1; }
+
+  /* PARTICIPANT TABS */
+  .ptabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .ptabs::-webkit-scrollbar { display: none; }
+  .ptab { white-space: nowrap; flex-shrink: 0; }
+
+  /* DRES */
+  .dres-outer { flex-direction: column; }
+  .dres-logo { width: 100%; flex-direction: row; gap: 10px; }
+  .dres-logo img { width: 60px; height: 60px; }
+  .dres-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 380px) {
+  .nav-logos img { height: 22px !important; }
+  .welcome h1 { font-size: 18px; }
+  .kpi-grid { grid-template-columns: 1fr !important; }
+  .stab { min-width: 70px; font-size: 10px; }
 }
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=%C2%A1Hola!%20Quiero%20mas%20informaci%C3%B3n%20sobre%20los%20programas%20deportivos" target="_blank" rel="noopener"
