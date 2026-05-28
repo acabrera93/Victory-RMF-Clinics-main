@@ -1498,6 +1498,7 @@ let conTiq = false;
 let grupoPaso = 1;
 let programa = '';
 let adminLoaded = false;
+let adminLastLoaded = 0;
 let adminData = [];
 let adminCurrentRow = null;
 let pagoCurrentIdx = null;
@@ -3347,11 +3348,18 @@ function adminSection(section) {
   document.querySelectorAll('[id^="admin-sec-"]').forEach(el => el.style.display = 'none');
   const el = document.getElementById('admin-sec-' + section);
   if (el) el.style.display = '';
-  if (section === 'comunicados') loadAdminComunicados();
+  // Render con datos actuales inmediatamente
   if (section === 'pagos' && adminFinData) renderAdminPagos(adminFinData);
   if (section === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
+  // Recargas específicas por sección
+  if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
   if (section === 'galeria') loadAdminFotos();
+  // Re-fetch de datos de participantes y financiero con cooldown de 30s
+  const DATA_SECTIONS = ['dashboard', 'participantes', 'pagos', 'comisiones'];
+  if (DATA_SECTIONS.includes(section) && Date.now() - adminLastLoaded > 30000) {
+    loadAdmin(true);
+  }
 }
 
 function loadAdmin(force) {
@@ -3371,11 +3379,16 @@ function loadAdmin(force) {
     if (!adminData.length && !adminFinData) {
       document.getElementById('kpi-participantes').textContent = 'Error';
     }
+    adminLastLoaded = Date.now();
     renderAdminDashboard(adminData, adminFinData);
     renderAdminTable(adminData);
     applyAdminPermissions();
     const stabAcceso = document.getElementById('stab-acceso');
     if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
+    // Re-render whichever section is currently visible
+    const activeAsec = (document.querySelector('.asnav-btn.active') || {}).dataset?.asec;
+    if (activeAsec === 'pagos' && adminFinData) renderAdminPagos(adminFinData);
+    if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
   })
   .catch(err => {
     console.error('loadAdmin error:', err);
