@@ -991,7 +991,7 @@ function getAdminFinanciero() {
       sv.forEach(function(row) {
         for (var j = 0; j < row.length; j++) {
           var cj = str(row[j]);
-          if ((cj.indexOf('Redcol') === 0 || cj.indexOf('Paquete') === 0) && num(row[j+1]) > 0 && num(row[j+2]) > 0) {
+          if ((cj.indexOf('Redcol') === 0 || cj.indexOf('Paquete') === 0 || cj.indexOf('Acomp.') === 0) && num(row[j+1]) > 0 && num(row[j+2]) > 0) {
             result.paquetes.push({ nombre: cj, precio: num(row[j+1]), cantidad: num(row[j+2]), total: num(row[j+3]) });
             break;
           }
