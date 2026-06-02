@@ -3402,6 +3402,13 @@ function loadAdmin(force) {
   });
 }
 
+function syncPaqueteModal(val) {
+  ['pago-reserva-paquete', 'pago-tiquete-paquete', 'pago-pago-final-paquete'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
+}
+
 function refreshAdminPagos(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '↻ Cargando…'; }
   const t = Date.now();
@@ -4256,9 +4263,13 @@ function openPagosModal(idx, nombreOverride) {
   const inputStyle = 'width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:\'DM Sans\',sans-serif;font-size:14px;outline:none;box-sizing:border-box';
   const selectStyle = inputStyle + ';background:#fff';
 
+  // Paquete ya guardado en cualquier pago de este participante (para pre-llenar filas sin pago)
+  const currentPaquete = Object.values(pagosByTipo).find(p => p.paquete && p.paquete !== '')?.paquete || 'Estándar';
+
   document.getElementById('pagos-modal-body').innerHTML = ['Reserva', 'Tiquete', 'Pago Final'].map(tipo => {
     const ex = pagosByTipo[tipo.toLowerCase()] || null;
     const tid = tipo.replace(' ', '-').toLowerCase();
+    const paqueteVal = ex ? ex.paquete : currentPaquete;
 
     if (tipo === 'Tiquete' && !tieneTiquete && !ex) {
       return `<div style="border:1px dashed var(--border);border-radius:10px;padding:18px;margin-bottom:12px">
@@ -4273,13 +4284,13 @@ function openPagosModal(idx, nombreOverride) {
         <div id="tiquete-form" style="display:none;margin-top:14px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div><div class="clabel">Fecha</div><input type="date" id="pago-tiquete-fecha" value="${today}" style="${inputStyle}"></div>
-            <div><div class="clabel">Estado</div><select id="pago-tiquete-estado" style="${selectStyle}"><option selected>Parcial</option><option>Completo</option></select></div>
+            <div><div class="clabel">Estado</div><select id="pago-tiquete-estado" style="${selectStyle}"><option>Parcial</option><option selected>Completo</option></select></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div><div class="clabel">Valor EUR</div><input type="number" id="pago-tiquete-eur" placeholder="1000" style="${inputStyle}"></div>
             <div><div class="clabel">Valor COP</div><input type="number" id="pago-tiquete-cop" placeholder="4350000" style="${inputStyle}"></div>
           </div>
-          <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-tiquete-paquete" style="${selectStyle}"><option selected>Estándar</option><option>Premium</option></select></div>
+          <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-tiquete-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${currentPaquete!=='Premium'?' selected':''}>Estándar</option><option${currentPaquete==='Premium'?' selected':''}>Premium</option></select></div>
           <button onclick="registrarPagoDesdePanel('Tiquete')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Registrar pago de Tiquete</button>
         </div>
       </div>`;
@@ -4294,13 +4305,13 @@ function openPagosModal(idx, nombreOverride) {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div><div class="clabel">Fecha</div><input type="date" id="pago-${tid}-fecha" value="${fechaToInput(ex ? ex.fecha : '')}" style="${inputStyle}"></div>
-        <div><div class="clabel">Estado</div><select id="pago-${tid}-estado" style="${selectStyle}"><option${!ex||ex.estado==='Parcial'?' selected':''}>Parcial</option><option${ex&&ex.estado==='Completo'?' selected':''}>Completo</option></select></div>
+        <div><div class="clabel">Estado</div><select id="pago-${tid}-estado" style="${selectStyle}"><option${ex&&ex.estado==='Parcial'?' selected':''}>Parcial</option><option${!ex||ex.estado==='Completo'?' selected':''}>Completo</option></select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div><div class="clabel">Valor EUR</div><input type="number" id="pago-${tid}-eur" value="${ex ? ex.eur : ''}" placeholder="1000" style="${inputStyle}"></div>
         <div><div class="clabel">Valor COP</div><input type="number" id="pago-${tid}-cop" value="${ex ? ex.cop : ''}" placeholder="4350000" style="${inputStyle}"></div>
       </div>
-      <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" style="${selectStyle}"><option${!ex||ex.paquete!=='Premium'?' selected':''}>Estándar</option><option${ex&&ex.paquete==='Premium'?' selected':''}>Premium</option></select></div>
+      <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${paqueteVal!=='Premium'?' selected':''}>Estándar</option><option${paqueteVal==='Premium'?' selected':''}>Premium</option></select></div>
       <button onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">${ex ? 'Actualizar' : 'Registrar'} pago de ${tipo}</button>
     </div>`;
   }).join('');
