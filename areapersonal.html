@@ -1141,6 +1141,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div class="ctitle" style="margin-bottom:0">Pagos por participante</div>
           <input id="pagos-search" type="text" placeholder="Buscar participante..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
+          <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">↻ Actualizar</button>
         </div>
         <div class="ptable-wrap">
           <table class="ptable" id="admin-pagos-table">
