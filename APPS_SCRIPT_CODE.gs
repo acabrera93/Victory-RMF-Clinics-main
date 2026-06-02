@@ -901,21 +901,29 @@ function getAdminFinanciero() {
       if (lastPagRow >= 6) {
         var pagData = pagosSheet.getRange('A6:H' + lastPagRow).getValues();
         var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
+        var currentNombre = '';
+        var currentTipo   = '';
         for (var i = 0; i < pagData.length; i++) {
           var r = pagData[i];
-          var tipo  = str(r[0]);   // col A = tipo participante
-          var nombre = str(r[1]);  // col B = nombre
+          var rowNombre = str(r[1]); // col B = nombre (puede estar vacío en sub-filas)
+          var rowTipo   = str(r[0]); // col A = tipo participante
+          // Actualizar bloque actual cuando hay nombre en col B
+          if (rowNombre) {
+            if (rowNombre.toLowerCase().indexOf('total') >= 0) { currentNombre = ''; continue; }
+            currentNombre = rowNombre;
+            if (rowTipo) currentTipo = rowTipo;
+          }
+          if (!currentNombre) continue;
           var eurAmt = num(r[4]);  // col E = EUR
-          if (!nombre || eurAmt <= 0) continue;
-          if (nombre.toLowerCase().indexOf('total') >= 0) continue;
+          if (eurAmt <= 0) continue;
           var tipoG = str(r[7]).toLowerCase();  // col H = concepto
           if (tipoG && !tiposValidos3[tipoG]) continue;
           var fechaVal = r[2];  // col C = fecha
           if (!fechaVal || (!(fechaVal instanceof Date) && !str(fechaVal).match(/\d/))) continue;
           result.pagos_lista.push({
-            tipo: tipo, nombre: nombre, fecha: fmtDate(fechaVal),
-            cop: num(r[3]), eur: eurAmt,  // col D = COP
-            estado: str(r[5]), paquete: str(r[6]), notas: str(r[7])  // col F, G, H
+            tipo: currentTipo, nombre: currentNombre, fecha: fmtDate(fechaVal),
+            cop: num(r[3]), eur: eurAmt,
+            estado: str(r[5]), paquete: str(r[6]), notas: str(r[7])
           });
         }
       }
@@ -933,11 +941,11 @@ function getAdminFinanciero() {
       var pagosNombres = [];
       var seenPN = {};
       for (var i = 0; i < pagData.length; i++) {
-        var cellA = str(pagData[i][1]); // col B = nombre
-        if (!cellA || cellA.toLowerCase().indexOf('total') >= 0) continue;
-        if (!seenPN[cellA.toLowerCase()]) {
-          seenPN[cellA.toLowerCase()] = true;
-          pagosNombres.push(cellA);
+        var cellB = str(pagData[i][1]); // col B = nombre (solo filas con nombre)
+        if (!cellB || cellB.toLowerCase().indexOf('total') >= 0) continue;
+        if (!seenPN[cellB.toLowerCase()]) {
+          seenPN[cellB.toLowerCase()] = true;
+          pagosNombres.push(cellB);
         }
       }
       result.pagos_nombres = pagosNombres;
@@ -1066,11 +1074,11 @@ function registrarPago(data) {
 
     if (targetSheetRow > 0) {
       // Row already exists — update it
-      pagosSheet.getRange(targetSheetRow, 1, 1, 7).setValues([newRow]);
+      pagosSheet.getRange(targetSheetRow, 1, 1, 8).setValues([newRow]);
     } else if (blockPagoFinalRow > 0) {
       // Participant found but this tipo has no row yet — insert before Pago Final
       pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
-      pagosSheet.getRange(blockPagoFinalRow, 1, 1, 7).setValues([newRow]);
+      pagosSheet.getRange(blockPagoFinalRow, 1, 1, 8).setValues([newRow]);
     } else {
       // Participant not in sheet at all — insert before summary row
       var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
@@ -1081,7 +1089,7 @@ function registrarPago(data) {
       }
       var insertRow = lastDataRow + 1;
       pagosSheet.insertRowsBefore(insertRow, 1);
-      pagosSheet.getRange(insertRow, 1, 1, 7).setValues([newRow]);
+      pagosSheet.getRange(insertRow, 1, 1, 8).setValues([newRow]);
     }
 
     // Sync paquete across all rows of this participant if paquete changed
@@ -1103,10 +1111,39 @@ function registrarPago(data) {
       }
     }
 
+    actualizarResumenPagos(pagosSheet);
     return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
   } catch (err) {
     Logger.log('registrarPago error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── ACTUALIZAR FÓRMULAS FILA RESUMEN (Pagos) ──────────────────────────────
+function actualizarResumenPagos(pagosSheet) {
+  try {
+    var lastRow = pagosSheet.getLastRow();
+    if (lastRow < 7) return;
+    // Buscar fila resumen: col B contiene "TOTAL"
+    var colB = pagosSheet.getRange('B6:B' + lastRow).getValues();
+    var summaryRow = -1;
+    for (var i = 0; i < colB.length; i++) {
+      if (String(colB[i][0]).toUpperCase().indexOf('TOTAL') >= 0) {
+        summaryRow = 6 + i;
+        break;
+      }
+    }
+    if (summaryRow < 7) return;
+    var sr = summaryRow;
+    var dataEnd = sr - 1;
+    // D = suma COP, E = suma EUR, G = completos, H = parciales
+    pagosSheet.getRange(sr, 4).setFormulaLocal('=SUMA(D6:D' + dataEnd + ')');
+    pagosSheet.getRange(sr, 5).setFormulaLocal('=SUMA(E6:E' + dataEnd + ')');
+    pagosSheet.getRange(sr, 7).setFormulaLocal('=CONTAR.SI(F6:F' + dataEnd + ';"Completo")');
+    pagosSheet.getRange(sr, 8).setFormulaLocal('=CONTAR.SI(F6:F' + dataEnd + ';"Parcial")');
+    Logger.log('actualizarResumenPagos: fórmulas actualizadas en fila ' + sr);
+  } catch (err) {
+    Logger.log('actualizarResumenPagos error: ' + err);
   }
 }
 
@@ -1166,8 +1203,9 @@ function sincronizarParticipantes() {
     }
     if (newRows.length > 0) {
       pagosSheet.insertRowsBefore(insertRow, newRows.length);
-      pagosSheet.getRange(insertRow, 1, newRows.length, 7).setValues(newRows);
+      pagosSheet.getRange(insertRow, 1, newRows.length, 8).setValues(newRows);
     }
+    actualizarResumenPagos(pagosSheet);
     return sendResponse(200, { ok: true, added: added });
   } catch (err) {
     Logger.log('sincronizarParticipantes error: ' + err);
