@@ -1141,7 +1141,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div class="ctitle" style="margin-bottom:0">Pagos por participante</div>
           <input id="pagos-search" type="text" placeholder="Buscar participante..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
-          <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">↻ Actualizar</button>
+          <button id="btn-pagos-actualizar" onclick="refreshAdminPagos(this)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">↻ Actualizar</button>
         </div>
         <div class="ptable-wrap">
           <table class="ptable" id="admin-pagos-table">
@@ -3356,10 +3356,15 @@ function adminSection(section) {
   if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
   if (section === 'galeria') loadAdminFotos();
-  // Re-fetch de datos de participantes y financiero con cooldown de 30s
-  const DATA_SECTIONS = ['dashboard', 'participantes', 'pagos', 'comisiones'];
-  if (DATA_SECTIONS.includes(section) && Date.now() - adminLastLoaded > 30000) {
+  // Pagos siempre re-fetch al entrar (ediciones directas en Sheet deben reflejarse)
+  // Otras secciones: cooldown de 30s
+  if (section === 'pagos') {
     loadAdmin(true);
+  } else {
+    const DATA_SECTIONS = ['dashboard', 'participantes', 'comisiones'];
+    if (DATA_SECTIONS.includes(section) && Date.now() - adminLastLoaded > 30000) {
+      loadAdmin(true);
+    }
   }
 }
 
@@ -3395,6 +3400,25 @@ function loadAdmin(force) {
     console.error('loadAdmin error:', err);
     document.getElementById('kpi-participantes').textContent = 'Error';
   });
+}
+
+function refreshAdminPagos(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Cargando…'; }
+  const t = Date.now();
+  fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + t, { redirect: 'follow' })
+    .then(r => r.json())
+    .then(fin => {
+      if (fin && !fin.error) {
+        adminFinData = fin;
+        adminLastLoaded = Date.now();
+        renderAdminPagos(adminFinData);
+        if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
+      }
+    })
+    .catch(err => console.error('refreshAdminPagos error:', err))
+    .finally(() => {
+      if (btn) { btn.disabled = false; btn.textContent = '↻ Actualizar'; }
+    });
 }
 
 function applyAdminPermissions() {
