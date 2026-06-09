@@ -26,6 +26,23 @@ function getDefaultPassword() {
   return PropertiesService.getScriptProperties().getProperty('default_password') || '';
 }
 
+// ── Ejecutar UNA VEZ para conectar tasa EUR→COP al promedio real de pagos ─────
+// 1. Selecciona esta función y pulsa ▶ Run
+// 2. Escribe la fórmula en Dashboard!F6 del sheet de presupuesto
+// 3. En las demás celdas que muestran "1 EUR = X COP", cámbialas por: =Dashboard!F6
+function configurarTasaSheet() {
+  var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+  var dashSheet = getSheetCI(ss, 'Dashboard');
+  if (!dashSheet) throw new Error('No se encontró la hoja "Dashboard" en el sheet de presupuesto.');
+  // Fórmula: promedio de COP/EUR de todos los pagos con ambos valores (cols D y E de Pagos, fila 6 en adelante)
+  dashSheet.getRange('F6').setFormula(
+    '=IFERROR(ROUND(AVERAGE(ARRAYFORMULA(IF((Pagos!D6:D2000>0)*(Pagos!E6:E2000>0),Pagos!D6:D2000/Pagos!E6:E2000))),0),4350)'
+  );
+  // Etiqueta en F5 para identificar la celda
+  dashSheet.getRange('F5').setValue('Tasa EUR/COP (media pagos)');
+  Logger.log('Fórmula de tasa EUR→COP escrita en Dashboard!F6. Referencia esa celda desde las demás hojas con =Dashboard!F6');
+}
+
 // ── Ejecutar UNA VEZ desde el editor para establecer la contraseña inicial ────
 // 1. Cambia el valor de 'nuevaContrasenia' por la contraseña que quieras usar
 // 2. Selecciona esta función y pulsa ▶ Run
