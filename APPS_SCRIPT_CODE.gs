@@ -153,9 +153,9 @@ function buscarParticipantes(email) {
         }
         participant[String(headers[j])] = val;
       }
-      // Incluir paso_actual (col V = índice 21) aunque no tenga cabecera
+      // Incluir paso_actual (col U = índice 20) aunque no tenga cabecera
       if (!participant['paso_actual']) {
-        const pv = data[i][21];
+        const pv = data[i][20];
         if (pv != null && pv !== '') participant['paso_actual'] = String(pv);
       }
       participants.push(participant);
@@ -299,8 +299,15 @@ function actualizarPasoTodos(email, pasoActual) {
   try {
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const data = sheet.getDataRange().getValues();
-    const emailCol = 3;  // Columna D (índice 0)
-    const pasoCol  = 21; // Columna V (índice 0) = paso_actual
+    const headers = data[0] || [];
+    let emailCol = -1, pasoCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+      if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+    }
+    if (emailCol < 0) emailCol = 3;  // Fallback: Columna D (índice 0)
+    if (pasoCol < 0) pasoCol = 20;   // Fallback: Columna U (índice 0)
     const emailNorm = email.toString().toLowerCase().trim();
     let updated = 0;
     for (let i = 1; i < data.length; i++) {
@@ -603,9 +610,9 @@ function getAdminParticipantes() {
         }
         obj[h] = val;
       }
-      // Garantizar paso_actual desde columna V (índice 21) si no vino por cabecera
+      // Garantizar paso_actual desde columna U (índice 20) si no vino por cabecera
       if (!obj['paso_actual']) {
-        const pv = row[21];
+        const pv = row[20];
         if (pv != null && pv !== '') obj['paso_actual'] = String(pv);
       }
       result.push(obj);
