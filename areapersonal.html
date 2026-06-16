@@ -1505,6 +1505,7 @@ let adminCurrentRow = null;
 let pagoCurrentIdx = null;
 let pagoCurrentNombre = null;
 let pagoCurrentTipo = '';
+let pagoCurrentTieneTiquete = true;
 let habitacion = '';
 let fotosLoaded = false;
 let saberLoaded = false;
@@ -2444,18 +2445,15 @@ function resetComprobante(tipoPago) {
 
 function enviarComprobante(tipoPago) {
   const pasoMap = { reserva: 4, tiquete: 5, final: 6 };
-  const paso = pasoMap[tipoPago];
+  let paso = pasoMap[tipoPago];
+  if (tipoPago === 'reserva' && !conTiq) paso = 5; // sin tiquete: salta directo a paso 5
   actualizarPaso(paso);
   const btn = document.getElementById(`comp-${tipoPago}-btn`);
   if (btn) btn.style.display = 'none';
   const validando = document.getElementById(`comp-${tipoPago}-validando`);
   if (validando) validando.style.display = 'block';
   setTimeout(() => {
-    if (tipoPago === 'reserva' && !conTiq) {
-      applyPasoActual(5);
-    } else {
-      applyPasoActual(paso);
-    }
+    applyPasoActual(paso);
   }, 1500);
 }
 
@@ -4247,6 +4245,7 @@ function openPagosModal(idx, nombreOverride) {
       .find(p => normNombre(p.nombre) === normNombre(nombre))?.tipo || '';
   }
   if (!nombre) return;
+  pagoCurrentTieneTiquete = tieneTiquete;
 
   const pagos = adminFinData && adminFinData.pagos_lista
     ? adminFinData.pagos_lista.filter(p => normNombre(p.nombre) === normNombre(nombre))
@@ -4395,7 +4394,8 @@ function registrarPagoDesdePanel(tipo) {
       }
       // Pago marcado como Completo → avanzar paso_actual del participante (igual que cuando él mismo sube su comprobante)
       const pasoMap = { 'Reserva': 4, 'Tiquete': 5, 'Pago Final': 6 };
-      const nuevoPaso = pasoMap[tipo];
+      let nuevoPaso = pasoMap[tipo];
+      if (tipo === 'Reserva' && !pagoCurrentTieneTiquete) nuevoPaso = 5; // sin tiquete: salta directo a paso 5
       if (estado === 'Completo' && email && nuevoPaso) {
         fetch(APPS_SCRIPT_URL, {
           method: 'POST', headers: { 'Content-Type': 'text/plain' },
