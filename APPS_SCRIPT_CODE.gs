@@ -1253,11 +1253,12 @@ function sincronizarPasosDesdePagos() {
   const mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
   const mainData = mainSheet.getDataRange().getValues();
   const headers = mainData[0] || [];
-  let nombreCol = -1, pasoCol = -1;
+  let nombreCol = -1, pasoCol = -1, tiqueteCol = -1;
   for (let j = 0; j < headers.length; j++) {
     const h = String(headers[j]).toLowerCase().trim();
     if (h === 'nombre' && nombreCol < 0) nombreCol = j;
     if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+    if (h.indexOf('tiquete') >= 0 || h.indexOf('vuelo') >= 0) tiqueteCol = j;
   }
   if (nombreCol < 0) nombreCol = 1;
   if (pasoCol < 0) pasoCol = 20;
@@ -1291,9 +1292,17 @@ function sincronizarPasosDesdePagos() {
     const estado = String(r[5] || '').trim().toLowerCase();
     const concepto = String(r[7] || '').trim().toLowerCase();
     if (estado !== 'completo') return;
-    const pasoCandidato = pasoMap[concepto];
+    let pasoCandidato = pasoMap[concepto];
     if (!pasoCandidato) return;
     const key = normNombreGS(currentNombre);
+    // Reserva completa sin tiquete incluido → salta directo a paso 5 (paso 4 solo aplica a quien debe pagar tiquete)
+    if (concepto === 'reserva' && tiqueteCol >= 0) {
+      const filaIdx = filaPorNombre[key];
+      if (filaIdx !== undefined) {
+        const tieneTiquete = String(mainData[filaIdx][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
+        if (!tieneTiquete) pasoCandidato = 5;
+      }
+    }
     if (!mejorPasoPorNombre[key] || pasoCandidato > mejorPasoPorNombre[key]) {
       mejorPasoPorNombre[key] = pasoCandidato;
     }
