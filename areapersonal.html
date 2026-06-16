@@ -3500,8 +3500,8 @@ function renderAdminDashboard(rows, fin) {
   const pctCostos = ingresos > 0 ? Math.round(costos / ingresos * 100) : 0;
 
   const displayTotal  = kpis && kpis.participantes  ? kpis.participantes  : total;
-  const displayJug    = kpis && kpis.jugadores != null ? kpis.jugadores    : jugadores;
-  const displayAcomp  = kpis && kpis.acompanantes != null ? kpis.acompanantes : acomp;
+  const displayJug    = kpis && kpis.jugadores ? kpis.jugadores    : jugadores;
+  const displayAcomp  = kpis && kpis.acompanantes ? kpis.acompanantes : acomp;
 
   const recaudado = recibidos.total_eur || 0;
   const pctRec = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
