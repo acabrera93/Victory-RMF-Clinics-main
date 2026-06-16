@@ -3359,12 +3359,12 @@ function adminSection(section) {
   if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
   if (section === 'galeria') loadAdminFotos();
-  // Pagos siempre re-fetch al entrar (ediciones directas en Sheet deben reflejarse)
+  // Pagos y Dashboard siempre re-fetch al entrar (ediciones directas en Sheet deben reflejarse)
   // Otras secciones: cooldown de 30s
-  if (section === 'pagos') {
+  if (section === 'pagos' || section === 'dashboard') {
     loadAdmin(true);
   } else {
-    const DATA_SECTIONS = ['dashboard', 'participantes', 'comisiones'];
+    const DATA_SECTIONS = ['participantes', 'comisiones'];
     if (DATA_SECTIONS.includes(section) && Date.now() - adminLastLoaded > 30000) {
       loadAdmin(true);
     }
