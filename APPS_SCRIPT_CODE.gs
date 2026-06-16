@@ -162,12 +162,6 @@ function buscarParticipantes(email) {
     }
 
     Logger.log('buscarParticipantes: encontrados=' + participants.length);
-    if (participants.length === 0) {
-      // Debug temporal: devolver qué hay en las primeras filas
-      const sample = data.slice(1, 6).map(row => row[emailCol] ? String(row[emailCol]).toLowerCase().trim() : '(vacio)');
-      return ContentService.createTextOutput(JSON.stringify({ _debug: true, buscando: emailNorm, emailCol: emailCol, encabezado: String(headers[emailCol]), muestras: sample }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
     return ContentService.createTextOutput(JSON.stringify(participants))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -375,7 +369,6 @@ function handleMultipartUpload(e) {
   const email = (params.email || '').toLowerCase().trim();
   const tipo_documento = params.tipo_documento || 'otro';
   const tipo_pago = params.tipo_pago || '';
-  const nombre = params.nombre || 'sin nombre';
 
   if (!email) {
     return sendResponse(400, { ok: false, error: 'Email requerido' });
@@ -429,8 +422,8 @@ function handleMultipartUpload(e) {
     // Compartir con usuario (solo lectura)
     try {
       file.addEditor(email);
-    } catch (e) {
-      Logger.log('No se pudo compartir con el usuario: ' + e);
+    } catch (shareErr) {
+      Logger.log('No se pudo compartir con el usuario: ' + shareErr);
     }
 
     const fileUrl = file.getUrl();
@@ -461,7 +454,6 @@ function handleJsonUpload(e) {
     const tipo_pago = data.tipo_pago || '';
     const base64Data = data.base64 || '';
     const fileName = data.fileName || 'documento';
-    const nombre = data.nombre || 'sin nombre';
 
     if (!email || !base64Data) {
       return sendResponse(400, { ok: false, error: 'Email y base64 requeridos' });
@@ -662,7 +654,7 @@ function enviarEmailsComunicado(params) {
     for (var j = 0; j < headers.length; j++) {
       var h = String(headers[j]).toLowerCase().trim();
       if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico') emailCol = j;
-      if (h.indexOf('tiquete') >= 0 || h.indexOf('vuelo') >= 0) tiqCol = j;
+      if ((h.indexOf('tiquete') >= 0 && h.indexOf('actualizado') < 0) || h.indexOf('vuelo') >= 0) tiqCol = j;
     }
 
     var emails = [];
@@ -760,22 +752,33 @@ function actualizarParticipante(data) {
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const rowNum = parseInt(data._row);
     if (!rowNum || rowNum < 2) return sendResponse(400, { ok: false, error: 'Fila invalida: ' + data._row });
+    // Mapeo posicional SOLO para campos donde la cabecera del Sheet no coincide
+    // con la clave que envía el formulario (ej. WhatsApp ↔ phone). NO incluir aquí
+    // campos cuya cabecera ya coincide por nombre (como paso_actual), para evitar
+    // que un índice desactualizado escriba en la columna equivocada.
     const numColMapByIdx = {
       1:'tipo', 2:'nombre', 3:'email', 4:'phone', 5:'pais', 6:'pasaporte',
       7:'fecha_nacimiento', 8:'posicion', 9:'club_colegio', 10:'ciudad',
       11:'salud_alergias', 12:'acudiente', 13:'relacion', 14:'tiquete_aereo',
-      15:'programa', 16:'habitacion', 22:'paso_actual'
+      15:'programa', 16:'habitacion'
     };
+    const normFieldKey = function(s) {
+      return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s_]+/g, '_');
+    };
+    const dataByNorm = {};
+    Object.keys(data).forEach(function(k) { dataByNorm[normFieldKey(k)] = data[k]; });
+
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     let updated = 0;
     for (let j = 0; j < headers.length; j++) {
       const h = String(headers[j]);
-      const hLower = h.toLowerCase();
-      const normalizedName = numColMapByIdx[j + 1] || hLower;
       let val = null;
       if (data[h] !== undefined) val = data[h];
-      else if (data[hLower] !== undefined) val = data[hLower];
-      else if (data[normalizedName] !== undefined) val = data[normalizedName];
+      else if (dataByNorm[normFieldKey(h)] !== undefined) val = dataByNorm[normFieldKey(h)];
+      else {
+        const posKey = numColMapByIdx[j + 1];
+        if (posKey && data[posKey] !== undefined) val = data[posKey];
+      }
       if (val !== null) {
         sheet.getRange(rowNum, j + 1).setValue(val);
         updated++;
@@ -922,8 +925,9 @@ function getAdminFinanciero() {
       };
       // Pagos individuales desde fila 6: A=tipo, B=nombre, C=fecha, D=COP, E=EUR, F=estado, G=paquete, H=concepto
       var lastPagRow = pagosSheet.getLastRow();
+      var pagData = [];
       if (lastPagRow >= 6) {
-        var pagData = pagosSheet.getRange('A6:H' + lastPagRow).getValues();
+        pagData = pagosSheet.getRange('A6:H' + lastPagRow).getValues();
         var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
         var currentNombre = '';
         var currentTipo   = '';
@@ -1181,7 +1185,7 @@ function sincronizarParticipantes() {
     for (var j = 0; j < headers.length; j++) {
       var h = String(headers[j]).toLowerCase();
       if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0) nombreCol = j;
-      if (h.includes('tiquete') || h.includes('vuelo')) tiqueteCol = j;
+      if ((h.includes('tiquete') && !h.includes('actualizado')) || h.includes('vuelo')) tiqueteCol = j;
     }
 
     var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
@@ -1258,7 +1262,7 @@ function sincronizarPasosDesdePagos() {
     const h = String(headers[j]).toLowerCase().trim();
     if (h === 'nombre' && nombreCol < 0) nombreCol = j;
     if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
-    if (h.indexOf('tiquete') >= 0 || h.indexOf('vuelo') >= 0) tiqueteCol = j;
+    if ((h.indexOf('tiquete') >= 0 && h.indexOf('actualizado') < 0) || h.indexOf('vuelo') >= 0) tiqueteCol = j;
   }
   if (nombreCol < 0) nombreCol = 1;
   if (pasoCol < 0) pasoCol = 20;
@@ -1322,6 +1326,88 @@ function sincronizarPasosDesdePagos() {
 
   Logger.log('Pasos actualizados: ' + actualizados);
   if (noEncontrados.length) Logger.log('Sin coincidencia en Pre-inscripción (revisar nombres): ' + noEncontrados.join(', '));
+}
+
+// ── Ejecutar UNA VEZ para corregir el bug de columna "Tiquete Actualizado" ────
+// La detección de columna de tiquete leía por error "Tiquete Actualizado" en vez
+// de "Tiquete Aéreo", causando que participantes CON tiquete (aún sin pagarlo)
+// quedaran marcados en paso 5 en vez de paso 4. Esta función SOLO corrige ese
+// caso puntual: baja de 5 a 4 únicamente cuando el participante tiene tiquete
+// incluido, su Reserva está Completa, pero su Tiquete y Pago Final NO lo están.
+// No toca a nadie en paso 6 o 7, ni a quienes legítimamente no tienen tiquete.
+// 1. Selecciona esta función y pulsa ▶ Run
+// 2. Revisa el Log para ver a quién corrigió
+function corregirPasoBugTiquete() {
+  function normNombreGS(s) {
+    return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  const mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  const mainData = mainSheet.getDataRange().getValues();
+  const headers = mainData[0] || [];
+  let nombreCol = -1, pasoCol = -1, tiqueteCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = String(headers[j]).toLowerCase().trim();
+    if (h === 'nombre' && nombreCol < 0) nombreCol = j;
+    if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+    if ((h.indexOf('tiquete') >= 0 && h.indexOf('actualizado') < 0) || h.indexOf('vuelo') >= 0) tiqueteCol = j;
+  }
+  if (nombreCol < 0) nombreCol = 1;
+  if (pasoCol < 0) pasoCol = 20;
+  if (tiqueteCol < 0) throw new Error('No se encontró la columna "Tiquete Aéreo".');
+
+  const filaPorNombre = {};
+  for (let i = 1; i < mainData.length; i++) {
+    const nombre = String(mainData[i][nombreCol] || '').trim();
+    if (!nombre) continue;
+    filaPorNombre[normNombreGS(nombre)] = i;
+  }
+
+  const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+  const pagosSheet = getSheetCI(ss, 'Pagos');
+  if (!pagosSheet) throw new Error('No se encontró la hoja "Pagos".');
+  const lastRow = pagosSheet.getLastRow();
+  if (lastRow < 6) { Logger.log('Sin datos en Pagos.'); return; }
+  const pagData = pagosSheet.getRange('A6:H' + lastRow).getValues();
+
+  // Por participante: qué conceptos tiene Completo
+  const completoPorNombre = {};
+  let currentNombre = '';
+  pagData.forEach(function(r) {
+    const rowNombre = String(r[1] || '').trim();
+    if (rowNombre) {
+      if (rowNombre.toLowerCase().indexOf('total') >= 0) { currentNombre = ''; return; }
+      currentNombre = rowNombre;
+    }
+    if (!currentNombre) return;
+    const estado = String(r[5] || '').trim().toLowerCase();
+    const concepto = String(r[7] || '').trim().toLowerCase();
+    if (estado !== 'completo') return;
+    const key = normNombreGS(currentNombre);
+    if (!completoPorNombre[key]) completoPorNombre[key] = {};
+    completoPorNombre[key][concepto] = true;
+  });
+
+  let corregidos = 0;
+  Object.keys(completoPorNombre).forEach(function(key) {
+    const filaIdx = filaPorNombre[key];
+    if (filaIdx === undefined) return;
+    const pasoActualSheet = parseInt(mainData[filaIdx][pasoCol]) || 0;
+    if (pasoActualSheet !== 5) return; // solo corrige el caso exacto del bug
+    const tieneTiquete = String(mainData[filaIdx][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
+    if (!tieneTiquete) return; // si legítimamente no tiene tiquete, paso 5 es correcto
+    const c = completoPorNombre[key];
+    const reservaOk = !!c['reserva'];
+    const tiqueteOk = !!c['tiquete'];
+    const finalOk = !!c['pago final'];
+    if (reservaOk && !tiqueteOk && !finalOk) {
+      mainSheet.getRange(filaIdx + 1, pasoCol + 1).setValue(4);
+      corregidos++;
+      Logger.log('Corregido a paso 4: ' + mainData[filaIdx][nombreCol]);
+    }
+  });
+
+  Logger.log('Total corregidos: ' + corregidos);
 }
 
 // ───── ADMIN ACCESO ────────────────────────────────────────────────────────────
