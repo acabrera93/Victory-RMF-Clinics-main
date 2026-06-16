@@ -1664,6 +1664,11 @@ function normalizeParticipant(raw) {
   };
 }
 
+// Normaliza nombres para comparar identidad entre hojas (ignora may/min, espacios y tildes)
+function normNombre(s) {
+  return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function extractParticipants(body) {
   if (!body) return [];
   if (Array.isArray(body)) return body.map(normalizeParticipant).filter(Boolean);
@@ -3706,48 +3711,48 @@ function renderAdminPagos(fin) {
 
   // Lista combinada: nombres del sheet de presupuesto (Pagos) + cualquier nuevo de inscripción
   const pagosNombres = fin.pagos_nombres || [];
-  const seenNombres = new Set(pagosNombres.map(n => n.toLowerCase()));
+  const seenNombres = new Set(pagosNombres.map(normNombre));
   const allNombres = [...pagosNombres];
   (adminData || []).forEach(r => {
     const n = normalizeParticipant(r) || {};
     const nombre = n.nombre || r['Nombre'] || '';
-    if (nombre && !seenNombres.has(nombre.toLowerCase())) {
+    if (nombre && !seenNombres.has(normNombre(nombre))) {
       allNombres.push(nombre);
-      seenNombres.add(nombre.toLowerCase());
+      seenNombres.add(normNombre(nombre));
     }
   });
 
-  // Mapa tipo: nombre_lower → 'Jugador'/'Acompañante'
+  // Mapa tipo: nombre_norm → 'Jugador'/'Acompañante'
   const tipoMap = {};
-  pagos.forEach(p => { if (p.tipo && p.nombre) tipoMap[p.nombre.toLowerCase().trim()] = p.tipo; });
+  pagos.forEach(p => { if (p.tipo && p.nombre) tipoMap[normNombre(p.nombre)] = p.tipo; });
   (adminData || []).forEach(r => {
     const n = normalizeParticipant(r) || {};
-    const key = (n.nombre || r['Nombre'] || '').toLowerCase().trim();
+    const key = normNombre(n.nombre || r['Nombre'] || '');
     if (key && !tipoMap[key]) tipoMap[key] = n.tipo || r['tipo'] || r['Tipo'] || '';
   });
 
   // Ordenar: Jugadores primero, luego Acompañantes, alfabético dentro de cada grupo
   allNombres.sort((a, b) => {
-    const ta = (tipoMap[a.toLowerCase().trim()] || '').toLowerCase();
-    const tb = (tipoMap[b.toLowerCase().trim()] || '').toLowerCase();
+    const ta = (tipoMap[normNombre(a)] || '').toLowerCase();
+    const tb = (tipoMap[normNombre(b)] || '').toLowerCase();
     const oa = ta.includes('acomp') ? 1 : 0;
     const ob = tb.includes('acomp') ? 1 : 0;
     if (oa !== ob) return oa - ob;
     return a.localeCompare(b, 'es');
   });
 
-  // Mapa: nombre_lower → { reserva, tiquete, 'pago final' }
+  // Mapa: nombre_norm → { reserva, tiquete, 'pago final' }
   const pagoMap = {};
   pagos.forEach(p => {
-    const key = (p.nombre || '').toLowerCase().trim();
+    const key = normNombre(p.nombre);
     if (!pagoMap[key]) pagoMap[key] = {};
     pagoMap[key][(p.notas || '').toLowerCase().trim()] = p;
   });
 
-  const conPago  = allNombres.filter(n => pagoMap[n.toLowerCase().trim()]).length;
+  const conPago  = allNombres.filter(n => pagoMap[normNombre(n)]).length;
   const sinPago  = allNombres.length - conPago;
   const completos = allNombres.filter(n => {
-    const pp = pagoMap[n.toLowerCase().trim()] || {};
+    const pp = pagoMap[normNombre(n)] || {};
     const reserva   = pp['reserva'];
     const pagoFinal = pp['pago final'];
     const tiquete   = pp['tiquete'];
@@ -3759,7 +3764,7 @@ function renderAdminPagos(fin) {
     return true;
   }).length;
   const parciales = allNombres.filter(n => {
-    const pp = pagoMap[n.toLowerCase().trim()] || {};
+    const pp = pagoMap[normNombre(n)] || {};
     if (!Object.keys(pp).length) return false; // sin ningún pago → no es parcial
     const reserva   = pp['reserva'];
     const pagoFinal = pp['pago final'];
@@ -3791,7 +3796,7 @@ function renderAdminPagos(fin) {
   }
 
   document.getElementById('admin-pagos-body').innerHTML = allNombres.map(nombre => {
-    const key = nombre.toLowerCase().trim();
+    const key = normNombre(nombre);
     const pp = pagoMap[key] || {};
     const reserva   = pp['reserva'];
     const tiquete   = pp['tiquete'];
@@ -3800,7 +3805,7 @@ function renderAdminPagos(fin) {
     // Buscar en adminData para saber si tiene tiquete y para el botón
     const origIdx = (adminData || []).findIndex(r => {
       const n = normalizeParticipant(r) || {};
-      return (n.nombre || r['Nombre'] || '').toLowerCase().trim() === key;
+      return normNombre(n.nombre || r['Nombre'] || '') === key;
     });
     const adRow = origIdx >= 0 ? (normalizeParticipant(adminData[origIdx]) || {}) : {};
     const conTiq = adRow.tiquete_aereo ? adRow.tiquete_aereo.toLowerCase().includes('con') : true;
@@ -4239,12 +4244,12 @@ function openPagosModal(idx, nombreOverride) {
     tieneTiquete = true;
     // Buscar tipo en pagos_lista si no hay adminData
     pagoCurrentTipo = ((adminFinData && adminFinData.pagos_lista) || [])
-      .find(p => (p.nombre || '').toLowerCase() === nombre.toLowerCase())?.tipo || '';
+      .find(p => normNombre(p.nombre) === normNombre(nombre))?.tipo || '';
   }
   if (!nombre) return;
 
   const pagos = adminFinData && adminFinData.pagos_lista
-    ? adminFinData.pagos_lista.filter(p => (p.nombre||'').toLowerCase() === nombre.toLowerCase())
+    ? adminFinData.pagos_lista.filter(p => normNombre(p.nombre) === normNombre(nombre))
     : [];
   const pagosByTipo = {};
   pagos.forEach(p => { pagosByTipo[(p.notas||'').toLowerCase()] = p; });
@@ -4343,7 +4348,7 @@ function registrarPagoDesdePanel(tipo) {
     // Fallback: buscar email por nombre en adminData
     const match = (adminData || []).find(r => {
       const n = normalizeParticipant(r) || {};
-      return (n.nombre || r['Nombre'] || '').toLowerCase().trim() === nombre.toLowerCase().trim();
+      return normNombre(n.nombre || r['Nombre'] || '') === normNombre(nombre);
     });
     if (match) email = (normalizeParticipant(match) || {}).email || '';
   }
@@ -4375,7 +4380,7 @@ function registrarPagoDesdePanel(tipo) {
       if (adminFinData && adminFinData.pagos_lista) {
         const fmtFecha = fecha.split('-').reverse().join('/');
         const i = adminFinData.pagos_lista.findIndex(p =>
-          (p.nombre||'').toLowerCase() === nombre.toLowerCase() &&
+          normNombre(p.nombre) === normNombre(nombre) &&
           (p.notas||'').toLowerCase() === tipo.toLowerCase()
         );
         const np = { nombre, fecha: fmtFecha, cop, eur, estado, paquete, notas: tipo };
@@ -4383,7 +4388,7 @@ function registrarPagoDesdePanel(tipo) {
         else adminFinData.pagos_lista.push(np);
         // Sync paquete in cache across all rows of this participant
         adminFinData.pagos_lista.forEach(p => {
-          if ((p.nombre||'').toLowerCase() === nombre.toLowerCase()) p.paquete = paquete;
+          if (normNombre(p.nombre) === normNombre(nombre)) p.paquete = paquete;
         });
         renderAdminPagos(adminFinData);
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
