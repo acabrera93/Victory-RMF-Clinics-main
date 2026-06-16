@@ -4332,13 +4332,20 @@ function activarTiquete() {
 }
 
 function registrarPagoDesdePanel(tipo) {
-  let nombre;
+  let nombre, email = '';
   if (pagoCurrentIdx >= 0 && adminData[pagoCurrentIdx]) {
     const row = adminData[pagoCurrentIdx];
     const n = normalizeParticipant(row) || {};
     nombre = n.nombre || row['Nombre'] || '';
+    email = n.email || '';
   } else {
     nombre = pagoCurrentNombre || '';
+    // Fallback: buscar email por nombre en adminData
+    const match = (adminData || []).find(r => {
+      const n = normalizeParticipant(r) || {};
+      return (n.nombre || r['Nombre'] || '').toLowerCase().trim() === nombre.toLowerCase().trim();
+    });
+    if (match) email = (normalizeParticipant(match) || {}).email || '';
   }
   if (!nombre) return;
   const tid = tipo.replace(' ', '-').toLowerCase();
@@ -4380,6 +4387,25 @@ function registrarPagoDesdePanel(tipo) {
         });
         renderAdminPagos(adminFinData);
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
+      }
+      // Pago marcado como Completo → avanzar paso_actual del participante (igual que cuando él mismo sube su comprobante)
+      const pasoMap = { 'Reserva': 4, 'Tiquete': 5, 'Pago Final': 6 };
+      const nuevoPaso = pasoMap[tipo];
+      if (estado === 'Completo' && email && nuevoPaso) {
+        fetch(APPS_SCRIPT_URL, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'actualizar_paso', email, paso_actual: String(nuevoPaso) })
+        }).then(() => {
+          (adminData || []).forEach(r => {
+            const n = normalizeParticipant(r) || {};
+            if (n.email === email) {
+              const actual = parseInt(n.paso_actual) || 1;
+              if (nuevoPaso > actual) r['paso_actual'] = String(nuevoPaso);
+            }
+          });
+          renderAdminTable(adminData);
+          if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
+        }).catch(() => {});
       }
       setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
     } else {
