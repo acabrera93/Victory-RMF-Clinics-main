@@ -1237,6 +1237,84 @@ function sincronizarParticipantes() {
   }
 }
 
+// ── Ejecutar UNA VEZ para sincronizar paso_actual con pagos YA registrados ────
+// Útil ahora que el bug de columnas de actualizarPasoTodos quedó corregido:
+// recorre los pagos marcados "Completo" en el Sheet de presupuesto y avanza el
+// paso_actual en Pre-inscripción para los que quedaron desactualizados.
+// 1. Selecciona esta función y pulsa ▶ Run
+// 2. Revisa el Log (Ver → Registros) para ver cuántos se actualizaron y si hay
+//    nombres sin coincidencia (probablemente con el mismo problema de nombres
+//    abreviados que ya corregiste antes)
+function sincronizarPasosDesdePagos() {
+  function normNombreGS(s) {
+    return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  const mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  const mainData = mainSheet.getDataRange().getValues();
+  const headers = mainData[0] || [];
+  let nombreCol = -1, pasoCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = String(headers[j]).toLowerCase().trim();
+    if (h === 'nombre' && nombreCol < 0) nombreCol = j;
+    if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+  }
+  if (nombreCol < 0) nombreCol = 1;
+  if (pasoCol < 0) pasoCol = 20;
+
+  // Mapa nombre_normalizado → índice de fila en mainData
+  const filaPorNombre = {};
+  for (let i = 1; i < mainData.length; i++) {
+    const nombre = String(mainData[i][nombreCol] || '').trim();
+    if (!nombre) continue;
+    filaPorNombre[normNombreGS(nombre)] = i;
+  }
+
+  const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+  const pagosSheet = getSheetCI(ss, 'Pagos');
+  if (!pagosSheet) throw new Error('No se encontró la hoja "Pagos" en el sheet de presupuesto.');
+  const lastRow = pagosSheet.getLastRow();
+  if (lastRow < 6) { Logger.log('Sin datos en Pagos.'); return; }
+  const pagData = pagosSheet.getRange('A6:H' + lastRow).getValues();
+
+  const pasoMap = { 'reserva': 4, 'tiquete': 5, 'pago final': 6 };
+  const mejorPasoPorNombre = {};
+  let currentNombre = '';
+
+  pagData.forEach(function(r) {
+    const rowNombre = String(r[1] || '').trim();
+    if (rowNombre) {
+      if (rowNombre.toLowerCase().indexOf('total') >= 0) { currentNombre = ''; return; }
+      currentNombre = rowNombre;
+    }
+    if (!currentNombre) return;
+    const estado = String(r[5] || '').trim().toLowerCase();
+    const concepto = String(r[7] || '').trim().toLowerCase();
+    if (estado !== 'completo') return;
+    const pasoCandidato = pasoMap[concepto];
+    if (!pasoCandidato) return;
+    const key = normNombreGS(currentNombre);
+    if (!mejorPasoPorNombre[key] || pasoCandidato > mejorPasoPorNombre[key]) {
+      mejorPasoPorNombre[key] = pasoCandidato;
+    }
+  });
+
+  let actualizados = 0;
+  const noEncontrados = [];
+  Object.keys(mejorPasoPorNombre).forEach(function(key) {
+    const filaIdx = filaPorNombre[key];
+    if (filaIdx === undefined) { noEncontrados.push(key); return; }
+    const nuevoPaso = mejorPasoPorNombre[key];
+    const pasoActualSheet = parseInt(mainData[filaIdx][pasoCol]) || 0;
+    if (nuevoPaso <= pasoActualSheet) return; // nunca retroceder
+    mainSheet.getRange(filaIdx + 1, pasoCol + 1).setValue(nuevoPaso);
+    actualizados++;
+  });
+
+  Logger.log('Pasos actualizados: ' + actualizados);
+  if (noEncontrados.length) Logger.log('Sin coincidencia en Pre-inscripción (revisar nombres): ' + noEncontrados.join(', '));
+}
+
 // ───── ADMIN ACCESO ────────────────────────────────────────────────────────────
 
 function getAdminAccesoSheet(create) {
