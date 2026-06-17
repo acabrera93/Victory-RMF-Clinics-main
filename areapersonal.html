@@ -5208,37 +5208,52 @@ function adminHandleFotoUpload(files) {
 .kpi2-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .kpi2-card { background: #fff; border: 1px solid rgba(11,31,58,0.08); border-radius: 12px; overflow: hidden; }
 .kpi2-card-header { padding: 14px 16px 10px; border-bottom: 1px solid rgba(11,31,58,0.07); display: flex; align-items: center; justify-content: space-between; }
-.kpi2-card-title { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #64748b; }
-.kpi2-card-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #0b1f3a; color: #5a9de0; }
+.kpi2-card-title { font-size: 13px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #64748b; }
+.kpi2-card-badge { font-size: 14px; font-weight: 600; padding: 5px 13px; border-radius: 20px; background: #0b1f3a; color: #5a9de0; }
 
 .paso-list { padding: 4px 0; }
-.paso-row { display: flex; align-items: center; padding: 9px 16px; gap: 12px; border-bottom: 1px solid rgba(11,31,58,0.05); transition: background 0.15s; }
+.paso-row { display: flex; align-items: center; padding: 13px 20px; gap: 16px; border-bottom: 1px solid rgba(11,31,58,0.05); transition: background 0.15s; }
 .paso-row:last-child { border-bottom: none; }
 .paso-row:hover { background: #f8fafc; }
-.paso-code { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; color: #94a3b8; width: 28px; flex-shrink: 0; }
-.paso-label { font-size: 13px; color: #0b1f3a; flex: 1; }
+.paso-code { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; color: #94a3b8; width: 34px; flex-shrink: 0; }
+.paso-label { font-size: 17px; color: #0b1f3a; flex: 1; }
 .paso-toggle { width: 28px; height: 16px; border-radius: 20px; flex-shrink: 0; position: relative; }
 .paso-toggle.off { background: #e2e8f0; }
 .paso-toggle.on  { background: #1e5ba8; }
 .paso-toggle.off::after { content: ''; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
 .paso-toggle.on::after  { content: ''; position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
-.paso-count { font-size: 14px; font-weight: 700; color: #94a3b8; width: 20px; text-align: right; flex-shrink: 0; }
+.paso-count { font-size: 17px; font-weight: 700; color: #94a3b8; width: 24px; text-align: right; flex-shrink: 0; }
 .paso-count.active { color: #1e5ba8; }
 
 .paq-list { padding: 6px 0; }
-.paq-row { padding: 10px 16px 8px; border-bottom: 1px solid rgba(11,31,58,0.06); }
+.paq-row { padding: 16px 20px 13px; border-bottom: 1px solid rgba(11,31,58,0.06); }
 .paq-row:last-child { border-bottom: none; }
 .paq-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
 .paq-info { flex: 1; }
-.paq-name { font-size: 12px; font-weight: 600; color: #0b1f3a; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.paq-name { font-size: 20px; font-weight: 600; color: #0b1f3a; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
 .paq-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.paq-formula { font-size: 11px; color: #64748b; }
-.paq-amount { font-size: 15px; font-weight: 700; color: #0b1f3a; white-space: nowrap; }
+.paq-formula { font-size: 16px; color: #64748b; }
+.paq-amount { font-size: 26px; font-weight: 700; color: #0b1f3a; white-space: nowrap; }
 .paq-bar-wrap { height: 4px; border-radius: 10px; background: #f1f5f9; overflow: hidden; }
 .paq-bar { height: 100%; border-radius: 10px; }
-.paq-footer { padding: 12px 16px; background: #0b1f3a; display: flex; justify-content: space-between; align-items: center; }
-.paq-footer-label { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.35); }
-.paq-footer-val { font-size: 20px; font-weight: 700; color: #5a9de0; }
+.paq-footer { padding: 18px 22px; background: #0b1f3a; display: flex; justify-content: space-between; align-items: center; }
+.paq-footer-label { font-size: 14px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.75); }
+.paq-footer-val { font-size: 34px; font-weight: 700; color: #5a9de0; }
+@media (max-width: 900px) {
+  .kpi2-card-title { font-size: 10px; }
+  .kpi2-card-badge { font-size: 11px; padding: 3px 10px; }
+  .paso-row { padding: 9px 16px; gap: 12px; }
+  .paso-code { font-size: 10px; width: 28px; }
+  .paso-label { font-size: 13px; }
+  .paso-count { font-size: 14px; width: 20px; }
+  .paq-row { padding: 10px 16px 8px; }
+  .paq-name { font-size: 12px; }
+  .paq-formula { font-size: 11px; }
+  .paq-amount { font-size: 15px; }
+  .paq-footer { padding: 12px 16px; }
+  .paq-footer-label { font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.35); }
+  .paq-footer-val { font-size: 20px; }
+}
 
 @media (max-width: 768px) {
   .kpi2-grid { grid-template-columns: 1fr; }
