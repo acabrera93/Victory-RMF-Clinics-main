@@ -21,7 +21,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .nav-logos{display:flex;align-items:center;gap:14px}
 .nav-logos img{height:72px;filter:brightness(0)invert(1)}
 .nav-tag{color:rgba(255,255,255,.5);font-size:13px}
-.wrap{max-width:1060px;margin:0 auto;padding:40px 32px 80px}
+.wrap{max-width:1400px;margin:0 auto;padding:40px 48px 80px}
 /* welcome */
 .welcome{background:var(--navy);border-radius:12px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .welcome h1{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;letter-spacing:1px;margin-bottom:4px}
@@ -362,6 +362,48 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 }
 @media (max-width: 600px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 1366px) and (min-width: 901px) {
+  .wrap { max-width: 100%; padding: 32px 28px 60px; }
+
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .metric-grid { grid-template-columns: repeat(3, 1fr); }
+  .com-kpi-row { grid-template-columns: repeat(3, 1fr); }
+
+  .admin-subnav { flex-wrap: wrap; gap: 8px; }
+  .asnav-btn { font-size: 13px; padding: 8px 14px; }
+
+  .section-tabs { flex-wrap: wrap; }
+  .stab { font-size: 13px; padding: 10px 12px; }
+
+  .card { padding: 24px 26px; }
+  .ctitle { font-size: 15px; }
+}
+
+@media (max-width: 1100px) and (min-width: 901px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1367px) {
+  body { font-size: 15px; }
+
+  .card { padding: 26px 30px; }
+  .ctitle { font-size: 16px; }
+
+  .kpi-value { font-size: 26px; }
+  .kpi-label { font-size: 11px; }
+  .kpi-sub { font-size: 12px; }
+
+  .ptable { font-size: 14px; }
+  .ptable th, .ptable td { padding: 13px 16px; }
+
+  .com-table { font-size: 14px; }
+
+  .welcome h1 { font-size: 32px; }
+  .welcome p { font-size: 14px; }
+
+  .asnav-btn { font-size: 14px; padding: 9px 18px; }
+  .stab { font-size: 14px; padding: 11px 14px; }
 }
 </style>
 </head>
