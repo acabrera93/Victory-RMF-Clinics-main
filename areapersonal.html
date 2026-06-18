@@ -4569,6 +4569,7 @@ function saveEditModal() {
         });
         renderAdminTable(adminData);
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
+        if (typeof renderAdminPagos === 'function' && adminFinData) renderAdminPagos(adminFinData);
         setTimeout(closeEditModal, 1200);
       } else {
         statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
