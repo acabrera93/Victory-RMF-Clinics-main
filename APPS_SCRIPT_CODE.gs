@@ -984,6 +984,36 @@ function getAdminFinanciero() {
       result.pagos_nombres = pagosNombres;
     }
 
+    // ── Gastos — hoja "Gastos": B=presupuestado€, C=pagado€, D=pagadoCOP, F=% pagado
+    var gastosSheet = getSheetCI(ss, 'Gastos');
+    if (gastosSheet) {
+      var lastGastoRow = gastosSheet.getLastRow();
+      if (lastGastoRow >= 5) {
+        var gastosData = gastosSheet.getRange(5, 1, lastGastoRow - 4, 6).getValues();
+        // Calcular tasa media propia de gastos: COP/EUR para filas con ambos valores
+        var tasaSuma = 0, tasaCount = 0;
+        for (var gi = 0; gi < gastosData.length; gi++) {
+          var eur = num(gastosData[gi][2]), cop = num(gastosData[gi][3]);
+          if (eur > 0 && cop > 0) { tasaSuma += cop / eur; tasaCount++; }
+        }
+        var tasaGastos = tasaCount > 0 ? Math.round(tasaSuma / tasaCount) : 0;
+        // Leer fila TOTAL
+        for (var gi = 0; gi < gastosData.length; gi++) {
+          if (String(gastosData[gi][0] || '').toLowerCase().trim() === 'total') {
+            result.gastos = {
+              presupuestado: num(gastosData[gi][1]), // col B — Total presupuestado (€)
+              pagado:        num(gastosData[gi][2]), // col C — Pagado (€)
+              pagado_cop:    num(gastosData[gi][3]), // col D — Pagado (COP) valor real
+              pct:           num(gastosData[gi][5]), // col F — % Pagado
+              tasa_media:    tasaGastos              // Tasa COP/EUR calculada de filas reales
+            };
+            break;
+          }
+        }
+      }
+    }
+    if (!result.gastos) result.gastos = { presupuestado: 0, pagado: 0, pagado_cop: 0, pct: 0, tasa_media: 0 };
+
     // ── Comisiones — hoja "Comisiones" desde fila 6
     // Secciones detectadas dinámicamente por col A:
     //   - Filas con "acomp" → marca inicio de sección acompañantes
