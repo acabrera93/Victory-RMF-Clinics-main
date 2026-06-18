@@ -773,8 +773,12 @@ function actualizarParticipante(data) {
     for (let j = 0; j < headers.length; j++) {
       const h = String(headers[j]);
       let val = null;
-      if (data[h] !== undefined) val = data[h];
-      else if (dataByNorm[normFieldKey(h)] !== undefined) val = dataByNorm[normFieldKey(h)];
+      // Primero la clave normalizada: resuelve correctamente cuando el payload
+      // trae tanto la clave original del Sheet ('Tiquete Aéreo') como la del
+      // formulario ('tiquete_aereo') — el normFieldKey da prioridad al último
+      // valor escrito, que es siempre el editado por el usuario.
+      if (dataByNorm[normFieldKey(h)] !== undefined) val = dataByNorm[normFieldKey(h)];
+      else if (data[h] !== undefined) val = data[h];
       else {
         const posKey = numColMapByIdx[j + 1];
         if (posKey && data[posKey] !== undefined) val = data[posKey];
