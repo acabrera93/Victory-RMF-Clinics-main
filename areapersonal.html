@@ -4552,8 +4552,23 @@ function saveEditModal() {
     .then(res => {
       if (res.ok) {
         statusEl.innerHTML = '<span style="color:var(--green)">Guardado correctamente.</span>';
-        EDIT_FIELDS.forEach(f => { const el = document.getElementById('ef-' + f.key); if (el) adminData[adminCurrentRow._idx][f.key] = el.value; });
+        const editedRow = adminData[adminCurrentRow._idx];
+        EDIT_FIELDS.forEach(f => {
+          const el = document.getElementById('ef-' + f.key);
+          if (!el) return;
+          const val = el.value;
+          editedRow[f.key] = val;
+          // También actualiza la clave original del Sheet (puede tener tildes/mayúsculas)
+          const normTarget = f.key.toLowerCase().replace(/[\s_]+/g, '_');
+          Object.keys(editedRow).forEach(k => {
+            if (k !== f.key) {
+              const normK = k.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[\s_]+/g,'_');
+              if (normK === normTarget) editedRow[k] = val;
+            }
+          });
+        });
         renderAdminTable(adminData);
+        if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
         setTimeout(closeEditModal, 1200);
       } else {
         statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
