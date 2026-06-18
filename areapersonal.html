@@ -1201,7 +1201,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <!-- Barra de recaudación -->
       <div class="card" id="admin-recaudacion-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-          <div class="ctitle" style="margin-bottom:0">Recaudación</div>
+          <div class="ctitle" style="margin-bottom:0">Ingresos y Gastos</div>
           <div style="display:flex;gap:6px">
             <button id="toggle-eur" onclick="toggleCurrency('eur')" class="asnav-btn active" style="padding:5px 14px;font-size:12px">EUR €</button>
             <button id="toggle-cop" onclick="toggleCurrency('cop')" class="asnav-btn" style="padding:5px 14px;font-size:12px">COP $</button>
@@ -3800,15 +3800,19 @@ function renderAdminDashboard(rows, fin) {
 
 function renderRecaudacion(fin) {
   if (!fin || !fin.kpis) return;
-  const ingresos = fin.kpis.ingresos || 0;
-  const costos = fin.kpis.costos || 0;
+  const ingresos  = fin.kpis.ingresos || 0;
   const recaudado = (fin.pagos_recibidos || {}).total_eur || 0;
-  const beneficio = fin.kpis.beneficio || 0;
+  const gastos    = fin.gastos || {};
+  const gastosPres   = gastos.presupuestado || 0;
+  const gastosPag    = gastos.pagado || 0;
+  const gastosPagCop = gastos.pagado_cop || 0;
+  const gastosTasa   = gastos.tasa_media || TASA_EUR_COP;
+  const gastosPct    = gastos.pct > 0 ? Math.min(100, Math.round(gastos.pct > 1 ? gastos.pct : gastos.pct * 100)) : 0;
   const isCop = adminCurrency === 'cop';
   const fmt = v => isCop ? '$ ' + Math.round(v * TASA_EUR_COP).toLocaleString('es-CO') : v.toLocaleString('es-CO') + ' €';
+  const gastosPagStr  = isCop && gastosPagCop > 0 ? '$ ' + Math.round(gastosPagCop).toLocaleString('es-CO') : gastosPag.toLocaleString('es-CO') + ' €';
+  const gastosPresStr = isCop ? '$ ' + Math.round(gastosPres * gastosTasa).toLocaleString('es-CO') : gastosPres.toLocaleString('es-CO') + ' €';
   const pctRec = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
-  const pctCosto = ingresos > 0 ? Math.min(100, Math.round(costos / ingresos * 100)) : 0;
-  const pctBenef = ingresos > 0 ? Math.min(100, Math.round(beneficio / ingresos * 100)) : 0;
   document.getElementById('admin-recaudacion-bars').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:16px">
       <div>
@@ -3825,12 +3829,15 @@ function renderRecaudacion(fin) {
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:17px;font-weight:500;color:var(--navy)">Beneficio bruto estimado</span>
-          <span style="font-size:17px;font-weight:700;color:#166534">${fmt(beneficio)} <span style="color:var(--muted);font-weight:400">(${Math.round(fin.kpis.margen <= 1 ? fin.kpis.margen*100 : fin.kpis.margen)}%)</span></span>
+          <span style="font-size:17px;font-weight:500;color:var(--navy)">Gastos pagados vs Total presupuestado</span>
+          <span style="font-size:17px;font-weight:700;color:#dc2626">${gastosPagStr} <span style="color:var(--muted);font-weight:400">/ ${gastosPresStr}</span></span>
         </div>
         <div style="height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
-          <div style="height:100%;width:${pctBenef}%;background:#166534;border-radius:7px;transition:width .8s ease"></div>
+          <div style="height:100%;width:${gastosPct}%;background:#dc2626;border-radius:7px;transition:width .8s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+            ${gastosPct > 8 ? `<span style="font-size:12px;color:#fff;font-weight:700">${gastosPct}%</span>` : ''}
+          </div>
         </div>
+        ${gastosPct <= 8 ? `<div style="font-size:14px;color:var(--muted);margin-top:3px">${gastosPct}% pagado</div>` : ''}
       </div>
     </div>
   `;
