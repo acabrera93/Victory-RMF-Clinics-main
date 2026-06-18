@@ -352,6 +352,7 @@ function doPost(e) {
         if (parsed.action === 'forgot_comercial_password') return forgotComercialPassword(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
         if (parsed.action === 'eliminar_foto_drive') return eliminarFotoDrive(parsed);
+        if (parsed.action === 'agregar_participante') return agregarParticipante(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
       } catch (_) {}
     }
@@ -1412,6 +1413,48 @@ function corregirPasoBugTiquete() {
   });
 
   Logger.log('Total corregidos: ' + corregidos);
+}
+
+// ───── AGREGAR PARTICIPANTE MANUALMENTE ──────────────────────────────────────
+function agregarParticipante(data) {
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    const normFieldKey = function(s) {
+      return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s_]+/g, '_');
+    };
+
+    // Mapeo posicional para campos con discrepancia clave↔cabecera
+    const posColMap = { 4: 'phone' }; // WhatsApp (col 4) ↔ 'phone'
+
+    // Construir dataByNorm: la clave del formulario (tiquete_aereo) gana sobre la del Sheet (Tiquete Aéreo)
+    const dataByNorm = {};
+    Object.keys(data).forEach(function(k) { dataByNorm[normFieldKey(k)] = data[k]; });
+
+    // Forzar valores predeterminados si no vienen
+    if (!dataByNorm['paso_actual']) dataByNorm['paso_actual'] = '1';
+    if (!dataByNorm['fuente'])      dataByNorm['fuente']      = 'Panel Admin';
+    if (!dataByNorm['tc_aceptado']) dataByNorm['tc_aceptado'] = 'No';
+
+    // Construir fila alineada con cabeceras del Sheet
+    const newRow = headers.map(function(h, j) {
+      if (!h) return '';
+      const norm = normFieldKey(String(h));
+      if (dataByNorm[norm] !== undefined) return dataByNorm[norm];
+      const posKey = posColMap[j + 1];
+      if (posKey && data[posKey] !== undefined) return data[posKey];
+      return '';
+    });
+
+    sheet.appendRow(newRow);
+    const newRowNum = sheet.getLastRow();
+    Logger.log('agregarParticipante: fila ' + newRowNum + ' creada para ' + (data.nombre || ''));
+    return sendResponse(200, { ok: true, _row: newRowNum });
+  } catch(err) {
+    Logger.log('agregarParticipante error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
 }
 
 // ───── ADMIN ACCESO ────────────────────────────────────────────────────────────
