@@ -3818,19 +3818,25 @@ function renderRecaudacion(fin) {
       <div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
           <span style="font-size:17px;font-weight:500;color:var(--navy)">Recaudado vs Ingresos totales</span>
-          <span style="font-size:17px;font-weight:700;color:var(--blue)">${fmt(recaudado)} <span style="color:var(--muted);font-weight:400">/ ${fmt(ingresos)}</span> <span style="font-size:14px;font-weight:600;color:var(--blue);margin-left:6px">${pctRec}%</span></span>
+          <span style="font-size:17px;font-weight:700;color:var(--blue)">${fmt(recaudado)} <span style="color:var(--muted);font-weight:400">/ ${fmt(ingresos)}</span></span>
         </div>
-        <div style="height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
-          <div style="height:100%;width:${pctRec}%;background:var(--blue);border-radius:7px;transition:width .8s ease"></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
+            <div style="height:100%;width:${pctRec}%;background:var(--blue);border-radius:7px;transition:width .8s ease"></div>
+          </div>
+          <span style="font-size:14px;font-weight:700;color:var(--blue);min-width:40px;text-align:right">${pctRec}%</span>
         </div>
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
           <span style="font-size:17px;font-weight:500;color:var(--navy)">Gastos pagados vs Total presupuestado</span>
-          <span style="font-size:17px;font-weight:700;color:#dc2626">${gastosPagStr} <span style="color:var(--muted);font-weight:400">/ ${gastosPresStr}</span> <span style="font-size:14px;font-weight:600;color:#dc2626;margin-left:6px">${gastosPct}%</span></span>
+          <span style="font-size:17px;font-weight:700;color:#dc2626">${gastosPagStr} <span style="color:var(--muted);font-weight:400">/ ${gastosPresStr}</span></span>
         </div>
-        <div style="height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
-          <div style="height:100%;width:${gastosPct}%;background:#dc2626;border-radius:7px;transition:width .8s ease"></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden">
+            <div style="height:100%;width:${gastosPct}%;background:#dc2626;border-radius:7px;transition:width .8s ease"></div>
+          </div>
+          <span style="font-size:14px;font-weight:700;color:#dc2626;min-width:40px;text-align:right">${gastosPct}%</span>
         </div>
       </div>
     </div>
