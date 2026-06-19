@@ -227,27 +227,27 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 /* PASSWORD GATE */
 #pwd-gate{display:none;position:fixed;inset:0;background:rgba(11,31,58,.92);z-index:10000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)}
 #pwd-gate.open{display:flex}
-.pwd-box{background:#fff;border-radius:14px;padding:32px 28px;max-width:340px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
-.pwd-box h3{font-size:17px;font-weight:700;color:var(--navy);margin:0 0 6px}
-.pwd-box p{font-size:13px;color:var(--muted);margin:0 0 20px}
-.pwd-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;text-align:center;letter-spacing:2px;margin-bottom:10px;transition:border-color .2s;box-sizing:border-box}
+.pwd-box{background:#fff;border-radius:17px;padding:38px 34px;max-width:408px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.pwd-box h3{font-size:20px;font-weight:700;color:var(--navy);margin:0 0 6px}
+.pwd-box p{font-size:16px;color:var(--muted);margin:0 0 24px}
+.pwd-input{width:100%;padding:14px 17px;border:1.5px solid var(--border);border-radius:10px;font-size:19px;font-family:'DM Sans',sans-serif;outline:none;text-align:center;letter-spacing:2px;margin-bottom:12px;transition:border-color .2s;box-sizing:border-box}
 .pwd-input:focus{border-color:var(--blue)}
-.pwd-err{color:#dc2626;font-size:12px;margin-bottom:10px;min-height:16px}
-.pwd-actions{display:flex;gap:8px}
-.pwd-actions button{flex:1;padding:11px;border-radius:8px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:none}
+.pwd-err{color:#dc2626;font-size:14px;margin-bottom:12px;min-height:16px}
+.pwd-actions{display:flex;gap:10px}
+.pwd-actions button{flex:1;padding:13px;border-radius:10px;font-size:17px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:none}
 .pwd-cancel{background:#fff;border:1.5px solid var(--border)!important;color:var(--muted)}
 .pwd-cancel:hover{background:#f8fafc}
 .pwd-submit{background:var(--blue);color:#fff}
 .pwd-submit:hover{background:#1a4e96}
-.pwd-bio-btn{width:100%;padding:11px;border-radius:8px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:1.5px solid var(--border);background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px}
+.pwd-bio-btn{width:100%;padding:13px;border-radius:10px;font-size:17px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:1.5px solid var(--border);background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px}
 .pwd-bio-btn:hover:not(:disabled){background:#f8fafc;border-color:var(--blue)}
 .pwd-bio-btn:disabled{opacity:.6;cursor:not-allowed}
-.pwd-divider{display:flex;align-items:center;gap:10px;margin:0 0 12px;color:var(--muted);font-size:12px}
+.pwd-divider{display:flex;align-items:center;gap:10px;margin:0 0 14px;color:var(--muted);font-size:14px}
 .pwd-divider::before,.pwd-divider::after{content:'';flex:1;height:1px;background:var(--border)}
-.pwd-offer{background:#f0f7ff;border:1px solid rgba(30,91,168,.18);border-radius:10px;padding:16px;margin-top:4px}
-.pwd-offer p{font-size:13px;color:var(--navy);margin:0 0 12px;font-weight:500;line-height:1.4}
-.pwd-offer-btns{display:flex;gap:8px}
-.pwd-offer-btns button{flex:1;padding:9px;border-radius:7px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:none}
+.pwd-offer{background:#f0f7ff;border:1px solid rgba(30,91,168,.18);border-radius:12px;padding:19px;margin-top:5px}
+.pwd-offer p{font-size:16px;color:var(--navy);margin:0 0 14px;font-weight:500;line-height:1.4}
+.pwd-offer-btns{display:flex;gap:10px}
+.pwd-offer-btns button{flex:1;padding:11px;border-radius:8px;font-size:16px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:none}
 .pwd-offer-yes{background:var(--blue);color:#fff}
 .pwd-offer-yes:hover{background:#1a4e96}
 .pwd-offer-no{background:#fff;border:1.5px solid var(--border)!important;color:var(--muted)}
@@ -3812,7 +3812,14 @@ function renderRecaudacion(fin) {
   const fmt = v => isCop ? '$ ' + Math.round(v * TASA_EUR_COP).toLocaleString('es-CO') : v.toLocaleString('es-CO') + ' €';
   const gastosPagStr  = isCop && gastosPagCop > 0 ? '$ ' + Math.round(gastosPagCop).toLocaleString('es-CO') : gastosPag.toLocaleString('es-CO') + ' €';
   const gastosPresStr = isCop ? '$ ' + Math.round(gastosPres * gastosTasa).toLocaleString('es-CO') : gastosPres.toLocaleString('es-CO') + ' €';
-  const pctRec = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
+  // Dinero en caja = recaudado − gastos pagados
+  const enCajaEur = Math.max(0, recaudado - gastosPag);
+  const enCajaCop = isCop && gastosPagCop > 0
+    ? Math.max(0, Math.round(recaudado * TASA_EUR_COP) - gastosPagCop)
+    : Math.max(0, Math.round(enCajaEur * TASA_EUR_COP));
+  const enCajaStr = isCop ? '$ ' + enCajaCop.toLocaleString('es-CO') : enCajaEur.toLocaleString('es-CO') + ' €';
+  const pctRec  = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
+  const pctCaja = recaudado > 0 ? Math.min(100, Math.round(enCajaEur / recaudado * 100)) : 0;
   document.getElementById('admin-recaudacion-bars').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:16px">
       <div>
@@ -3834,6 +3841,17 @@ function renderRecaudacion(fin) {
         <div style="height:14px;background:#f1f5f9;border-radius:7px">
           <div style="height:100%;width:${gastosPct}%;background:#dc2626;border-radius:7px;transition:width .8s ease;position:relative;overflow:visible">
             <span style="position:absolute;right:-22px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:#dc2626;background:#fff;border:1.5px solid #dc2626;border-radius:8px;padding:1px 5px;white-space:nowrap;line-height:1.4">${gastosPct}%</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span style="font-size:17px;font-weight:500;color:var(--navy)">Dinero en caja</span>
+          <span style="font-size:17px;font-weight:700;color:#16a34a">${enCajaStr} <span style="color:var(--muted);font-weight:400;font-size:14px">de ${fmt(recaudado)} recaudado</span></span>
+        </div>
+        <div style="height:14px;background:#f1f5f9;border-radius:7px">
+          <div style="height:100%;width:${pctCaja}%;background:#16a34a;border-radius:7px;transition:width .8s ease;position:relative;overflow:visible">
+            <span style="position:absolute;right:-22px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:#16a34a;background:#fff;border:1.5px solid #16a34a;border-radius:8px;padding:1px 5px;white-space:nowrap;line-height:1.4">${pctCaja}%</span>
           </div>
         </div>
       </div>
