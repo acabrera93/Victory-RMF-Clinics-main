@@ -79,11 +79,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .pay-opt{border:2px solid var(--border);border-radius:10px;padding:20px;cursor:pointer;position:relative;transition:all .2s}
 .pay-opt:hover{border-color:var(--blue-light)}
 .pay-opt.sel{border-color:var(--blue);background:rgba(30,91,168,.03)}
-.pbadge{position:absolute;top:10px;right:10px;background:rgba(30,91,168,.1);color:var(--blue);font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px}
+.pbadge{position:absolute;top:10px;right:10px;background:rgba(30,91,168,.1);color:var(--blue);font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px}
 .pamount{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
-.pamount-label{font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.pamount-label{font-size:14px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
 .pamount-value{font-size:18px;font-weight:700;color:var(--navy)}
-.pamount-fee{font-size:13px;color:var(--blue);margin-top:2px}
+.pamount-fee{font-size:14px;color:var(--blue);margin-top:2px}
 .picon{font-size:26px;margin-bottom:8px}
 .ptitle{font-size:16px;font-weight:500;color:var(--navy);margin-bottom:3px}
 .pdesc{font-size:14px;color:var(--muted);line-height:1.5}
@@ -111,10 +111,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .upload p{font-size:12px;color:var(--muted);margin-top:5px}
 .upload input{display:none}
 /* breakdown por participante */
-.breakdown-box{margin-bottom:16px;background:rgba(30,91,168,.04);border:1px solid rgba(30,91,168,.12);border-radius:8px;padding:14px 16px;font-size:13px}
+.breakdown-box{margin-bottom:16px;background:rgba(30,91,168,.04);border:1px solid rgba(30,91,168,.12);border-radius:8px;padding:14px 16px;font-size:14px}
 .bkrow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(30,91,168,.08)}
 .bkrow:last-child{border-bottom:none;font-weight:700;color:var(--navy);padding-top:9px;margin-top:3px;font-size:14px}
-.bkrow .bk-name{color:var(--text)}.bkrow .bk-sub{color:var(--muted);font-size:12px;margin-left:4px}.bkrow .bk-amt{font-weight:600;color:var(--navy);white-space:nowrap}
+.bkrow .bk-name{color:var(--text)}.bkrow .bk-sub{color:var(--muted);font-size:14px;margin-left:4px}.bkrow .bk-amt{font-weight:600;color:var(--navy);white-space:nowrap}
 /* Section tabs */
 .section-tabs{display:flex;gap:4px;margin-bottom:16px;padding:4px;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden}
 .stab{flex:1;padding:10px 8px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);background:transparent;transition:all .2s;font-family:'DM Sans',sans-serif}
@@ -440,6 +440,9 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   .pdesc { font-size: 17px; line-height: 1.6; }
   .pamount-value { font-size: 32px; }
   .pamount-label { font-size: 14px; }
+  .pamount-fee { font-size: 14px; }
+  .breakdown-box { font-size: 17px; }
+  .bkrow .bk-sub { font-size: 14px; }
   .brow { font-size: 17px; padding: 11px 0; }
   .bval { font-weight: 600; font-size: 17px; }
 
@@ -613,8 +616,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <div class="card">
       <div class="ctitle">Calculadora EUR → COP</div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago se realiza en <strong>pesos colombianos (COP)</strong>. Ingresa el monto en euros y te mostramos el equivalente al tipo de cambio de referencia de mercado:</p>
-      <p id="tasa-fecha" style="font-size:11px;color:var(--muted);margin-bottom:16px;opacity:0.7">Actualizando tasa...</p>
+      <p style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago se realiza en <strong>pesos colombianos (COP)</strong>. Ingresa el monto en euros y te mostramos el equivalente al tipo de cambio de referencia de mercado:</p>
+      <p id="tasa-fecha" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Actualizando tasa...</p>
       <div class="calc-row">
         <div>
           <div class="clabel">Monto en euros (€)</div>
@@ -645,10 +648,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
       <div class="pay-grid">
         <div class="pay-opt" id="p1tc" onclick="selPay(1,'tc')">
-          <div class="pbadge">+2.5% tarjeta</div>
+          <div class="pbadge">+3% tarjeta</div>
           <div class="picon">💳</div>
           <div class="ptitle">Tarjeta de crédito</div>
-          <div class="pdesc">Paga con Bold. Se aplica un recargo del 2.5% por pago con tarjeta.</div>
+          <div class="pdesc">Paga con Bold. Se aplica un recargo del 3% por pago con tarjeta.</div>
           <div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p1tc-total">$ —</div><div class="pamount-fee" id="p1tc-fee">incl. recargo $ —</div></div>
         </div>
         <div class="pay-opt" id="p1tr" onclick="selPay(1,'tr')">
@@ -718,7 +721,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div id="calc-note-tiq" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
       <div class="pay-grid">
-        <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+2.5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +2.5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtc-total">$ —</div><div class="pamount-fee" id="ptiqtc-fee">incl. recargo $ —</div></div></div>
+        <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+3% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtc-total">$ —</div><div class="pamount-fee" id="ptiqtc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="ptiqtr" onclick="selPay('tiq','tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
       <div class="pay-detail" id="dtiqtc"><div class="info-box">Referencia: <strong>tu nombre + TIQUETE</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar tiquete con Bold →</a></div>
@@ -766,7 +769,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
       <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
       <div class="pay-grid">
-        <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+2.5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +2.5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tc-total">$ —</div><div class="pamount-fee" id="p2tc-fee">incl. recargo $ —</div></div></div>
+        <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+3% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tc-total">$ —</div><div class="pamount-fee" id="p2tc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="p2tr" onclick="selPay(2,'tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
       <div class="pay-detail" id="d2tc"><div class="info-box">Referencia: <strong>tu nombre completo</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a></div>
@@ -2251,7 +2254,7 @@ function fmtT(n) { return '$ ' + Math.round(n).toLocaleString('es-CO') + ' / EUR
 
 function updateCalcs() { calc1(); calc2(); calcTiq(); }
 function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
-  const fee = base * 0.025;
+  const fee = base * 0.03;
   const total = base + fee;
   const elTcT = document.getElementById(tcTotalId);
   const elTcF = document.getElementById(tcFeeId);
