@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -28,6 +28,7 @@
     --green-mid: #122847;
     --green-light: #5a9de0;
     --radius: 4px;
+    --muted: rgba(255,255,255,0.35);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -846,11 +847,10 @@
     </div>
     <div class="nav-links" id="nav-links">
       <a href="memorias.html" class="nav-link">Memorias</a>
-      <a href="#faq" class="nav-link">FAQ</a>
+      <a href="#faq" class="nav-link">Preguntas frecuentes</a>
+      <a href="areapersonal.html" class="nav-link">Área Personal</a>
       <div class="nav-divider"></div>
-      <a href="areapersonal.html" class="nav-cta">Área Personal</a>
-      <a href="preinscripcion.html" class="nav-cta">Inscríbete</a>
-      <a href="#inscripcion" class="nav-cta">Solicitar información →</a>
+      <a href="#inscripcion" class="nav-cta">Recibir información →</a>
     </div>
     <button class="nav-hamburger" id="nav-hamburger" aria-label="Abrir menú">
       <span></span><span></span><span></span>
@@ -868,10 +868,9 @@
     <div class="nav-drawer-sep"></div>
     <div class="nav-drawer-links">
       <a href="memorias.html" class="nav-drawer-link">Memorias</a>
-      <a href="#faq" class="nav-drawer-link">FAQ</a>
-      <a href="areapersonal.html" class="nav-drawer-cta">Área Personal</a>
-      <a href="preinscripcion.html" class="nav-drawer-cta">Inscríbete</a>
-      <a href="#inscripcion" class="nav-drawer-cta">Solicitar información →</a>
+      <a href="#faq" class="nav-drawer-link">Preguntas frecuentes</a>
+      <a href="areapersonal.html" class="nav-drawer-link">Área Personal</a>
+      <a href="#inscripcion" class="nav-drawer-cta">Recibir información →</a>
     </div>
   </div>
 </nav>
@@ -880,6 +879,7 @@
 <section id="hero" style="position:relative; min-height:80vh; display:flex; align-items:flex-start; overflow:hidden;">
   <!-- Foto de fondo -->
   <div style="position:absolute; inset:0; z-index:0;">
+    <!-- TODO: reemplazar por URL de imgbb.com, imgur bloquea hotlinking -->
     <img src="https://i.imgur.com/PEspvqo.jpeg" style="width:100%; height:100%; object-fit:cover; object-position:center;">
     <div style="position:absolute; inset:0; background:linear-gradient(to right, rgba(11,31,58,0.92) 0%, rgba(11,31,58,0.75) 50%, rgba(11,31,58,0.3) 100%);"></div>
   </div>
@@ -898,12 +898,9 @@
         8 días en Madrid entrenando en la Ciudad Deportiva del Real Madrid con metodología oficial, compitiendo en la Victory Cup y viviendo una experiencia que transforma vidas. Para jóvenes de 8 a 17 años.
       </p>
       <div class="hero-actions">
-        <a href="#inscripcion" class="btn-primary">
-          Solicitar información
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h8M7 3l4 4-4 4"/></svg>
-        </a>
-        <a href="#programas" class="btn-ghost">Ver programas ↓</a>
+        <a href="#inscripcion" class="btn-primary">Recibir información gratis →</a>
       </div>
+      <p style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:8px;">Sin compromiso · respuesta en menos de 24 h</p>
       <div class="hero-trust" style="margin-top:40px;">
         <div class="trust-avatars">
           <div class="trust-avatar">MG</div>
@@ -912,12 +909,12 @@
           <div class="trust-avatar">AS</div>
         </div>
         <div class="trust-text">
-          <strong>+1.800 familias</strong> nos han acompañado<br>en nuestros programas
+          <strong>+1.800 jóvenes han vivido la experiencia</strong>
         </div>
       </div>
     </div>
 
-    <!-- Derecha: stats + cupos alineados abajo -->
+    <!-- Derecha: cupos alineados abajo -->
     <div style="display:flex; flex-direction:column; justify-content:flex-end; height:100%; gap:16px; padding-bottom:4px;">
       <div class="cupos-badge">
         <div class="cupos-dot"></div>
@@ -925,23 +922,6 @@
       </div>
     </div>
 
-  </div>
-</section>
-
-<!-- VIDEO SECTION -->
-<section style="background:var(--navy); padding:80px 0;">
-  <div class="container">
-    <p class="section-label" style="color:var(--blue-bright);">Victory Sports · Real Madrid Foundation</p>
-    <h2 class="section-title" style="color:var(--white); margin-bottom:32px;">MIRA LA EXPERIENCIA</h2>
-    <div style="position:relative; width:100%; padding-bottom:52%; border-radius:12px; overflow:hidden; border:1px solid rgba(59,127,212,0.3); box-shadow:0 24px 64px rgba(0,0,0,0.5);">
-      <iframe
-        src="https://www.youtube.com/embed/hhRV4cmIFqw?rel=0&modestbranding=1&color=white"
-        title="Real Madrid Foundation Clinic — Victory Sports"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen
-        style="position:absolute; inset:0; width:100%; height:100%; border:none;">
-      </iframe>
-    </div>
   </div>
 </section>
 
@@ -953,6 +933,7 @@
     <p class="section-sub" style="text-align:center; margin:0 0 48px; max-width:none;">Donde ellos entrenan. Como ellos entrenan. El programa oficial de la Fundación Real Madrid lleva a jóvenes de 8 a 17 años a Valdebebas — la Ciudad Deportiva donde se forman las estrellas del club más ganador de la historia. 8 días de inmersión total: entrenamientos con metodología oficial, actividades culturales en Madrid y una experiencia de vida que va mucho más allá del fútbol.</p>
 
     <div style="width:100%; aspect-ratio:16/6; overflow:hidden; border-radius:16px; margin-bottom:48px; box-shadow:0 20px 60px rgba(11,31,58,0.15);">
+      <!-- TODO: reemplazar por URL de imgbb.com, imgur bloquea hotlinking -->
       <img src="https://i.imgur.com/A6zA6cO.jpeg" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;display:block;">
     </div>
 
@@ -961,17 +942,17 @@
       <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:12px; padding:24px; text-align:center;">
         <div style="font-size:32px; margin-bottom:8px;">⚽</div>
         <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; color:var(--navy); margin-bottom:6px;">ENTRENAMIENTOS OFICIALES</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">4 sesiones en la Ciudad Deportiva de Valdebebas con entrenadores certificados de la Fundación Real Madrid</div>
+        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Con la <strong style="color:var(--blue); font-weight:500;">Fundación Real Madrid</strong> en su Ciudad Deportiva de Valdebebas</div>
       </div>
       <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:12px; padding:24px; text-align:center;">
         <div style="font-size:32px; margin-bottom:8px;">🏆</div>
         <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; color:var(--navy); margin-bottom:6px;">VICTORY CUP</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">3 partidos oficiales contra colegios de Madrid. Compite, gana amigos y vive la magia del fútbol europeo</div>
+        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Victory Cup — 3 partidos oficiales contra colegios de Madrid</div>
       </div>
       <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:12px; padding:24px; text-align:center;">
         <div style="font-size:32px; margin-bottom:8px;">🌍</div>
         <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; color:var(--navy); margin-bottom:6px;">MADRID COMPLETO</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Tour Bernabéu, Madrid City Tour, Parque Warner y entrada al partido de Liga del Real Madrid*</div>
+        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Madrid completo — Tour Bernabéu + Parque Warner</div>
       </div>
     </div>
 
@@ -985,15 +966,38 @@
     </div>
 
     <div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <a href="#inscripcion" onclick="document.getElementById('prog-select').value='RMF Clinic — Real Madrid Foundation (Jugador, 8–17 años)'" class="btn-primary" style="color:white;text-decoration:none;">
+      <a href="#inscripcion" class="btn-primary" style="color:white;text-decoration:none;">
         Solicitar información →
-      </a>
-      <a href="preinscripcion.html" class="btn-primary" style="color:white;text-decoration:none;background:var(--navy);border:1.5px solid rgba(30,91,168,0.5);">
-        Inscríbete →
       </a>
     </div>
 
-    <p style="margin-top:16px; font-size:12px; color:#8da4bf; text-align:center;">* Partido Liga Real Madrid sujeto a disponibilidad del calendario oficial.</p>
+    <p style="margin-top:16px; font-size:12px; color:#8da4bf; text-align:center;">* Partido Liga Real Madrid sujeto al calendario oficial de la Liga. Posibilidad de fechas personalizadas disponible.</p>
+  </div>
+</section>
+
+<!-- TU TRANQUILIDAD -->
+<section style="background:var(--off-white); padding:80px 0;">
+  <div class="container">
+    <p class="section-label" style="justify-content:center;">Para padres</p>
+    <h2 class="section-title" style="text-align:center;">TU TRANQUILIDAD</h2>
+    <p class="section-sub" style="text-align:center; margin-bottom:48px;">La pregunta que todo padre hace primero: ¿estarán bien cuidados?</p>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:24px; max-width:900px; margin:0 auto;">
+      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:28px 24px;">
+        <div style="font-size:32px; margin-bottom:12px;">🛡️</div>
+        <div style="font-size:16px; font-weight:600; color:var(--navy); margin-bottom:6px;">Acompañamiento profesional</div>
+        <div style="font-size:14px; color:#4a6080; line-height:1.6;">1 acompañante profesional por cada 10 niños, desde el aeropuerto hasta el regreso.</div>
+      </div>
+      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:28px 24px;">
+        <div style="font-size:32px; margin-bottom:12px;">🤝</div>
+        <div style="font-size:16px; font-weight:600; color:var(--navy); margin-bottom:6px;">Seguro médico incluido</div>
+        <div style="font-size:14px; color:#4a6080; line-height:1.6;">Seguro médico completo y staff dedicado disponible las 24 horas durante todo el viaje.</div>
+      </div>
+      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:28px 24px;">
+        <div style="font-size:32px; margin-bottom:12px;">📱</div>
+        <div style="font-size:16px; font-weight:600; color:var(--navy); margin-bottom:6px;">Fotos y videos en vivo</div>
+        <div style="font-size:14px; color:#4a6080; line-height:1.6;">Recibirás fotos y videos de tu hijo cada día directamente en tu área personal.</div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -1033,74 +1037,6 @@
         <p class="precio-nota">Sin compromiso · Pagos en cuotas disponibles</p>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- ITINERARIO -->
-<section id="itinerario" style="background: var(--off-white); padding:80px 0;">
-  <div class="container">
-    <p class="section-label">Agenda RMF Clinic 2026</p>
-    <h2 class="section-title">9 DÍAS, DÍA A DÍA</h2>
-    <p class="section-sub" style="margin-bottom:40px;">Cada día está diseñado para maximizar la experiencia deportiva y vivencial de tu hijo en Madrid.</p>
-
-    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.3);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 1 · 2 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Salida a Madrid</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Vuelo y viaje hacia Madrid. Inicio de la aventura.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.3);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 2 · 3 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Recepción + Partido Liga RM</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Recepción aeropuerto Madrid Barajas. Tarde: partido de Liga del Real Madrid C.F.* en el Santiago Bernabéu.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.6);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 3 · 4 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Conferencia + Entrenamiento 1</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">"Building a Champion" — charla motivacional. Tarde: Tour Bernabéu + Adidas Store.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 4 · 5 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Victory Cup — Partido 1</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Primer partido oficial contra colegios de Madrid en la Victory Cup.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 5 · 6 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">City Tour + Victory Cup 2</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Mañana: visita al centro de Madrid. Tarde: segundo partido de la Victory Cup.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 6 · 7 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Entrenamiento RM + Victory Cup 3</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Entrenamiento en Ciudad Deportiva Valdebebas. Tercer y último partido de la Victory Cup.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.4);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 7 · 8 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Parque Warner</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Día de diversión y descanso en el Parque Warner Madrid. Noche libre.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.6);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 8 · 9 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Clausura + Ciudad Deportiva</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Ceremonia de clausura oficial. Tour final Ciudad Deportiva RM. Outlet San Sebastián de los Reyes.</div>
-      </div>
-
-      <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.3);">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 9 · 10 OCT</div>
-        <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Check Out y Regreso</div>
-        <div style="font-size:13px; color:#4a6080; line-height:1.6;">Salida del hotel y vuelo de regreso a casa con recuerdos para toda la vida.</div>
-      </div>
-
-    </div>
-    <p style="margin-top:16px; font-size:11px; color:#8da4bf; text-align:center;">* Partido Real Madrid sujeto al calendario oficial de la Liga. Posibilidad de fechas personalizadas disponible.</p>
   </div>
 </section>
 
@@ -1150,31 +1086,7 @@
   </div>
 </section>
 
-<!-- GALERÍA + VIDEO -->
-<section id="galeria" style="background: var(--navy); padding:40px 0;">
-  <div class="container">
-    <p class="section-label" style="color:var(--blue-bright);">Ediciones anteriores · Real Madrid Foundation Clinic</p>
-    <h2 class="section-title" style="color:var(--white);">+1.800 JÓVENES<br>YA LO VIVIERON</h2>
-    <p class="section-sub" style="color:rgba(255,255,255,0.6); margin-bottom:16px;">Más de 1.800 jóvenes colombianos han entrenado en la Ciudad Deportiva del Real Madrid. Estas son sus historias.</p>
-
-    <!-- Stats rápidos -->
-    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
-      <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(59,127,212,0.2); border-radius:8px; padding:10px 20px; text-align:center; flex:1; min-width:120px;">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--blue-bright);">1.800+</div>
-        <div style="font-size:12px; color:rgba(255,255,255,0.5);">Familias acompañadas</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(59,127,212,0.2); border-radius:8px; padding:10px 20px; text-align:center; flex:1; min-width:120px;">
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--blue-bright);">18</div>
-        <div style="font-size:12px; color:rgba(255,255,255,0.5);">Ediciones realizadas</div>
-      </div>
-    </div>
-
-    <!-- CTA -->
-    <div style="text-align:center;">
-      <a href="#inscripcion" class="btn-primary">Quiero vivir esta experiencia →</a>
-    </div>
-  </div>
-</section>
+<!-- COMO FUNCIONA -->
 <section id="como-funciona">
   <div class="container">
     <p class="section-label">Proceso</p>
@@ -1211,6 +1123,74 @@
         </div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ITINERARIO -->
+<section id="itinerario" style="background: var(--off-white); padding:80px 0;">
+  <div class="container">
+    <p class="section-label">Agenda RMF Clinic 2026</p>
+    <h2 class="section-title">8 DÍAS EN MADRID, DÍA A DÍA</h2>
+    <p class="section-sub" style="margin-bottom:40px;">Cada día está diseñado para maximizar la experiencia deportiva y vivencial de tu hijo en Madrid.</p>
+
+    <div class="faq-item" onclick="this.classList.toggle('open')" style="border-bottom:1px solid rgba(11,31,58,0.1);">
+      <div class="faq-question">Ver agenda día a día (8 días en Madrid) <span class="faq-arrow">+</span></div>
+      <div class="faq-answer" style="padding-bottom:16px; max-width:none;">
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; padding-top:8px;">
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.3);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 1 · 2 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Salida a Madrid</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Vuelo y viaje hacia Madrid. Inicio de la aventura.</div>
+          </div>
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.3);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 2 · 3 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Recepción + Partido Liga RM</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Recepción aeropuerto Madrid Barajas. Tarde: partido de Liga del Real Madrid C.F.* en el Santiago Bernabéu.</div>
+          </div>
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.6);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 3 · 4 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Conferencia + Entrenamiento 1</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">"Building a Champion" — charla motivacional. Tarde: Tour Bernabéu + Adidas Store.</div>
+          </div>
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 4 · 5 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Victory Cup — Partido 1</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Primer partido oficial contra colegios de Madrid en la Victory Cup.</div>
+          </div>
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 5 · 6 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">City Tour + Victory Cup 2</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Mañana: visita al centro de Madrid. Tarde: segundo partido de la Victory Cup.</div>
+          </div>
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 6 · 7 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Entrenamiento RM + Victory Cup 3</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Entrenamiento en Ciudad Deportiva Valdebebas. Tercer y último partido de la Victory Cup.</div>
+          </div>
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.4);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 7 · 8 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Parque Warner</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Día de diversión y descanso en el Parque Warner Madrid. Noche libre.</div>
+          </div>
+
+          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.6);">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 8 · 9–10 OCT</div>
+            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Clausura + Ciudad Deportiva + Regreso</div>
+            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Ceremonia de clausura oficial. Tour final Ciudad Deportiva RM. Outlet San Sebastián de los Reyes. Check Out y vuelo de regreso a casa con recuerdos para toda la vida.</div>
+          </div>
+
+        </div>
+        <p style="margin-top:16px; font-size:11px; color:#8da4bf; text-align:center;">* Partido Real Madrid sujeto al calendario oficial de la Liga. Posibilidad de fechas personalizadas disponible.</p>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1277,66 +1257,43 @@
           <div class="form-title">Solicitar información</div>
           <div class="form-sub">Cupos Limitados — Real Madrid Foundation Clinic 2026</div>
 
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Tu nombre y apellido</label>
-              <input id="f-nombre" class="form-input" type="text" placeholder="Juan García">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Nombre y apellido del jugador</label>
-              <input id="f-jugador" class="form-input" type="text" placeholder="Pablo García">
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Fecha de nacimiento</label>
-              <input id="f-edad" class="form-input" type="date" min="2007-01-01" max="2016-12-31">
-            </div>
-            <div class="form-group">
-              <label class="form-label">País</label>
-              <select id="f-pais" class="form-select">
-                <option value="">Seleccionar</option>
-                <option>México</option>
-                <option>Colombia</option>
-                <option>Argentina</option>
-                <option>Chile</option>
-                <option>Perú</option>
-                <option>Venezuela</option>
-                <option>Ecuador</option>
-                <option>Otro</option>
-              </select>
-            </div>
-          </div>
-
           <div class="form-group">
-            <label class="form-label">WhatsApp</label>
-            <input id="f-phone" class="form-input" type="tel" placeholder="+57 310 000 0000">
+            <input class="form-input" id="f-nombre" type="text" placeholder="Tu nombre y apellido *" required>
           </div>
-
           <div class="form-group">
-            <label class="form-label">Correo electrónico</label>
-            <input id="f-email" class="form-input" type="email" placeholder="juan@email.com">
+            <input class="form-input" id="f-jugador" type="text" placeholder="Nombre y apellido del jugador *" required>
           </div>
-
           <div class="form-group">
-            <label class="form-label">Programa de interés</label>
-            <select id="prog-select" class="form-select">
-              <option value="">¿Qué programa le interesa?</option>
-              <option>Real Madrid Foundation Clinic</option>
-              <option>Japan Golf Experience</option>
+            <select class="form-select" id="f-edad">
+              <option value="">Edad del jugador</option>
+              <option value="8">8 años</option>
+              <option value="9">9 años</option>
+              <option value="10">10 años</option>
+              <option value="11">11 años</option>
+              <option value="12">12 años</option>
+              <option value="13">13 años</option>
+              <option value="14">14 años</option>
+              <option value="15">15 años</option>
+              <option value="16">16 años</option>
+              <option value="17">17 años</option>
             </select>
+          </div>
+          <div class="form-group">
+            <input class="form-input" id="f-phone" type="tel" placeholder="WhatsApp *" required>
+          </div>
+          <div class="form-group">
+            <input class="form-input" id="f-email" type="email" placeholder="Correo electrónico *" required>
           </div>
 
           <button id="submit-btn" class="form-submit" onclick="handleSubmit(event)">
-            Solicitar información gratuita
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h8M7 3l4 4-4 4"/></svg>
+            Enviarme la presentación y precios →
           </button>
+
+          <p class="form-disclaimer" style="font-size:12px; color:var(--muted); margin-top:8px; text-align:center;">Recibirás la presentación completa del programa en tu correo en menos de 2 minutos.</p>
 
           <!-- Estado de envío -->
           <div id="submit-status" style="display:none; margin-top:14px; padding:14px 16px; border-radius:6px; font-size:14px; text-align:center;"></div>
 
-          <p class="form-disclaimer">Al enviar autorizas que te contactemos vía WhatsApp. Sin spam. Sin compromiso.</p>
         </div>
       </div>
     </div>
@@ -1389,14 +1346,13 @@ async function handleSubmit(e) {
   const nombre     = document.getElementById('f-nombre')?.value?.trim();
   const jugador    = document.getElementById('f-jugador')?.value?.trim();
   const edad       = document.getElementById('f-edad')?.value;
-  const pais       = document.getElementById('f-pais')?.value;
   const phone      = document.getElementById('f-phone')?.value?.trim();
   const email      = document.getElementById('f-email')?.value?.trim();
-  const programa   = document.getElementById('prog-select')?.value;
+  const programa   = 'Real Madrid Foundation Clinic';
 
   // Validación básica
-  if (!nombre || !phone || !email || !programa) {
-    showStatus('error', '⚠️ Por favor completa tu nombre, WhatsApp, email y programa de interés.');
+  if (!nombre || !phone || !email) {
+    showStatus('error', '⚠️ Por favor completa tu nombre, WhatsApp y correo electrónico.');
     return;
   }
   if (!/^\+?[\d\s\-()]{8,}$/.test(phone)) {
@@ -1412,7 +1368,7 @@ async function handleSubmit(e) {
     nombre:            nombre || '',
     jugador:           jugador || '',
     edad:              edad || '',
-    pais:              pais || '',
+    pais:              '',
     phone:             phone || '',
     email:             email || '',
     programa:          programa || '',
@@ -1437,12 +1393,10 @@ async function handleSubmit(e) {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-    document.getElementById('prog-select').value = '';
     document.getElementById('f-edad').value = '';
-    document.getElementById('f-pais').value = '';
     setTimeout(() => {
       btn.disabled = false;
-      btn.innerHTML = 'Solicitar información gratuita <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h8M7 3l4 4-4 4"/></svg>';
+      btn.innerHTML = 'Enviarme la presentación y precios →';
       btn.style.background = '';
     }, 4000);
   } catch (err) {
@@ -1472,60 +1426,6 @@ function showStatus(type, msg, onClick) {
 
 </script>
 
-
-
-<!-- JAPAN GOLF -->
-<section id="japan-golf" style="background:var(--off-white); padding:80px 0;">
-  <div class="container">
-    <p class="section-label">Programa Premium · Adultos</p>
-    <h2 class="section-title">JAPAN GOLF TRAVEL 2026</h2>
-    <p class="section-sub" style="margin-bottom:40px;">Para golfistas adultos — 13 días recorriendo los campos más icónicos de Japón. 5 rondas en campos Top 100 mundial.</p>
-
-    <div style="max-width:680px; margin:0 auto;">
-      <div class="programa-card" style="display:flex; flex-direction:column;">
-        <div class="programa-img" style="background:linear-gradient(135deg,#0a1a0d 0%,#0d2a18 50%,#071510 100%); aspect-ratio:16/9; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:24px; position:relative; overflow:hidden;">
-          <div style="font-size:48px;">⛳</div>
-          <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:3px; color:white; text-align:center;">JAPAN GOLF<br><span style="color:#e8b84b;">TRAVEL</span></div>
-          <div style="font-size:11px; letter-spacing:2px; color:rgba(255,255,255,0.4); text-transform:uppercase; margin-top:4px;">Tokio · Kawana · Kyoto · Hiroshima · Osaka</div>
-        </div>
-        <div class="programa-body" style="flex:1; display:flex; flex-direction:column;">
-          <div class="programa-tag">Japón · 13 días / 12 noches · 5 Rondas</div>
-          <div class="programa-name">Japan Golf Travel 2026</div>
-          <div class="programa-desc">Experiencia de golf de élite en los campos más icónicos de Japón. Narashino CC (PGA ZOZO Championship), Kawana Hotel Fuji Course (Top 100 mundial), Fuji Classic, Seta Golf y Osaka Golf Club. Alojamiento en St. Regis, Suiran Luxury Collection y Tokyo Station Hotel.</div>
-          <div style="display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 16px;">
-            <span style="font-size:11px; padding:4px 10px; border-radius:20px; background:rgba(30,91,168,0.08); border:1px solid rgba(30,91,168,0.2); color:#3b7fd4;">5 rondas Top 100 mundial</span>
-            <span style="font-size:11px; padding:4px 10px; border-radius:20px; background:rgba(30,91,168,0.08); border:1px solid rgba(30,91,168,0.2); color:#3b7fd4;">Narashino CC — ZOZO PGA</span>
-            <span style="font-size:11px; padding:4px 10px; border-radius:20px; background:rgba(11,31,58,0.06); border:1px solid rgba(11,31,58,0.12); color:#4a6080;">St. Regis · Suiran Kyoto</span>
-            <span style="font-size:11px; padding:4px 10px; border-radius:20px; background:rgba(11,31,58,0.06); border:1px solid rgba(11,31,58,0.12); color:#4a6080;">Kawana Hotel — Fuji Course</span>
-            <span style="font-size:11px; padding:4px 10px; border-radius:20px; background:rgba(11,31,58,0.04); border:1px solid rgba(11,31,58,0.08); color:#8da4bf;">Hiroshima & Miyajima</span>
-            <span style="font-size:11px; padding:4px 10px; border-radius:20px; background:rgba(11,31,58,0.04); border:1px solid rgba(11,31,58,0.08); color:#8da4bf;">Desayuno diario incluido</span>
-          </div>
-          <div class="programa-meta" style="margin-bottom:16px;">
-            <span>⛳ Adultos</span>
-            <span>📅 4–16 Oct 2026</span>
-            <span>🌙 12 noches</span>
-          </div>
-          <div style="background:rgba(11,31,58,0.04); border:1px solid rgba(11,31,58,0.1); border-radius:6px; padding:12px 14px; margin-bottom:14px;">
-            <div style="font-size:11px; color:#8da4bf; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">Alojamiento premium incluido</div>
-            <div style="font-size:12px; color:#4a6080; line-height:1.8;">
-              Hotel New Otani Tokyo – Zen House &nbsp;·&nbsp; Kawana Hotel<br>
-              Suiran Luxury Collection Kyoto &nbsp;·&nbsp; The St. Regis Osaka &nbsp;·&nbsp; Tokyo Station Hotel
-            </div>
-          </div>
-          <div style="background:rgba(30,91,168,0.06); border:1px solid rgba(30,91,168,0.15); border-radius:6px; padding:14px 16px; margin-top:auto;">
-            <div style="font-size:11px; color:#3b7fd4; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;">Precio — consultar disponibilidad</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Precio por persona según ocupación. No incluye vuelos internacionales.</div>
-            <div style="margin-top:8px; font-size:11px; color:#3b7fd4;">✓ Desayuno diario · Transferes privados · Guía en inglés</div>
-          </div>
-          <a href="#inscripcion" onclick="document.getElementById('prog-select').value='Japan Golf Travel — 13 días / 5 rondas Japón (Adultos)'" style="display:block; text-align:center; margin-top:16px; padding:12px; background:rgba(30,91,168,0.1); color:var(--blue); font-weight:500; font-size:14px; border-radius:4px; text-decoration:none; border:1px solid rgba(30,91,168,0.25); transition:all 0.2s;" onmouseover="this.style.background='rgba(30,91,168,0.18)'" onmouseout="this.style.background='rgba(30,91,168,0.1)'">
-            Solicitar información →
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- FOOTER -->
 <footer>
   <div class="container">
@@ -1537,7 +1437,6 @@ function showStatus(type, msg, onClick) {
       <div class="footer-col">
         <h4>Programas</h4>
         <a href="#programas">RMF Clinic — Real Madrid</a>
-        <a href="#programas">Japan Golf Travel</a>
         <a href="#itinerario">Agenda RMF Clinic</a>
         <a href="#incluye">Qué incluye</a>
       </div>
@@ -1550,19 +1449,18 @@ function showStatus(type, msg, onClick) {
       </div>
       <div class="footer-col">
         <h4>Contacto</h4>
-        <a href="#">WhatsApp</a>
-        <a href="#"><span class="__cf_email__" data-cfemail="234b4c4f426350534c5157514a53500d404c4e">[email&#160;protected]</span></a>
+        <a href="https://wa.me/34620301690">WhatsApp</a>
+        <a href="mailto:alejandro.cabrera@fundacionrevel.net">alejandro.cabrera@fundacionrevel.net</a>
         <a href="#">Instagram</a>
         <a href="#">Aviso de privacidad</a>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2025 SportTrips · Todos los derechos reservados</span>
+      <span>© 2026 Victory Sports · Fundación Revel — Todos los derechos reservados</span>
       <span>Hecho con ❤ para los papás que creen en sus hijos</span>
     </div>
   </div>
 </footer>
-
 
 
 
