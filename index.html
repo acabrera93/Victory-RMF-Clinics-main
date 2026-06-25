@@ -925,6 +925,23 @@
   </div>
 </section>
 
+<!-- VIDEO SECTION -->
+<section style="background:var(--navy); padding:80px 0;">
+  <div class="container">
+    <p class="section-label" style="color:var(--blue-bright);">Victory Sports · Real Madrid Foundation</p>
+    <h2 class="section-title" style="color:var(--white); margin-bottom:32px;">MIRA LA EXPERIENCIA</h2>
+    <div style="position:relative; width:100%; padding-bottom:52%; border-radius:12px; overflow:hidden; border:1px solid rgba(59,127,212,0.3); box-shadow:0 24px 64px rgba(0,0,0,0.5);">
+      <iframe
+        src="https://www.youtube.com/embed/hhRV4cmIFqw?rel=0&modestbranding=1&color=white"
+        title="Real Madrid Foundation Clinic — Victory Sports"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+        style="position:absolute; inset:0; width:100%; height:100%; border:none;">
+      </iframe>
+    </div>
+  </div>
+</section>
+
 <!-- PROGRAMAS -->
 <section id="programas" style="background:var(--off-white); padding:80px 0;">
   <div class="container">
@@ -967,7 +984,7 @@
 
     <div style="text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
       <a href="#inscripcion" class="btn-primary" style="color:white;text-decoration:none;">
-        Solicitar información →
+        Recibir información →
       </a>
     </div>
 
@@ -1032,7 +1049,7 @@
         <div style="font-size:13px; color:rgba(255,255,255,0.5); margin-bottom:20px;">Solicita información y un asesor te contacta en menos de 24 horas con todos los detalles y precios.</div>
 
         <button class="precio-cta" onclick="document.getElementById('inscripcion').scrollIntoView({behavior:'smooth'})">
-          Solicitar información →
+          Recibir información →
         </button>
         <p class="precio-nota">Sin compromiso · Pagos en cuotas disponibles</p>
       </div>
@@ -1071,17 +1088,6 @@
         </div>
       </div>
 
-      <div class="testimonio-card">
-        <div class="testimonio-stars">★★★★★</div>
-        <p class="testimonio-text">"El equipo de Fundación Revel nos acompañó en cada paso — desde el primer mensaje hasta el último día en Madrid. Nunca sentimos que estábamos solos en el proceso. Mi hijo volvió transformado, y nosotros como familia lo repetiríamos sin dudarlo un segundo."</p>
-        <div class="testimonio-author">
-          <div class="testimonio-avatar">RP</div>
-          <div>
-            <div class="testimonio-name">Roberto Paredes</div>
-            <div class="testimonio-role">Papá de Sofía, 16 años · Colombia</div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </section>
@@ -1254,7 +1260,7 @@
 
       <div class="form-right">
         <div class="form-card">
-          <div class="form-title">Solicitar información</div>
+          <div class="form-title">Recibe la información</div>
           <div class="form-sub">Cupos Limitados — Real Madrid Foundation Clinic 2026</div>
 
           <div class="form-group">
@@ -1355,6 +1361,10 @@ async function handleSubmit(e) {
     showStatus('error', '⚠️ Por favor completa tu nombre, WhatsApp y correo electrónico.');
     return;
   }
+  if (!edad) {
+    showStatus('error', '⚠️ Por favor selecciona la edad del jugador.');
+    return;
+  }
   if (!/^\+?[\d\s\-()]{8,}$/.test(phone)) {
     showStatus('error', '⚠️ Ingresa un número de WhatsApp válido con código de país (ej: +57 310...)');
     return;
@@ -1403,7 +1413,7 @@ async function handleSubmit(e) {
     // Fallback: abrir WhatsApp directamente si el webhook falla
     showStatus('warning', '⚠️ Hubo un problema técnico. Haz clic aquí para enviarnos tu solicitud directamente por WhatsApp.', () => {
       const msg = encodeURIComponent(getMensajeWhatsApp({ nombre, programa }));
-      window.open('https://wa.me/573XXXXXXXXX?text=' + msg, '_blank');
+      window.open('https://wa.me/34620301690?text=' + msg, '_blank');
     });
     btn.disabled = false;
     btn.innerHTML = 'Reintentar →';
