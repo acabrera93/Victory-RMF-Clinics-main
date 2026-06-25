@@ -811,6 +811,35 @@
     font-size: 12px; color: rgba(255,255,255,0.25);
   }
 
+  /* ─── GALERÍA MEMORIAS ─── */
+  #galeria-preview { overflow: hidden; }
+  .galeria-track-wrap { overflow: hidden; position: relative; }
+  .galeria-track-wrap::before,
+  .galeria-track-wrap::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 120px; z-index: 2; pointer-events: none;
+  }
+  .galeria-track-wrap::before { left: 0; background: linear-gradient(to right, var(--navy), transparent); }
+  .galeria-track-wrap::after  { right: 0; background: linear-gradient(to left,  var(--navy), transparent); }
+  .galeria-track {
+    display: flex; gap: 16px;
+    animation: galeria-scroll 50s linear infinite;
+    width: max-content;
+  }
+  .galeria-track:hover { animation-play-state: paused; }
+  @keyframes galeria-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .galeria-item {
+    flex-shrink: 0; width: 280px; height: 200px;
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid rgba(59,127,212,0.2);
+    cursor: pointer; transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .galeria-item:hover { transform: scale(1.04); box-shadow: 0 12px 36px rgba(0,0,0,0.5); }
+  .galeria-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .galeria-loading { color: rgba(255,255,255,0.35); font-size: 14px; padding: 80px 48px; }
+
   /* ─── AGENDA TIMELINE ─── */
   .agenda-timeline { padding-top: 12px; }
   .agenda-row { display: flex; align-items: flex-start; justify-content: space-between; position: relative; margin-bottom: 36px; }
@@ -1163,6 +1192,20 @@
   </div>
 </section>
 
+<!-- GALERÍA MEMORIAS -->
+<section id="galeria-preview" style="background:var(--navy); padding:56px 0;">
+  <div class="container" style="margin-bottom:32px;">
+    <p class="section-label" style="color:var(--blue-bright);">Memorias · Ediciones anteriores</p>
+    <h2 class="section-title" style="color:var(--white);">MOMENTOS QUE TRANSFORMAN</h2>
+    <p class="section-sub" style="color:rgba(255,255,255,0.6);">Cada año más jóvenes viven la experiencia. Estos son algunos de sus momentos.</p>
+  </div>
+  <div class="galeria-track-wrap">
+    <div class="galeria-track" id="galeria-track">
+      <div class="galeria-loading">Cargando fotos...</div>
+    </div>
+  </div>
+</section>
+
 <!-- ITINERARIO -->
 <section id="itinerario" style="background: var(--off-white); padding:56px 0;">
   <div class="container">
@@ -1469,6 +1512,30 @@ function showStatus(type, msg, onClick) {
   if (onClick) el.onclick = onClick;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+// ─── GALERÍA MEMORIAS ──────────────────────────────────────────────────────────
+(function() {
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+  var track = document.getElementById('galeria-track');
+  if (!track) return;
+
+  fetch(APPS_SCRIPT_URL + '?action=memorias&_t=' + Date.now(), { redirect: 'follow' })
+    .then(function(r) { return r.json(); })
+    .then(function(fotos) {
+      if (!fotos || !fotos.length) {
+        track.innerHTML = '<div class="galeria-loading">Sin fotos disponibles.</div>';
+        return;
+      }
+      // Duplicar para loop infinito
+      var items = fotos.concat(fotos).map(function(f) {
+        return '<div class="galeria-item"><img src="' + f.viewUrl + '" alt="Memorias RMF Clinic" loading="lazy"></div>';
+      }).join('');
+      track.innerHTML = items;
+    })
+    .catch(function() {
+      track.innerHTML = '<div class="galeria-loading">No se pudieron cargar las fotos.</div>';
+    });
+})();
 
 </script>
 
