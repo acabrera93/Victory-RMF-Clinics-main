@@ -811,6 +811,20 @@
     font-size: 12px; color: rgba(255,255,255,0.25);
   }
 
+  /* ─── AGENDA TIMELINE ─── */
+  .agenda-timeline { padding-top: 12px; }
+  .agenda-row { display: flex; align-items: flex-start; justify-content: space-between; position: relative; margin-bottom: 36px; }
+  .agenda-row:last-of-type { margin-bottom: 0; }
+  .agenda-line { position: absolute; left: 11%; right: 11%; top: 27px; height: 2px; background: linear-gradient(to right, var(--blue), var(--blue-bright)); }
+  .agenda-line.alt { background: linear-gradient(to right, var(--blue-bright), var(--navy)); }
+  .agenda-stop { flex: 1; text-align: center; position: relative; padding: 0 6px; }
+  .agenda-dot { width: 54px; height: 54px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 12px; position: relative; z-index: 1; }
+  .agenda-dot.featured { background: var(--blue); box-shadow: 0 4px 14px rgba(30,91,168,0.35); }
+  .agenda-date { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: var(--blue); letter-spacing: 1px; }
+  .agenda-name { font-size: 14px; font-weight: 600; color: var(--navy); margin: 3px 0 2px; line-height: 1.25; }
+  .agenda-desc { font-size: 12px; color: #4a6080; line-height: 1.45; }
+  .agenda-note { margin-top: 24px; font-size: 11px; color: #8da4bf; text-align: center; }
+
   /* ─── RESPONSIVE ─── */
   @media (max-width: 900px) {
     #hero { grid-template-columns: 1fr; }
@@ -998,21 +1012,21 @@
     <p class="section-label" style="justify-content:center;">Para padres</p>
     <h2 class="section-title" style="text-align:center;">TU TRANQUILIDAD</h2>
     <p class="section-sub" style="text-align:center; margin-bottom:48px;">La pregunta que todo padre hace primero: ¿estarán bien cuidados?</p>
-    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:24px; max-width:900px; margin:0 auto;">
-      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:28px 24px;">
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:48px; max-width:1100px; margin:0 auto;">
+      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:32px 28px; text-align:center;">
         <div style="font-size:32px; margin-bottom:12px;">🛡️</div>
-        <div style="font-size:18px; font-weight:600; color:var(--navy); margin-bottom:6px;">Acompañamiento profesional</div>
-        <div style="font-size:16px; color:#4a6080; line-height:1.6;">1 acompañante profesional por cada 10 niños, desde el aeropuerto hasta el regreso.</div>
+        <div style="font-size:18px; font-weight:600; color:var(--navy); margin-bottom:10px; white-space:nowrap;">Acompañamiento profesional</div>
+        <div style="font-size:16px; color:#4a6080; line-height:1.6;">1 acompañante por cada 10 niños, desde el aeropuerto hasta el regreso.</div>
       </div>
-      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:28px 24px;">
+      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:32px 28px; text-align:center;">
         <div style="font-size:32px; margin-bottom:12px;">🤝</div>
-        <div style="font-size:18px; font-weight:600; color:var(--navy); margin-bottom:6px;">Seguro médico incluido</div>
-        <div style="font-size:16px; color:#4a6080; line-height:1.6;">Seguro médico completo y staff dedicado disponible las 24 horas durante todo el viaje.</div>
+        <div style="font-size:18px; font-weight:600; color:var(--navy); margin-bottom:10px; white-space:nowrap;">Seguro médico incluido</div>
+        <div style="font-size:16px; color:#4a6080; line-height:1.6;">Seguro médico completo y staff dedicado disponible las 24 horas.</div>
       </div>
-      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:28px 24px;">
+      <div style="background:var(--white); border-left:3px solid var(--blue); border-radius:8px; padding:32px 28px; text-align:center;">
         <div style="font-size:32px; margin-bottom:12px;">📱</div>
-        <div style="font-size:18px; font-weight:600; color:var(--navy); margin-bottom:6px;">Fotos y videos en vivo</div>
-        <div style="font-size:16px; color:#4a6080; line-height:1.6;">Recibirás fotos y videos de tu hijo cada día directamente en tu área personal.</div>
+        <div style="font-size:18px; font-weight:600; color:var(--navy); margin-bottom:10px; white-space:nowrap;">Fotos y videos en vivo</div>
+        <div style="font-size:16px; color:#4a6080; line-height:1.6;">Fotos y videos de tu hijo cada día directamente en tu área personal.</div>
       </div>
     </div>
   </div>
@@ -1091,6 +1105,18 @@
         </div>
       </div>
 
+      <div class="testimonio-card">
+        <div class="testimonio-stars">★★★★★</div>
+        <p class="testimonio-text">"El equipo de Fundación Revel nos acompañó en cada paso — desde el primer mensaje hasta el último día en Madrid. Nunca sentimos que estábamos solos en el proceso. Mi hijo volvió transformado, y nosotros como familia lo repetiríamos sin dudarlo un segundo."</p>
+        <div class="testimonio-author">
+          <div class="testimonio-avatar">RP</div>
+          <div>
+            <div class="testimonio-name">Roberto Paredes</div>
+            <div class="testimonio-role">Papá de Sofía, 16 años · Colombia</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
@@ -1100,7 +1126,7 @@
   <div class="container">
     <p class="section-label">Proceso</p>
     <h2 class="section-title">ASÍ DE SIMPLE</h2>
-    <p class="section-sub">Nos encargamos de absolutamente todo. Tu único trabajo es animar a tu hijo desde las gradas.</p>
+    <p class="section-sub" style="white-space:nowrap;">Nos encargamos de absolutamente todo. Tu único trabajo es animar a tu hijo desde las gradas.</p>
 
     <div class="steps-grid">
       <div class="step">
@@ -1145,58 +1171,63 @@
     <div class="faq-item" onclick="this.classList.toggle('open')" style="border-bottom:1px solid rgba(11,31,58,0.1);">
       <div class="faq-question" style="font-size:18px;">Ver agenda día a día (8 días en Madrid) <span class="faq-arrow">+</span></div>
       <div class="faq-answer" style="padding-bottom:16px; max-width:none;">
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; padding-top:8px;">
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.3);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 1 · 2 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Salida a Madrid</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Vuelo y viaje hacia Madrid. Inicio de la aventura.</div>
+        <div class="agenda-timeline">
+          <div class="agenda-row">
+            <div class="agenda-line"></div>
+            <div class="agenda-stop">
+              <div class="agenda-dot">✈️</div>
+              <div class="agenda-date">DÍA 1 · 2 OCT</div>
+              <div class="agenda-name">Salida a Madrid</div>
+              <div class="agenda-desc">Vuelo y viaje hacia Madrid. Inicio de la aventura.</div>
+            </div>
+            <div class="agenda-stop">
+              <div class="agenda-dot">🏟️</div>
+              <div class="agenda-date">DÍA 2 · 3 OCT</div>
+              <div class="agenda-name">Recepción + Partido RM</div>
+              <div class="agenda-desc">Llegada a Barajas y partido de Liga del Real Madrid* en el Bernabéu.</div>
+            </div>
+            <div class="agenda-stop">
+              <div class="agenda-dot">🎤</div>
+              <div class="agenda-date">DÍA 3 · 4 OCT</div>
+              <div class="agenda-name">Conferencia + Tour</div>
+              <div class="agenda-desc">"Building a Champion" + Tour Bernabéu y Adidas Store.</div>
+            </div>
+            <div class="agenda-stop">
+              <div class="agenda-dot featured">⚽</div>
+              <div class="agenda-date">DÍA 4 · 5 OCT</div>
+              <div class="agenda-name">Victory Cup · Partido 1</div>
+              <div class="agenda-desc">Primer partido oficial contra colegios de Madrid.</div>
+            </div>
           </div>
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.3);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 2 · 3 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Recepción + Partido Liga RM</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Recepción aeropuerto Madrid Barajas. Tarde: partido de Liga del Real Madrid C.F.* en el Santiago Bernabéu.</div>
+          <div class="agenda-row">
+            <div class="agenda-line alt"></div>
+            <div class="agenda-stop">
+              <div class="agenda-dot featured">🏙️</div>
+              <div class="agenda-date">DÍA 5 · 6 OCT</div>
+              <div class="agenda-name">City Tour + Partido 2</div>
+              <div class="agenda-desc">Visita al centro de Madrid y segundo partido de la Victory Cup.</div>
+            </div>
+            <div class="agenda-stop">
+              <div class="agenda-dot featured">🥅</div>
+              <div class="agenda-date">DÍA 6 · 7 OCT</div>
+              <div class="agenda-name">Valdebebas + Partido 3</div>
+              <div class="agenda-desc">Entrenamiento en Ciudad Deportiva y último partido de la Victory Cup.</div>
+            </div>
+            <div class="agenda-stop">
+              <div class="agenda-dot">🎢</div>
+              <div class="agenda-date">DÍA 7 · 8 OCT</div>
+              <div class="agenda-name">Parque Warner</div>
+              <div class="agenda-desc">Día de diversión y descanso en el Parque Warner Madrid.</div>
+            </div>
+            <div class="agenda-stop">
+              <div class="agenda-dot">🏅</div>
+              <div class="agenda-date">DÍA 8–9 · 9–10 OCT</div>
+              <div class="agenda-name">Clausura + Regreso</div>
+              <div class="agenda-desc">Ceremonia, tour final Ciudad Deportiva, outlet y vuelo a casa.</div>
+            </div>
           </div>
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.6);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 3 · 4 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Conferencia + Entrenamiento 1</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">"Building a Champion" — charla motivacional. Tarde: Tour Bernabéu + Adidas Store.</div>
-          </div>
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 4 · 5 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Victory Cup — Partido 1</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Primer partido oficial contra colegios de Madrid en la Victory Cup.</div>
-          </div>
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 5 · 6 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">City Tour + Victory Cup 2</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Mañana: visita al centro de Madrid. Tarde: segundo partido de la Victory Cup.</div>
-          </div>
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid var(--blue);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 6 · 7 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Entrenamiento RM + Victory Cup 3</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Entrenamiento en Ciudad Deportiva Valdebebas. Tercer y último partido de la Victory Cup.</div>
-          </div>
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.4);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 7 · 8 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Parque Warner</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Día de diversión y descanso en el Parque Warner Madrid. Noche libre.</div>
-          </div>
-
-          <div style="background:var(--white); border:1px solid rgba(11,31,58,0.08); border-radius:8px; padding:18px 20px; border-top:2px solid rgba(30,91,168,0.6);">
-            <div style="font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:2px; color:var(--blue); margin-bottom:6px;">DÍA 8 · 9–10 OCT</div>
-            <div style="font-size:14px; font-weight:500; margin-bottom:6px; color:var(--navy);">Clausura + Ciudad Deportiva + Regreso</div>
-            <div style="font-size:13px; color:#4a6080; line-height:1.6;">Ceremonia de clausura oficial. Tour final Ciudad Deportiva RM. Outlet San Sebastián de los Reyes. Check Out y vuelo de regreso a casa con recuerdos para toda la vida.</div>
-          </div>
-
+          <p class="agenda-note">* Partido del Real Madrid sujeto al calendario oficial de LaLiga. Posibilidad de fechas personalizadas disponible.</p>
         </div>
-        <p style="margin-top:16px; font-size:11px; color:#8da4bf; text-align:center;">* Partido Real Madrid sujeto al calendario oficial de la Liga. Posibilidad de fechas personalizadas disponible.</p>
       </div>
     </div>
 
@@ -1564,6 +1595,10 @@ function showStatus(type, msg, onClick) {
   .form-layout { grid-template-columns: 1fr; gap: 32px; }
   .footer-grid { grid-template-columns: 1fr; gap: 24px; }
   .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+  .agenda-row { flex-direction: column; gap: 20px; margin-bottom: 20px; }
+  .agenda-line { display: none; }
+  .agenda-stop { display: flex; align-items: flex-start; text-align: left; gap: 14px; padding: 0; }
+  .agenda-stop .agenda-dot { margin: 0; flex-shrink: 0; width: 46px; height: 46px; font-size: 20px; }
 
   #programas .container > div[style*="grid-template-columns:repeat(3"] {
     grid-template-columns: 1fr !important;
