@@ -829,6 +829,11 @@
     font-size: 12px; color: rgba(255,255,255,0.25);
   }
 
+  /* ─── VIDEOS TESTIMONIOS ─── */
+  .videos-testimonios { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 32px; }
+  .video-testimonio { position: relative; width: 100%; aspect-ratio: 9/16; border-radius: 12px; overflow: hidden; background: var(--navy); box-shadow: 0 8px 24px rgba(11,31,58,0.15); }
+  .video-testimonio iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+
   /* ─── GALERÍA MEMORIAS ─── */
   #galeria-preview { overflow: hidden; }
   .galeria-track-wrap { overflow: hidden; position: relative; }
@@ -1115,44 +1120,18 @@
   <div class="container">
     <p class="section-label">Familias</p>
     <h2 class="section-title">LO QUE DICEN LOS PADRES</h2>
+    <p class="section-sub" style="margin-bottom:40px;">Escúchalos en sus propias palabras — familias que ya vivieron la experiencia.</p>
 
-    <div class="testimonios-grid">
-      <div class="testimonio-card">
-        <div class="testimonio-stars">★★★★★</div>
-        <p class="testimonio-text">"Mi hijo volvió siendo otra persona. El nivel futbolístico mejoró increíblemente, pero más importante, la madurez y la confianza que ganó no tienen precio."</p>
-        <div class="testimonio-author">
-          <div class="testimonio-avatar">CM</div>
-          <div>
-            <div class="testimonio-name">Carlos Mendoza</div>
-            <div class="testimonio-role">Papá de Sebastián, 15 años · Colombia</div>
-          </div>
-        </div>
+    <div class="videos-testimonios">
+      <div class="video-testimonio">
+        <iframe src="https://www.youtube.com/embed/SeowRX496F8?rel=0&modestbranding=1" title="Testimonio padre 1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
-
-      <div class="testimonio-card">
-        <div class="testimonio-stars">★★★★★</div>
-        <p class="testimonio-text">"La app para padres es increíble. Ver fotos y videos del torneo en tiempo real me dio tranquilidad total. El equipo respondía cualquier duda al instante."</p>
-        <div class="testimonio-author">
-          <div class="testimonio-avatar">LG</div>
-          <div>
-            <div class="testimonio-name">Laura Gómez</div>
-            <div class="testimonio-role">Mamá de Tomás, 13 años · Colombia</div>
-          </div>
-        </div>
+      <div class="video-testimonio">
+        <iframe src="https://www.youtube.com/embed/kv2IONZ3nYw?rel=0&modestbranding=1" title="Testimonio padre 2" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
-
-      <div class="testimonio-card">
-        <div class="testimonio-stars">★★★★★</div>
-        <p class="testimonio-text">"El equipo de Fundación Revel nos acompañó en cada paso — desde el primer mensaje hasta el último día en Madrid. Nunca sentimos que estábamos solos en el proceso. Mi hijo volvió transformado, y nosotros como familia lo repetiríamos sin dudarlo un segundo."</p>
-        <div class="testimonio-author">
-          <div class="testimonio-avatar">RP</div>
-          <div>
-            <div class="testimonio-name">Roberto Paredes</div>
-            <div class="testimonio-role">Papá de Sofía, 16 años · Colombia</div>
-          </div>
-        </div>
+      <div class="video-testimonio">
+        <iframe src="https://www.youtube.com/embed/IJQiMA71jY0?rel=0&modestbranding=1" title="Testimonio padre 3" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
-
     </div>
   </div>
 </section>
@@ -1682,6 +1661,7 @@ function showStatus(type, msg, onClick) {
   .tranquilidad-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
   .incluye-cats { grid-template-columns: 1fr !important; }
   .incluye-lines { white-space: normal !important; }
+  .videos-testimonios { grid-template-columns: 1fr; gap: 16px; max-width: 360px; margin-left: auto; margin-right: auto; }
   .agenda-row { flex-direction: column; gap: 20px; margin-bottom: 20px; }
   .agenda-line { display: none; }
   .agenda-stop { display: flex; align-items: flex-start; text-align: left; gap: 14px; padding: 0; }
