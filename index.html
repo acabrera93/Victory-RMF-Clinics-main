@@ -1365,7 +1365,7 @@
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/3gcs8kbhhs9pwlnblt16l5oqybbkc6sh';
 
 // URL pública del PDF de Real Madrid (súbelo a Google Drive o Dropbox y pon el link directo)
-const PDF_RMF = 'https://drive.google.com/file/d/1Z5qWIAfH9KSBlX_OKBaPyBMwKnn2oIFZ/view?usp=sharing';
+const PDF_RMF = 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing';
 // URL pública del PDF de Japan Golf
 const PDF_JAPAN = 'https://drive.google.com/file/d/TU_ID_PDF_JAPAN/view';
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1603,7 +1603,9 @@ function showStatus(type, msg, onClick) {
   .nav-sep { display: none; }
   .nav-logos .nav-logo-link img:not(:first-child) { display: none; }
   .nav-logos .nav-logo-link img:first-child { display: block; }
-  .nav-drawer-logos .nav-logo-link img { display: block; height: 22px; }
+  .nav-drawer-logos .nav-logo-link img { display: block !important; height: 22px !important; }
+  /* Subtítulos: en móvil pueden romper línea */
+  .section-sub { white-space: normal !important; }
   .nav-links {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1626,6 +1628,7 @@ function showStatus(type, msg, onClick) {
   .container { padding: 0 16px; }
   section { padding: 40px 0; }
   .section-title { font-size: clamp(28px, 9vw, 48px); }
+  .section-sub { white-space: normal !important; }
 
   #hero {
     display: flex !important;
