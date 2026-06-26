@@ -216,7 +216,7 @@
 
   .hero-sub {
     font-size: 20px; font-weight: 300; line-height: 1.65;
-    color: rgba(255,255,255,0.7);
+    color: rgba(255,255,255,0.92);
     max-width: 440px;
     margin-bottom: 44px;
   }
@@ -914,6 +914,7 @@
       <a href="#faq" class="nav-link">Preguntas frecuentes</a>
       <a href="areapersonal.html" class="nav-link">Área Personal</a>
       <div class="nav-divider"></div>
+      <a href="preinscripcion.html" class="nav-cta" style="background:transparent; border-color:rgba(255,255,255,0.45);">Inscríbete →</a>
       <a href="#inscripcion" class="nav-cta">Recibir información →</a>
     </div>
     <button class="nav-hamburger" id="nav-hamburger" aria-label="Abrir menú">
@@ -934,6 +935,7 @@
       <a href="memorias.html" class="nav-drawer-link">Memorias</a>
       <a href="#faq" class="nav-drawer-link">Preguntas frecuentes</a>
       <a href="areapersonal.html" class="nav-drawer-link">Área Personal</a>
+      <a href="preinscripcion.html" class="nav-drawer-cta" style="background:transparent; border:1.5px solid rgba(255,255,255,0.4); margin-bottom:6px;">Inscríbete →</a>
       <a href="#inscripcion" class="nav-drawer-cta">Recibir información →</a>
     </div>
   </div>
@@ -1492,22 +1494,46 @@ function showStatus(type, msg, onClick) {
 // ─── GALERÍA MEMORIAS ──────────────────────────────────────────────────────────
 (function() {
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+  var CACHE_KEY = 'rmf_memorias_v1';
+  var CACHE_TTL = 60 * 60 * 1000; // 1 hora en ms
   var trackProg = document.getElementById('galeria-track-prog');
   if (!trackProg) return;
 
-  fetch(APPS_SCRIPT_URL + '?action=memorias&_t=' + Date.now(), { redirect: 'follow' })
+  function buildItems(fotos) {
+    // Usar sz=w400 en vez de w800: misma calidad visual, ~4x más ligero
+    return fotos.concat(fotos).map(function(f) {
+      var src = f.viewUrl ? f.viewUrl.replace('sz=w800', 'sz=w600') : f.url;
+      return '<div class="galeria-item"><img src="' + src + '" alt="Memorias RMF Clinic" loading="lazy" decoding="async"></div>';
+    }).join('');
+  }
+
+  function render(fotos) {
+    if (!fotos || !fotos.length) {
+      trackProg.innerHTML = '<div class="galeria-loading" style="color:#8da4bf;">Sin fotos disponibles.</div>';
+      return;
+    }
+    trackProg.innerHTML = buildItems(fotos);
+  }
+
+  // Mostrar caché instantáneamente si existe y no ha expirado
+  try {
+    var cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      render(cached.data);
+      return; // No hace fetch si el caché es reciente
+    }
+  } catch(e) {}
+
+  // Fetch en segundo plano
+  fetch(APPS_SCRIPT_URL + '?action=memorias', { redirect: 'follow' })
     .then(function(r) { return r.json(); })
     .then(function(fotos) {
-      if (!fotos || !fotos.length) {
-        trackProg.innerHTML = '<div class="galeria-loading" style="color:#8da4bf;">Sin fotos disponibles.</div>';
-        return;
-      }
-      var items = fotos.concat(fotos).map(function(f) {
-        return '<div class="galeria-item"><img src="' + f.viewUrl + '" alt="Memorias RMF Clinic" loading="lazy"></div>';
-      }).join('');
-      trackProg.innerHTML = items;
+      render(fotos);
+      // Guardar en localStorage para la próxima visita
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: fotos })); } catch(e) {}
     })
     .catch(function() {
+      if (trackProg.querySelector('.galeria-item')) return; // Si ya había caché, no sobreescribir
       trackProg.innerHTML = '<div class="galeria-loading" style="color:#8da4bf;">No se pudieron cargar las fotos.</div>';
     });
 })();
@@ -1578,8 +1604,9 @@ function showStatus(type, msg, onClick) {
   .nav-inner { padding: 0 16px; height: 56px; }
   .nav-logo-link img { height: 22px; }
   .nav-sep { display: none; }
-  .nav-logo-link img:not(:first-child) { display: none; }
-  .nav-logo-link img:first-child { display: block; }
+  .nav-logos .nav-logo-link img:not(:first-child) { display: none; }
+  .nav-logos .nav-logo-link img:first-child { display: block; }
+  .nav-drawer-logos .nav-logo-link img { display: block; height: 22px; }
   .nav-links {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
