@@ -551,11 +551,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
     <p style="font-size:12px;color:rgba(255,255,255,.55);margin:0;">💡 Empieza por <strong style="color:rgba(255,255,255,.85);">Mi Proceso</strong> y sigue cada paso en orden. ¿Dudas? Escríbenos por WhatsApp.</p>
   </div>
-  <div id="welcome-collapsed" style="display:none;margin-bottom:18px;">
-    <button onclick="abrirGuia()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;" onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-      ℹ️ Ver instrucciones de uso
-    </button>
-  </div>
 
   <div class="card" id="datos-resumen-card">
     <div class="ctitle">Resumen de inscripción</div>
@@ -578,8 +573,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <div class="section-tabs" id="section-tabs" style="display:none">
     <button class="stab active" data-section="proceso" onclick="switchSection('proceso')">Mi Proceso</button>
     <button class="stab" data-section="fotos" onclick="switchSection('fotos')">📸 Fotos</button>
-    <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Mensajes</button>
     <button class="stab" data-section="saber" onclick="switchSection('saber')">📋 Prepárate</button>
+    <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Mensajes</button>
     <button class="stab" id="stab-admin" data-section="admin" onclick="switchSection('admin')" style="display:none;background:var(--navy);color:#fff">⚙ Admin</button>
     <button class="stab" id="stab-comercial" data-section="comercial" onclick="switchSection('comercial')" style="display:none">💼 Mis Comisiones</button>
   </div>
@@ -1104,6 +1099,60 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
               <div style="font-size:12px;color:#047857;margin-top:2px;">El tiquete incluye <strong>1 mochila de mano (máx. 10 kg)</strong>. No se permiten artículos cortopunzantes en cabina.</div>
             </div>
           </div>
+
+          <!-- Itinerario de vuelos -->
+          <div style="background:#0b1f3a;border-radius:10px;padding:18px 20px;margin-top:4px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-bright);margin-bottom:14px;">🗓️ Itinerario de vuelos confirmado</div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <!-- Vuelo ida -->
+              <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(90,157,224,0.25);border-radius:8px;padding:14px 16px;">
+                <div style="font-size:11px;font-weight:600;color:var(--blue-bright);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✈️ Vuelo ida · 2 de octubre 2026</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">AEROLÍNEA / VUELO</div>
+                    <div style="font-size:14px;font-weight:600;color:#fff;">Air Europa · UX194</div>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">RUTA</div>
+                    <div style="font-size:14px;font-weight:600;color:#fff;">BOG → MAD</div>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">SALIDA (Bogotá)</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">20:15 hrs</div>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">LLEGADA (Madrid)</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">13:00 hrs</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Vuelo regreso -->
+              <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(90,157,224,0.25);border-radius:8px;padding:14px 16px;">
+                <div style="font-size:11px;font-weight:600;color:var(--blue-bright);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✈️ Vuelo regreso · 10 de octubre 2026</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">AEROLÍNEA / VUELO</div>
+                    <div style="font-size:14px;font-weight:600;color:#fff;">Air Europa · UX0193</div>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">RUTA</div>
+                    <div style="font-size:14px;font-weight:600;color:#fff;">MAD → BOG</div>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">SALIDA (Madrid)</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">15:15 hrs</div>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">LLEGADA (Bogotá)</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">18:15 hrs</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -2679,21 +2728,14 @@ function finalizarInscripcion() {
   goPanel('panel-done');
 }
 
-// ── GUIA BIENVENIDA ────────────────────────────────────────────────────────────
+// ── GUIA BIENVENIDA — visible en cada sesión, se puede cerrar pero no se recuerda
 function cerrarGuia() {
   document.getElementById('welcome-guide').style.display = 'none';
-  document.getElementById('welcome-collapsed').style.display = 'block';
-  localStorage.setItem('guia_cerrada', '1');
 }
 function abrirGuia() {
   document.getElementById('welcome-guide').style.display = 'block';
-  document.getElementById('welcome-collapsed').style.display = 'none';
-  localStorage.removeItem('guia_cerrada');
 }
-if (localStorage.getItem('guia_cerrada') === '1') {
-  document.getElementById('welcome-guide').style.display = 'none';
-  document.getElementById('welcome-collapsed').style.display = 'block';
-}
+localStorage.removeItem('guia_cerrada');
 
 // ── PASSWORD GATE ─────────────────────────────────────────────────────────────
 let _pwdPendingSection = null;

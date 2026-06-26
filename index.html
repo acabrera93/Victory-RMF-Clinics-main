@@ -856,7 +856,20 @@
   }
   .galeria-item:hover { transform: scale(1.04); box-shadow: 0 12px 36px rgba(0,0,0,0.5); }
   .galeria-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .galeria-loading { color: rgba(255,255,255,0.35); font-size: 14px; padding: 80px 48px; }
+  .galeria-loading {
+    color: #8da4bf; font-size: 15px;
+    width: 100%; padding: 60px 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  }
+  .galeria-loading::before {
+    content: '';
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 3px solid rgba(90,157,224,0.2);
+    border-top-color: var(--blue-bright);
+    animation: galeria-spin 0.8s linear infinite;
+    display: block;
+  }
+  @keyframes galeria-spin { to { transform: rotate(360deg); } }
 
   /* ─── AGENDA TIMELINE ─── */
   .agenda-timeline { padding-top: 12px; }
@@ -1021,7 +1034,7 @@
   </div>
   <div class="galeria-track-wrap">
     <div class="galeria-track" id="galeria-track-prog">
-      <div class="galeria-loading" style="color:#8da4bf;">Cargando fotos...</div>
+      <div class="galeria-loading">Cargando fotos...</div>
     </div>
   </div>
 </section>
@@ -1048,7 +1061,7 @@
         </div>
         <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(59,127,212,0.25); border-radius:10px; padding:22px 28px;">
           <div style="font-size:15px; color:var(--blue-bright); font-weight:500; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">📍 Experiencias</div>
-          <div class="incluye-lines" style="font-size:16px; color:rgba(255,255,255,0.9); line-height:2.3; white-space:nowrap;">Tour Santiago Bernabéu<br>Parque Warner Madrid<br>Partido de Liga del Real Madrid*</div>
+          <div class="incluye-lines" style="font-size:16px; color:rgba(255,255,255,0.9); line-height:2.3; white-space:nowrap;">Tour Santiago Bernabéu<br>Parque Warner Madrid<br>Madrid City Tour<br>Partido de Liga del Real Madrid*</div>
         </div>
         <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(59,127,212,0.25); border-radius:10px; padding:22px 28px;">
           <div style="font-size:15px; color:var(--blue-bright); font-weight:500; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">🏨 Estadía</div>
@@ -1189,9 +1202,9 @@
   <div class="container">
     <p class="section-label">Agenda RMF Clinic 2026</p>
     <h2 class="section-title">8 DÍAS EN MADRID, DÍA A DÍA</h2>
-    <p class="section-sub" style="margin-bottom:40px;">Cada día está diseñado para maximizar la experiencia deportiva y vivencial de tu hijo en Madrid.</p>
+    <p class="section-sub" style="margin-bottom:40px; white-space:nowrap;">Cada día está diseñado para maximizar la experiencia deportiva y vivencial de tu hijo en Madrid.</p>
 
-    <div class="faq-item" onclick="this.classList.toggle('open')" style="border-bottom:1px solid rgba(11,31,58,0.1);">
+    <div class="faq-item open" onclick="this.classList.toggle('open')" style="border-bottom:1px solid rgba(11,31,58,0.1);">
       <div class="faq-question" style="font-size:18px;">Ver agenda día a día (8 días en Madrid) <span class="faq-arrow">+</span></div>
       <div class="faq-answer" style="padding-bottom:16px; max-width:none;">
         <div class="agenda-timeline">
@@ -1311,7 +1324,7 @@
           <div class="promise-item"><div class="promise-check">✓</div>Respuesta en menos de 24 horas</div>
           <div class="promise-item"><div class="promise-check">✓</div>Financiamiento disponible en cuotas</div>
           <div class="promise-item"><div class="promise-check">✓</div>Asesor dedicado durante todo el proceso</div>
-          <div class="promise-item"><div class="promise-check">✓</div>Cancelación flexible hasta 60 días antes</div>
+          <div class="promise-item"><div class="promise-check">✓</div>Cancelación flexible hasta 90 días antes</div>
         </div>
       </div>
 
@@ -1509,7 +1522,7 @@ function showStatus(type, msg, onClick) {
 
   function render(fotos) {
     if (!fotos || !fotos.length) {
-      trackProg.innerHTML = '<div class="galeria-loading" style="color:#8da4bf;">Sin fotos disponibles.</div>';
+      trackProg.innerHTML = '<div class="galeria-loading">Sin fotos disponibles.</div>';
       return;
     }
     trackProg.innerHTML = buildItems(fotos);
@@ -1534,7 +1547,7 @@ function showStatus(type, msg, onClick) {
     })
     .catch(function() {
       if (trackProg.querySelector('.galeria-item')) return; // Si ya había caché, no sobreescribir
-      trackProg.innerHTML = '<div class="galeria-loading" style="color:#8da4bf;">No se pudieron cargar las fotos.</div>';
+      trackProg.innerHTML = '<div class="galeria-loading">No se pudieron cargar las fotos.</div>';
     });
 })();
 
