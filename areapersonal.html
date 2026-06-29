@@ -1188,6 +1188,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="admin-subnav">
         <button class="asnav-btn active" data-asec="dashboard" onclick="adminSection('dashboard')">Dashboard</button>
         <button class="asnav-btn" data-asec="participantes" onclick="adminSection('participantes')">Participantes</button>
+        <button class="asnav-btn" data-asec="categorias" onclick="adminSection('categorias')">Categorías</button>
         <button class="asnav-btn" data-asec="pagos" onclick="adminSection('pagos')">Pagos</button>
         <button class="asnav-btn" data-asec="comisiones" onclick="adminSection('comisiones')">Comisiones</button>
         <button class="asnav-btn" data-asec="comunicados" onclick="adminSection('comunicados')">Comunicados</button>
@@ -1408,12 +1409,23 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="ptable-wrap">
           <table class="ptable" id="admin-ptable">
             <thead>
-              <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
+              <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
             </thead>
             <tbody id="admin-ptable-body">
-              <tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+              <tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORÍAS -->
+    <div id="admin-sec-categorias" style="display:none">
+      <div class="card">
+        <div class="ctitle">Categorías · Jugadores RMF Clinic 2026</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Edad calculada al 2 de octubre de 2026.</p>
+        <div id="admin-categorias-content">
+          <p style="color:var(--muted);font-size:13px;">Cargando categorías...</p>
         </div>
       </div>
     </div>
@@ -3539,6 +3551,7 @@ function adminSection(section) {
   // Recargas específicas por sección
   if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
+  if (section === 'categorias') loadAdminCategorias();
   if (section === 'galeria') loadAdminFotos();
   // Pagos y Dashboard siempre re-fetch al entrar (ediciones directas en Sheet deben reflejarse)
   // Otras secciones: cooldown de 30s
@@ -4239,7 +4252,7 @@ function renderAdminComisiones(fin) {
 function renderAdminTable(rows) {
   const tbody = document.getElementById('admin-ptable-body');
   if (!rows || !rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map((row, i) => {
@@ -4248,6 +4261,9 @@ function renderAdminTable(rows) {
     const tp = n.tipo || row['1'] || '';
     const em = n.email || row['3'] || '';
     const ph = n.phone || row['4'] || '';
+    // Fecha nacimiento: normalizeParticipant la mapea como fecha_nacimiento
+    const fnRaw = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha_nacimiento'] || '';
+    const fn = fnRaw ? formatFechaNac(fnRaw) : '—';
     const tiq = (n.tiquete_aereo || '').toLowerCase().includes('con') ? '<span style="color:var(--blue)">✈ Sí</span>' : '<span style="color:var(--muted)">—</span>';
     const hab = n.habitacion || '';
     const paso = n.paso_actual || '1';
@@ -4258,12 +4274,24 @@ function renderAdminTable(rows) {
       <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${tp.toLowerCase().includes('jug')?'rgba(30,91,168,.1)':'rgba(22,101,52,.08)'};color:${tp.toLowerCase().includes('jug')?'var(--blue)':'#166534'}">${tp}</span></td>
       <td style="font-size:12px;color:var(--muted)">${em}</td>
       <td style="font-size:12px">${ph}</td>
+      <td style="font-size:12px">${fn}</td>
       <td style="text-align:center">${tiq}</td>
       <td style="font-size:12px">${hab}</td>
       <td><span class="${cls}">${paso}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
     </tr>`;
   }).join('');
+}
+
+// Convierte fecha del sheet (aaaa-mm-dd o dd/mm/aaaa) a dd/mm/aaaa para mostrar
+function formatFechaNac(v) {
+  if (!v) return '—';
+  var s = String(v).trim();
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) {
+    var p = s.split('-');
+    return p[2].padStart(2,'0') + '/' + p[1].padStart(2,'0') + '/' + p[0];
+  }
+  return s; // ya en dd/mm/aaaa u otro formato
 }
 
 function filterAdminTable() {
@@ -4730,6 +4758,49 @@ function saveEditModal() {
       }
     })
     .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
+}
+
+function loadAdminCategorias() {
+  const el = document.getElementById('admin-categorias-content');
+  if (!el) return;
+  el.innerHTML = '<p style="color:var(--muted);font-size:13px;">Cargando categorías...</p>';
+  fetch(APPS_SCRIPT_URL + '?action=admin_categorias&_t=' + Date.now(), { redirect: 'follow' })
+    .then(r => r.json())
+    .then(data => renderAdminCategorias(data))
+    .catch(() => { el.innerHTML = '<p style="color:#dc2626;font-size:13px;">Error al cargar categorías.</p>'; });
+}
+
+function renderAdminCategorias(cats) {
+  const el = document.getElementById('admin-categorias-content');
+  if (!el) return;
+  if (!cats || !cats.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">Sin datos.</p>'; return; }
+
+  const catColors = { 'Sub 18':'#1e5ba8','Sub 16':'#0d9488','Sub 14':'#7c3aed','Sub 12':'#ea580c','Sub 10':'#dc2626' };
+  let total = 0;
+  let html = '<table class="ptable" style="width:100%"><thead><tr><th style="width:60%">Nombre</th><th>Fecha nac.</th></tr></thead><tbody>';
+
+  cats.forEach(cat => {
+    const color = catColors[cat.categoria] || '#1e5ba8';
+    const count = cat.jugadores.length;
+    total += count;
+    html += `<tr><td colspan="2" style="background:${color};color:#fff;font-weight:600;font-size:12px;letter-spacing:1px;padding:10px 16px;">
+      ${cat.categoria} &nbsp;<span style="opacity:.7;font-weight:400">(${count} jugador${count!==1?'es':''})</span>
+    </td></tr>`;
+    if (!count) {
+      html += `<tr><td colspan="2" style="color:var(--muted);font-size:12px;font-style:italic;padding:10px 16px;">Sin jugadores en esta categoría</td></tr>`;
+    } else {
+      cat.jugadores.forEach((j, idx) => {
+        html += `<tr style="background:${idx%2===0?'var(--off)':'#fff'}">
+          <td style="font-weight:500">${j.nombre}</td>
+          <td style="font-size:12px;color:var(--muted)">${j.fecha}</td>
+        </tr>`;
+      });
+    }
+  });
+
+  html += `</tbody></table>`;
+  html += `<p style="margin-top:12px;font-size:12px;color:var(--muted);text-align:right;">Total jugadores: <strong>${total}</strong></p>`;
+  el.innerHTML = html;
 }
 
 function loadAdminComunicados() {
