@@ -77,6 +77,7 @@ function doGet(e) {
     if (action === 'buscar') return buscarParticipantes(params.email || '');
     if (action === 'admin_participantes') return getAdminParticipantes();
     if (action === 'admin_financiero') return getAdminFinanciero();
+    if (action === 'admin_categorias') return getAdminCategorias();
     if (action === 'admin_acceso') return getAdminAcceso();
     if (action === 'admin_acceso_check') return checkAdminAcceso(params.email || '');
     if (action === 'verify_reset_token') {
@@ -1737,6 +1738,107 @@ function eliminarFotoDrive(data) {
   } catch (err) {
     Logger.log('eliminarFotoDrive error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── CATEGORÍAS DE JUGADORES ────────────────────────────────────────────────
+
+function parseFechaNacimiento(valor) {
+  if (valor instanceof Date) {
+    return { anio: valor.getFullYear(), mes: valor.getMonth() + 1, dia: valor.getDate() };
+  }
+  var s = String(valor || '').trim();
+  if (!s) return null;
+  // Formato aaaa-mm-dd
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) {
+    var p = s.split('-');
+    return { anio: parseInt(p[0]), mes: parseInt(p[1]), dia: parseInt(p[2]) };
+  }
+  // Formato dd/mm/aaaa
+  if (s.indexOf('/') >= 0) {
+    var p2 = s.split('/');
+    if (p2.length === 3) {
+      var a = parseInt(p2[2]), m = parseInt(p2[1]), d = parseInt(p2[0]);
+      if (a > 1900) return { anio: a, mes: m, dia: d };
+    }
+  }
+  return null;
+}
+
+function calcEdadRef(fechaObj) {
+  if (!fechaObj) return null;
+  var edad = 2026 - fechaObj.anio;
+  // Si el cumpleaños es posterior al 2 de octubre, aún no lo ha cumplido
+  if (fechaObj.mes > 10 || (fechaObj.mes === 10 && fechaObj.dia > 2)) edad -= 1;
+  return edad;
+}
+
+function getAdminCategorias() {
+  try {
+    var sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+
+    // Buscar columnas por cabecera
+    var tipoCol = -1, nombreCol = -1, fechaCol = -1;
+    for (var j = 0; j < headers.length; j++) {
+      var h = String(headers[j]).toLowerCase().trim();
+      if (h === 'tipo') tipoCol = j;
+      if ((h === 'nombre' || h === 'nombre completo') && nombreCol < 0) nombreCol = j;
+      if (h.indexOf('fecha') >= 0 && (h.indexOf('nac') >= 0 || h.indexOf('nacim') >= 0)) fechaCol = j;
+    }
+    if (tipoCol < 0)   tipoCol = 0;
+    if (nombreCol < 0) nombreCol = 1;
+    if (fechaCol < 0)  fechaCol = 6;
+
+    var catMap = { 'Sub 18': [], 'Sub 16': [], 'Sub 14': [], 'Sub 12': [], 'Sub 10': [] };
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row.every(function(c) { return c === '' || c === null; })) continue;
+      var tipo = String(row[tipoCol] || '').toLowerCase().trim();
+      if (tipo.indexOf('jug') < 0) continue; // Solo jugadores
+
+      var nombre = String(row[nombreCol] || '').trim();
+      if (!nombre) continue;
+
+      var fechaObj = parseFechaNacimiento(row[fechaCol]);
+      var edad = calcEdadRef(fechaObj);
+
+      var fechaDisplay = '—';
+      if (fechaObj) {
+        fechaDisplay = String(fechaObj.dia).padStart(2,'0') + '/' +
+                       String(fechaObj.mes).padStart(2,'0') + '/' + fechaObj.anio;
+      }
+
+      var cat;
+      if (edad === null || edad >= 16) cat = 'Sub 18';
+      else if (edad >= 14) cat = 'Sub 16';
+      else if (edad >= 12) cat = 'Sub 14';
+      else if (edad >= 10) cat = 'Sub 12';
+      else cat = 'Sub 10';
+
+      catMap[cat].push({
+        nombre: nombre,
+        fecha:  fechaDisplay,
+        _sort:  fechaObj ? (fechaObj.anio * 10000 + fechaObj.mes * 100 + fechaObj.dia) : 0
+      });
+    }
+
+    var catOrder = ['Sub 18', 'Sub 16', 'Sub 14', 'Sub 12', 'Sub 10'];
+    var result = catOrder.map(function(cat) {
+      var jugadores = catMap[cat];
+      jugadores.sort(function(a, b) { return a._sort - b._sort; }); // más viejo primero
+      return {
+        categoria: cat,
+        jugadores: jugadores.map(function(j) { return { nombre: j.nombre, fecha: j.fecha }; })
+      };
+    });
+
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    Logger.log('getAdminCategorias error: ' + err);
+    return sendResponse(500, { error: err.toString() });
   }
 }
 
