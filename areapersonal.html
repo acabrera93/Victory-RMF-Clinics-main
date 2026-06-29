@@ -1188,7 +1188,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="admin-subnav">
         <button class="asnav-btn active" data-asec="dashboard" onclick="adminSection('dashboard')">Dashboard</button>
         <button class="asnav-btn" data-asec="participantes" onclick="adminSection('participantes')">Participantes</button>
-        <button class="asnav-btn" data-asec="categorias" onclick="adminSection('categorias')">Categorías</button>
         <button class="asnav-btn" data-asec="pagos" onclick="adminSection('pagos')">Pagos</button>
         <button class="asnav-btn" data-asec="comisiones" onclick="adminSection('comisiones')">Comisiones</button>
         <button class="asnav-btn" data-asec="comunicados" onclick="adminSection('comunicados')">Comunicados</button>
@@ -1396,36 +1395,47 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <!-- PARTICIPANTES -->
     <div id="admin-sec-participantes" style="display:none">
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
-          <div class="ctitle" style="margin-bottom:0;flex:1">Participantes</div>
-          <input id="admin-search" type="text" placeholder="Buscar nombre o email..."
-                 style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px;transition:border-color .2s"
-                 onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
-                 oninput="filterAdminTable()">
-          <button onclick="openAddParticipantModal()" style="padding:9px 16px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">+ Agregar inscrito</button>
-          <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">Recargar</button>
-        </div>
-        <div class="ptable-wrap">
-          <table class="ptable" id="admin-ptable">
-            <thead>
-              <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
-            </thead>
-            <tbody id="admin-ptable-body">
-              <tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
-            </tbody>
-          </table>
+      <!-- Sub-tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button id="ptab-lista" onclick="switchParticipantesTab('lista')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--blue);background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">📋 Lista</button>
+        <button id="ptab-categorias" onclick="switchParticipantesTab('categorias')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">🏅 Categorías</button>
+      </div>
+
+      <!-- Vista Lista -->
+      <div id="ptab-content-lista">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+            <div class="ctitle" style="margin-bottom:0;flex:1">Participantes</div>
+            <input id="admin-search" type="text" placeholder="Buscar nombre o email..."
+                   style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px;transition:border-color .2s"
+                   onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
+                   oninput="filterAdminTable()">
+            <button onclick="openAddParticipantModal()" style="padding:9px 16px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">+ Agregar inscrito</button>
+            <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">Recargar</button>
+          </div>
+          <div class="ptable-wrap">
+            <table class="ptable" id="admin-ptable">
+              <thead>
+                <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
+              </thead>
+              <tbody id="admin-ptable-body">
+                <tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- CATEGORÍAS -->
-    <div id="admin-sec-categorias" style="display:none">
-      <div class="card">
-        <div class="ctitle">Categorías · Jugadores RMF Clinic 2026</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Edad calculada al 2 de octubre de 2026.</p>
-        <div id="admin-categorias-content">
-          <p style="color:var(--muted);font-size:13px;">Cargando categorías...</p>
+      <!-- Vista Categorías -->
+      <div id="ptab-content-categorias" style="display:none">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="ctitle" style="margin-bottom:0;flex:1">Categorías · Jugadores</div>
+            <span style="font-size:12px;color:var(--muted)">Edad al 2-oct-2026</span>
+          </div>
+          <div id="admin-categorias-content">
+            <p style="color:var(--muted);font-size:13px;">Cargando...</p>
+          </div>
         </div>
       </div>
     </div>
@@ -4760,15 +4770,80 @@ function saveEditModal() {
     .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
 }
 
-function loadAdminCategorias() {
-  const el = document.getElementById('admin-categorias-content');
-  if (!el) return;
-  el.innerHTML = '<p style="color:var(--muted);font-size:13px;">Cargando categorías...</p>';
-  fetch(APPS_SCRIPT_URL + '?action=admin_categorias&_t=' + Date.now(), { redirect: 'follow' })
-    .then(r => r.json())
-    .then(data => renderAdminCategorias(data))
-    .catch(() => { el.innerHTML = '<p style="color:#dc2626;font-size:13px;">Error al cargar categorías.</p>'; });
+function switchParticipantesTab(tab) {
+  document.getElementById('ptab-content-lista').style.display       = tab === 'lista'      ? '' : 'none';
+  document.getElementById('ptab-content-categorias').style.display  = tab === 'categorias' ? '' : 'none';
+  const btnLista = document.getElementById('ptab-lista');
+  const btnCat   = document.getElementById('ptab-categorias');
+  if (btnLista) { btnLista.style.background = tab==='lista'?'var(--blue)':'#fff'; btnLista.style.color = tab==='lista'?'#fff':'var(--muted)'; btnLista.style.borderColor = tab==='lista'?'var(--blue)':'var(--border)'; }
+  if (btnCat)   { btnCat.style.background   = tab==='categorias'?'var(--blue)':'#fff'; btnCat.style.color = tab==='categorias'?'#fff':'var(--muted)'; btnCat.style.borderColor = tab==='categorias'?'var(--blue)':'var(--border)'; }
+  if (tab === 'categorias') buildCategorias();
 }
+
+function parseFechaNacFront(v) {
+  if (!v || v === '—') return null;
+  var s = String(v).trim();
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) { var p=s.split('-'); return {anio:+p[0],mes:+p[1],dia:+p[2]}; }
+  if (s.indexOf('/')>=0) { var p2=s.split('/'); if(p2.length===3){ var a=+p2[2],m=+p2[1],d=+p2[0]; if(a>1900) return {anio:a,mes:m,dia:d}; } }
+  return null;
+}
+
+function calcEdadRefFront(f) {
+  if (!f) return null;
+  var edad = 2026 - f.anio;
+  if (f.mes > 10 || (f.mes === 10 && f.dia > 2)) edad -= 1;
+  return edad;
+}
+
+function buildCategorias() {
+  const el = document.getElementById('admin-categorias-content');
+  if (!el || !adminData || !adminData.length) { if(el) el.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin datos de participantes.</p>'; return; }
+
+  const catMap = {'Sub 18':[],'Sub 16':[],'Sub 14':[],'Sub 12':[],'Sub 10':[]};
+  const catColors = {'Sub 18':'#1e5ba8','Sub 16':'#0d9488','Sub 14':'#7c3aed','Sub 12':'#ea580c','Sub 10':'#dc2626'};
+
+  adminData.forEach(row => {
+    const n = normalizeParticipant(row) || {};
+    const tipo = (n.tipo || '').toLowerCase();
+    if (!tipo.includes('jug')) return; // solo jugadores
+
+    const nombre = n.nombre || '';
+    const fnRaw  = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha nacimiento'] || row['fecha_nacimiento'] || '';
+    const fObj   = parseFechaNacFront(fnRaw);
+    const edad   = calcEdadRefFront(fObj);
+    const fnDisp = fObj ? String(fObj.dia).padStart(2,'0')+'/'+String(fObj.mes).padStart(2,'0')+'/'+fObj.anio : '—';
+    const sort   = fObj ? fObj.anio*10000+fObj.mes*100+fObj.dia : 0;
+
+    let cat;
+    if (edad===null||edad>=16) cat='Sub 18';
+    else if (edad>=14) cat='Sub 16';
+    else if (edad>=12) cat='Sub 14';
+    else if (edad>=10) cat='Sub 12';
+    else cat='Sub 10';
+
+    catMap[cat].push({nombre, fnDisp, sort});
+  });
+
+  let total = 0;
+  let html = '<table class="ptable" style="width:100%"><thead><tr><th style="width:60%">Nombre</th><th>Fecha nac.</th></tr></thead><tbody>';
+  ['Sub 18','Sub 16','Sub 14','Sub 12','Sub 10'].forEach(cat => {
+    const color = catColors[cat];
+    const jug   = catMap[cat].sort((a,b)=>a.sort-b.sort);
+    total += jug.length;
+    html += `<tr><td colspan="2" style="background:${color};color:#fff;font-weight:600;font-size:12px;letter-spacing:1px;padding:10px 16px;">${cat} <span style="opacity:.7;font-weight:400">(${jug.length} jugador${jug.length!==1?'es':''})</span></td></tr>`;
+    if (!jug.length) {
+      html += `<tr><td colspan="2" style="color:var(--muted);font-size:12px;font-style:italic;padding:10px 16px;">Sin jugadores en esta categoría</td></tr>`;
+    } else {
+      jug.forEach((j,i)=>{
+        html += `<tr style="background:${i%2===0?'var(--off)':'#fff'}"><td style="font-weight:500">${j.nombre}</td><td style="font-size:12px;color:var(--muted)">${j.fnDisp}</td></tr>`;
+      });
+    }
+  });
+  html += `</tbody></table><p style="margin-top:12px;font-size:12px;color:var(--muted);text-align:right;">Total jugadores: <strong>${total}</strong></p>`;
+  el.innerHTML = html;
+}
+
+function loadAdminCategorias() { buildCategorias(); }
 
 function renderAdminCategorias(cats) {
   const el = document.getElementById('admin-categorias-content');
