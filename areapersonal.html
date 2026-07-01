@@ -3703,7 +3703,8 @@ function renderAdminDashboard(rows, fin) {
   const valid = rows.filter(r => { const n = normalizeParticipant(r) || {}; return n.nombre || n.email || r['2'] || r['3']; });
   const total = valid.length;
   const jugadores = valid.filter(r => { const n = normalizeParticipant(r) || {}; return (n.tipo || '').toLowerCase().includes('jug'); }).length;
-  const acomp = total - jugadores;
+  const staffCount = valid.filter(r => { const n = normalizeParticipant(r) || {}; return (n.tipo || '').toLowerCase().includes('staff'); }).length;
+  const acomp = total - jugadores - staffCount;
   const conTiquete = valid.filter(r => { const n = normalizeParticipant(r) || {}; return (n.tiquete_aereo || '').toLowerCase().includes('con'); }).length;
   const paso7 = valid.filter(r => { const n = normalizeParticipant(r) || {}; return parseInt(n.paso_actual || 1) >= 7; }).length;
   const pasoCount = {};
@@ -3722,8 +3723,9 @@ function renderAdminDashboard(rows, fin) {
   const pctCostos = ingresos > 0 ? Math.round(costos / ingresos * 100) : 0;
 
   const displayTotal  = kpis && kpis.participantes  ? kpis.participantes  : total;
-  const displayJug    = kpis && kpis.jugadores ? kpis.jugadores    : jugadores;
-  const displayAcomp  = kpis && kpis.acompanantes ? kpis.acompanantes : acomp;
+  const displayJug    = jugadores;
+  const displayAcomp  = acomp;
+  const displayStaff  = staffCount;
 
   const recaudado = recibidos.total_eur || 0;
   const pctRec = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
@@ -3740,8 +3742,10 @@ function renderAdminDashboard(rows, fin) {
   const beneficioBruto = beneficio || 0;
   const tasaEurCop = tasaMedia;
 
-  document.getElementById('kpi-participantes').textContent = totalParticipantes;
-  document.getElementById('kpi-participantes-sub').textContent = displayJug + ' jugadores · ' + displayAcomp + ' acompañante(s)';
+  document.getElementById('kpi-participantes').textContent = displayJug + displayAcomp + displayStaff;
+  const subParts = [displayJug + ' jugadores', displayAcomp + ' acompañantes'];
+  if (displayStaff > 0) subParts.push(displayStaff + ' staff');
+  document.getElementById('kpi-participantes-sub').textContent = subParts.join(' · ');
   document.getElementById('kpi-con-tiquete').textContent = conTiquete;
   document.getElementById('kpi-sin-tiquete').textContent = total - conTiquete;
 
