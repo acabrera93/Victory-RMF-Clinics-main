@@ -1395,6 +1395,21 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <!-- PARTICIPANTES -->
     <div id="admin-sec-participantes" style="display:none">
+      <!-- KPIs -->
+      <div id="part-kpis" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="card" style="flex:1;min-width:90px;padding:14px 16px;text-align:center">
+          <div style="font-size:26px;font-weight:700;color:var(--blue)" id="kpi-p-jugadores">—</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px">Jugadores</div>
+        </div>
+        <div class="card" style="flex:1;min-width:90px;padding:14px 16px;text-align:center">
+          <div style="font-size:26px;font-weight:700;color:#0d9488" id="kpi-p-acompanantes">—</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px">Acompañantes</div>
+        </div>
+        <div class="card" style="flex:1;min-width:90px;padding:14px 16px;text-align:center">
+          <div style="font-size:26px;font-weight:700;color:#7c3aed" id="kpi-p-staff">—</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px">Staff</div>
+        </div>
+      </div>
       <!-- Sub-tabs -->
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <button id="ptab-lista" onclick="switchParticipantesTab('lista')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--blue);background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">📋 Lista</button>
@@ -1651,6 +1666,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <select id="ap-tipo" onchange="renderAddParticipantFields(this.value)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:14px;background:#fff">
         <option value="Jugador">Jugador</option>
         <option value="Acompañante">Acompañante</option>
+        <option value="Staff">Staff</option>
       </select>
     </div>
     <div class="modal-grid" id="add-participant-fields"></div>
@@ -1781,6 +1797,7 @@ function normalizeParticipant(raw) {
 
   const tipoRaw = (rowVal(raw, 'tipo', 'Tipo', 'type', 'rol', 'Rol', 'categoria', 'Categoría') || 'Jugador').toLowerCase();
   const esJugador = tipoRaw.includes('jug');
+  const esStaff   = tipoRaw.includes('staff');
   const tiqRaw = rowVal(
     raw,
     'tiquete_aereo',
@@ -1837,7 +1854,7 @@ function normalizeParticipant(raw) {
       'institucion',
       'institución'
     ),
-    tipo: esJugador ? 'Jugador' : 'Acompañante',
+    tipo: esJugador ? 'Jugador' : esStaff ? 'Staff' : 'Acompañante',
     tiquete_aereo: conTicket ? 'Con tiquete' : (tiqRaw || 'Sin tiquete'),
     programa: rowVal(raw, 'programa', 'Programa', 'program', 'evento', 'Evento'),
     habitacion: rowVal(raw, 'habitacion', 'habitación', 'Habitacion', 'Habitación', 'room', 'tipo_habitacion'),
@@ -3595,6 +3612,7 @@ function loadAdmin(force) {
     adminLastLoaded = Date.now();
     renderAdminDashboard(adminData, adminFinData);
     renderAdminTable(adminData);
+    renderParticipantesKPIs(adminData);
     applyAdminPermissions();
     const stabAcceso = document.getElementById('stab-acceso');
     if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
@@ -4383,8 +4401,7 @@ function closeAddParticipantModal() {
 }
 
 function renderAddParticipantFields(tipo) {
-  const esJugador = tipo !== 'Acompañante';
-  const fields = getEditFields(esJugador).filter(f => f.key !== 'paso_actual');
+  const fields = (tipo === 'Jugador' ? getEditFields(true) : tipo === 'Staff' ? EDIT_FIELDS_BASE : getEditFields(false)).filter(f => f.key !== 'paso_actual');
   const s = 'width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:7px;font-family:\'DM Sans\',sans-serif;font-size:14px;outline:none;box-sizing:border-box';
   document.getElementById('add-participant-fields').innerHTML = fields.map(f => {
     const cls = 'mfield' + (f.full ? ' full' : '');
@@ -4398,8 +4415,7 @@ function renderAddParticipantFields(tipo) {
 
 function saveNewParticipant() {
   const tipo = document.getElementById('ap-tipo').value;
-  const esJugador = tipo !== 'Acompañante';
-  const fields = getEditFields(esJugador).filter(f => f.key !== 'paso_actual');
+  const fields = (tipo === 'Jugador' ? getEditFields(true) : tipo === 'Staff' ? EDIT_FIELDS_BASE : getEditFields(false)).filter(f => f.key !== 'paso_actual');
 
   const nombre = document.getElementById('ap-nombre')?.value.trim();
   const email  = document.getElementById('ap-email')?.value.trim().toLowerCase();
@@ -4793,6 +4809,21 @@ function calcEdadRefFront(f) {
   var edad = 2026 - f.anio;
   if (f.mes > 10 || (f.mes === 10 && f.dia > 2)) edad -= 1;
   return edad;
+}
+
+function renderParticipantesKPIs(data) {
+  if (!data) return;
+  let jugs = 0, acomps = 0, staff = 0;
+  data.forEach(row => {
+    const t = ((normalizeParticipant(row) || {}).tipo || '').toLowerCase();
+    if (t.includes('jug')) jugs++;
+    else if (t.includes('staff')) staff++;
+    else acomps++;
+  });
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('kpi-p-jugadores', jugs);
+  set('kpi-p-acompanantes', acomps);
+  set('kpi-p-staff', staff);
 }
 
 function buildCategorias() {
