@@ -1431,7 +1431,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="ptable-wrap">
             <table class="ptable" id="admin-ptable">
               <thead>
-                <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
+                <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Colegio / Club</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
               </thead>
               <tbody id="admin-ptable-body">
                 <tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
@@ -4284,7 +4284,7 @@ function renderAdminComisiones(fin) {
 function renderAdminTable(rows) {
   const tbody = document.getElementById('admin-ptable-body');
   if (!rows || !rows.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map((row, i) => {
@@ -4293,20 +4293,23 @@ function renderAdminTable(rows) {
     const tp = n.tipo || row['1'] || '';
     const em = n.email || row['3'] || '';
     const ph = n.phone || row['4'] || '';
-    // Fecha nacimiento: normalizeParticipant la mapea como fecha_nacimiento
     const fnRaw = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha_nacimiento'] || '';
     const fn = fnRaw ? formatFechaNac(fnRaw) : '—';
+    const club = n.club_colegio || row['Club / Colegio'] || row['Club/Colegio'] || row['Colegio'] || row['Club'] || '';
     const tiq = (n.tiquete_aereo || '').toLowerCase().includes('con') ? '<span style="color:var(--blue)">✈ Sí</span>' : '<span style="color:var(--muted)">—</span>';
     const hab = n.habitacion || '';
     const paso = n.paso_actual || '1';
     const cls = parseInt(paso) >= 7 ? 'paso-pill paso-done' : 'paso-pill';
     const origIdx = adminData.indexOf(row);
+    const tipoBg = tp.toLowerCase().includes('jug') ? 'rgba(30,91,168,.1)' : tp.toLowerCase().includes('staff') ? 'rgba(124,58,237,.1)' : 'rgba(22,101,52,.08)';
+    const tipoColor = tp.toLowerCase().includes('jug') ? 'var(--blue)' : tp.toLowerCase().includes('staff') ? '#7c3aed' : '#166534';
     return `<tr>
       <td style="font-weight:500">${nb}</td>
-      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${tp.toLowerCase().includes('jug')?'rgba(30,91,168,.1)':'rgba(22,101,52,.08)'};color:${tp.toLowerCase().includes('jug')?'var(--blue)':'#166534'}">${tp}</span></td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${tipoBg};color:${tipoColor}">${tp}</span></td>
       <td style="font-size:12px;color:var(--muted)">${em}</td>
       <td style="font-size:12px">${ph}</td>
       <td style="font-size:12px">${fn}</td>
+      <td style="font-size:12px;color:var(--muted)">${club || '—'}</td>
       <td style="text-align:center">${tiq}</td>
       <td style="font-size:12px">${hab}</td>
       <td><span class="${cls}">${paso}</span></td>
