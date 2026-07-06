@@ -3963,6 +3963,7 @@ function renderAdminPagos(fin) {
   const allNombres = [...pagosNombres];
   (adminData || []).forEach(r => {
     const n = normalizeParticipant(r) || {};
+    if ((n.tipo || '').toLowerCase().includes('staff')) return;
     const nombre = n.nombre || r['Nombre'] || '';
     if (nombre && !seenNombres.has(normNombre(nombre))) {
       allNombres.push(nombre);
