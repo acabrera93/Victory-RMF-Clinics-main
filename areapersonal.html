@@ -3575,6 +3575,7 @@ function adminSection(section) {
   // Render con datos actuales inmediatamente
   if (section === 'pagos' && adminFinData) renderAdminPagos(adminFinData);
   if (section === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
+  if (section === 'participantes' && adminData && adminData.length) renderParticipantesKPIs(adminData);
   // Recargas específicas por sección
   if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
@@ -3742,7 +3743,7 @@ function renderAdminDashboard(rows, fin) {
   const beneficioBruto = beneficio || 0;
   const tasaEurCop = tasaMedia;
 
-  document.getElementById('kpi-participantes').textContent = displayJug + displayAcomp + displayStaff;
+  document.getElementById('kpi-participantes').textContent = totalParticipantes;
   const subParts = [displayJug + ' jugadores', displayAcomp + ' acompañantes'];
   if (displayStaff > 0) subParts.push(displayStaff + ' staff');
   document.getElementById('kpi-participantes-sub').textContent = subParts.join(' · ');
@@ -4023,11 +4024,9 @@ function renderAdminPagos(fin) {
   }).length;
 
   document.getElementById('admin-pagos-summary').innerHTML = `
-    <div class="metric-card mc-blue"><div class="mc-label">Total recaudado</div><div class="mc-value" style="font-size:26px">${totalEur.toLocaleString('es-CO')}€</div><div class="mc-sub">$ ${(totalCop||Math.round(totalEur*TASA_EUR_COP)).toLocaleString('es-CO')} COP</div></div>
     <div class="metric-card" style="border-top:3px solid #166534"><div class="mc-label">Pagos completos</div><div class="mc-value" style="color:#166534">${completos}</div><div class="mc-sub">Reserva + Pago Final (+ Tiquete si aplica)</div></div>
     <div class="metric-card mc-green"><div class="mc-label">Pagos parciales</div><div class="mc-value">${parciales}</div><div class="mc-sub">Al menos 1 pago pendiente</div></div>
-    <div class="metric-card"><div class="mc-label">Sin pago aún</div><div class="mc-value" style="color:#dc2626">${sinPago}</div><div class="mc-sub">Pendientes</div></div>
-    <div class="metric-card mc-orange"><div class="mc-label">Total participantes</div><div class="mc-value">${allNombres.length}</div><div class="mc-sub">Presupuesto + inscripción</div></div>
+    <div class="metric-card"><div class="mc-label">Sin pago aún</div><div class="mc-value" style="color:#dc2626">${sinPago}</div><div class="mc-sub">Sin ningún pago registrado</div></div>
   `;
 
   const fmtPago = (pago) => {
