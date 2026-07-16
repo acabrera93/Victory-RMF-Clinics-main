@@ -503,7 +503,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 <div id="main-content">
 
 <nav>
-  <a href="index.html" style="display:inline-flex;align-items:center;gap:7px;color:#fff;font-size:13px;font-weight:500;text-decoration:none;opacity:.8;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.8'">
+  <a href="rmf-clinic.html" style="display:inline-flex;align-items:center;gap:7px;color:#fff;font-size:13px;font-weight:500;text-decoration:none;opacity:.8;transition:opacity .2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.8'">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 12L6 8l4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     Volver al inicio
   </a>
@@ -2128,6 +2128,9 @@ async function doLogin() {
     const tc = document.getElementById('tc-chk');
     if (tc) { tc.checked = grupoPaso > 2; onTC(); }
     applyPaymentTotals(calcPaymentTotals());
+    // Staff: saltar el proceso de pasos completamente
+    const esStaffView = allParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
+    if (esStaffView) { showStaffView(); return; }
     applyPasoActual(grupoPaso);
     // Admin emails siempre van al flujo gateado, aunque también estén en la hoja de participantes
     if (ADMIN_EMAILS.includes(participantEmail)) {
@@ -2182,7 +2185,7 @@ function buildParticipantTabs(participants) {
     const p = normalizeParticipant(raw) || raw;
     const tab = document.createElement('button');
     tab.className = 'ptab' + (i === 0 ? ' active' : '');
-    tab.textContent = (p.tipo === 'Jugador' ? '⚽ ' : '👤 ') + (p.nombre || 'Participante');
+    tab.textContent = (p.tipo === 'Jugador' ? '⚽ ' : p.tipo === 'Staff' ? '👥 ' : '👤 ') + (p.nombre || 'Participante');
     tab.onclick = () => {
       document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
@@ -2204,7 +2207,7 @@ function loadParticipant(p) {
   habitacion = participant.habitacion || '';
 
   document.getElementById('dn').textContent = nombre;
-  document.getElementById('dtipo').textContent = tipo.includes('jug') ? '⚽ Jugador' : '👨‍👩‍👧 Acompañante';
+  document.getElementById('dtipo').textContent = tipo.includes('jug') ? '⚽ Jugador' : tipo.includes('staff') ? '👥 Staff' : '👨‍👩‍👧 Acompañante';
   document.getElementById('ref1').textContent = nombre;
   const cartaNombre = document.getElementById('carta-nombre');
   if (cartaNombre) cartaNombre.textContent = nombre;
@@ -3543,6 +3546,19 @@ async function cambiarPasswordAdmin(btn) {
 }
 
 // ── ADMIN PANEL ───────────────────────────────────────────────────────────────
+function showStaffView() {
+  document.getElementById('steps-row').style.display = 'none';
+  document.getElementById('datos-resumen-card').style.display = 'none';
+  document.getElementById('welcome-guide').style.display = 'none';
+  const tiqBtn = document.getElementById('btn-toggle-tiq');
+  if (tiqBtn) tiqBtn.style.display = 'none';
+  const procTab = document.querySelector('[data-section="proceso"]');
+  if (procTab) procTab.style.display = 'none';
+  document.getElementById('section-tabs').style.display = 'flex';
+  checkNuevosComunicados();
+  switchSection('saber');
+}
+
 function showAdminOnly() {
   document.getElementById('login-gate').style.display = 'none';
   document.getElementById('main-content').style.display = 'block';
