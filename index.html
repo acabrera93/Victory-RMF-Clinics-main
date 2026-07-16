@@ -45,9 +45,11 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 .hero-label{font-size:12px;letter-spacing:2px;color:var(--blue-bright);text-transform:uppercase;margin-bottom:16px;position:relative}
 .hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);color:#fff;letter-spacing:1px;line-height:1.05;position:relative}
 .hero-sub{font-size:16px;color:rgba(255,255,255,.6);max-width:540px;margin:12px auto 0;line-height:1.7;position:relative}
-.hero-partners{display:flex;align-items:center;justify-content:center;gap:36px;flex-wrap:wrap;margin-top:28px;position:relative}
-.hero-partners img{height:48px;width:auto;filter:brightness(0) invert(1);opacity:.75;transition:opacity .2s;max-width:100%}
-.hero-partners img:hover{opacity:1}
+.nav-left{display:flex;align-items:center;gap:16px}
+.nav-sep{width:1px;height:24px;background:rgba(255,255,255,.2);flex-shrink:0}
+.nav-partners{display:flex;align-items:center;gap:20px}
+.nav-partners img{height:32px;width:auto;filter:brightness(0) invert(1);opacity:.7;transition:opacity .2s}
+.nav-partners img:hover{opacity:1}
 
 .container{max-width:1200px;margin:0 auto;padding:0 24px}
 
@@ -115,8 +117,8 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 @media (max-width:768px){
   .hero-title{font-size:clamp(22px,7vw,32px)}
   .hero-sub{font-size:14px;padding:0 12px}
-  .hero-partners{gap:20px;margin-top:20px}
-  .hero-partners img{height:36px}
+  .nav-partners{gap:12px}
+  .nav-partners img{height:26px}
 .form-grid{grid-template-columns:1fr}
   .prog-grid{grid-template-columns:1fr}
   .steps-grid{grid-template-columns:1fr}
@@ -132,8 +134,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
   .section-title{font-size:22px}
   .pcard-img{height:140px}
   .step-card{padding:20px 16px}
-  .hero-partners{gap:14px;margin-top:16px}
-  .hero-partners img{height:28px}
+  .nav-partners{display:none}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -144,7 +145,14 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 <body>
 
 <nav>
-  <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory Sports" style="height:32px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
+  <div class="nav-left">
+    <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory Sports" style="height:32px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
+    <div class="nav-partners">
+      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation Clinic">
+      <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
+      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundación Revel">
+    </div>
+  </div>
   <div class="nav-links">
     <a href="#programas" data-es="Programas" data-en="Programs">Programas</a>
     <a href="#institucional" data-es="Quiénes somos" data-en="About us">Quiénes somos</a>
@@ -157,11 +165,6 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
   <div class="hero-label" data-es="Agencia deportiva internacional" data-en="International sports agency">Agencia deportiva internacional</div>
   <h1 class="hero-title" data-es="Creamos los grandes eventos del deporte mundial" data-en="We create the world's biggest sporting events">Creamos los grandes<br>eventos del deporte mundial</h1>
   <p class="hero-sub" data-es="Alianzas estratégicas, relacionamiento institucional y logística para traer las propiedades deportivas más importantes del mundo a ciudades y países alrededor del mundo." data-en="Strategic alliances, institutional relations and logistics to bring the world's most important sports properties to cities and countries around the world.">Alianzas estratégicas, relacionamiento institucional y logística para traer las propiedades deportivas más importantes del mundo a ciudades y países alrededor del mundo.</p>
-  <div class="hero-partners">
-    <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation Clinic">
-    <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
-    <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundación Revel">
-  </div>
 </section>
 
 <section id="programas" class="container">
