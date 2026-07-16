@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" id="html-root">
 <head>
 <meta charset="UTF-8">
@@ -40,14 +40,14 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 .lang-btn{background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif}
 .lang-btn:hover{border-color:#fff;color:#fff}
 
-.hero{background:linear-gradient(160deg,var(--navy) 0%,var(--navy-mid) 100%);padding:80px 24px 50px;text-align:center;position:relative;overflow:hidden}
+.hero{background:linear-gradient(160deg,var(--navy) 0%,var(--navy-mid) 100%);padding:40px 24px 26px;text-align:center;position:relative;overflow:hidden}
 .hero::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(59,127,212,.18) 0%,transparent 70%)}
 .hero-label{font-size:12px;letter-spacing:2px;color:var(--blue-bright);text-transform:uppercase;margin-bottom:16px;position:relative}
-.hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(32px,6vw,56px);color:#fff;letter-spacing:1px;line-height:1.05;position:relative}
-.hero-sub{font-size:16px;color:rgba(255,255,255,.6);max-width:540px;margin:20px auto 0;line-height:1.7;position:relative}
+.hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);color:#fff;letter-spacing:1px;line-height:1.05;position:relative}
+.hero-sub{font-size:16px;color:rgba(255,255,255,.6);max-width:540px;margin:12px auto 0;line-height:1.7;position:relative}
 
 /* BARRA DE ALIANZAS */
-.alianzas-bar{background:var(--navy-mid);padding:24px;display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.06)}
+.alianzas-bar{background:var(--navy-mid);padding:16px;display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.06)}
 .alianzas-bar img{height:32px;width:auto;filter:brightness(0) invert(1);opacity:.75;transition:opacity .2s}
 .alianzas-bar img:hover{opacity:1}
 
@@ -88,10 +88,13 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 .prog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
 .pcard{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:transform .25s,box-shadow .25s;position:relative}
 .pcard:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(11,31,58,.12)}
+.pcard:hover .pcard-img{transform:scale(1.08) translateX(5px)}
+.pcard::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.18),transparent);transition:left .6s ease;pointer-events:none;z-index:1}
+.pcard:hover::after{left:130%}
 .pcard.formativo{border:2px solid var(--blue-light)}
 .pcard-badge{position:absolute;top:12px;left:12px;background:rgba(11,31,58,.9);color:var(--blue-bright);font-size:11px;padding:4px 12px;border-radius:20px;z-index:1}
-.pcard-img{height:180px;width:100%;object-fit:cover;background:linear-gradient(135deg,var(--blue),var(--blue-bright));display:block}
-.pcard-body{padding:20px 22px}
+.pcard-img{height:180px;width:100%;object-fit:cover;background:linear-gradient(135deg,var(--blue),var(--blue-bright));display:block;max-width:100%;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.pcard-body{padding:20px 22px;position:relative;z-index:2}
 .pcard-title{font-size:16px;font-weight:500;color:var(--navy);margin-bottom:8px}
 .pcard-desc{font-size:13px;color:var(--muted);line-height:1.6}
 .pcard-desc a{color:var(--blue)}
@@ -103,6 +106,38 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
   nav{padding:14px 20px}
   .nav-links a:not(.lang-btn){display:none}
   .form-grid{grid-template-columns:1fr}
+}
+
+@media (max-width:1024px){
+  .prog-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .steps-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .nav-inner,.container{padding-left:24px;padding-right:24px}
+}
+
+@media (max-width:768px){
+  .hero-title{font-size:clamp(22px,7vw,32px)}
+  .hero-sub{font-size:14px;padding:0 12px}
+  .alianzas-bar{gap:24px;padding:14px}
+  .alianzas-bar img{height:24px;max-width:100%}
+  .form-grid{grid-template-columns:1fr}
+  .prog-grid{grid-template-columns:1fr}
+  .steps-grid{grid-template-columns:1fr}
+  .tabs-btns{flex-direction:column}
+  .tab-btn{border-radius:8px}
+  #contacto-form .container > div,.tabs-wrap > div{padding:20px}
+}
+
+@media (max-width:480px){
+  nav{padding:12px 16px}
+  .nav-logo{font-size:16px}
+  .lang-btn{font-size:11px;padding:4px 8px}
+  .section-title{font-size:22px}
+  .pcard-img{height:140px}
+  .step-card{padding:20px 16px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .pcard-img,.pcard::after{transition:none}
 }
 </style>
 </head>
@@ -131,6 +166,77 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
   <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundación Revel">
   <!-- Agregar aquí más logos de alianzas cuando estén disponibles -->
 </div>
+
+<section id="programas" class="container">
+  <div class="section-label" data-es="Nuestros programas" data-en="Our programs">Nuestros programas</div>
+  <div class="prog-grid">
+
+    <div class="pcard">
+      <!-- IMAGEN: foto propia/oficial de Fórmula 1 (material de prensa de socio) -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1c4ciY_iTc3hG_VABNZVGONkzOoJuzS1o" alt="Fórmula 1">
+      <div class="pcard-body"><div class="pcard-title">Fórmula 1</div><div class="pcard-desc" data-es="Alianza para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial." data-en="Alliance to bring a Grand Prix to the city, leading the relationship with the category, local governments and event logistics.">Alianza para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial.</div></div>
+    </div>
+
+    <div class="pcard">
+      <!-- IMAGEN: foto propia/oficial de IndyCar -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1fQSgHK14GamwG_T3KbjUzsT5MPv4LPjW" alt="IndyCar">
+      <div class="pcard-body"><div class="pcard-title">IndyCar</div><div class="pcard-desc" data-es="Alianza para el desarrollo de una fecha de la serie en la región, articulando circuitos, autoridades y operadores locales." data-en="Alliance to develop a series date in the region, coordinating circuits, authorities and local operators.">Alianza para el desarrollo de una fecha de la serie en la región, articulando circuitos, autoridades y operadores locales.</div></div>
+    </div>
+
+    <div class="pcard">
+      <!-- IMAGEN: foto propia/oficial de MotoGP -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/15p-9YErccY_BBEPtIfHeOLkbevuHcyTj" alt="MotoGP">
+      <div class="pcard-body"><div class="pcard-title">MotoGP</div><div class="pcard-desc" data-es="Alianza para llevar una fecha del campeonato a nuevos circuitos y a una de las hinchadas más apasionadas del deporte motor." data-en="Alliance to bring a championship date to new circuits and one of the most passionate fan bases in motorsport.">Alianza para llevar una fecha del campeonato a nuevos circuitos y a una de las hinchadas más apasionadas del deporte motor.</div></div>
+    </div>
+
+    <div class="pcard">
+      <!-- IMAGEN: foto propia/oficial de ciclismo World Tour -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1QzPNdRAHpNsv2tB0GTT2Bxz4uG2fyKmR" alt="Ciclismo World Tour">
+      <div class="pcard-body"><div class="pcard-title">Ciclismo World Tour</div><div class="pcard-desc" data-es="Alianza con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad." data-en="Alliance with World Tour teams to design stages and criteriums, coordinating permits and road safety in each city.">Alianza con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad.</div></div>
+    </div>
+
+    <div class="pcard">
+      <!-- IMAGEN: foto propia/oficial de E1 Series -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/19G5Y24DJfg2yyrfjTvRZSqqfouo4JwAg" alt="E1 Series">
+      <div class="pcard-body"><div class="pcard-title">E1 Series</div><div class="pcard-desc" data-es="Alianza para traer una fecha de lanchas eléctricas a ciudades costeras, gestionando puertos y autoridades marítimas." data-en="Alliance to bring an electric powerboat date to coastal cities, managing ports and maritime authorities.">Alianza para traer una fecha de lanchas eléctricas a ciudades costeras, gestionando puertos y autoridades marítimas.</div></div>
+    </div>
+
+    <div class="pcard">
+      <!-- IMAGEN: foto libre de derechos de deporte urbano / skyline -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1TYadaFHDEYP1PpSOh7kCv91iVxTOrWlt" alt="Urban World Games">
+      <div class="pcard-body"><div class="pcard-title">Urban World Games</div><div class="pcard-desc" data-es="Alianza para desarrollar esta plataforma multideporte urbana en la ciudad sede junto a worldurbangames.sport." data-en="Alliance to develop this urban multi-sport platform in the host city alongside worldurbangames.sport.">Alianza para desarrollar esta plataforma multideporte urbana en la ciudad sede junto a worldurbangames.sport.</div></div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-badge" data-es="Alianza institucional" data-en="Institutional alliance">Alianza institucional</div>
+      <!-- IMAGEN: foto libre de derechos de turismo/ciudad -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/16JPj236ACh-oc1y8myut9JN1Gt8jSm9Z" alt="ONU Turismo">
+      <div class="pcard-body"><div class="pcard-title">ONU Turismo</div><div class="pcard-desc" data-es="Alianza con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede." data-en="Alliance with the United Nations tourism agency to promote sports tourism as a driver of development in host cities and countries.">Alianza con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede.</div></div>
+    </div>
+
+    <div class="pcard formativo">
+      <div class="pcard-badge" data-es="Programa formativo" data-en="Educational program">Programa formativo</div>
+      <!-- IMAGEN: foto libre de derechos de golf -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1399nq3L1iQfMjesm67ceJYKr1ftpHlT7" alt="Golf">
+      <div class="pcard-body"><div class="pcard-title">Golf</div><div class="pcard-desc" data-es="Programa formativo de experiencias y clinics de golf en destinos con vocación turística, dirigido a familias y jóvenes." data-en="Educational program of golf experiences and clinics in tourism destinations, aimed at families and young people.">Programa formativo de experiencias y clinics de golf en destinos con vocación turística, dirigido a familias y jóvenes.</div></div>
+    </div>
+
+    <a href="rmf-clinic.html" style="text-decoration:none;color:inherit;display:block;" class="pcard formativo">
+      <div class="pcard-badge" data-es="Programa formativo" data-en="Educational program">Programa formativo</div>
+      <!-- IMAGEN: usar foto ya existente del RMF Clinic en el sitio -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/14vpIiPzIK0JQiEPkhjzZsFwT8xqESiUS" alt="RMF Clinic 2026">
+      <div class="pcard-body"><div class="pcard-title">RMF Clinic 2026</div><div class="pcard-desc" data-es="Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias. Ver programa completo →" data-en="Educational program with the Real Madrid Foundation in Madrid, Spain, aimed directly at families. View full program →">Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias. Ver programa completo →</div></div>
+    </a>
+
+    <div class="pcard formativo">
+      <div class="pcard-badge" data-es="Programa formativo" data-en="Educational program">Programa formativo</div>
+      <!-- IMAGEN: foto propia/oficial de Rafa Nadal Academy -->
+      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1jjIygaQBC2RtSAwwtGN8sfYFb3BE6_z0" alt="Rafa Nadal Academy">
+      <div class="pcard-body"><div class="pcard-title">Rafa Nadal Academy</div><div class="pcard-desc" data-es="Alianza formativa en Mallorca, España, para desarrollar experiencias y clinics de tenis de alto rendimiento dirigidas a familias." data-en="Educational alliance in Mallorca, Spain, to develop high-performance tennis experiences and clinics for families.">Alianza formativa en Mallorca, España, para desarrollar experiencias y clinics de tenis de alto rendimiento dirigidas a familias.</div></div>
+    </div>
+
+  </div>
+</section>
 
 <section id="como-trabajamos" class="container">
   <div class="section-label" data-es="Cómo trabajamos" data-en="How we work">Cómo trabajamos</div>
@@ -201,77 +307,6 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
         <button type="submit" class="contact-btn" data-es="Enviar mensaje" data-en="Send message">Enviar mensaje</button>
       </form>
     </div>
-  </div>
-</section>
-
-<section id="programas" class="container">
-  <div class="section-label" data-es="Nuestros programas" data-en="Our programs">Nuestros programas</div>
-  <div class="prog-grid">
-
-    <div class="pcard">
-      <!-- IMAGEN: foto propia/oficial de Fórmula 1 (material de prensa de socio) -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1c4ciY_iTc3hG_VABNZVGONkzOoJuzS1o" alt="Fórmula 1">
-      <div class="pcard-body"><div class="pcard-title">Fórmula 1</div><div class="pcard-desc" data-es="Alianza para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial." data-en="Alliance to bring a Grand Prix to the city, leading the relationship with the category, local governments and event logistics.">Alianza para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial.</div></div>
-    </div>
-
-    <div class="pcard">
-      <!-- IMAGEN: foto propia/oficial de IndyCar -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1fQSgHK14GamwG_T3KbjUzsT5MPv4LPjW" alt="IndyCar">
-      <div class="pcard-body"><div class="pcard-title">IndyCar</div><div class="pcard-desc" data-es="Alianza para el desarrollo de una fecha de la serie en la región, articulando circuitos, autoridades y operadores locales." data-en="Alliance to develop a series date in the region, coordinating circuits, authorities and local operators.">Alianza para el desarrollo de una fecha de la serie en la región, articulando circuitos, autoridades y operadores locales.</div></div>
-    </div>
-
-    <div class="pcard">
-      <!-- IMAGEN: foto propia/oficial de MotoGP -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/15p-9YErccY_BBEPtIfHeOLkbevuHcyTj" alt="MotoGP">
-      <div class="pcard-body"><div class="pcard-title">MotoGP</div><div class="pcard-desc" data-es="Alianza para llevar una fecha del campeonato a nuevos circuitos y a una de las hinchadas más apasionadas del deporte motor." data-en="Alliance to bring a championship date to new circuits and one of the most passionate fan bases in motorsport.">Alianza para llevar una fecha del campeonato a nuevos circuitos y a una de las hinchadas más apasionadas del deporte motor.</div></div>
-    </div>
-
-    <div class="pcard">
-      <!-- IMAGEN: foto propia/oficial de ciclismo World Tour -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1QzPNdRAHpNsv2tB0GTT2Bxz4uG2fyKmR" alt="Ciclismo World Tour">
-      <div class="pcard-body"><div class="pcard-title">Ciclismo World Tour</div><div class="pcard-desc" data-es="Alianza con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad." data-en="Alliance with World Tour teams to design stages and criteriums, coordinating permits and road safety in each city.">Alianza con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad.</div></div>
-    </div>
-
-    <div class="pcard">
-      <!-- IMAGEN: foto propia/oficial de E1 Series -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/19G5Y24DJfg2yyrfjTvRZSqqfouo4JwAg" alt="E1 Series">
-      <div class="pcard-body"><div class="pcard-title">E1 Series</div><div class="pcard-desc" data-es="Alianza para traer una fecha de lanchas eléctricas a ciudades costeras, gestionando puertos y autoridades marítimas." data-en="Alliance to bring an electric powerboat date to coastal cities, managing ports and maritime authorities.">Alianza para traer una fecha de lanchas eléctricas a ciudades costeras, gestionando puertos y autoridades marítimas.</div></div>
-    </div>
-
-    <div class="pcard">
-      <!-- IMAGEN: foto libre de derechos de deporte urbano / skyline -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1TYadaFHDEYP1PpSOh7kCv91iVxTOrWlt" alt="Urban World Games">
-      <div class="pcard-body"><div class="pcard-title">Urban World Games</div><div class="pcard-desc" data-es="Alianza para desarrollar esta plataforma multideporte urbana en la ciudad sede junto a worldurbangames.sport." data-en="Alliance to develop this urban multi-sport platform in the host city alongside worldurbangames.sport.">Alianza para desarrollar esta plataforma multideporte urbana en la ciudad sede junto a worldurbangames.sport.</div></div>
-    </div>
-
-    <div class="pcard">
-      <div class="pcard-badge" data-es="Alianza institucional" data-en="Institutional alliance">Alianza institucional</div>
-      <!-- IMAGEN: foto libre de derechos de turismo/ciudad -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/16JPj236ACh-oc1y8myut9JN1Gt8jSm9Z" alt="ONU Turismo">
-      <div class="pcard-body"><div class="pcard-title">ONU Turismo</div><div class="pcard-desc" data-es="Alianza con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede." data-en="Alliance with the United Nations tourism agency to promote sports tourism as a driver of development in host cities and countries.">Alianza con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede.</div></div>
-    </div>
-
-    <div class="pcard formativo">
-      <div class="pcard-badge" data-es="Programa formativo" data-en="Educational program">Programa formativo</div>
-      <!-- IMAGEN: foto libre de derechos de golf -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1399nq3L1iQfMjesm67ceJYKr1ftpHlT7" alt="Golf">
-      <div class="pcard-body"><div class="pcard-title">Golf</div><div class="pcard-desc" data-es="Programa formativo de experiencias y clinics de golf en destinos con vocación turística, dirigido a familias y jóvenes." data-en="Educational program of golf experiences and clinics in tourism destinations, aimed at families and young people.">Programa formativo de experiencias y clinics de golf en destinos con vocación turística, dirigido a familias y jóvenes.</div></div>
-    </div>
-
-    <a href="rmf-clinic.html" style="text-decoration:none;color:inherit;display:block;" class="pcard formativo">
-      <div class="pcard-badge" data-es="Programa formativo" data-en="Educational program">Programa formativo</div>
-      <!-- IMAGEN: usar foto ya existente del RMF Clinic en el sitio -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/14vpIiPzIK0JQiEPkhjzZsFwT8xqESiUS" alt="RMF Clinic 2026">
-      <div class="pcard-body"><div class="pcard-title">RMF Clinic 2026</div><div class="pcard-desc" data-es="Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias. Ver programa completo →" data-en="Educational program with the Real Madrid Foundation in Madrid, Spain, aimed directly at families. View full program →">Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias. Ver programa completo →</div></div>
-    </a>
-
-    <div class="pcard formativo">
-      <div class="pcard-badge" data-es="Programa formativo" data-en="Educational program">Programa formativo</div>
-      <!-- IMAGEN: foto propia/oficial de Rafa Nadal Academy -->
-      <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1jjIygaQBC2RtSAwwtGN8sfYFb3BE6_z0" alt="Rafa Nadal Academy">
-      <div class="pcard-body"><div class="pcard-title">Rafa Nadal Academy</div><div class="pcard-desc" data-es="Alianza formativa en Mallorca, España, para desarrollar experiencias y clinics de tenis de alto rendimiento dirigidas a familias." data-en="Educational alliance in Mallorca, Spain, to develop high-performance tennis experiences and clinics for families.">Alianza formativa en Mallorca, España, para desarrollar experiencias y clinics de tenis de alto rendimiento dirigidas a familias.</div></div>
-    </div>
-
   </div>
 </section>
 
