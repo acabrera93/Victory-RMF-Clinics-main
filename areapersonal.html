@@ -4877,13 +4877,15 @@ function buildCategorias() {
   const el = document.getElementById('admin-categorias-content');
   if (!el || !adminData || !adminData.length) { if(el) el.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin datos de participantes.</p>'; return; }
 
-  const catMap = {'Sub 18':[],'Sub 16':[],'Sub 14':[],'Sub 12':[],'Sub 10':[]};
+  const CATS = ['Sub 18','Sub 16','Sub 14','Sub 12','Sub 10'];
   const catColors = {'Sub 18':'#1e5ba8','Sub 16':'#0d9488','Sub 14':'#7c3aed','Sub 12':'#ea580c','Sub 10':'#dc2626'};
+  const mkCatMap = () => ({'Sub 18':[],'Sub 16':[],'Sub 14':[],'Sub 12':[],'Sub 10':[]});
+  const catMapGM    = mkCatMap();
+  const catMapOtros = mkCatMap();
 
   adminData.forEach(row => {
     const n = normalizeParticipant(row) || {};
-    const tipo = (n.tipo || '').toLowerCase();
-    if (!tipo.includes('jug')) return; // solo jugadores
+    if (!(n.tipo||'').toLowerCase().includes('jug')) return;
 
     const nombre = n.nombre || '';
     const fnRaw  = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha nacimiento'] || row['fecha_nacimiento'] || '';
@@ -4900,25 +4902,38 @@ function buildCategorias() {
     else if (edad>=10) cat='Sub 12';
     else cat='Sub 10';
 
-    catMap[cat].push({nombre, fnDisp, edad, club, sort});
+    const esGM = club.toLowerCase().includes('gimnasio moderno');
+    (esGM ? catMapGM : catMapOtros)[cat].push({nombre, fnDisp, edad, club, sort});
   });
 
-  let total = 0;
-  let html = '<table class="ptable" style="width:100%"><thead><tr><th style="width:35%">Nombre</th><th>Colegio / Club</th><th>Fecha nac.</th><th style="text-align:center">Edad</th></tr></thead><tbody>';
-  ['Sub 18','Sub 16','Sub 14','Sub 12','Sub 10'].forEach(cat => {
-    const color = catColors[cat];
-    const jug   = catMap[cat].sort((a,b)=>a.sort-b.sort);
-    total += jug.length;
-    html += `<tr><td colspan="4" style="background:${color};color:#fff;font-weight:600;font-size:12px;letter-spacing:1px;padding:10px 16px;">${cat} <span style="opacity:.7;font-weight:400">(${jug.length} jugador${jug.length!==1?'es':''})</span></td></tr>`;
-    if (!jug.length) {
-      html += `<tr><td colspan="4" style="color:var(--muted);font-size:12px;font-style:italic;padding:10px 16px;">Sin jugadores en esta categoría</td></tr>`;
-    } else {
-      jug.forEach((j,i)=>{
-        html += `<tr style="background:${i%2===0?'var(--off)':'#fff'}"><td style="font-weight:500">${j.nombre}</td><td style="font-size:12px;color:var(--muted)">${j.club || '—'}</td><td style="font-size:12px;color:var(--muted)">${j.fnDisp}</td><td style="font-size:12px;color:var(--muted);text-align:center">${j.edad !== null ? j.edad : '—'}</td></tr>`;
-      });
-    }
-  });
-  html += `</tbody></table><p style="margin-top:12px;font-size:12px;color:var(--muted);text-align:right;">Total jugadores: <strong>${total}</strong></p>`;
+  function buildSchoolBlock(catMap, label, headerColor) {
+    const total = CATS.reduce((s,c)=>s+catMap[c].length, 0);
+    let html = `<div style="margin-bottom:28px">`;
+    html += `<div style="background:${headerColor};color:#fff;border-radius:8px 8px 0 0;padding:12px 18px;font-weight:700;font-size:14px;letter-spacing:.5px">${label} <span style="opacity:.7;font-weight:400;font-size:12px">(${total} jugador${total!==1?'es':''})</span></div>`;
+    html += '<table class="ptable" style="width:100%;border-radius:0 0 8px 8px;overflow:hidden"><thead><tr><th style="width:35%">Nombre</th><th>Colegio / Club</th><th>Fecha nac.</th><th style="text-align:center">Edad</th></tr></thead><tbody>';
+    CATS.forEach(cat => {
+      const color = catColors[cat];
+      const jug   = catMap[cat].slice().sort((a,b)=>a.sort-b.sort);
+      html += `<tr><td colspan="4" style="background:${color};color:#fff;font-weight:600;font-size:11px;letter-spacing:1px;padding:8px 16px;">${cat} <span style="opacity:.7;font-weight:400">(${jug.length})</span></td></tr>`;
+      if (!jug.length) {
+        html += `<tr><td colspan="4" style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 16px;">Sin jugadores en esta categoría</td></tr>`;
+      } else {
+        jug.forEach((j,i)=>{
+          html += `<tr style="background:${i%2===0?'var(--off)':'#fff'}"><td style="font-weight:500">${j.nombre}</td><td style="font-size:12px;color:var(--muted)">${j.club||'—'}</td><td style="font-size:12px;color:var(--muted)">${j.fnDisp}</td><td style="font-size:12px;color:var(--muted);text-align:center">${j.edad!==null?j.edad:'—'}</td></tr>`;
+        });
+      }
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  const totalGM    = CATS.reduce((s,c)=>s+catMapGM[c].length, 0);
+  const totalOtros = CATS.reduce((s,c)=>s+catMapOtros[c].length, 0);
+  const total = totalGM + totalOtros;
+
+  let html = buildSchoolBlock(catMapGM, 'Gimnasio Moderno', '#0b1f3a');
+  html += buildSchoolBlock(catMapOtros, 'Otros colegios', '#475569');
+  html += `<p style="margin-top:4px;font-size:12px;color:var(--muted);text-align:right;">Total jugadores: <strong>${total}</strong></p>`;
   el.innerHTML = html;
 }
 
