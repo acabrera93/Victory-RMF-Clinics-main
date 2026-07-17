@@ -3774,7 +3774,7 @@ function renderAdminDashboard(rows, fin) {
   // Tasa media EUR→COP real calculada de pagos con ambos valores
   const pagosConTasa = (fin && fin.pagos_lista ? fin.pagos_lista : []).filter(p => p.cop > 0 && p.eur > 0);
   const tasaMedia = pagosConTasa.length > 0
-    ? Math.round(pagosConTasa.reduce((s, p) => s + (p.cop / p.eur), 0) / pagosConTasa.length)
+    ? Math.round(pagosConTasa.reduce((s, p) => s + p.cop, 0) / pagosConTasa.reduce((s, p) => s + p.eur, 0))
     : 0;
 
   const totalParticipantes = displayTotal;
