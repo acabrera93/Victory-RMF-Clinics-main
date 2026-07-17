@@ -4029,6 +4029,15 @@ function renderAdminPagos(fin) {
     if (key && !tipoMap[key]) tipoMap[key] = n.tipo || r['tipo'] || r['Tipo'] || '';
   });
 
+  // Mapa habitacion: nombre_norm → habitacion ('' = Solo actividades)
+  const habMap = {};
+  (adminData || []).forEach(r => {
+    const n = normalizeParticipant(r) || {};
+    const key = normNombre(n.nombre || r['Nombre'] || '');
+    if (key) habMap[key] = (n.habitacion || '').toLowerCase();
+  });
+  const esSoloAct = key => (tipoMap[key] || '').toLowerCase().includes('acomp') && (habMap[key] ?? '') === '';
+
   // Ordenar: Jugadores primero, luego Acompañantes, alfabético dentro de cada grupo
   allNombres.sort((a, b) => {
     const ta = (tipoMap[normNombre(a)] || '').toLowerCase();
@@ -4050,25 +4059,27 @@ function renderAdminPagos(fin) {
   const conPago  = allNombres.filter(n => pagoMap[normNombre(n)]).length;
   const sinPago  = allNombres.length - conPago;
   const completos = allNombres.filter(n => {
-    const pp = pagoMap[normNombre(n)] || {};
+    const key = normNombre(n);
+    const pp = pagoMap[key] || {};
     const reserva   = pp['reserva'];
     const pagoFinal = pp['pago final'];
     const tiquete   = pp['tiquete'];
     const isCompleto = p => p && (p.estado || '').toLowerCase() === 'completo';
-    // Reserva y Pago Final obligatorios
-    if (!isCompleto(reserva) || !isCompleto(pagoFinal)) return false;
-    // Si tiene Tiquete registrado, también debe estar Completo
+    if (!esSoloAct(key) && !isCompleto(reserva)) return false;
+    if (!isCompleto(pagoFinal)) return false;
     if (tiquete && !isCompleto(tiquete)) return false;
     return true;
   }).length;
   const parciales = allNombres.filter(n => {
-    const pp = pagoMap[normNombre(n)] || {};
-    if (!Object.keys(pp).length) return false; // sin ningún pago → no es parcial
+    const key = normNombre(n);
+    const pp = pagoMap[key] || {};
+    if (!Object.keys(pp).length) return false;
     const reserva   = pp['reserva'];
     const pagoFinal = pp['pago final'];
     const tiquete   = pp['tiquete'];
     const isCompleto = p => p && (p.estado || '').toLowerCase() === 'completo';
-    if (!isCompleto(reserva) || !isCompleto(pagoFinal)) return true;
+    if (!esSoloAct(key) && !isCompleto(reserva)) return true;
+    if (!isCompleto(pagoFinal)) return true;
     if (tiquete && !isCompleto(tiquete)) return true;
     return false;
   }).length;
@@ -4114,7 +4125,7 @@ function renderAdminPagos(fin) {
     return `<tr data-nombre="${key}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}">
       <td>${tipoBadge}</td>
       <td style="font-weight:500">${nombre}</td>
-      <td>${fmtPago(reserva)}</td>
+      <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
       <td>${conTiq ? fmtPago(tiquete) : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td>${fmtPago(pagoFinal)}</td>
       <td style="font-weight:700;color:var(--navy)">${totalPart > 0 ? totalPart.toLocaleString('es-CO') + ' €' : '<span style="color:var(--muted)">—</span>'}</td>
