@@ -1722,6 +1722,7 @@ let nombre = 'Participante';
 let participantEmail = '';
 let tipo = 'jugador';
 let conTiq = false;
+let soloAct = false;
 let grupoPaso = 1;
 let programa = '';
 let adminLoaded = false;
@@ -1959,8 +1960,12 @@ function updatePermisoDoc(u) {
 function calcPaymentTotals() {
   const total = allParticipants.length || 1;
 
-  // Reserva: 1.000€ por participante
-  const reserva = 1000 * total;
+  // Reserva: 1.000€ por participante excepto acompañantes con "Solo actividades"
+  const reservaCount = allParticipants.filter(p => {
+    const n = normalizeParticipant(p) || p;
+    return (n.tipo||'').toLowerCase().includes('jug') || (n.habitacion||'') !== '';
+  }).length;
+  const reserva = 1000 * reservaCount;
 
   // Tiquete: ~1.000€ por participante con tiquete
   const tiqCount = allParticipants.filter(p => {
@@ -2054,7 +2059,7 @@ function buildBreakdown(t) {
         const esJug = (p.tipo || '').toLowerCase().includes('jug');
         const hab = (p.habitacion || '').toLowerCase();
         const amt = esJug ? 1790 : (hab.includes('doble') ? 1190 : 1510);
-        const sub = esJug ? 'Jugador' : `Acompañante · hab. ${hab.includes('doble') ? 'doble' : 'sencilla'}`;
+        const sub = esJug ? 'Jugador' : hab.includes('doble') ? 'Acompañante · hab. doble' : hab === '' ? 'Acompañante · Solo actividades' : 'Acompañante · hab. sencilla';
         return bkRow(p.nombre || 'Participante', sub, amt);
       }).join('') + totalRow('Total pago final', t.final);
       bf.style.display = 'block';
@@ -2107,6 +2112,10 @@ async function doLogin() {
     allParticipants = rawParticipants.map(p => normalizeParticipant(p) || p);
     grupoPaso = Math.max(...allParticipants.map(p => parseInt(p.paso_actual) || 1));
     conTiq = allParticipants.some(p => p.tiquete_aereo === 'Con tiquete');
+    soloAct = allParticipants.length > 0 && allParticipants.every(p => {
+      const n = normalizeParticipant(p) || p;
+      return !(n.tipo||'').toLowerCase().includes('jug') && (n.habitacion||'') === '';
+    });
 
     document.getElementById('login-gate').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
@@ -2128,6 +2137,11 @@ async function doLogin() {
     const tc = document.getElementById('tc-chk');
     if (tc) { tc.checked = grupoPaso > 2; onTC(); }
     applyPaymentTotals(calcPaymentTotals());
+    // Update TC button text for soloAct
+    const btnContinuar = document.getElementById('btn-continuar-tc');
+    if (btnContinuar && soloAct) {
+      btnContinuar.textContent = conTiq ? 'Continuar al pago del tiquete →' : 'Continuar al pago final →';
+    }
     // Staff: saltar el proceso de pasos completamente
     const esStaffView = allParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
     if (esStaffView) { showStaffView(); return; }
@@ -2263,7 +2277,7 @@ function applyPasoActual(paso) {
 const STEP_DEFS = [
   {title:'Inscripción', desc:'Completada', panel:null, done:true},
   {title:'Términos y Condiciones', desc:'Lee y acepta los T&C', panel:'panel-tc'},
-  {title:'Pago de reserva', desc:'1.000 EUR para confirmar cupo', panel:'panel2'},
+  {title:'Pago de reserva', desc:'1.000 EUR para confirmar cupo', panel:'panel2', skipIfSoloAct:true},
   {title:'Pago tiquete',    desc:'Vuelo BOG–MAD–BOG', panel:'panel-tiq', tiqOnly:true},
   {title:'Pago final',      desc:'1.790 EUR antes jul 2026', panel:'panel3'},
   {title:'Documentación',   desc:'Pasaporte y permisos', panel:'panel4'},
@@ -2275,7 +2289,7 @@ let curPanel = 'panel-tc';
 function buildSteps() {
   const row = document.getElementById('steps-row');
   row.innerHTML = '';
-  const visible = STEP_DEFS.filter(s => !s.tiqOnly || conTiq);
+  const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct));
   visible.forEach((s, i) => {
     const d = document.createElement('div');
     d.className = 'step' + (s.done ? ' done' : '') + (s.panel === curPanel ? ' active' : '');
@@ -2759,8 +2773,18 @@ function actualizarPaso(nuevoPaso) {
 }
 
 function continuarAReserva() {
-  actualizarPaso(3);
-  goPanel('panel2');
+  if (soloAct) {
+    if (conTiq) {
+      actualizarPaso(4);
+      goPanel('panel-tiq');
+    } else {
+      actualizarPaso(5);
+      goPanel('panel3');
+    }
+  } else {
+    actualizarPaso(3);
+    goPanel('panel2');
+  }
 }
 
 function finalizarInscripcion() {
@@ -4396,7 +4420,7 @@ function openEditModal(idx) {
     const val = n[f.key] != null ? n[f.key] : (row[f.key] || '');
     const cls = 'mfield' + (f.full ? ' full' : '');
     if (f.type === 'select') {
-      const opts = f.options.map(o => `<option value="${o}"${o===val?' selected':''}>${o||'(sin selección)'}</option>`).join('');
+      const opts = f.options.map(o => `<option value="${o}"${o===val?' selected':''}>${o||'Solo actividades'}</option>`).join('');
       return `<div class="${cls}"><label>${f.label}</label><select id="ef-${f.key}">${opts}</select></div>`;
     }
     return `<div class="${cls}"><label>${f.label}</label><input type="${f.type}" id="ef-${f.key}" value="${String(val).replace(/"/g,'&quot;')}"></div>`;
