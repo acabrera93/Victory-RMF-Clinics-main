@@ -4877,8 +4877,19 @@ function buildCategorias() {
   const el = document.getElementById('admin-categorias-content');
   if (!el || !adminData || !adminData.length) { if(el) el.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin datos de participantes.</p>'; return; }
 
+  const yr = new Date().getFullYear();
   const CATS = ['Sub 18','Sub 16','Sub 14','Sub 12','Sub 10'];
   const catColors = {'Sub 18':'#1e5ba8','Sub 16':'#0d9488','Sub 14':'#7c3aed','Sub 12':'#ea580c','Sub 10':'#dc2626'};
+  // Cortes por año de nacimiento: Sub N cubre nacidos en (yr-N) y (yr-N+1)
+  function catDesdeAnio(anio) {
+    if (anio === null) return 'Sub 18';
+    if (anio >= yr-18 && anio <= yr-17) return 'Sub 18';
+    if (anio >= yr-16 && anio <= yr-15) return 'Sub 16';
+    if (anio >= yr-14 && anio <= yr-13) return 'Sub 14';
+    if (anio >= yr-12 && anio <= yr-11) return 'Sub 12';
+    if (anio >= yr-10 && anio <= yr-9)  return 'Sub 10';
+    return anio < yr-18 ? 'Sub 18' : 'Sub 10'; // fuera de rango → categoría más cercana
+  }
   const mkCatMap = () => ({'Sub 18':[],'Sub 16':[],'Sub 14':[],'Sub 12':[],'Sub 10':[]});
   const catMapGM    = mkCatMap();
   const catMapOtros = mkCatMap();
@@ -4895,12 +4906,7 @@ function buildCategorias() {
     const sort   = fObj ? fObj.anio*10000+fObj.mes*100+fObj.dia : 0;
     const club   = n.club_colegio || row['Club / Colegio'] || row['Club/Colegio'] || row['Colegio'] || row['Club'] || '';
 
-    let cat;
-    if (edad===null||edad>=16) cat='Sub 18';
-    else if (edad>=14) cat='Sub 16';
-    else if (edad>=12) cat='Sub 14';
-    else if (edad>=10) cat='Sub 12';
-    else cat='Sub 10';
+    const cat = catDesdeAnio(fObj ? fObj.anio : null);
 
     const esGM = club.toLowerCase().includes('gimnasio moderno');
     (esGM ? catMapGM : catMapOtros)[cat].push({nombre, fnDisp, edad, club, sort});
