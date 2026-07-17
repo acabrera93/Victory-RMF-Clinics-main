@@ -844,7 +844,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         </div>
       </div>
 
-      <div class="doc-item">
+      <div class="doc-item" id="tc-doc-item">
         <div class="dicon">✅</div>
         <div style="flex:1">
           <div class="dtitle">Términos y condiciones</div>
@@ -1723,6 +1723,7 @@ let participantEmail = '';
 let tipo = 'jugador';
 let conTiq = false;
 let soloAct = false;
+let esStaffView = false;
 let grupoPaso = 1;
 let programa = '';
 let adminLoaded = false;
@@ -2142,8 +2143,8 @@ async function doLogin() {
     if (btnContinuar && soloAct) {
       btnContinuar.textContent = conTiq ? 'Continuar al pago del tiquete →' : 'Continuar al pago final →';
     }
-    // Staff: saltar el proceso de pasos completamente
-    const esStaffView = allParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
+    // Staff: saltar al paso de documentación directamente
+    esStaffView = allParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
     if (esStaffView) { showStaffView(); return; }
     applyPasoActual(grupoPaso);
     // Admin emails siempre van al flujo gateado, aunque también estén en la hoja de participantes
@@ -2276,11 +2277,11 @@ function applyPasoActual(paso) {
 // ── STEPS ────────────────────────────────────────────────────────────────────
 const STEP_DEFS = [
   {title:'Inscripción', desc:'Completada', panel:null, done:true},
-  {title:'Términos y Condiciones', desc:'Lee y acepta los T&C', panel:'panel-tc'},
-  {title:'Pago de reserva', desc:'1.000 EUR para confirmar cupo', panel:'panel2', skipIfSoloAct:true},
-  {title:'Pago tiquete',    desc:'Vuelo BOG–MAD–BOG', panel:'panel-tiq', tiqOnly:true},
-  {title:'Pago final',      desc:'1.790 EUR antes jul 2026', panel:'panel3'},
-  {title:'Documentación',   desc:'Pasaporte y permisos', panel:'panel4'},
+  {title:'Términos y Condiciones', desc:'Lee y acepta los T&C', panel:'panel-tc', skipForStaff:true},
+  {title:'Pago de reserva', desc:'1.000 EUR para confirmar cupo', panel:'panel2', skipIfSoloAct:true, skipForStaff:true},
+  {title:'Pago tiquete',    desc:'Vuelo BOG–MAD–BOG', panel:'panel-tiq', tiqOnly:true, skipForStaff:true},
+  {title:'Pago final',      desc:'1.790 EUR antes jul 2026', panel:'panel3', skipForStaff:true},
+  {title:'Documentación',   desc:'Pasaporte vigente', panel:'panel4'},
   {title:'¡Bienvenido!',      desc:'¡Nos vemos en Madrid!', panel:'panel-done'},
 ];
 
@@ -2289,7 +2290,7 @@ let curPanel = 'panel-tc';
 function buildSteps() {
   const row = document.getElementById('steps-row');
   row.innerHTML = '';
-  const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct));
+  const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct) && (!s.skipForStaff || !esStaffView));
   visible.forEach((s, i) => {
     const d = document.createElement('div');
     d.className = 'step' + (s.done ? ' done' : '') + (s.panel === curPanel ? ' active' : '');
@@ -3571,16 +3572,24 @@ async function cambiarPasswordAdmin(btn) {
 
 // ── ADMIN PANEL ───────────────────────────────────────────────────────────────
 function showStaffView() {
-  document.getElementById('steps-row').style.display = 'none';
-  document.getElementById('datos-resumen-card').style.display = 'none';
   document.getElementById('welcome-guide').style.display = 'none';
   const tiqBtn = document.getElementById('btn-toggle-tiq');
   if (tiqBtn) tiqBtn.style.display = 'none';
-  const procTab = document.querySelector('[data-section="proceso"]');
-  if (procTab) procTab.style.display = 'none';
+  // Ocultar docs que no aplican a staff
+  const permisoDoc = document.getElementById('permiso-doc');
+  if (permisoDoc) permisoDoc.style.display = 'none';
+  const registroDoc = document.getElementById('registro-civil-doc');
+  if (registroDoc) registroDoc.style.display = 'none';
+  const tcDocItem = document.getElementById('tc-doc-item');
+  if (tcDocItem) tcDocItem.style.display = 'none';
+  // Marcar pasos omitidos como completados y saltar a Documentación
+  STEP_DEFS.forEach(s => { if (s.skipForStaff) s.done = true; });
+  const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
+  if (idxDocs > -1) STEP_DEFS[idxDocs].done = false;
   document.getElementById('section-tabs').style.display = 'flex';
   checkNuevosComunicados();
-  switchSection('saber');
+  actualizarPaso(6);
+  goPanel('panel4');
 }
 
 function showAdminOnly() {
