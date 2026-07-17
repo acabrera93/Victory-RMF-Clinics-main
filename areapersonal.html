@@ -1975,7 +1975,7 @@ function calcPaymentTotals() {
   }).length;
   const tiquete = 1000 * tiqCount;
 
-  // Pago final: jugador=1.790, acomp-doble=1.190, acomp-sencilla=1.510
+  // Pago final: jugador=1.790, acomp solo actividades (>12a=590, ≤12a=190), acomp doble=1.190, acomp sencilla=1.510
   let final = 0;
   for (const raw of allParticipants) {
     const n = normalizeParticipant(raw) || raw;
@@ -1983,7 +1983,14 @@ function calcPaymentTotals() {
       final += 1790;
     } else {
       const hab = (n.habitacion || '').toLowerCase();
-      final += hab.includes('doble') ? 1190 : 1510;
+      if (hab === '') {
+        const fnRaw = n.fecha_nacimiento || raw['Fecha Nacimiento'] || raw['fecha nacimiento'] || raw['fecha_nacimiento'] || '';
+        const fObj = parseFechaNacFront(fnRaw);
+        const edad = fObj ? calcEdadRefFront(fObj) : null;
+        final += (edad !== null && edad <= 12) ? 190 : 590;
+      } else {
+        final += hab.includes('doble') ? 1190 : 1510;
+      }
     }
   }
   if (allParticipants.length === 0) final = 1790; // fallback
@@ -2059,7 +2066,16 @@ function buildBreakdown(t) {
         const p = normalizeParticipant(raw) || raw;
         const esJug = (p.tipo || '').toLowerCase().includes('jug');
         const hab = (p.habitacion || '').toLowerCase();
-        const amt = esJug ? 1790 : (hab.includes('doble') ? 1190 : 1510);
+        let amt;
+        if (esJug) {
+          amt = 1790;
+        } else if (hab === '') {
+          const fObjB = parseFechaNacFront(p.fecha_nacimiento || '');
+          const edadB = fObjB ? calcEdadRefFront(fObjB) : null;
+          amt = (edadB !== null && edadB <= 12) ? 190 : 590;
+        } else {
+          amt = hab.includes('doble') ? 1190 : 1510;
+        }
         const sub = esJug ? 'Jugador' : hab.includes('doble') ? 'Acompañante · hab. doble' : hab === '' ? 'Acompañante · Solo actividades' : 'Acompañante · hab. sencilla';
         return bkRow(p.nombre || 'Participante', sub, amt);
       }).join('') + totalRow('Total pago final', t.final);
@@ -4418,6 +4434,7 @@ const EDIT_FIELDS_JUGADOR = [
 // Extra fields only for acompañantes
 const EDIT_FIELDS_ACOMP = [
   {key:'jugador_acompanado',label:'Jugador que acompaña',type:'text',full:true},
+  {key:'fecha_nacimiento',label:'Fecha de nacimiento',type:'text'},
   {key:'habitacion',label:'Habitación',type:'select',options:['Doble','Sencilla','']},
 ];
 // Keep EDIT_FIELDS as alias for legacy references
