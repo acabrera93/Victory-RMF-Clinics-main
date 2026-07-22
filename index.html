@@ -46,7 +46,7 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 .hero::after{content:'';position:absolute;top:-40%;right:-10%;width:60%;height:180%;background:linear-gradient(160deg,rgba(59,127,212,.25),transparent 60%);transform:rotate(12deg)}
 .hero-accent-bar{position:absolute;bottom:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,var(--blue-light),var(--blue-bright),transparent)}
 .hero-tracklines{position:absolute;right:6%;top:0;height:100%;width:38%;opacity:.5}
-.hero-content{position:relative;z-index:2;display:flex;align-items:center;gap:36px;width:100%}
+.hero-content{position:relative;z-index:2;display:flex;align-items:center;gap:36px;width:100%;max-width:1200px;margin:0 auto}
 .hero-logo-wrap{flex-shrink:0;position:relative}
 .hero-logo-wrap::before{content:'';position:absolute;inset:-16px;border-radius:50%;background:radial-gradient(circle,rgba(90,157,224,.2) 0%,transparent 72%);z-index:0}
 .hero-logo{position:relative;height:110px;width:auto;display:block;z-index:1}
@@ -117,15 +117,18 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 footer{background:var(--navy);padding:32px 24px;text-align:center}
 footer p{font-size:12px;color:rgba(255,255,255,.4)}
 
+@media (max-width:1024px){
+  .steps-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .nav-inner,.container{padding-left:24px;padding-right:24px}
+}
+
 @media(max-width:640px){
   nav{padding:14px 20px}
   .nav-links a:not(.lang-btn){display:none}
   .form-grid{grid-template-columns:1fr}
-}
-
-@media (max-width:1024px){
-  .steps-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
-  .nav-inner,.container{padding-left:24px;padding-right:24px}
+  .prog-grid{grid-template-columns:1fr !important;width:100%;margin:0}
+  .pcard{width:100%;margin:0 auto}
+  .prog-group{width:100%;overflow:hidden}
 }
 
 @media (max-width:768px){
@@ -212,7 +215,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
       <div class="prog-group-dot" style="background:#3b7fd4"></div>
       <div class="prog-group-label">Eventos de gran magnitud</div>
     </div>
-    <div class="prog-grid grid-end">
+    <div class="prog-grid">
       <div class="pcard">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1c4ciY_iTc3hG_VABNZVGONkzOoJuzS1o" alt="Fórmula 1 - Barranquilla">
         <div class="pcard-body"><div class="pcard-title">Fórmula 1 - Barranquilla</div><div class="pcard-desc" data-es="Proyecto para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial." data-en="Project to bring a Grand Prix to the city, leading the relationship with the category, local governments and event logistics.">Proyecto para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial.</div></div>
@@ -229,8 +232,6 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1QzPNdRAHpNsv2tB0GTT2Bxz4uG2fyKmR" alt="Ciclismo World Tour">
         <div class="pcard-body"><div class="pcard-title">Ciclismo World Tour</div><div class="pcard-desc" data-es="Proyecto con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad." data-en="Project with World Tour teams to design stages and criteriums, coordinating permits and road safety in each city.">Proyecto con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad.</div></div>
       </div>
-    </div>
-    <div class="prog-grid grid-end" style="margin-top:20px">
       <div class="pcard">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/18V6MS9jAWVC1dDVsK9KdosNn_DKImJ3A" alt="Fórmula E">
         <div class="pcard-body"><div class="pcard-title">Fórmula E</div><div class="pcard-desc" data-es="Alianza para traer una fecha del campeonato mundial de automovilismo eléctrico, articulando circuitos urbanos, autoridades y operadores locales." data-en="Alliance to bring a date of the world electric motorsport championship, coordinating city circuits, authorities and local operators.">Alianza para traer una fecha del campeonato mundial de automovilismo eléctrico, articulando circuitos urbanos, autoridades y operadores locales.</div></div>
@@ -278,7 +279,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
         <div class="pcard-body"><div class="pcard-title">ONU Turismo</div><div class="pcard-desc" data-es="Proyecto conjunto con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede." data-en="Joint project with the United Nations tourism agency to promote sports tourism as a driver of development in host cities and countries.">Proyecto conjunto con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede.</div></div>
       </div>
       <div class="pcard">
-        <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1YbMqtuUCmxjE2ILRErYIYU-jfP8m-M5U" alt="Fundación Revel" style="object-fit:contain;background:#fff;padding:16px;">
+        <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1q93sO8KMTvhtNOFwAD2aZ_FsssIaYYJX" alt="Fundación Revel">
         <div class="pcard-body"><div class="pcard-title">Fundación Revel</div><div class="pcard-desc" data-es="Alianza estratégica con la Fundación Revel para el desarrollo de proyectos deportivos con impacto social en la región." data-en="Strategic alliance with Fundación Revel for the development of sports projects with social impact in the region.">Alianza estratégica con la Fundación Revel para el desarrollo de proyectos deportivos con impacto social en la región.</div></div>
       </div>
     </div>
