@@ -4490,7 +4490,7 @@ function renderAddParticipantFields(tipo) {
   document.getElementById('add-participant-fields').innerHTML = fields.map(f => {
     const cls = 'mfield' + (f.full ? ' full' : '');
     if (f.type === 'select') {
-      const opts = f.options.map(o => `<option value="${o}">${o || '(sin selección)'}</option>`).join('');
+      const opts = f.options.map(o => `<option value="${o}">${o || 'Solo actividades'}</option>`).join('');
       return `<div class="${cls}"><label>${f.label}</label><select id="ap-${f.key}" style="${s};background:#fff">${opts}</select></div>`;
     }
     return `<div class="${cls}"><label>${f.label}</label><input type="${f.type}" id="ap-${f.key}" placeholder="${f.label}" style="${s}"></div>`;
