@@ -54,7 +54,7 @@
   .nav-inner {
     width: 100%;
     padding: 0 48px;
-    height: 64px;
+    height: 128px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -68,7 +68,7 @@
     text-decoration: none;
   }
   .nav-logo-link img {
-    height: 56px;
+    height: 112px;
     width: auto;
     object-fit: contain;
   }
@@ -1004,8 +1004,17 @@
       </div>
     </div>
 
-    <!-- Derecha: cupos alineados abajo -->
-    <div style="display:flex; flex-direction:column; justify-content:flex-end; height:100%; gap:16px; padding-bottom:4px;">
+    <!-- Derecha: logos + cupos -->
+    <div style="display:flex; flex-direction:column; justify-content:space-between; height:100%; gap:24px; padding-bottom:4px;">
+      <!-- Logos -->
+      <div style="display:flex; flex-direction:column; align-items:flex-start; gap:36px; padding-top:12px;">
+        <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation Clinic" style="height:90px;width:auto;filter:brightness(0) invert(1);opacity:.9;">
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
+          <span style="font-size:11px;color:rgba(255,255,255,.6);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Sans',sans-serif;font-weight:500;">Powered by:</span>
+          <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports" style="height:70px;width:auto;filter:brightness(0) invert(1);opacity:.9;">
+        </div>
+      </div>
+      <!-- Badge cupos -->
       <div class="cupos-badge">
         <div class="cupos-dot"></div>
         <div class="cupos-text">Cupos limitados · <span>Oct 2026</span></div>
@@ -1598,8 +1607,8 @@ function showStatus(type, msg, onClick) {
 #wa-circle{animation:wa-pulse 3s ease-in-out infinite}
 #wa-circle:hover{transform:scale(1.08);animation:none}
 @media (max-width: 900px) {
-  .nav-inner { padding: 0 16px; height: 56px; }
-  .nav-logo-link img { height: 22px; }
+  .nav-inner { padding: 0 16px; height: 80px; }
+  .nav-logo-link img { height: 44px; }
   .nav-sep { display: none; }
   .nav-logos .nav-logo-link img:not(:first-child) { display: none; }
   .nav-logos .nav-logo-link img:first-child { display: block; }
@@ -1722,7 +1731,7 @@ function showStatus(type, msg, onClick) {
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
-.nav-drawer-logos img { height: 22px; width: auto; object-fit: contain; }
+.nav-drawer-logos img { height: 44px; width: auto; object-fit: contain; }
 .nav-drawer-sep {
   height: 1px;
   background: rgba(255,255,255,0.08);

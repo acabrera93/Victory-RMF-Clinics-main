@@ -42,7 +42,7 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 
 .hero{background:linear-gradient(160deg,var(--navy) 0%,var(--navy-mid) 100%);padding:40px 24px 26px;text-align:center;position:relative;overflow:hidden}
 .hero::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(59,127,212,.18) 0%,transparent 70%)}
-.hero-logo{height:64px;width:auto;margin:0 auto 18px;display:block;position:relative}
+.hero-logo{height:256px;width:auto;max-width:85%;margin:0 auto 18px;display:block;position:relative}
 .hero-label{font-size:12px;letter-spacing:2px;color:var(--blue-bright);text-transform:uppercase;margin-bottom:16px;position:relative}
 .hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);color:#fff;letter-spacing:1px;line-height:1.05;position:relative}
 .hero-brand{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);letter-spacing:1px;color:#fff;margin:6px 0 14px;position:relative}
@@ -51,7 +51,7 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 .nav-left{display:flex;align-items:center;gap:16px}
 .nav-sep{width:1px;height:24px;background:rgba(255,255,255,.2);flex-shrink:0}
 .nav-partners{display:flex;align-items:center;gap:20px}
-.nav-partners img{height:32px;width:auto;filter:brightness(0) invert(1);opacity:.7;transition:opacity .2s}
+.nav-partners img{height:64px;width:auto;filter:brightness(0) invert(1);opacity:.7;transition:opacity .2s}
 .nav-partners img:hover{opacity:1}
 
 .container{max-width:1200px;margin:0 auto;padding:0 24px}
@@ -123,11 +123,11 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 }
 
 @media (max-width:768px){
-  .hero-logo{height:46px;margin-bottom:14px}
+  .hero-logo{height:184px;max-width:90%;margin-bottom:14px}
   .hero-title{font-size:clamp(22px,7vw,32px)}
   .hero-sub{font-size:14px;padding:0 12px}
   .nav-partners{gap:12px}
-  .nav-partners img{height:26px}
+  .nav-partners img{height:52px}
 .form-grid{grid-template-columns:1fr}
   .steps-grid{grid-template-columns:1fr}
   .tabs-btns{flex-direction:column}
@@ -154,7 +154,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 
 <nav>
   <div class="nav-left">
-    <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports" style="height:32px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
+    <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports" style="height:64px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
     <div class="nav-partners">
       <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation Clinic">
       <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
@@ -171,7 +171,6 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 
 <section class="hero">
   <img class="hero-logo" src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports">
-  <div class="hero-brand">VICTORY <span>SPORTS</span></div>
   <h1 class="hero-title" data-es="Creamos los grandes eventos del deporte mundial" data-en="We create the world's biggest sporting events">Creamos los grandes<br>eventos del deporte mundial</h1>
   <p class="hero-sub" data-es="Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes." data-en="Project consulting, strategic alliances and institutional relations to organize the world's most important sporting events in cities and countries across every continent.">Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes.</p>
 </section>
@@ -220,8 +219,8 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
     </div>
     <div class="prog-grid">
       <a href="rmf-clinic.html" class="pcard formativo" style="text-decoration:none;color:inherit;display:block;">
-        <img class="pcard-img" src="https://lh3.googleusercontent.com/d/14vpIiPzIK0JQiEPkhjzZsFwT8xqESiUS" alt="RMF Clinic 2026">
-        <div class="pcard-body"><div class="pcard-title">RMF Clinic 2026</div><div class="pcard-desc"><span data-es="Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias." data-en="Educational program with the Real Madrid Foundation in Madrid, Spain, aimed directly at families.">Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias.</span> <span style="color:var(--blue)" data-es=" Ver programa completo →" data-en=" View full program →"> Ver programa completo →</span></div></div>
+        <img class="pcard-img" src="https://lh3.googleusercontent.com/d/14vpIiPzIK0JQiEPkhjzZsFwT8xqESiUS" alt="Real Madrid Foundation Clinic 2026">
+        <div class="pcard-body"><div class="pcard-title">Real Madrid Foundation Clinic 2026</div><div class="pcard-desc"><span data-es="Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias." data-en="Educational program with the Real Madrid Foundation in Madrid, Spain, aimed directly at families.">Programa formativo con la Fundación Real Madrid en Madrid, España, dirigido directamente a familias.</span> <span style="color:var(--blue)" data-es=" Ver programa completo →" data-en=" View full program →"> Ver programa completo →</span></div></div>
       </a>
       <div class="pcard formativo">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1jjIygaQBC2RtSAwwtGN8sfYFb3BE6_z0" alt="Rafa Nadal Academy">
@@ -309,7 +308,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
               <option data-es="Ciclismo World Tour" data-en="Cycling World Tour">Ciclismo World Tour</option>
               <option data-es="E1 Series" data-en="E1 Series">E1 Series</option>
               <option data-es="Urban World Games" data-en="Urban World Games">Urban World Games</option>
-              <option data-es="Programa formativo (Golf, RMF Clinic, Rafa Nadal Academy)" data-en="Educational program (Golf, RMF Clinic, Rafa Nadal Academy)">Programa formativo (Golf, RMF Clinic, Rafa Nadal Academy)</option>
+              <option data-es="Programa formativo (Golf, Real Madrid Foundation Clinic, Rafa Nadal Academy)" data-en="Educational program (Golf, Real Madrid Foundation Clinic, Rafa Nadal Academy)">Programa formativo (Golf, Real Madrid Foundation Clinic, Rafa Nadal Academy)</option>
               <option data-es="Otro" data-en="Other">Otro</option>
             </select>
           </div>
