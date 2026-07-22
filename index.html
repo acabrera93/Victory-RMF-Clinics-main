@@ -46,11 +46,11 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 .hero::after{content:'';position:absolute;top:-40%;right:-10%;width:60%;height:180%;background:linear-gradient(160deg,rgba(59,127,212,.25),transparent 60%);transform:rotate(12deg)}
 .hero-accent-bar{position:absolute;bottom:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,var(--blue-light),var(--blue-bright),transparent)}
 .hero-tracklines{position:absolute;right:6%;top:0;height:100%;width:38%;opacity:.5}
-.hero-content{position:relative;z-index:2;display:flex;align-items:center;gap:36px;width:100%;max-width:1200px}
+.hero-content{position:relative;z-index:2;display:flex;align-items:center;gap:36px;width:fit-content;max-width:1200px}
 .hero-logo-wrap{flex-shrink:0;position:relative}
 .hero-logo-wrap::before{content:'';position:absolute;inset:-16px;border-radius:50%;background:radial-gradient(circle,rgba(90,157,224,.2) 0%,transparent 72%);z-index:0}
 .hero-logo{position:relative;height:110px;width:auto;display:block;z-index:1}
-.hero-text{flex:1;text-align:left}
+.hero-text{text-align:left}
 .hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(26px,4.2vw,38px);color:#fff;letter-spacing:.5px;line-height:1.05;margin-bottom:12px}
 .hero-title .accent{color:var(--blue-bright)}
 .hero-sub{font-size:13px;color:rgba(255,255,255,.6);max-width:440px;line-height:1.65}
@@ -135,7 +135,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
   .hero{padding:28px 24px 26px;min-height:auto}
   .hero::after{width:90%;right:-20%}
   .hero-tracklines{display:none}
-  .hero-content{flex-direction:column;text-align:center;gap:16px}
+  .hero-content{flex-direction:column;text-align:center;gap:16px;width:100%}
   .hero-text{text-align:center}
   .hero-logo{height:80px}
   .hero-sub{max-width:100%}
