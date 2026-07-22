@@ -344,12 +344,24 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
           <div class="form-field"><label data-es="Correo electrónico" data-en="Email">Correo electrónico</label><input type="email" id="c-email" required></div>
           <div class="form-field full"><label data-es="Tipo de proyecto" data-en="Project type">Tipo de proyecto</label>
             <select id="c-tipo">
-              <option data-es="Fórmula 1 / IndyCar" data-en="Formula 1 / IndyCar">Fórmula 1 / IndyCar</option>
-              <option data-es="MotoGP" data-en="MotoGP">MotoGP</option>
-              <option data-es="Ciclismo World Tour" data-en="Cycling World Tour">Ciclismo World Tour</option>
-              <option data-es="E1 Series" data-en="E1 Series">E1 Series</option>
-              <option data-es="Urban World Games" data-en="Urban World Games">Urban World Games</option>
-              <option data-es="Programa formativo (Golf, Real Madrid Foundation Clinic, Rafa Nadal Academy)" data-en="Educational program (Golf, Real Madrid Foundation Clinic, Rafa Nadal Academy)">Programa formativo (Golf, Real Madrid Foundation Clinic, Rafa Nadal Academy)</option>
+              <optgroup data-es="Eventos de gran magnitud" data-en="Major sporting events" label="Eventos de gran magnitud">
+                <option data-es="Fórmula 1 - Barranquilla" data-en="Formula 1 - Barranquilla">Fórmula 1 - Barranquilla</option>
+                <option data-es="IndyCar" data-en="IndyCar">IndyCar</option>
+                <option data-es="MotoGP" data-en="MotoGP">MotoGP</option>
+                <option data-es="Ciclismo World Tour" data-en="Cycling World Tour">Ciclismo World Tour</option>
+                <option data-es="Fórmula E" data-en="Formula E">Fórmula E</option>
+                <option data-es="E1 Series" data-en="E1 Series">E1 Series</option>
+                <option data-es="Urban World Games" data-en="Urban World Games">Urban World Games</option>
+              </optgroup>
+              <optgroup data-es="Programas formativos" data-en="Educational programs" label="Programas formativos">
+                <option data-es="Real Madrid Foundation Clinic" data-en="Real Madrid Foundation Clinic">Real Madrid Foundation Clinic</option>
+                <option data-es="Rafa Nadal Academy" data-en="Rafa Nadal Academy">Rafa Nadal Academy</option>
+                <option data-es="Golf" data-en="Golf">Golf</option>
+              </optgroup>
+              <optgroup data-es="Alianza institucional" data-en="Institutional alliance" label="Alianza institucional">
+                <option data-es="ONU Turismo" data-en="UN Tourism">ONU Turismo</option>
+                <option data-es="Fundación Revel" data-en="Fundación Revel">Fundación Revel</option>
+              </optgroup>
               <option data-es="Otro" data-en="Other">Otro</option>
             </select>
           </div>
@@ -381,7 +393,10 @@ function toggleLang(){
   document.getElementById('lang-btn').textContent = currentLang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES';
   document.querySelectorAll('[data-es]').forEach(function(el){
     var text = el.getAttribute('data-' + currentLang);
-    if(text) el.textContent = text;
+    if(text) {
+      if(el.tagName === 'OPTGROUP') el.label = text;
+      else el.textContent = text;
+    }
   });
 }
 
