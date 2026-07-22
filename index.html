@@ -40,18 +40,23 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 .lang-btn{background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif}
 .lang-btn:hover{border-color:#fff;color:#fff}
 
-.hero{background:linear-gradient(160deg,var(--navy) 0%,var(--navy-mid) 100%);padding:40px 24px 26px;text-align:center;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(59,127,212,.18) 0%,transparent 70%)}
-.hero-logo{height:192px;width:auto;max-width:85%;margin:0 auto 18px;display:block;position:relative}
-.hero-label{font-size:12px;letter-spacing:2px;color:var(--blue-bright);text-transform:uppercase;margin-bottom:16px;position:relative}
-.hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);color:#fff;letter-spacing:1px;line-height:1.05;position:relative}
-.hero-brand{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);letter-spacing:1px;color:#fff;margin:6px 0 14px;position:relative}
-.hero-brand span{color:var(--blue-bright)}
-.hero-sub{font-size:16px;color:rgba(255,255,255,.6);max-width:540px;margin:12px auto 0;line-height:1.7;position:relative}
+.hero{background:var(--navy);padding:36px 40px 32px;position:relative;overflow:hidden;min-height:250px;display:flex;align-items:center}
+.hero::before{content:'';position:absolute;top:0;right:0;width:55%;height:100%;background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy) 100%);clip-path:polygon(30% 0,100% 0,100% 100%,0 100%)}
+.hero::after{content:'';position:absolute;top:-40%;right:-10%;width:60%;height:180%;background:linear-gradient(160deg,rgba(59,127,212,.25),transparent 60%);transform:rotate(12deg)}
+.hero-accent-bar{position:absolute;bottom:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,var(--blue-light),var(--blue-bright),transparent)}
+.hero-tracklines{position:absolute;right:6%;top:0;height:100%;width:38%;opacity:.5}
+.hero-content{position:relative;z-index:2;display:flex;align-items:center;gap:36px;width:100%}
+.hero-logo-wrap{flex-shrink:0;position:relative}
+.hero-logo-wrap::before{content:'';position:absolute;inset:-16px;border-radius:50%;background:radial-gradient(circle,rgba(90,157,224,.2) 0%,transparent 72%);z-index:0}
+.hero-logo{position:relative;height:110px;width:auto;display:block;z-index:1}
+.hero-text{flex:1;text-align:left}
+.hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(26px,4.2vw,38px);color:#fff;letter-spacing:.5px;line-height:1.05;margin-bottom:12px}
+.hero-title .accent{color:var(--blue-bright)}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.6);max-width:440px;line-height:1.65}
 .nav-left{display:flex;align-items:center;gap:16px}
 .nav-sep{width:1px;height:24px;background:rgba(255,255,255,.2);flex-shrink:0}
 .nav-partners{display:flex;align-items:center;gap:20px}
-.nav-partners img{height:64px;width:auto;filter:brightness(0) invert(1);opacity:.7;transition:opacity .2s}
+.nav-partners img{height:58px;width:auto;filter:brightness(0) invert(1);opacity:.7;transition:opacity .2s}
 .nav-partners img:hover{opacity:1}
 
 .container{max-width:1200px;margin:0 auto;padding:0 24px}
@@ -123,11 +128,13 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 }
 
 @media (max-width:768px){
-  .hero-logo{height:138px;max-width:90%;margin-bottom:14px}
-  .hero-title{font-size:clamp(22px,7vw,32px)}
-  .hero-sub{font-size:14px;padding:0 12px}
+  .hero{padding:28px 24px 26px;min-height:auto}
+  .hero-content{flex-direction:column;text-align:center;gap:16px}
+  .hero-text{text-align:center}
+  .hero-logo{height:80px}
+  .hero-sub{max-width:100%}
   .nav-partners{gap:12px}
-  .nav-partners img{height:52px}
+  .nav-partners img{height:47px}
 .form-grid{grid-template-columns:1fr}
   .steps-grid{grid-template-columns:1fr}
   .tabs-btns{flex-direction:column}
@@ -154,7 +161,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 
 <nav>
   <div class="nav-left">
-    <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports" style="height:64px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
+    <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports" style="height:58px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
     <div class="nav-partners">
       <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation Clinic">
       <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
@@ -170,9 +177,29 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 </nav>
 
 <section class="hero">
-  <img class="hero-logo" src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports">
-  <h1 class="hero-title" data-es="Creamos los grandes eventos del deporte mundial" data-en="We create the world's biggest sporting events">Creamos los grandes<br>eventos del deporte mundial</h1>
-  <p class="hero-sub" data-es="Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes." data-en="Project consulting, strategic alliances and institutional relations to organize the world's most important sporting events in cities and countries across every continent.">Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes.</p>
+  <div class="hero-tracklines">
+    <svg viewBox="0 0 200 300" preserveAspectRatio="none" style="width:100%;height:100%">
+      <line x1="0" y1="300" x2="200" y2="0" stroke="#5a9de0" stroke-width="2" opacity=".4"/>
+      <line x1="40" y1="300" x2="240" y2="0" stroke="#5a9de0" stroke-width="1.4" opacity=".3"/>
+      <line x1="-40" y1="300" x2="160" y2="0" stroke="#3b7fd4" stroke-width="1.4" opacity=".25"/>
+    </svg>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-logo-wrap">
+      <img class="hero-logo" src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports">
+    </div>
+
+    <div class="hero-text">
+      <div class="hero-title">
+        <span data-es="CREAMOS LOS GRANDES EVENTOS" data-en="WE CREATE THE WORLD'S">CREAMOS LOS GRANDES EVENTOS</span><br>
+        <span data-es="DEL DEPORTE" data-en="GREATEST">DEL DEPORTE</span> <span class="accent" data-es="MUNDIAL" data-en="SPORTING EVENTS">MUNDIAL</span>
+      </div>
+      <div class="hero-sub" data-es="Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes." data-en="Project consulting, strategic alliances and institutional relations to organize the world's most important sporting events in cities and countries across every continent.">Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes.</div>
+    </div>
+  </div>
+
+  <div class="hero-accent-bar"></div>
 </section>
 
 <section id="programas" class="container">
@@ -182,7 +209,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
       <div class="prog-group-dot" style="background:#3b7fd4"></div>
       <div class="prog-group-label">Eventos de gran magnitud</div>
     </div>
-    <div class="prog-grid">
+    <div class="prog-grid grid-end">
       <div class="pcard">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1c4ciY_iTc3hG_VABNZVGONkzOoJuzS1o" alt="Fórmula 1 - Barranquilla">
         <div class="pcard-body"><div class="pcard-title">Fórmula 1 - Barranquilla</div><div class="pcard-desc" data-es="Proyecto para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial." data-en="Project to bring a Grand Prix to the city, leading the relationship with the category, local governments and event logistics.">Proyecto para traer un Gran Premio a la ciudad, liderando la relación con la categoría, los gobiernos locales y la logística de un evento mundial.</div></div>
@@ -199,12 +226,12 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1QzPNdRAHpNsv2tB0GTT2Bxz4uG2fyKmR" alt="Ciclismo World Tour">
         <div class="pcard-body"><div class="pcard-title">Ciclismo World Tour</div><div class="pcard-desc" data-es="Proyecto con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad." data-en="Project with World Tour teams to design stages and criteriums, coordinating permits and road safety in each city.">Proyecto con equipos World Tour para diseñar etapas y criteriums, coordinando permisos y seguridad vial en cada ciudad.</div></div>
       </div>
+    </div>
+    <div class="prog-grid grid-end" style="margin-top:20px">
       <div class="pcard">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/18V6MS9jAWVC1dDVsK9KdosNn_DKImJ3A" alt="Fórmula E">
         <div class="pcard-body"><div class="pcard-title">Fórmula E</div><div class="pcard-desc" data-es="Alianza para traer una fecha del campeonato mundial de automovilismo eléctrico, articulando circuitos urbanos, autoridades y operadores locales." data-en="Alliance to bring a date of the world electric motorsport championship, coordinating city circuits, authorities and local operators.">Alianza para traer una fecha del campeonato mundial de automovilismo eléctrico, articulando circuitos urbanos, autoridades y operadores locales.</div></div>
       </div>
-    </div>
-    <div class="prog-grid grid-center" style="margin-top:20px">
       <div class="pcard">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/19G5Y24DJfg2yyrfjTvRZSqqfouo4JwAg" alt="E1 Series">
         <div class="pcard-body"><div class="pcard-title">E1 Series</div><div class="pcard-desc" data-es="Proyecto para traer una fecha de lanchas eléctricas a ciudades costeras, gestionando puertos y autoridades marítimas." data-en="Project to bring an electric powerboat date to coastal cities, managing ports and maritime authorities.">Proyecto para traer una fecha de lanchas eléctricas a ciudades costeras, gestionando puertos y autoridades marítimas.</div></div>
@@ -248,7 +275,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
         <div class="pcard-body"><div class="pcard-title">ONU Turismo</div><div class="pcard-desc" data-es="Proyecto conjunto con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede." data-en="Joint project with the United Nations tourism agency to promote sports tourism as a driver of development in host cities and countries.">Proyecto conjunto con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede.</div></div>
       </div>
       <div class="pcard">
-        <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1C6p8jmyXi0vWAF8nQtHX5kTB4IPDT6_b" alt="Fundación Revel" style="object-fit:contain;background:#fff;padding:16px;">
+        <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1YbMqtuUCmxjE2ILRErYIYU-jfP8m-M5U" alt="Fundación Revel" style="object-fit:contain;background:#fff;padding:16px;">
         <div class="pcard-body"><div class="pcard-title">Fundación Revel</div><div class="pcard-desc" data-es="Alianza estratégica con la Fundación Revel para el desarrollo de proyectos deportivos con impacto social en la región." data-en="Strategic alliance with Fundación Revel for the development of sports projects with social impact in the region.">Alianza estratégica con la Fundación Revel para el desarrollo de proyectos deportivos con impacto social en la región.</div></div>
       </div>
     </div>
