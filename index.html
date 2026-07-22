@@ -42,6 +42,7 @@ nav{position:sticky;top:0;z-index:200;background:rgba(11,31,58,.97);backdrop-fil
 
 .hero{background:linear-gradient(160deg,var(--navy) 0%,var(--navy-mid) 100%);padding:40px 24px 26px;text-align:center;position:relative;overflow:hidden}
 .hero::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(59,127,212,.18) 0%,transparent 70%)}
+.hero-logo{height:64px;width:auto;margin:0 auto 18px;display:block;position:relative}
 .hero-label{font-size:12px;letter-spacing:2px;color:var(--blue-bright);text-transform:uppercase;margin-bottom:16px;position:relative}
 .hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);color:#fff;letter-spacing:1px;line-height:1.05;position:relative}
 .hero-brand{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,4.2vw,40px);letter-spacing:1px;color:#fff;margin:6px 0 14px;position:relative}
@@ -122,6 +123,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 }
 
 @media (max-width:768px){
+  .hero-logo{height:46px;margin-bottom:14px}
   .hero-title{font-size:clamp(22px,7vw,32px)}
   .hero-sub{font-size:14px;padding:0 12px}
   .nav-partners{gap:12px}
@@ -152,7 +154,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 
 <nav>
   <div class="nav-left">
-    <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/173RFq6oC9zEAPo4VAixsmrzWZDViNDEJ" alt="Victory Sports" style="height:32px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
+    <a href="index.html" class="nav-logo"><img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports" style="height:32px;width:auto;display:block;filter:brightness(0) invert(1);"></a>
     <div class="nav-partners">
       <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation Clinic">
       <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="European Football Institute">
@@ -168,10 +170,10 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 </nav>
 
 <section class="hero">
-  <div class="hero-label" data-es="Agencia deportiva internacional" data-en="International sports agency">Agencia deportiva internacional</div>
+  <img class="hero-logo" src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports">
   <div class="hero-brand">VICTORY <span>SPORTS</span></div>
   <h1 class="hero-title" data-es="Creamos los grandes eventos del deporte mundial" data-en="We create the world's biggest sporting events">Creamos los grandes<br>eventos del deporte mundial</h1>
-  <p class="hero-sub" data-es="Alianzas estratégicas, relacionamiento institucional y logística para traer los eventos deportivos más importantes del mundo a ciudades y países alrededor del mundo." data-en="Strategic alliances, institutional relations and logistics to bring the world's most important sports properties to cities and countries around the world.">Alianzas estratégicas, relacionamiento institucional y logística para traer los eventos deportivos más importantes del mundo a ciudades y países alrededor del mundo.</p>
+  <p class="hero-sub" data-es="Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes." data-en="Project consulting, strategic alliances and institutional relations to organize the world's most important sporting events in cities and countries across every continent.">Consultoría de proyectos, alianzas estratégicas y relacionamiento institucional para organizar los eventos deportivos más importantes del mundo en ciudades y países de todos los continentes.</p>
 </section>
 
 <section id="programas" class="container">
