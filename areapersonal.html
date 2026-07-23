@@ -3638,9 +3638,9 @@ function adminSection(section) {
   const el = document.getElementById('admin-sec-' + section);
   if (el) el.style.display = '';
   // Render con datos actuales inmediatamente
-  if (section === 'pagos' && adminFinData) renderAdminPagos(adminFinData);
+  if (section === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
   if (section === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
-  if (section === 'participantes' && adminData && adminData.length) renderParticipantesKPIs(adminData);
+  if (section === 'participantes' && adminData && adminData.length) { renderParticipantesKPIs(adminData); filterAdminTable(); }
   // Recargas específicas por sección
   if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
@@ -3677,14 +3677,14 @@ function loadAdmin(force) {
     }
     adminLastLoaded = Date.now();
     renderAdminDashboard(adminData, adminFinData);
-    renderAdminTable(adminData);
+    filterAdminTable();
     renderParticipantesKPIs(adminData);
     applyAdminPermissions();
     const stabAcceso = document.getElementById('stab-acceso');
     if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
     // Re-render whichever section is currently visible
     const activeAsec = (document.querySelector('.asnav-btn.active') || {}).dataset?.asec;
-    if (activeAsec === 'pagos' && adminFinData) renderAdminPagos(adminFinData);
+    if (activeAsec === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
     if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
   })
   .catch(err => {
@@ -3710,6 +3710,7 @@ function refreshAdminPagos(btn) {
         adminFinData = fin;
         adminLastLoaded = Date.now();
         renderAdminPagos(adminFinData);
+        reapplyPagosFilter();
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
       }
     })
@@ -4138,7 +4139,8 @@ function renderAdminPagos(fin) {
     const tipoBadge = tipoPart
       ? `<span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${tipoPart}</span>`
       : '<span style="color:var(--muted);font-size:12px">—</span>';
-    return `<tr data-nombre="${key}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}">
+    const acudienteKey = (adRow.acudiente || '').toLowerCase();
+    return `<tr data-nombre="${key}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${acudienteKey}">
       <td>${tipoBadge}</td>
       <td style="font-weight:500">${nombre}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
@@ -4157,8 +4159,15 @@ function renderAdminPagos(fin) {
 function filtrarTablaPagos(q) {
   const term = (q || '').toLowerCase().trim();
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
-    tr.style.display = (!term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term)) ? '' : 'none';
+    tr.style.display = (!term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term)) ? '' : 'none';
   });
+}
+
+// Reaplica el término de búsqueda actual tras un re-render de la tabla de Pagos
+// (evita que refrescos de datos o acciones de guardado limpien visualmente el filtro).
+function reapplyPagosFilter() {
+  const el = document.getElementById('pagos-search');
+  if (el && el.value) filtrarTablaPagos(el.value);
 }
 
 // Pasos
@@ -4410,7 +4419,7 @@ function filterAdminTable() {
   if (!q) { renderAdminTable(adminData); return; }
   renderAdminTable(adminData.filter(row => {
     const n = normalizeParticipant(row) || {};
-    return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q);
+    return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.acudiente || '').toLowerCase().includes(q);
   }));
 }
 
@@ -4521,7 +4530,7 @@ function saveNewParticipant() {
         // Añadir al cache local y re-renderizar
         const newEntry = { _row: res._row, tipo, ...payload };
         adminData.push(newEntry);
-        renderAdminTable(adminData);
+        filterAdminTable();
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
         setTimeout(closeAddParticipantModal, 1400);
       } else {
@@ -4794,6 +4803,7 @@ function registrarPagoDesdePanel(tipo) {
           if (normNombre(p.nombre) === normNombre(nombre)) p.paquete = paquete;
         });
         renderAdminPagos(adminFinData);
+        reapplyPagosFilter();
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
       }
       // Pago marcado como Completo → avanzar paso_actual del participante (igual que cuando él mismo sube su comprobante)
@@ -4812,7 +4822,7 @@ function registrarPagoDesdePanel(tipo) {
               if (nuevoPaso > actual) r['paso_actual'] = String(nuevoPaso);
             }
           });
-          renderAdminTable(adminData);
+          filterAdminTable();
           if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
         }).catch(() => {});
       }
@@ -4859,9 +4869,9 @@ function saveEditModal() {
             }
           });
         });
-        renderAdminTable(adminData);
+        filterAdminTable();
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
-        if (typeof renderAdminPagos === 'function' && adminFinData) renderAdminPagos(adminFinData);
+        if (typeof renderAdminPagos === 'function' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
         setTimeout(closeEditModal, 1200);
       } else {
         statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
