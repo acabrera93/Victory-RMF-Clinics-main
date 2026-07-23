@@ -276,14 +276,14 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
       <div class="prog-group-label">Alianza institucional</div>
     </div>
     <div class="prog-grid">
-      <div class="pcard">
+      <a href="https://www.untourism.int/es" target="_blank" rel="noopener" class="pcard" style="text-decoration:none;color:inherit;display:block;">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/16JPj236ACh-oc1y8myut9JN1Gt8jSm9Z" alt="ONU Turismo">
         <div class="pcard-body"><div class="pcard-title">ONU Turismo</div><div class="pcard-desc" data-es="Proyecto conjunto con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede." data-en="Joint project with the United Nations tourism agency to promote sports tourism as a driver of development in host cities and countries.">Proyecto conjunto con el organismo de turismo de Naciones Unidas para promover el turismo deportivo como motor de desarrollo en las ciudades y países sede.</div></div>
-      </div>
-      <div class="pcard">
+      </a>
+      <a href="https://www.fundacionrevel.net" target="_blank" rel="noopener" class="pcard" style="text-decoration:none;color:inherit;display:block;">
         <img class="pcard-img" src="https://lh3.googleusercontent.com/d/1q93sO8KMTvhtNOFwAD2aZ_FsssIaYYJX" alt="Fundación Revel">
         <div class="pcard-body"><div class="pcard-title">Fundación Revel</div><div class="pcard-desc" data-es="Alianza estratégica con la Fundación Revel para el desarrollo de proyectos deportivos con impacto social en la región." data-en="Strategic alliance with Fundación Revel for the development of sports projects with social impact in the region.">Alianza estratégica con la Fundación Revel para el desarrollo de proyectos deportivos con impacto social en la región.</div></div>
-      </div>
+      </a>
     </div>
   </div>
 
@@ -409,7 +409,7 @@ function enviarContacto(e){
   var tipo = document.getElementById('c-tipo').value;
   var mensaje = document.getElementById('c-mensaje').value;
   var body = 'Nombre: ' + nombre + '%0AOrganización: ' + org + '%0APaís: ' + pais + '%0AEmail: ' + email + '%0ATipo de proyecto: ' + tipo + '%0AMensaje: ' + mensaje;
-  window.location.href = 'mailto:info@victory.com.es?subject=Contacto institucional - ' + org + '&body=' + body;
+  window.location.href = 'mailto:alejandro.cabrera@victory.com.es?subject=Contacto institucional - ' + org + '&body=' + body;
   return false;
 }
 </script>
