@@ -146,6 +146,16 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .saber-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
 .saber-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--navy);font-size:14px;transition:background .2s}
 .saber-item:hover{background:rgba(30,91,168,.05)}
+/* FAQ (Prepárate) */
+.faq-grid{display:flex;flex-direction:column;gap:0}
+.faq-item{border-bottom:1px solid var(--border);cursor:pointer}
+.faq-item:last-child{border-bottom:none}
+.faq-question{display:flex;align-items:center;justify-content:space-between;padding:16px 0;font-size:14px;font-weight:600;color:var(--navy);transition:color .2s}
+.faq-item:hover .faq-question{color:var(--blue)}
+.faq-arrow{font-size:16px;color:var(--blue);transition:transform .3s;flex-shrink:0;margin-left:14px}
+.faq-item.open .faq-arrow{transform:rotate(45deg)}
+.faq-answer{display:none;padding:0 0 16px;font-size:13px;font-weight:400;color:var(--muted);line-height:1.7}
+.faq-item.open .faq-answer{display:block}
 /* Communications feed */
 .comun-feed{display:flex;flex-direction:column;gap:12px;margin-top:4px}
 .comun-msg{padding:16px 18px;border:1px solid var(--border);border-radius:8px;background:#f8fafc}
@@ -1170,10 +1180,48 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
 
     <!-- ARCHIVOS DEL DRIVE -->
-    <div class="card">
+    <div class="card" style="margin-bottom:18px;">
       <div class="ctitle">Archivos e información adicional</div>
       <div id="saber-list" class="saber-list">
         <p style="color:var(--muted)">Cargando información...</p>
+      </div>
+    </div>
+
+    <!-- PREGUNTAS FRECUENTES -->
+    <div class="card">
+      <div class="ctitle">Preguntas frecuentes</div>
+      <div class="faq-grid">
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-question">¿Mi hijo viaja solo o con acompañante? <span class="faq-arrow">+</span></div>
+          <div class="faq-answer">Tu hijo viaja en grupo con otros jóvenes latinoamericanos. Nuestro equipo incluye 1 persona de staff por cada 10 niños, acompañando al grupo en todo momento desde el aeropuerto de salida hasta el regreso a Colombia. Nunca están solos.</div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-question">¿Qué nivel futbolístico se requiere para el RMF Clinic? <span class="faq-arrow">+</span></div>
+          <div class="faq-answer">Pueden participar jugadores de equipos de fútbol, jugadores individuales y alumnos de colegios. El programa está diseñado para jóvenes de 8 a 17 años con distintos niveles. En el proceso de inscripción evaluamos el perfil de tu hijo para asegurarnos de que sea la experiencia correcta.</div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-question">¿Cómo funciona el pago en dos cuotas? <span class="faq-arrow">+</span></div>
+          <div class="faq-answer">El programa se puede pagar en dos cuotas cómodas. Al reservar pagas la primera cuota para asegurar el cupo, y el saldo restante antes del viaje. Contáctanos para conocer el precio exacto según el programa y tipo de participante.</div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-question">¿Puedo viajar como acompañante de mi hijo? <span class="faq-arrow">+</span></div>
+          <div class="faq-answer">¡Sí! Tenemos un programa especial para acompañantes con su propio itinerario. Mientras tu hijo entrena, tú tienes días libres para explorar Madrid. Hay opciones de solo actividades o paquete completo con hotel. Solicita información para conocer las opciones disponibles.</div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-question">¿El partido del Real Madrid está garantizado? <span class="faq-arrow">+</span></div>
+          <div class="faq-answer">La entrada al partido de Liga del Real Madrid C.F. está disponible únicamente para jugadores y está sujeta al calendario oficial de LaLiga para octubre de 2026. En caso de no coincidir con una fecha de local, se coordina una actividad alternativa de igual valor.</div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-question">¿El tiquete aéreo está incluido en el precio? <span class="faq-arrow">+</span></div>
+          <div class="faq-answer">El precio base no incluye el tiquete aéreo. Sin embargo, gestionamos una reserva de grupo Bogotá–Madrid–Bogotá con tarifa preferencial. También puedes gestionar tu propio tiquete de forma independiente. Contáctanos para más detalles.</div>
+        </div>
+
       </div>
     </div>
   </div>
