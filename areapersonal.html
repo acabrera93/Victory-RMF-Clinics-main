@@ -1537,6 +1537,9 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
               <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;background:#fff;font-size:13px;color:var(--navy)" id="dest-opt-individual">
                 <input type="radio" name="comun-dest" value="individual" onchange="onComunDestChange()" style="accent-color:var(--blue)"> 👤 Individual
               </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;background:#fff;font-size:13px;color:var(--navy)" id="dest-opt-colegio">
+                <input type="radio" name="comun-dest" value="colegio" onchange="onComunDestChange()" style="accent-color:var(--blue)"> 🏫 Por colegio
+              </label>
             </div>
             <!-- Selector individual multi -->
             <div id="comun-individual-wrap" style="display:none;margin-top:12px">
@@ -1551,6 +1554,21 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
               <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
                 <span id="comun-individual-count" style="font-size:12px;color:var(--muted)">0 seleccionados</span>
                 <button type="button" onclick="seleccionarTodosIndividual()" style="font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;padding:0;font-family:'DM Sans',sans-serif">Seleccionar todos</button>
+              </div>
+            </div>
+            <!-- Selector por colegio multi -->
+            <div id="comun-colegio-wrap" style="display:none;margin-top:12px">
+              <label style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:6px">Seleccionar colegio(s)</label>
+              <input type="text" id="comun-colegio-search" placeholder="Buscar colegio..."
+                     oninput="filtrarComunColegio()"
+                     style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--navy);background:#fff;outline:none;box-sizing:border-box;margin-bottom:6px"
+                     onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''">
+              <div id="comun-colegio-list"
+                   style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px 4px;background:#fff">
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+                <span id="comun-colegio-count" style="font-size:12px;color:var(--muted)">0 seleccionados</span>
+                <button type="button" onclick="seleccionarTodosColegio()" style="font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;padding:0;font-family:'DM Sans',sans-serif">Seleccionar todos</button>
               </div>
             </div>
           </div>
@@ -5131,9 +5149,9 @@ function loadAdminComunicados() {
 
 function onComunDestChange() {
   const val = document.querySelector('input[name="comun-dest"]:checked')?.value || 'todos';
-  const wrap = document.getElementById('comun-individual-wrap');
-  wrap.style.display = val === 'individual' ? '' : 'none';
-  ['todos','con_tiquete','sin_tiquete','individual'].forEach(k => {
+  document.getElementById('comun-individual-wrap').style.display = val === 'individual' ? '' : 'none';
+  document.getElementById('comun-colegio-wrap').style.display = val === 'colegio' ? '' : 'none';
+  ['todos','con_tiquete','sin_tiquete','individual','colegio'].forEach(k => {
     const lbl = document.getElementById('dest-opt-' + k);
     if (lbl) lbl.style.borderColor = (k === val) ? 'var(--blue)' : '';
   });
@@ -5141,6 +5159,77 @@ function onComunDestChange() {
     const list = document.getElementById('comun-individual-list');
     if (!list.children.length && adminData.length) poblarComunIndividual('');
   }
+  if (val === 'colegio') {
+    const list = document.getElementById('comun-colegio-list');
+    if (!list.children.length && adminData.length) poblarComunColegio('');
+  }
+}
+
+function getColegiosUnicos() {
+  const set = new Set();
+  (adminData || []).forEach(row => {
+    const n = normalizeParticipant(row) || {};
+    const colegio = (n.club_colegio || row['Club / Colegio'] || row['Club/Colegio'] || row['Colegio'] || row['Club'] || '').trim();
+    if (colegio) set.add(colegio);
+  });
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+function poblarComunColegio(filtro) {
+  const list = document.getElementById('comun-colegio-list');
+  const q = (filtro || '').toLowerCase();
+  const prevChecked = new Set(
+    Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)
+  );
+  const colegios = getColegiosUnicos().filter(c => !q || c.toLowerCase().includes(q));
+  if (!colegios.length) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;margin:6px 8px">No hay colegios registrados aún.</p>';
+    actualizarCuentaColegio();
+    return;
+  }
+  list.innerHTML = colegios.map(colegio => {
+    const checked = prevChecked.has(colegio) ? ' checked' : '';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background=''">
+      <input type="checkbox" value="${colegio.replace(/"/g,'&quot;')}"${checked} onchange="actualizarCuentaColegio()" style="accent-color:var(--blue);width:15px;height:15px;flex-shrink:0">
+      <span>🏫 ${colegio}</span>
+    </label>`;
+  }).join('');
+  actualizarCuentaColegio();
+}
+
+function filtrarComunColegio() {
+  poblarComunColegio(document.getElementById('comun-colegio-search').value);
+}
+
+function actualizarCuentaColegio() {
+  const count = document.querySelectorAll('#comun-colegio-list input[type="checkbox"]:checked').length;
+  document.getElementById('comun-colegio-count').textContent =
+    count === 1 ? '1 seleccionado' : count + ' seleccionados';
+}
+
+function seleccionarTodosColegio() {
+  const cbs = document.querySelectorAll('#comun-colegio-list input[type="checkbox"]');
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  cbs.forEach(cb => cb.checked = !allChecked);
+  actualizarCuentaColegio();
+}
+
+// Resuelve los colegios seleccionados a los emails de sus participantes
+// (se envía como lista de emails, igual que la opción "Individual", sin requerir cambios en el backend).
+function emailsPorColegios(colegios) {
+  const setColegios = new Set(colegios.map(c => c.toLowerCase().trim()));
+  const emails = [];
+  const seen = new Set();
+  (adminData || []).forEach(row => {
+    const n = normalizeParticipant(row) || {};
+    const colegio = (n.club_colegio || row['Club / Colegio'] || row['Club/Colegio'] || row['Colegio'] || row['Club'] || '').toLowerCase().trim();
+    const email = (n.email || '').toLowerCase().trim();
+    if (colegio && setColegios.has(colegio) && email && !seen.has(email)) {
+      seen.add(email);
+      emails.push(email);
+    }
+  });
+  return emails;
 }
 
 function poblarComunIndividual(filtro) {
@@ -5194,10 +5283,18 @@ function adminPublicarComunicado() {
   const statusEl = document.getElementById('comun-publish-status');
   const destVal = document.querySelector('input[name="comun-dest"]:checked')?.value || 'todos';
   let destinatario = destVal;
+  let colegiosSeleccionados = [];
   if (destVal === 'individual') {
     const checked = Array.from(document.querySelectorAll('#comun-individual-list input[type="checkbox"]:checked'));
     if (!checked.length) { statusEl.style.display='block'; statusEl.innerHTML='<span style="color:#dc2626">Selecciona al menos un participante.</span>'; return; }
     destinatario = checked.map(cb => cb.value).join(',');
+  }
+  if (destVal === 'colegio') {
+    colegiosSeleccionados = Array.from(document.querySelectorAll('#comun-colegio-list input[type="checkbox"]:checked')).map(cb => cb.value);
+    if (!colegiosSeleccionados.length) { statusEl.style.display='block'; statusEl.innerHTML='<span style="color:#dc2626">Selecciona al menos un colegio.</span>'; return; }
+    const emails = emailsPorColegios(colegiosSeleccionados);
+    if (!emails.length) { statusEl.style.display='block'; statusEl.innerHTML='<span style="color:#dc2626">No se encontraron participantes de los colegios seleccionados.</span>'; return; }
+    destinatario = emails.join(',');
   }
   if (!titulo || !mensaje) { statusEl.style.display='block'; statusEl.innerHTML='<span style="color:#dc2626">Completa el título y el mensaje.</span>'; return; }
   statusEl.style.display = 'block';
@@ -5209,7 +5306,8 @@ function adminPublicarComunicado() {
     .then(res => {
       if (res.ok) {
         const nDest = destinatario.includes(',') ? destinatario.split(',').length + ' participantes' : destinatario;
-        const destLabel = {todos:'todos los participantes',con_tiquete:'participantes con tiquete',sin_tiquete:'participantes sin tiquete'}[destVal] || nDest;
+        let destLabel = {todos:'todos los participantes',con_tiquete:'participantes con tiquete',sin_tiquete:'participantes sin tiquete'}[destVal] || nDest;
+        if (destVal === 'colegio') destLabel = colegiosSeleccionados.join(', ') + ' (' + nDest + ')';
         statusEl.innerHTML = `<span style="color:var(--green)">✅ Comunicado publicado y enviado a <strong>${destLabel}</strong>.</span>`;
         document.getElementById('comun-titulo-input').value = '';
         document.getElementById('comun-mensaje-input').value = '';
