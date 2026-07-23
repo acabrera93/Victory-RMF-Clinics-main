@@ -367,7 +367,8 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
           </div>
           <div class="form-field full"><label data-es="Mensaje" data-en="Message">Mensaje</label><textarea id="c-mensaje"></textarea></div>
         </div>
-        <button type="submit" class="contact-btn" data-es="Enviar mensaje" data-en="Send message">Enviar mensaje</button>
+        <button type="submit" class="contact-btn" id="contact-submit-btn" data-es="Enviar mensaje" data-en="Send message">Enviar mensaje</button>
+        <div id="contact-status" style="margin-top:12px;display:none;font-size:13px;padding:10px 14px;border-radius:8px"></div>
       </form>
     </div>
   </div>
@@ -400,16 +401,48 @@ function toggleLang(){
   });
 }
 
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+
 function enviarContacto(e){
   e.preventDefault();
-  var nombre = document.getElementById('c-nombre').value;
-  var org = document.getElementById('c-org').value;
-  var pais = document.getElementById('c-pais').value;
-  var email = document.getElementById('c-email').value;
+  var nombre = document.getElementById('c-nombre').value.trim();
+  var org = document.getElementById('c-org').value.trim();
+  var pais = document.getElementById('c-pais').value.trim();
+  var email = document.getElementById('c-email').value.trim();
   var tipo = document.getElementById('c-tipo').value;
-  var mensaje = document.getElementById('c-mensaje').value;
-  var body = 'Nombre: ' + nombre + '%0AOrganización: ' + org + '%0APaís: ' + pais + '%0AEmail: ' + email + '%0ATipo de proyecto: ' + tipo + '%0AMensaje: ' + mensaje;
-  window.location.href = 'mailto:alejandro.cabrera@victory.com.es?subject=Contacto institucional - ' + org + '&body=' + body;
+  var mensaje = document.getElementById('c-mensaje').value.trim();
+
+  var btn = document.getElementById('contact-submit-btn');
+  var statusEl = document.getElementById('contact-status');
+  btn.disabled = true;
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'var(--off, #f1f5f9)';
+  statusEl.style.color = 'var(--muted, #64748b)';
+  statusEl.textContent = currentLang === 'es' ? 'Enviando...' : 'Sending...';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'contacto_institucional', nombre: nombre, organizacion: org, pais: pais, email: email, tipo: tipo, mensaje: mensaje }),
+    redirect: 'follow'
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){
+    btn.disabled = false;
+    if (res && res.ok) {
+      statusEl.style.color = '#166534';
+      statusEl.textContent = currentLang === 'es' ? '✓ Mensaje enviado correctamente. Te contactaremos pronto.' : '✓ Message sent successfully. We will contact you soon.';
+      document.getElementById('contact-institucional').reset();
+    } else {
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = (currentLang === 'es' ? 'Error al enviar: ' : 'Error sending: ') + (res && res.error ? res.error : (currentLang === 'es' ? 'desconocido' : 'unknown'));
+    }
+  })
+  .catch(function(){
+    btn.disabled = false;
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = currentLang === 'es' ? 'Error de conexión. Inténtalo de nuevo.' : 'Connection error. Please try again.';
+  });
   return false;
 }
 </script>

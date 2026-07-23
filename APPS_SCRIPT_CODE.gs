@@ -354,6 +354,7 @@ function doPost(e) {
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
         if (parsed.action === 'eliminar_foto_drive') return eliminarFotoDrive(parsed);
         if (parsed.action === 'agregar_participante') return agregarParticipante(parsed);
+        if (parsed.action === 'contacto_institucional') return contactoInstitucional(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
       } catch (_) {}
     }
@@ -859,6 +860,29 @@ function guardarComercial(data) {
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('guardarComercial error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── CONTACTO INSTITUCIONAL (formulario index.html) ─────────────────────────
+function contactoInstitucional(data) {
+  try {
+    var nombre = String(data.nombre || '').trim();
+    var org = String(data.organizacion || '').trim();
+    var pais = String(data.pais || '').trim();
+    var email = String(data.email || '').trim();
+    var tipo = String(data.tipo || '').trim();
+    var mensaje = String(data.mensaje || '').trim();
+    if (!nombre || !org || !pais || !email) return sendResponse(400, { ok: false, error: 'Faltan campos requeridos' });
+
+    var destino = 'alejandro.cabrera@victory.com.es';
+    var subject = 'Contacto institucional — ' + org;
+    var body = 'Nombre: ' + nombre + '\nOrganización: ' + org + '\nPaís: ' + pais + '\nEmail: ' + email
+      + '\nTipo de proyecto: ' + tipo + '\nMensaje: ' + mensaje;
+    GmailApp.sendEmail(destino, subject, body, { replyTo: email, name: 'Victory Sports - Web' });
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('contactoInstitucional error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
