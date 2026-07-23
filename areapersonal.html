@@ -1690,6 +1690,17 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 </div>
 
+<!-- MODAL NUEVO MENSAJE -->
+<div class="modal-overlay" id="nuevo-mensaje-modal" onclick="if(event.target===this)closeNuevoMensajeModal()">
+  <div class="modal-box" style="max-width:380px;text-align:center">
+    <div style="font-size:40px;margin-bottom:10px">💬</div>
+    <div style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Tienes un nuevo mensaje</div>
+    <p style="color:var(--muted);font-size:14px;margin:0 0 22px">El equipo Victory publicó un comunicado nuevo. Revísalo en tu buzón de mensajes.</p>
+    <button onclick="goToNuevoMensaje()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Ver mensaje →</button>
+    <button onclick="closeNuevoMensajeModal()" style="width:100%;margin-top:8px;padding:10px 22px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;color:var(--muted)">Más tarde</button>
+  </div>
+</div>
+
 <script>
 // ── CONFIG (mismo webhook que inscripción; Make filtra por body.action) ───
 const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
@@ -3325,9 +3336,27 @@ function checkNuevosComunicados() {
       if (!Array.isArray(msgs) || !msgs.length) return;
       const key = 'comun_seen_' + participantEmail;
       const seen = parseInt(localStorage.getItem(key) || '0');
-      if (msgs.length > seen) showComunBadge(msgs.length - seen);
+      if (msgs.length > seen) {
+        showComunBadge(msgs.length - seen);
+        showNuevoMensajeModal();
+      }
     })
     .catch(() => {});
+}
+
+function showNuevoMensajeModal() {
+  const modal = document.getElementById('nuevo-mensaje-modal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeNuevoMensajeModal() {
+  const modal = document.getElementById('nuevo-mensaje-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+function goToNuevoMensaje() {
+  closeNuevoMensajeModal();
+  switchSection('comunicaciones');
 }
 
 function showComunBadge(count) {
