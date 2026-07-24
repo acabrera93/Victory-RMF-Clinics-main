@@ -193,7 +193,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .ptable th{background:var(--navy);color:#fff;padding:11px 14px;text-align:left;font-weight:500;white-space:nowrap}
 .ptable td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
 .ptable tr:last-child td{border-bottom:none}
-.ptable tr:hover td{background:rgba(30,91,168,.03);cursor:default}
+.ptable tr:hover td{background:rgba(30,91,168,.03)}
 .paso-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(30,91,168,.1);color:var(--blue)}
 .paso-done{background:rgba(22,101,52,.1);color:#166534}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8000;align-items:center;justify-content:center;padding:20px}
@@ -506,7 +506,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <input class="login-input" id="login-email" type="email" placeholder="tucorreo@ejemplo.com" onkeydown="if(event.key==='Enter') doLogin()">
     <button class="login-btn" id="login-btn" onclick="doLogin()">Acceder →</button>
     <div class="login-err" id="login-err">No encontramos ninguna inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.</div>
-    <div class="login-footer">¿Aún no te has inscrito? <a href="preinscripcion.html" style="color:var(--blue-light)">Ir al formulario →</a></div>
+    <div class="login-footer">¿Aún no te has inscrito? <a href="inscripcion.html" style="color:var(--blue-light)">Ir al formulario →</a></div>
   </div>
 </div>
 
@@ -1686,6 +1686,20 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 </div>
 
+<!-- MODAL DETALLE PARTICIPANTE -->
+<div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal-box">
+    <div class="modal-title">
+      <span id="detail-modal-title-name">Detalle del participante</span>
+      <button onclick="closeDetailModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px">×</button>
+    </div>
+    <div class="modal-grid" id="detail-modal-body"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+      <button onclick="closeDetailModal()" style="padding:10px 22px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;color:var(--muted)">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL COMERCIAL -->
 <div class="modal-overlay" id="comercial-modal" onclick="if(event.target===this)closeComercialModal()">
   <div class="modal-box" style="max-width:480px">
@@ -1779,7 +1793,7 @@ const SUPER_ADMIN = 'alejandro.cabrera@fundacionrevel.net';
 // Las contraseñas se gestionan desde la propia app (admin → panel acceso; comercial → panel comercial)
 // (Después de desplegar tu Apps Script, copia la URL de implementación aquí)
 
-/** Mismo criterio que preinscripcion.html: evita preflight CORS desde GitHub Pages. */
+/** Mismo criterio que inscripcion.html: evita preflight CORS desde GitHub Pages. */
 function postMakeWebhook(baseUrl, payload) {
   return fetch(baseUrl, {
     method: 'POST',
@@ -4483,7 +4497,7 @@ function renderAdminTable(rows) {
     const origIdx = adminData.indexOf(row);
     const tipoBg = tp.toLowerCase().includes('jug') ? 'rgba(30,91,168,.1)' : tp.toLowerCase().includes('staff') ? 'rgba(124,58,237,.1)' : 'rgba(22,101,52,.08)';
     const tipoColor = tp.toLowerCase().includes('jug') ? 'var(--blue)' : tp.toLowerCase().includes('staff') ? '#7c3aed' : '#166534';
-    return `<tr>
+    return `<tr onclick="openDetailModal(${origIdx})" style="cursor:pointer">
       <td style="font-weight:500">${nb}</td>
       <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${tipoBg};color:${tipoColor}">${tp}</span></td>
       <td style="font-size:12px;color:var(--muted)">${em}</td>
@@ -4493,7 +4507,7 @@ function renderAdminTable(rows) {
       <td style="text-align:center">${tiq}</td>
       <td style="font-size:12px">${hab}</td>
       <td><span class="${cls}">${paso}</span></td>
-      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="event.stopPropagation();openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
     </tr>`;
   }).join('');
 }
@@ -4573,6 +4587,57 @@ function openEditModal(idx) {
 function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('open');
   adminCurrentRow = null;
+}
+
+// ── MODAL DETALLE PARTICIPANTE (solo lectura) ──────────────────────────────────
+function calcularEdad(fechaStr) {
+  if (!fechaStr) return null;
+  const s = String(fechaStr).trim();
+  let d, m, y;
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (iso) { y = +iso[1]; m = +iso[2]; d = +iso[3]; }
+  else if (dmy) { d = +dmy[1]; m = +dmy[2]; y = +dmy[3]; }
+  else return null;
+  const birth = new Date(y, m - 1, d);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let edad = today.getFullYear() - birth.getFullYear();
+  const mDiff = today.getMonth() - birth.getMonth();
+  if (mDiff < 0 || (mDiff === 0 && today.getDate() < birth.getDate())) edad--;
+  return edad;
+}
+
+function openDetailModal(idx) {
+  const row = adminData[idx];
+  if (!row) return;
+  const n = normalizeParticipant(row) || {};
+  const edad = calcularEdad(n.fecha_nacimiento);
+  const pasaporte = rowVal(row, 'pasaporte', 'Pasaporte', 'documento_pasaporte', 'No. Pasaporte', 'numero_pasaporte');
+  const salud = rowVal(row, 'salud_alergias', 'Salud/Alergias', 'Salud / Alergias', 'Condiciones médicas y alergias', 'condiciones_medicas', 'alergias');
+  const tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
+
+  const items = [
+    ['Nombre', n.nombre || '—'],
+    ['Edad', edad != null ? edad + ' años' : '—'],
+    ['Colegio / Club', n.club_colegio || '—'],
+    ['Acudiente', n.acudiente || '—'],
+    ['Pasaporte', pasaporte || '—'],
+    ['Tiquete aéreo', tieneTiquete ? '✈ Sí, incluye tiquete' : 'No incluye tiquete'],
+    ['Tipo', n.tipo || '—'],
+    ['Salud / Alergias', salud || 'Ninguna reportada'],
+    ['Teléfono (WhatsApp)', n.phone || '—']
+  ];
+
+  document.getElementById('detail-modal-title-name').textContent = n.nombre || 'Detalle del participante';
+  document.getElementById('detail-modal-body').innerHTML = items.map(([label, val]) =>
+    `<div class="mfield"><label>${label}</label><div style="font-size:14px;color:var(--navy);padding:4px 0">${val}</div></div>`
+  ).join('');
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-modal').classList.remove('open');
 }
 
 // ── MODAL AGREGAR INSCRITO ─────────────────────────────────────────────────────
