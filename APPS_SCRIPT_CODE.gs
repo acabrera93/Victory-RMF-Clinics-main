@@ -434,6 +434,7 @@ function handleMultipartUpload(e) {
 
     // Actualizar Sheets
     updateSheetWithUpload(email, tipo_documento, tipo_pago, fileName, fileUrl, fileId);
+    notificarDocumentoSubido(email, tipo_documento, tipo_pago, fileName, fileUrl);
 
     return sendResponse(200, {
       ok: true,
@@ -502,6 +503,7 @@ function handleJsonUpload(e) {
 
     // Actualizar Sheets
     updateSheetWithUpload(email, tipo_documento, tipo_pago, finalFileName, fileUrl, fileId);
+    notificarDocumentoSubido(email, tipo_documento, tipo_pago, finalFileName, fileUrl);
 
     return sendResponse(200, {
       ok: true,
@@ -513,6 +515,51 @@ function handleJsonUpload(e) {
   } catch (err) {
     Logger.log('JSON upload error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── NOTIFICAR SUBIDA DE DOCUMENTO ───────────────────────────────────────────
+function notificarDocumentoSubido(email, tipoDoc, tipoPago, fileName, fileUrl) {
+  try {
+    var notifyEmail = 'alejandro.cabrera@fundacionrevel.net';
+
+    // Buscar nombre del participante en la hoja principal
+    var nombre = '';
+    try {
+      var mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+      var mainData = mainSheet.getDataRange().getValues();
+      var headers = mainData[0] || [];
+      var emailCol = -1, nombreCol = -1;
+      for (var j = 0; j < headers.length; j++) {
+        var h = String(headers[j]).toLowerCase();
+        if (h === 'email' && emailCol < 0) emailCol = j;
+        if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
+      }
+      if (emailCol >= 0) {
+        for (var i = 1; i < mainData.length; i++) {
+          if (String(mainData[i][emailCol] || '').toLowerCase().trim() === email) {
+            nombre = nombreCol >= 0 ? String(mainData[i][nombreCol] || '') : '';
+            break;
+          }
+        }
+      }
+    } catch (lookupErr) {
+      Logger.log('notificarDocumentoSubido lookup error: ' + lookupErr);
+    }
+
+    var quien = nombre ? (nombre + ' (' + email + ')') : email;
+    var tipoDescripcion = tipoPago
+      ? 'comprobante de pago (' + tipoPago + ')'
+      : 'documento (' + tipoDoc + ')';
+
+    var subject = '[Área Personal] Nuevo documento subido — ' + (nombre || email);
+    var body = quien + ' ha subido un ' + tipoDescripcion + ':\n\n' +
+      'Archivo: ' + fileName + '\n' +
+      'Enlace: ' + fileUrl;
+
+    GmailApp.sendEmail(notifyEmail, subject, body, { name: 'Real Madrid Foundation Clinic' });
+  } catch (err) {
+    Logger.log('notificarDocumentoSubido error: ' + err);
   }
 }
 
