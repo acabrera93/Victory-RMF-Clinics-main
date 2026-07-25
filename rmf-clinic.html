@@ -971,7 +971,7 @@
   <!-- Foto de fondo -->
   <div style="position:absolute; inset:0; z-index:0;">
     <!-- TODO: reemplazar por URL de imgbb.com, imgur bloquea hotlinking -->
-    <img src="https://i.imgur.com/PEspvqo.jpeg" style="width:100%; height:100%; object-fit:cover; object-position:center;">
+    <img src="https://i.imgur.com/PEspvqo.jpeg" alt="" style="width:100%; height:100%; object-fit:cover; object-position:center;">
     <div style="position:absolute; inset:0; background:linear-gradient(to right, rgba(11,31,58,0.92) 0%, rgba(11,31,58,0.75) 50%, rgba(11,31,58,0.3) 100%);"></div>
   </div>
 
@@ -1371,6 +1371,7 @@
   </div>
 </section>
 
+<script src="config.js"></script>
 <script>
 // ─── CONFIGURACIÓN — REEMPLAZA ESTOS VALORES ─────────────────────────────────
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/3gcs8kbhhs9pwlnblt16l5oqybbkc6sh';
@@ -1501,7 +1502,7 @@ function showStatus(type, msg, onClick) {
 
 // ─── GALERÍA MEMORIAS ──────────────────────────────────────────────────────────
 (function() {
-  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+  // APPS_SCRIPT_URL viene de config.js (compartido entre todas las páginas)
   var CACHE_KEY = 'rmf_memorias_v1';
   var CACHE_TTL = 60 * 60 * 1000; // 1 hora en ms
   var trackProg = document.getElementById('galeria-track-prog');
