@@ -746,6 +746,9 @@
   }
   .form-select:focus { border-color: rgba(59,127,212,0.6); }
   .form-select option { background: var(--navy-mid); }
+  .form-input.field-error, .form-select.field-error { border-color: #dc2626; }
+  .field-error-msg { display: none; color: #f87171; font-size: 12px; margin-top: 6px; }
+  .field-error-msg.show { display: block; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .form-submit {
     width: 100%;
@@ -1330,12 +1333,14 @@
 
           <div class="form-group">
             <input class="form-input" id="f-nombre" type="text" placeholder="Tu nombre y apellido *" required>
+            <div class="field-error-msg" id="err-f-nombre">Por favor completa tu nombre.</div>
           </div>
           <div class="form-group">
             <input class="form-input" id="f-jugador" type="text" placeholder="Nombre y apellido del jugador *" required>
+            <div class="field-error-msg" id="err-f-jugador">Por favor completa el nombre del jugador.</div>
           </div>
           <div class="form-group">
-            <select class="form-select" id="f-edad">
+            <select class="form-select" id="f-edad" required>
               <option value="">Edad del jugador</option>
               <option value="8">8 años</option>
               <option value="9">9 años</option>
@@ -1348,12 +1353,15 @@
               <option value="16">16 años</option>
               <option value="17">17 años</option>
             </select>
+            <div class="field-error-msg" id="err-f-edad">Por favor selecciona la edad del jugador.</div>
           </div>
           <div class="form-group">
             <input class="form-input" id="f-phone" type="tel" placeholder="WhatsApp *" required>
+            <div class="field-error-msg" id="err-f-phone">Ingresa un número de WhatsApp válido con código de país (ej: +57 310...).</div>
           </div>
           <div class="form-group">
             <input class="form-input" id="f-email" type="email" placeholder="Correo electrónico *" required>
+            <div class="field-error-msg" id="err-f-email">Ingresa un correo electrónico válido.</div>
           </div>
 
           <button id="submit-btn" class="form-submit" onclick="handleSubmit(event)">
@@ -1412,6 +1420,22 @@ Un asesor de Revel Fundación te contactará en menos de 24 horas para:
 ¡Nos emociona acompañarte en esta experiencia! 🌍`;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[\d\s\-()]{8,}$/;
+const REQUIRED_FIELD_IDS = ['f-nombre', 'f-jugador', 'f-edad', 'f-phone', 'f-email'];
+
+function clearFieldErrors() {
+  REQUIRED_FIELD_IDS.forEach(id => {
+    document.getElementById(id)?.classList.remove('field-error');
+    document.getElementById('err-' + id)?.classList.remove('show');
+  });
+}
+
+function markFieldError(id) {
+  document.getElementById(id)?.classList.add('field-error');
+  document.getElementById('err-' + id)?.classList.add('show');
+}
+
 async function handleSubmit(e) {
   e.preventDefault();
 
@@ -1422,17 +1446,17 @@ async function handleSubmit(e) {
   const phone      = document.getElementById('f-phone')?.value?.trim();
   const email      = document.getElementById('f-email')?.value?.trim();
 
-  // Validación básica
-  if (!nombre || !phone || !email) {
-    showStatus('error', '⚠️ Por favor completa tu nombre, WhatsApp y correo electrónico.');
-    return;
-  }
-  if (!edad) {
-    showStatus('error', '⚠️ Por favor selecciona la edad del jugador.');
-    return;
-  }
-  if (!/^\+?[\d\s\-()]{8,}$/.test(phone)) {
-    showStatus('error', '⚠️ Ingresa un número de WhatsApp válido con código de país (ej: +57 310...)');
+  clearFieldErrors();
+  let firstErrorId = null;
+  if (!nombre)   { markFieldError('f-nombre');  firstErrorId = firstErrorId || 'f-nombre'; }
+  if (!jugador)  { markFieldError('f-jugador'); firstErrorId = firstErrorId || 'f-jugador'; }
+  if (!edad)     { markFieldError('f-edad');    firstErrorId = firstErrorId || 'f-edad'; }
+  if (!phone || !PHONE_RE.test(phone)) { markFieldError('f-phone'); firstErrorId = firstErrorId || 'f-phone'; }
+  if (!email || !EMAIL_RE.test(email)) { markFieldError('f-email'); firstErrorId = firstErrorId || 'f-email'; }
+
+  if (firstErrorId) {
+    showStatus('error', '⚠️ Revisa los campos marcados en rojo.');
+    document.getElementById(firstErrorId)?.focus();
     return;
   }
 
@@ -1457,7 +1481,8 @@ async function handleSubmit(e) {
   try {
     await fetch(MAKE_WEBHOOK_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify(payload)
     });
 
@@ -1485,6 +1510,16 @@ async function handleSubmit(e) {
     btn.innerHTML = 'Reintentar →';
   }
 }
+
+// Limpia el estado de error de un campo apenas el usuario empieza a corregirlo
+REQUIRED_FIELD_IDS.forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    el.classList.remove('field-error');
+    document.getElementById('err-' + id)?.classList.remove('show');
+  });
+});
 
 function showStatus(type, msg, onClick) {
   const el = document.getElementById('submit-status');
