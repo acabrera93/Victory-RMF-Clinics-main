@@ -26,6 +26,78 @@ function getDefaultPassword() {
   return PropertiesService.getScriptProperties().getProperty('default_password') || '';
 }
 
+// ───── TOKENS DE SESIÓN (firmados con HMAC, sin estado en servidor) ────────────
+// El panel admin/comercial no tiene sesiones de servidor: en su lugar, tras validar
+// la contraseña se emite un token firmado (email+rol+expiración) que el cliente debe
+// reenviar en cada acción sensible. Sin un token válido con el rol requerido, el
+// backend rechaza la acción — así una llamada directa al endpoint sin pasar por el
+// login no puede leer ni modificar datos de participantes.
+function getTokenSecret_() {
+  const props = PropertiesService.getScriptProperties();
+  let secret = props.getProperty('token_secret');
+  if (!secret) {
+    secret = Utilities.getUuid() + Utilities.getUuid();
+    props.setProperty('token_secret', secret);
+  }
+  return secret;
+}
+
+function generarSesionToken(email, rol) {
+  const payload = JSON.stringify({
+    email: String(email || '').toLowerCase().trim(),
+    rol: rol,
+    exp: Date.now() + 12 * 3600000 // 12 horas
+  });
+  const payloadB64 = Utilities.base64EncodeWebSafe(payload);
+  const sig = Utilities.computeHmacSha256Signature(payloadB64, getTokenSecret_());
+  const sigB64 = Utilities.base64EncodeWebSafe(sig);
+  return payloadB64 + '.' + sigB64;
+}
+
+function verificarSesionToken(token) {
+  try {
+    if (!token || token.indexOf('.') < 0) return null;
+    const parts = token.split('.');
+    const payloadB64 = parts[0], sigB64 = parts[1];
+    const expectedSigB64 = Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(payloadB64, getTokenSecret_()));
+    if (expectedSigB64 !== sigB64) return null; // firma inválida o token manipulado
+    const payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(payloadB64)).getDataAsString());
+    if (!payload.exp || Date.now() > payload.exp) return null; // expirado
+    return payload; // { email, rol, exp }
+  } catch (err) {
+    return null;
+  }
+}
+
+// Resuelve el rol de administrador de un email: 'superadmin' (ADMIN_EMAILS_LIST),
+// 'editor'/'viewer' (hoja AdminAcceso), o null si no tiene acceso registrado.
+function resolverRolAdmin(email) {
+  const emailNorm = String(email || '').toLowerCase().trim();
+  if (!emailNorm) return null;
+  if (ADMIN_EMAILS_LIST.map(function(e) { return e.toLowerCase(); }).indexOf(emailNorm) >= 0) return 'superadmin';
+  try {
+    const sheet = getAdminAccesoSheet(false);
+    if (!sheet) return null;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase().trim() === emailNorm) {
+        const rol = String(data[i][1] || 'ver').toLowerCase().trim();
+        return rol === 'editar' ? 'editor' : 'viewer';
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+// Verifica que `data.token` sea válido y que su rol esté en `rolesPermitidos`.
+// Devuelve el payload {email, rol} si es válido, o null si no autorizado.
+function autorizar(data, rolesPermitidos) {
+  const payload = verificarSesionToken((data && data.token) || '');
+  if (!payload) return null;
+  if (rolesPermitidos && rolesPermitidos.indexOf(payload.rol) < 0) return null;
+  return payload;
+}
+
 // ── Ejecutar UNA VEZ para conectar tasa EUR→COP al promedio real de pagos ─────
 // 1. Selecciona esta función y pulsa ▶ Run
 // 2. Escribe la fórmula en Dashboard!F6 del sheet de presupuesto
@@ -75,10 +147,10 @@ function doGet(e) {
     if (action === 'comunicaciones') return getComunicaciones();
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
-    if (action === 'admin_participantes') return getAdminParticipantes();
-    if (action === 'admin_financiero') return getAdminFinanciero();
-    if (action === 'admin_categorias') return getAdminCategorias();
-    if (action === 'admin_acceso') return getAdminAcceso();
+    if (action === 'admin_participantes') return getAdminParticipantes(params);
+    if (action === 'admin_financiero') return getAdminFinanciero(params);
+    if (action === 'admin_categorias') return getAdminCategorias(params);
+    if (action === 'admin_acceso') return getAdminAcceso(params);
     if (action === 'admin_acceso_check') return checkAdminAcceso(params.email || '');
     if (action === 'verify_reset_token') {
       const token = params.token || '';
@@ -343,12 +415,13 @@ function doPost(e) {
         if (parsed.action === 'eliminar_comunicado') return eliminarComunicado(parsed);
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
         if (parsed.action === 'registrar_pago') return registrarPago(parsed);
-        if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes();
+        if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes(parsed);
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'guardar_comercial') return guardarComercial(parsed);
         if (parsed.action === 'check_admin_password') return checkAdminPassword(parsed);
         if (parsed.action === 'set_admin_password') return setAdminPassword(parsed);
         if (parsed.action === 'forgot_admin_password') return forgotAdminPassword(parsed);
+        if (parsed.action === 'check_comercial_password') return checkComercialPassword(parsed);
         if (parsed.action === 'set_comercial_password') return setComercialPassword(parsed);
         if (parsed.action === 'forgot_comercial_password') return forgotComercialPassword(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
@@ -631,8 +704,9 @@ function sendResponse(statusCode, data) {
 }
 
 // ───── ADMIN FUNCTIONS ─────────────────────────────────────────────────────────
-function getAdminParticipantes() {
+function getAdminParticipantes(params) {
   try {
+    if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     if (data.length < 2) return sendResponse(200, []);
@@ -668,6 +742,7 @@ function getAdminParticipantes() {
 
 function publicarComunicado(data) {
   try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Comunicaciones');
     if (!sheet) return sendResponse(404, { ok: false, error: 'Hoja Comunicaciones no encontrada' });
     const fecha = data.fecha || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -776,6 +851,7 @@ function buildComunicadoHtml(fecha, titulo, preview, link) {
 
 function eliminarComunicado(data) {
   try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Comunicaciones');
     if (!sheet) return sendResponse(404, { ok: false, error: 'Hoja no encontrada' });
     const sheetData = sheet.getDataRange().getValues();
@@ -799,6 +875,7 @@ function eliminarComunicado(data) {
 
 function actualizarParticipante(data) {
   try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const rowNum = parseInt(data._row);
     if (!rowNum || rowNum < 2) return sendResponse(400, { ok: false, error: 'Fila invalida: ' + data._row });
@@ -847,6 +924,7 @@ function actualizarParticipante(data) {
 
 function guardarComercial(data) {
   try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
     var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
     var comSheet = getSheetCI(ss, 'Comisiones');
     if (!comSheet) return sendResponse(404, { ok: false, error: 'Hoja Comisiones no encontrada' });
@@ -943,8 +1021,9 @@ function getSheetCI(ss, name) {
   return null;
 }
 
-function getAdminFinanciero() {
+function getAdminFinanciero(params) {
   try {
+    if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
     const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
 
     const str = function(v) { return String(v == null ? '' : v).trim(); };
@@ -1151,6 +1230,7 @@ function getAdminFinanciero() {
 // ───── REGISTRAR PAGO EN HOJA PAGOS ──────────────────────────────────────────
 function registrarPago(data) {
   try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
     var nombre  = String(data.nombre  || '').trim();
     var tipo    = String(data.tipo    || '').trim(); // Reserva | Tiquete | Pago Final
     var fecha   = String(data.fecha   || '').trim(); // YYYY-MM-DD
@@ -1283,8 +1363,9 @@ function actualizarResumenPagos(pagosSheet) {
 }
 
 // ───── SINCRONIZAR PARTICIPANTES (inscripción → Pagos) ────────────────────────
-function sincronizarParticipantes() {
+function sincronizarParticipantes(params) {
   try {
+    if (!autorizar(params, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
     var mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     var mainData = mainSheet.getDataRange().getValues();
     var headers = mainData[0] || [];
@@ -1520,6 +1601,7 @@ function corregirPasoBugTiquete() {
 // ───── AGREGAR PARTICIPANTE MANUALMENTE ──────────────────────────────────────
 function agregarParticipante(data) {
   try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
@@ -1571,8 +1653,9 @@ function getAdminAccesoSheet(create) {
   return sheet;
 }
 
-function getAdminAcceso() {
+function getAdminAcceso(params) {
   try {
+    if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return ContentService.createTextOutput(JSON.stringify({ error: 'No autorizado' })).setMimeType(ContentService.MimeType.JSON);
     const sheet = getAdminAccesoSheet(false);
     if (!sheet) return ContentService.createTextOutput(JSON.stringify([]))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1607,6 +1690,7 @@ function checkAdminAcceso(email) {
 
 function guardarAdminAcceso(data) {
   try {
+    if (!autorizar(data, ['superadmin'])) return sendResponse(403, { ok: false, error: 'Solo el super admin puede gestionar accesos' });
     const sheet = getAdminAccesoSheet(true);
     const accion = data.accion || 'add';
     const emailTarget = (data.email || '').toString().toLowerCase().trim();
@@ -1640,7 +1724,15 @@ function checkAdminPassword(data) {
     const defaultPwd = getDefaultPassword();
     const stored = PropertiesService.getScriptProperties().getProperty('admin_password') || defaultPwd;
     const ok = String(data.password || '') === stored;
-    return sendResponse(200, { ok, must_change: ok && !!defaultPwd && stored === defaultPwd });
+    if (!ok) return sendResponse(200, { ok: false });
+    const rol = resolverRolAdmin(data.email || '');
+    if (!rol) return sendResponse(200, { ok: false, error: 'Tu correo no tiene acceso registrado al panel de administración.' });
+    return sendResponse(200, {
+      ok: true,
+      rol: rol,
+      must_change: !!defaultPwd && stored === defaultPwd,
+      token: generarSesionToken(data.email, rol)
+    });
   } catch(err) {
     return sendResponse(500, { ok: false, error: err.toString() });
   }
@@ -1673,7 +1765,8 @@ function setAdminPassword(data) {
       return sendResponse(400, { ok: false, error: 'Elige una contraseña diferente a la inicial' });
     props.setProperty('admin_password', newPwd);
     if (resetTokenKey) { try { props.deleteProperty(resetTokenKey); } catch(_) {} }
-    return sendResponse(200, { ok: true });
+    const rol = resolverRolAdmin(data.email || '') || 'viewer';
+    return sendResponse(200, { ok: true, token: generarSesionToken(data.email || '', rol) });
   } catch(err) {
     return sendResponse(500, { ok: false, error: err.toString() });
   }
@@ -1716,22 +1809,66 @@ function setComercialPassword(data) {
   try {
     const emailNorm = String(data.email || '').toLowerCase().trim();
     if (!emailNorm) return sendResponse(400, { ok: false, error: 'email requerido' });
-    const newPwd = String(data.new_password || '').trim();
-    if (newPwd.length < 6) return sendResponse(400, { ok: false, error: 'Mínimo 6 caracteres' });
     const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
     const comSheet = getSheetCI(ss, 'Comisiones');
     if (!comSheet) return sendResponse(404, { ok: false, error: 'Hoja Comisiones no encontrada' });
     const lastRow = comSheet.getLastRow();
     if (lastRow < 6) return sendResponse(404, { ok: false, error: 'Sin datos' });
-    const hiData = comSheet.getRange('H6:I' + lastRow).getValues();
+    const hiData = comSheet.getRange('H6:J' + lastRow).getValues();
+    let rowOffset = -1, stored = '';
+    for (let i = 0; i < hiData.length; i++) {
+      if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) { rowOffset = i; stored = String(hiData[i][2] || ''); break; }
+    }
+    if (rowOffset < 0) return sendResponse(404, { ok: false, error: 'Comercial no encontrado' });
+
+    // Autorización: primera vez (sin contraseña aún), usando la contraseña
+    // compartida por defecto (debe cambiarla), token de reset válido para este
+    // email, o sesión comercial ya autenticada + contraseña actual correcta.
+    const defaultPwd = getDefaultPassword();
+    const usingDefault = !!defaultPwd && stored === defaultPwd;
+    let autorizado = !stored || usingDefault;
+    if (!autorizado && data.reset_token) {
+      const raw = PropertiesService.getScriptProperties().getProperty('reset_' + data.reset_token);
+      if (raw) {
+        const parts = raw.split('|');
+        if (parts[0] === emailNorm && Date.now() < parseInt(parts[1])) autorizado = true;
+      }
+    }
+    if (!autorizado) {
+      const payload = verificarSesionToken(data.token || '');
+      if (payload && payload.rol === 'comercial' && payload.email === emailNorm && String(data.current_password || '') === stored) autorizado = true;
+    }
+    if (!autorizado) return sendResponse(403, { ok: false, error: 'No autorizado' });
+
+    const newPwd = String(data.new_password || '').trim();
+    if (newPwd.length < 6) return sendResponse(400, { ok: false, error: 'Mínimo 6 caracteres' });
+    comSheet.getRange(6 + rowOffset, 10).setValue(newPwd); // Columna J
+    if (data.reset_token) {
+      try { PropertiesService.getScriptProperties().deleteProperty('reset_' + data.reset_token); } catch(_) {}
+    }
+    return sendResponse(200, { ok: true, token: generarSesionToken(emailNorm, 'comercial') });
+  } catch(err) {
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function checkComercialPassword(data) {
+  try {
+    const emailNorm = String(data.email || '').toLowerCase().trim();
+    const pwd = String(data.password || '');
+    if (!emailNorm || !pwd) return sendResponse(400, { ok: false, error: 'Email y contraseña requeridos' });
+    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const comSheet = getSheetCI(ss, 'Comisiones');
+    if (!comSheet) return sendResponse(404, { ok: false, error: 'No encontrado' });
+    const lastRow = comSheet.getLastRow();
+    if (lastRow < 6) return sendResponse(404, { ok: false, error: 'No encontrado' });
+    const hiData = comSheet.getRange('H6:J' + lastRow).getValues();
     for (let i = 0; i < hiData.length; i++) {
       if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) {
-        comSheet.getRange(6 + i, 10).setValue(newPwd); // Columna J
-        // Invalidar token de reset si se usó
-        if (data.reset_token) {
-          try { PropertiesService.getScriptProperties().deleteProperty('reset_' + data.reset_token); } catch(_) {}
-        }
-        return sendResponse(200, { ok: true });
+        const stored = String(hiData[i][2] || '');
+        if (String(pwd) !== stored) return sendResponse(200, { ok: false });
+        const mustChange = !!getDefaultPassword() && stored === getDefaultPassword();
+        return sendResponse(200, { ok: true, must_change: mustChange, token: generarSesionToken(emailNorm, 'comercial') });
       }
     }
     return sendResponse(404, { ok: false, error: 'Comercial no encontrado' });
@@ -1844,8 +1981,9 @@ function calcEdadRef(fechaObj) {
   return edad;
 }
 
-function getAdminCategorias() {
+function getAdminCategorias(params) {
   try {
+    if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
     var sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
@@ -1989,8 +2127,7 @@ function getComercialData(email) {
     return ContentService.createTextOutput(JSON.stringify({
       found: true,
       nombre: nombre,
-      password: storedPwd,
-      must_change: !!getDefaultPassword() && storedPwd === getDefaultPassword(),
+      has_password: !!storedPwd,
       jugadores: jugadores,
       acompanantes: acompanantes
     })).setMimeType(ContentService.MimeType.JSON);

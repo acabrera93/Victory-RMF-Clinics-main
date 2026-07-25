@@ -1820,6 +1820,8 @@ let programa = '';
 let adminLoaded = false;
 let adminLastLoaded = 0;
 let adminData = [];
+let adminSessionToken = sessionStorage.getItem('admin_token') || '';
+let comercialSessionToken = sessionStorage.getItem('comercial_token') || '';
 let adminCurrentRow = null;
 let pagoCurrentIdx = null;
 let pagoCurrentNombre = null;
@@ -2944,7 +2946,7 @@ function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLin
 async function openPasswordGate(section) {
   _pwdPendingSection = section;
   const cd = window._comercialData;
-  const hasComercialPwd = !!(cd && cd.password);
+  const hasComercialPwd = !!(cd && cd.has_password);
 
   if (section === 'comercial' && !hasComercialPwd) {
     _pwdMode = 'create';
@@ -3177,14 +3179,15 @@ async function submitPasswordGate() {
     const origText = submitBtn.textContent;
     submitBtn.textContent = 'Guardando…'; submitBtn.disabled = true;
     const isAdminSection = _pwdPendingSection === 'admin';
+    const email = _pwdMode === 'reset' ? _pwdResetEmail : participantEmail;
     let body;
     if (isAdminSection) {
-      body = { action: 'set_admin_password', new_password: val };
+      body = { action: 'set_admin_password', new_password: val, email };
       if (_pwdMode === 'reset' && _pwdResetToken) body.reset_token = _pwdResetToken;
     } else {
-      const email = _pwdMode === 'reset' ? _pwdResetEmail : participantEmail;
       body = { action: 'set_comercial_password', email, new_password: val };
       if (_pwdMode === 'reset' && _pwdResetToken) body.reset_token = _pwdResetToken;
+      if (_pwdMode === 'must_change' && comercialSessionToken) body.token = comercialSessionToken;
     }
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
@@ -3192,7 +3195,11 @@ async function submitPasswordGate() {
         body: JSON.stringify(body), redirect: 'follow'
       }).then(r => r.json());
       if (res.ok) {
-        if (!isAdminSection && window._comercialData) { window._comercialData.password = val; window._comercialData.must_change = false; }
+        if (res.token) {
+          if (isAdminSection) { adminSessionToken = res.token; sessionStorage.setItem('admin_token', res.token); }
+          else { comercialSessionToken = res.token; sessionStorage.setItem('comercial_token', res.token); }
+        }
+        if (!isAdminSection && window._comercialData) { window._comercialData.has_password = true; window._comercialData.must_change = false; }
         sessionStorage.setItem('auth_' + (isAdminSection ? 'admin' : 'comercial'), '1');
         if (_pwdMode === 'reset') {
           // Limpiar token de URL y mostrar login normal
@@ -3218,9 +3225,10 @@ async function submitPasswordGate() {
     try {
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'check_admin_password', password: val }), redirect: 'follow'
+        body: JSON.stringify({ action: 'check_admin_password', password: val, email: participantEmail }), redirect: 'follow'
       }).then(r => r.json());
       if (res.ok) {
+        if (res.token) { adminSessionToken = res.token; sessionStorage.setItem('admin_token', res.token); }
         if (res.must_change) { _openMustChange(); return; }
         sessionStorage.setItem('auth_admin', '1');
         const sec = _pwdPendingSection; _pwdPendingSection = null;
@@ -3229,30 +3237,34 @@ async function submitPasswordGate() {
           switchSection(sec);
         });
       } else {
-        errEl.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
+        errEl.textContent = res.error || 'Contraseña incorrecta. Inténtalo de nuevo.';
         document.getElementById('pwd-input').value = ''; document.getElementById('pwd-input').focus();
       }
     } catch(e) { errEl.textContent = 'Error de conexión.'; }
     finally { submitBtn.textContent = 'Entrar'; submitBtn.disabled = false; }
 
   } else if (_pwdPendingSection === 'comercial') {
-    const stored = window._comercialData?.password || '';
-    if (val === stored) {
-      // Contraseña correcta — ¿debe cambiarla?
-      if (window._comercialData?.must_change) {
-        _openMustChange();
-        return;
+    submitBtn.textContent = 'Verificando…'; submitBtn.disabled = true;
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'check_comercial_password', email: participantEmail, password: val }), redirect: 'follow'
+      }).then(r => r.json());
+      if (res.ok) {
+        if (res.token) { comercialSessionToken = res.token; sessionStorage.setItem('comercial_token', res.token); }
+        if (res.must_change) { _openMustChange(); return; }
+        sessionStorage.setItem('auth_comercial', '1');
+        const sec = _pwdPendingSection; _pwdPendingSection = null;
+        await _offerBiometric(sec, () => {
+          document.getElementById('pwd-gate').classList.remove('open');
+          switchSection(sec);
+        });
+      } else {
+        errEl.textContent = res.error || 'Contraseña incorrecta. Inténtalo de nuevo.';
+        document.getElementById('pwd-input').value = ''; document.getElementById('pwd-input').focus();
       }
-      sessionStorage.setItem('auth_comercial', '1');
-      const sec = _pwdPendingSection; _pwdPendingSection = null;
-      await _offerBiometric(sec, () => {
-        document.getElementById('pwd-gate').classList.remove('open');
-        switchSection(sec);
-      });
-    } else {
-      errEl.textContent = 'Contraseña incorrecta. Inténtalo de nuevo.';
-      document.getElementById('pwd-input').value = ''; document.getElementById('pwd-input').focus();
-    }
+    } catch(e) { errEl.textContent = 'Error de conexión.'; }
+    finally { submitBtn.textContent = 'Entrar'; submitBtn.disabled = false; }
   }
 }
 
@@ -3641,8 +3653,7 @@ async function cambiarPasswordComercial(btn) {
   const confirm = (document.getElementById('com-pwd-confirm')?.value || '').trim();
   const errEl   = document.getElementById('com-pwd-err');
   errEl.style.color = '#dc2626'; errEl.textContent = '';
-  const stored = window._comercialData?.password || '';
-  if (stored && current !== stored) { errEl.textContent = 'Contraseña actual incorrecta.'; return; }
+  if (!current) { errEl.textContent = 'Introduce la contraseña actual.'; return; }
   if (newPwd.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
   if (newPwd !== confirm) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
   const origText = btn.textContent;
@@ -3650,11 +3661,11 @@ async function cambiarPasswordComercial(btn) {
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'set_comercial_password', email: participantEmail, new_password: newPwd }),
+      body: JSON.stringify({ action: 'set_comercial_password', email: participantEmail, new_password: newPwd, current_password: current, token: comercialSessionToken }),
       redirect: 'follow'
     }).then(r => r.json());
     if (res.ok) {
-      if (window._comercialData) window._comercialData.password = newPwd;
+      if (res.token) { comercialSessionToken = res.token; sessionStorage.setItem('comercial_token', res.token); }
       sessionStorage.setItem('auth_comercial', '1');
       errEl.style.color = '#16a34a';
       errEl.textContent = 'Contraseña actualizada correctamente.';
@@ -3773,9 +3784,9 @@ function loadAdmin(force) {
   document.getElementById('kpi-participantes').textContent = '…';
   const t = Date.now();
   Promise.all([
-    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => []),
-    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
-    fetch(APPS_SCRIPT_URL + '?action=admin_acceso&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => [])
+    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => []),
+    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
+    fetch(APPS_SCRIPT_URL + '?action=admin_acceso&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => [])
   ])
   .then(([parts, fin, acceso]) => {
     adminData = Array.isArray(parts) ? parts : [];
@@ -3812,7 +3823,7 @@ function syncPaqueteModal(val) {
 function refreshAdminPagos(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '↻ Cargando…'; }
   const t = Date.now();
-  fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + t, { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' })
     .then(r => r.json())
     .then(fin => {
       if (fin && !fin.error) {
@@ -4262,7 +4273,7 @@ function renderAdminPagos(fin) {
 
   // Sincronizar: agregar al Pagos sheet cualquier inscrito que no esté (fire & forget)
   fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'},
-    body: JSON.stringify({ action: 'sincronizar_participantes' }), redirect:'follow' }).catch(()=>{});
+    body: JSON.stringify({ action: 'sincronizar_participantes', token: adminSessionToken }), redirect:'follow' }).catch(()=>{});
 }
 
 function filtrarTablaPagos(q) {
@@ -4675,7 +4686,7 @@ function saveNewParticipant() {
   if (!nombre) { alert('El nombre es obligatorio.'); return; }
   if (!email || !email.includes('@')) { alert('Introduce un email válido.'); return; }
 
-  const payload = { action: 'agregar_participante', tipo, paso_actual: '1', fuente: 'Panel Admin' };
+  const payload = { action: 'agregar_participante', tipo, paso_actual: '1', fuente: 'Panel Admin', token: adminSessionToken };
   fields.forEach(f => { const el = document.getElementById('ap-' + f.key); if (el) payload[f.key] = el.value; });
 
   const statusEl = document.getElementById('add-participant-status');
@@ -4746,7 +4757,7 @@ function saveComercialModal() {
   if (!nombre) { alert('El nombre del comercial es obligatorio.'); return; }
   const sec = document.getElementById('cm-seccion').value || 'jugadores';
   const payload = { action: 'guardar_comercial', comercial: nombre, seccion: sec,
-    _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0 };
+    _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0, token: adminSessionToken };
   if (sec === 'acompanantes') {
     payload.com_doble = parseFloat(document.getElementById('cm-com-doble').value) || 0;
     payload.com_sencilla = parseFloat(document.getElementById('cm-com-sencilla').value) || 0;
@@ -4774,7 +4785,7 @@ function saveComercialModal() {
       statusEl.textContent = 'Guardado correctamente.';
       setTimeout(() => {
         closeComercialModal();
-        fetch(APPS_SCRIPT_URL + '?action=admin_financiero&_t=' + Date.now(), { redirect: 'follow' })
+        fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + Date.now(), { redirect: 'follow' })
           .then(r => r.json())
           .then(fin => {
             adminFinData = fin && !fin.error ? fin : null;
@@ -4941,7 +4952,7 @@ function registrarPagoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, tipo_participante: pagoCurrentTipo }),
+    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, tipo_participante: pagoCurrentTipo, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -4999,7 +5010,7 @@ function saveEditModal() {
   const statusEl = document.getElementById('edit-modal-status');
   statusEl.style.display = 'block';
   statusEl.innerHTML = '<span style="color:var(--blue)">Guardando...</span>';
-  const payload = { action: 'actualizar_participante', _row: adminCurrentRow._row };
+  const payload = { action: 'actualizar_participante', _row: adminCurrentRow._row, token: adminSessionToken };
   // Pass all original keys so backend can match column headers
   Object.keys(adminCurrentRow).forEach(k => { if (k !== '_idx') payload[k] = adminCurrentRow[k]; });
   // Override with edited values using normalized key names
@@ -5366,7 +5377,7 @@ function adminPublicarComunicado() {
   statusEl.innerHTML = '<span style="color:var(--blue)">Publicando...</span>';
   const today = new Date();
   const fecha = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
-  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'publicar_comunicado',titulo,mensaje,fecha,destinatario}), redirect:'follow' })
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'publicar_comunicado',titulo,mensaje,fecha,destinatario,token:adminSessionToken}), redirect:'follow' })
     .then(r => r.json())
     .then(res => {
       if (res.ok) {
@@ -5394,7 +5405,7 @@ function adminDeleteComunicado(btn, encodedTitulo, encodedFecha) {
   const fecha = decodeURIComponent(encodedFecha);
   btn.disabled = true;
   btn.textContent = '...';
-  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_comunicado',titulo,fecha}), redirect:'follow' })
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_comunicado',titulo,fecha,token:adminSessionToken}), redirect:'follow' })
     .then(r => r.json())
     .then(res => {
       if (res.ok) { btn.closest('.comun-admin-item').remove(); comunLoaded = false; }
@@ -5409,7 +5420,7 @@ function loadAdminAcceso() {
   const el = document.getElementById('acceso-list');
   if (!el) return;
   el.innerHTML = '<p style="color:var(--muted);font-size:13px">Cargando...</p>';
-  fetch(APPS_SCRIPT_URL + '?action=admin_acceso&_t=' + Date.now(), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=admin_acceso&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + Date.now(), { redirect: 'follow' })
     .then(r => r.json())
     .then(list => {
       adminAccesoList = Array.isArray(list) ? list : [];
@@ -5473,7 +5484,7 @@ function adminAgregarAcceso() {
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'add', email, rol }),
+    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'add', email, rol, token: adminSessionToken }),
     redirect: 'follow'
   })
     .then(r => r.json())
@@ -5495,7 +5506,7 @@ function adminEliminarAcceso(email, btn) {
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'remove', email }),
+    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'remove', email, token: adminSessionToken }),
     redirect: 'follow'
   })
     .then(r => r.json())
@@ -5510,7 +5521,7 @@ function adminCambiarRolAcceso(email, nuevoRol) {
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'update', email, rol: nuevoRol }),
+    body: JSON.stringify({ action: 'admin_acceso_guardar', accion: 'update', email, rol: nuevoRol, token: adminSessionToken }),
     redirect: 'follow'
   })
     .then(r => r.json())
