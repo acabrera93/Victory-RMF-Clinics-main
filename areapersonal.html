@@ -690,7 +690,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="upload" onclick="document.getElementById('comp-reserva-input').click()">
           <div style="font-size:22px">📄</div>
           <p>Subir comprobante · JPG, PNG o PDF · Máx. 5MB</p>
-          <input type="file" id="comp-reserva-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'reserva')">
+          <input type="file" id="comp-reserva-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'reserva')" aria-label="Subir comprobante de pago de la reserva">
         </div>
         <div class="dstatus" id="comp-reserva-status">⏳ Pendiente</div>
         <button id="comp-reserva-btn" onclick="enviarComprobante('reserva')" style="width:100%;margin-top:12px;padding:12px;background:#999;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:not-allowed;opacity:0.5;transition:all 0.2s;display:none;">
@@ -748,7 +748,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="upload" onclick="document.getElementById('comp-tiquete-input').click()">
           <div style="font-size:22px">📄</div>
           <p>Subir comprobante · JPG, PNG o PDF · Máx. 5MB</p>
-          <input type="file" id="comp-tiquete-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'tiquete')">
+          <input type="file" id="comp-tiquete-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'tiquete')" aria-label="Subir comprobante de pago del tiquete">
         </div>
         <div class="dstatus" id="comp-tiquete-status">⏳ Pendiente</div>
         <button id="comp-tiquete-btn" onclick="enviarComprobante('tiquete')" style="width:100%;margin-top:12px;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:none;">✓ Confirmar pago de tiquete →</button>
@@ -797,7 +797,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="upload" onclick="document.getElementById('comp-final-input').click()">
           <div style="font-size:22px">📄</div>
           <p>Subir comprobante · JPG, PNG o PDF · Máx. 5MB</p>
-          <input type="file" id="comp-final-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'final')">
+          <input type="file" id="comp-final-input" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadComprobante(this,'final')" aria-label="Subir comprobante de pago final">
         </div>
         <div class="dstatus" id="comp-final-status">⏳ Pendiente</div>
         <button id="comp-final-btn" onclick="enviarComprobante('final')" style="width:100%;margin-top:12px;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:none;">✓ Confirmar pago final →</button>
@@ -821,7 +821,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="upload" onclick="document.getElementById('di1').click()">
             <div style="font-size:22px">📎</div>
             <p>Subir pasaporte · JPG, PNG o PDF · Máx. 5MB</p>
-            <input type="file" id="di1" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'pasaporte')">
+            <input type="file" id="di1" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'pasaporte')" aria-label="Subir copia del pasaporte">
           </div>
         </div>
       </div>
@@ -835,7 +835,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="upload" onclick="document.getElementById('di2').click()">
             <div style="font-size:22px">📎</div>
             <p>Subir permiso · JPG, PNG o PDF · Máx. 5MB</p>
-            <input type="file" id="di2" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'permiso')">
+            <input type="file" id="di2" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'permiso')" aria-label="Subir permiso de salida del país">
           </div>
         </div>
       </div>
@@ -849,7 +849,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="upload" onclick="document.getElementById('di4').click()">
             <div style="font-size:22px">📎</div>
             <p>Subir registro civil · JPG, PNG o PDF · Máx. 5MB</p>
-            <input type="file" id="di4" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'registro_civil')">
+            <input type="file" id="di4" accept=".jpg,.jpeg,.png,.pdf" onchange="uploadDocumento(this,'registro_civil')" aria-label="Subir registro civil de nacimiento">
           </div>
         </div>
       </div>
@@ -1600,7 +1600,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div style="font-size:36px;margin-bottom:10px">📸</div>
           <div style="font-weight:500;color:var(--navy);margin-bottom:5px">Haz clic o arrastra fotos aquí</div>
           <div style="font-size:12px;color:var(--muted)">JPG, PNG, WEBP · máx. 8 MB por imagen · múltiples archivos</div>
-          <input type="file" id="foto-upload-input" accept="image/*" multiple style="display:none" onchange="adminHandleFotoUpload(this.files)">
+          <input type="file" id="foto-upload-input" accept="image/*" multiple style="display:none" onchange="adminHandleFotoUpload(this.files)" aria-label="Subir fotos al álbum del viaje">
         </div>
         <div id="foto-upload-progress" style="display:none;margin-bottom:16px;font-size:13px"></div>
         <p style="font-size:13px;color:var(--muted);line-height:1.6">Las fotos se suben directamente a la carpeta del álbum en Drive y aparecen en el tab Fotos de todos los participantes automáticamente.</p>
@@ -1781,13 +1781,12 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 </div>
 
+<script src="config.js"></script>
 <script>
 // ── CONFIG (mismo webhook que inscripción; Make filtra por body.action) ───
 const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
 
-// ── GOOGLE APPS SCRIPT UPLOAD URL ───────────────────────────────────────────
-// REEMPLAZA ESTA URL CON LA DE TU GOOGLE APPS SCRIPT DEPLOYMENTS
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+// APPS_SCRIPT_URL viene de config.js (compartido entre todas las páginas)
 const ADMIN_EMAILS = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
 const SUPER_ADMIN = 'alejandro.cabrera@fundacionrevel.net';
 // Las contraseñas se gestionan desde la propia app (admin → panel acceso; comercial → panel comercial)

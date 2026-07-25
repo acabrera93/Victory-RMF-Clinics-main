@@ -98,6 +98,35 @@ function autorizar(data, rolesPermitidos) {
   return payload;
 }
 
+// ───── HASH DE CONTRASEÑAS (SHA-256 + salt, sin dependencias externas) ─────────
+// Las contraseñas de admin/comercial se guardaban en texto plano en
+// PropertiesService/Sheets — cualquiera con acceso de editor al proyecto o al
+// Sheet las veía directamente. A partir de ahora se guarda solo el hash; el
+// texto plano legado se admite en lectura (passwordMatches_) y se re-hashea
+// automáticamente la próxima vez que ese usuario cambie o valide su contraseña.
+function getPasswordSalt_() {
+  const props = PropertiesService.getScriptProperties();
+  let salt = props.getProperty('password_salt');
+  if (!salt) {
+    salt = Utilities.getUuid() + Utilities.getUuid();
+    props.setProperty('password_salt', salt);
+  }
+  return salt;
+}
+
+function hashPassword_(password) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(password || '') + getPasswordSalt_());
+  return bytes.map(function(b) { return ((b + 256) % 256).toString(16).padStart(2, '0'); }).join('');
+}
+
+// Compara `plain` contra `stored`, que puede ser un hash (64 hex chars) o,
+// para cuentas aún no migradas, el texto plano histórico.
+function passwordMatches_(plain, stored) {
+  if (!stored) return false;
+  if (/^[0-9a-f]{64}$/i.test(stored)) return hashPassword_(plain) === stored;
+  return String(plain == null ? '' : plain) === stored;
+}
+
 // ── Ejecutar UNA VEZ para conectar tasa EUR→COP al promedio real de pagos ─────
 // 1. Selecciona esta función y pulsa ▶ Run
 // 2. Escribe la fórmula en Dashboard!F6 del sheet de presupuesto
@@ -439,6 +468,27 @@ function doPost(e) {
   }
 }
 
+// Confirma que el email corresponda a un participante real de la hoja principal
+// antes de crear/compartir carpetas de Drive o escribir en Documentos — evita que
+// cualquiera suba archivos a la carpeta de otra persona con solo saber su email.
+function emailEsParticipante_(email) {
+  const emailNorm = String(email || '').toLowerCase().trim();
+  if (!emailNorm) return false;
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  let emailCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = String(headers[j]).toLowerCase().trim();
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailCol = j; break; }
+  }
+  if (emailCol < 0) emailCol = 3;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) return true;
+  }
+  return false;
+}
+
 // ───── HANDLE MULTIPART (archivos reales) ──────────────────────────────────────
 function handleMultipartUpload(e) {
   const params = e.parameter || {};
@@ -448,6 +498,9 @@ function handleMultipartUpload(e) {
 
   if (!email) {
     return sendResponse(400, { ok: false, error: 'Email requerido' });
+  }
+  if (!emailEsParticipante_(email)) {
+    return sendResponse(403, { ok: false, error: 'Email no encontrado entre los participantes registrados' });
   }
 
   // Obtener archivo desde blob
@@ -534,6 +587,9 @@ function handleJsonUpload(e) {
 
     if (!email || !base64Data) {
       return sendResponse(400, { ok: false, error: 'Email y base64 requeridos' });
+    }
+    if (!emailEsParticipante_(email)) {
+      return sendResponse(403, { ok: false, error: 'Email no encontrado entre los participantes registrados' });
     }
 
     // Decodificar base64
@@ -1723,14 +1779,14 @@ function checkAdminPassword(data) {
   try {
     const defaultPwd = getDefaultPassword();
     const stored = PropertiesService.getScriptProperties().getProperty('admin_password') || defaultPwd;
-    const ok = String(data.password || '') === stored;
+    const ok = passwordMatches_(data.password, stored);
     if (!ok) return sendResponse(200, { ok: false });
     const rol = resolverRolAdmin(data.email || '');
     if (!rol) return sendResponse(200, { ok: false, error: 'Tu correo no tiene acceso registrado al panel de administración.' });
     return sendResponse(200, {
       ok: true,
       rol: rol,
-      must_change: !!defaultPwd && stored === defaultPwd,
+      must_change: !!defaultPwd && passwordMatches_(defaultPwd, stored),
       token: generarSesionToken(data.email, rol)
     });
   } catch(err) {
@@ -1743,7 +1799,7 @@ function setAdminPassword(data) {
     const props = PropertiesService.getScriptProperties();
     const defaultPwd = getDefaultPassword();
     const stored = props.getProperty('admin_password') || defaultPwd;
-    const usingDefault = !!defaultPwd && stored === defaultPwd;
+    const usingDefault = !!defaultPwd && passwordMatches_(defaultPwd, stored);
     // Validate reset token if provided
     const resetTokenKey = data.reset_token ? ('reset_admin_' + data.reset_token) : null;
     const usingToken = resetTokenKey ? (function() {
@@ -1754,7 +1810,7 @@ function setAdminPassword(data) {
     })() : false;
     // Require current password unless on default or using valid reset token
     if (!usingDefault && !usingToken) {
-      if (String(data.current_password || '') !== stored)
+      if (!passwordMatches_(data.current_password, stored))
         return sendResponse(403, { ok: false, error: 'Contraseña actual incorrecta' });
     }
     const newPwd = String(data.new_password || '').trim();
@@ -1763,7 +1819,7 @@ function setAdminPassword(data) {
     const defaultPwdCheck = getDefaultPassword();
     if (defaultPwdCheck && newPwd === defaultPwdCheck)
       return sendResponse(400, { ok: false, error: 'Elige una contraseña diferente a la inicial' });
-    props.setProperty('admin_password', newPwd);
+    props.setProperty('admin_password', hashPassword_(newPwd));
     if (resetTokenKey) { try { props.deleteProperty(resetTokenKey); } catch(_) {} }
     const rol = resolverRolAdmin(data.email || '') || 'viewer';
     return sendResponse(200, { ok: true, token: generarSesionToken(data.email || '', rol) });
@@ -1825,7 +1881,7 @@ function setComercialPassword(data) {
     // compartida por defecto (debe cambiarla), token de reset válido para este
     // email, o sesión comercial ya autenticada + contraseña actual correcta.
     const defaultPwd = getDefaultPassword();
-    const usingDefault = !!defaultPwd && stored === defaultPwd;
+    const usingDefault = !!defaultPwd && passwordMatches_(defaultPwd, stored);
     let autorizado = !stored || usingDefault;
     if (!autorizado && data.reset_token) {
       const raw = PropertiesService.getScriptProperties().getProperty('reset_' + data.reset_token);
@@ -1836,13 +1892,13 @@ function setComercialPassword(data) {
     }
     if (!autorizado) {
       const payload = verificarSesionToken(data.token || '');
-      if (payload && payload.rol === 'comercial' && payload.email === emailNorm && String(data.current_password || '') === stored) autorizado = true;
+      if (payload && payload.rol === 'comercial' && payload.email === emailNorm && passwordMatches_(data.current_password, stored)) autorizado = true;
     }
     if (!autorizado) return sendResponse(403, { ok: false, error: 'No autorizado' });
 
     const newPwd = String(data.new_password || '').trim();
     if (newPwd.length < 6) return sendResponse(400, { ok: false, error: 'Mínimo 6 caracteres' });
-    comSheet.getRange(6 + rowOffset, 10).setValue(newPwd); // Columna J
+    comSheet.getRange(6 + rowOffset, 10).setValue(hashPassword_(newPwd)); // Columna J
     if (data.reset_token) {
       try { PropertiesService.getScriptProperties().deleteProperty('reset_' + data.reset_token); } catch(_) {}
     }
@@ -1866,8 +1922,9 @@ function checkComercialPassword(data) {
     for (let i = 0; i < hiData.length; i++) {
       if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) {
         const stored = String(hiData[i][2] || '');
-        if (String(pwd) !== stored) return sendResponse(200, { ok: false });
-        const mustChange = !!getDefaultPassword() && stored === getDefaultPassword();
+        if (!passwordMatches_(pwd, stored)) return sendResponse(200, { ok: false });
+        const defaultPwd = getDefaultPassword();
+        const mustChange = !!defaultPwd && passwordMatches_(defaultPwd, stored);
         return sendResponse(200, { ok: true, must_change: mustChange, token: generarSesionToken(emailNorm, 'comercial') });
       }
     }

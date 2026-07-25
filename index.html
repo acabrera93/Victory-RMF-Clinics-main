@@ -378,6 +378,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
   <p>Victory Sports Spain</p>
 </footer>
 
+<script src="config.js"></script>
 <script>
 var currentLang = 'es';
 
@@ -401,7 +402,7 @@ function toggleLang(){
   });
 }
 
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec';
+// APPS_SCRIPT_URL viene de config.js (compartido entre todas las páginas)
 
 function enviarContacto(e){
   e.preventDefault();
