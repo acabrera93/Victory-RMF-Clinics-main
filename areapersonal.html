@@ -1832,6 +1832,16 @@ let fotosLoaded = false;
 let saberLoaded = false;
 let comunLoaded = false;
 
+/** Escapa HTML para insertar de forma segura texto proveniente de Sheets/usuarios en innerHTML. */
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /** Normaliza nombres de campo para comparar claves de Sheets/Make (tildes, espacios, /, guiones). */
 function normFieldName(s) {
   return String(s == null ? '' : s)
@@ -2123,10 +2133,10 @@ function applyPaymentTotals(t) {
 
 function buildBreakdown(t) {
   function bkRow(nombre, sub, amt) {
-    return `<div class="bkrow"><span class="bk-name"><strong>${nombre}</strong><span class="bk-sub">(${sub})</span></span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
+    return `<div class="bkrow"><span class="bk-name"><strong>${escapeHtml(nombre)}</strong><span class="bk-sub">(${escapeHtml(sub)})</span></span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
   }
   function totalRow(label, amt) {
-    return `<div class="bkrow"><span>${label}</span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
+    return `<div class="bkrow"><span>${escapeHtml(label)}</span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
   }
 
   // Reserva
@@ -2355,7 +2365,7 @@ function loadParticipant(p) {
       );
     if (vinculados.length > 0) {
       if (labelEl) labelEl.textContent = esJug ? 'Acompañantes' : 'Jugadores';
-      namesEl.innerHTML = vinculados.map(c => `<strong>${c.nombre}</strong>`).join(' · ');
+      namesEl.innerHTML = vinculados.map(c => `<strong>${escapeHtml(c.nombre)}</strong>`).join(' · ');
       secEl.style.display = '';
     } else {
       secEl.style.display = 'none';
@@ -3404,9 +3414,9 @@ function loadComunicaciones() {
       }
       feed.innerHTML = msgs.map(m =>
         `<div class="comun-msg">
-          <div class="comun-fecha">${m.fecha || ''}</div>
-          <div class="comun-titulo">${m.titulo || ''}</div>
-          <div class="comun-body">${m.mensaje || ''}</div>
+          <div class="comun-fecha">${escapeHtml(m.fecha)}</div>
+          <div class="comun-titulo">${escapeHtml(m.titulo)}</div>
+          <div class="comun-body">${escapeHtml(m.mensaje)}</div>
         </div>`
       ).join('');
       if (participantEmail) {
@@ -3881,9 +3891,9 @@ function toggleCurrency(c) {
 function statusChip(estado) {
   const s = (estado || '').toLowerCase();
   if (!s || s === 'sin pago' || s === 'pendiente') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#f1f5f9;color:var(--muted)">Sin pago</span>`;
-  if (s === 'completo' || s === 'pagado') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(22,101,52,.12);color:#166534">${estado}</span>`;
-  if (s === 'parcial' || s === 'abono') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(217,119,6,.12);color:#92400e">${estado}</span>`;
-  return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(239,68,68,.1);color:#991b1b">${estado}</span>`;
+  if (s === 'completo' || s === 'pagado') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(22,101,52,.12);color:#166534">${escapeHtml(estado)}</span>`;
+  if (s === 'parcial' || s === 'abono') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(217,119,6,.12);color:#92400e">${escapeHtml(estado)}</span>`;
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(239,68,68,.1);color:#991b1b">${escapeHtml(estado)}</span>`;
 }
 
 function renderAdminDashboard(rows, fin) {
@@ -4231,7 +4241,7 @@ function renderAdminPagos(fin) {
     if (!pago || !pago.eur) return `<div>${statusChip('')}</div>`;
     return `<div>${statusChip(pago.estado)}</div>
       <div style="font-size:12px;font-weight:600;color:var(--navy);margin-top:3px">${pago.eur.toLocaleString('es-CO')} €</div>
-      <div style="font-size:11px;color:var(--muted)">${pago.fecha}</div>`;
+      <div style="font-size:11px;color:var(--muted)">${escapeHtml(pago.fecha)}</div>`;
   };
 
   if (!allNombres.length) {
@@ -4257,17 +4267,17 @@ function renderAdminPagos(fin) {
     const tipoPart = tipoMap[key] || adRow.tipo || '';
     const tipoIsAcomp = tipoPart.toLowerCase().includes('acomp');
     const tipoBadge = tipoPart
-      ? `<span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${tipoPart}</span>`
+      ? `<span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${escapeHtml(tipoPart)}</span>`
       : '<span style="color:var(--muted);font-size:12px">—</span>';
     const acudienteKey = (adRow.acudiente || '').toLowerCase();
-    return `<tr data-nombre="${key}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${acudienteKey}">
+    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}">
       <td>${tipoBadge}</td>
-      <td style="font-weight:500">${nombre}</td>
+      <td style="font-weight:500">${escapeHtml(nombre)}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
       <td>${conTiq ? fmtPago(tiquete) : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td>${fmtPago(pagoFinal)}</td>
       <td style="font-weight:700;color:var(--navy)">${totalPart > 0 ? totalPart.toLocaleString('es-CO') + ' €' : '<span style="color:var(--muted)">—</span>'}</td>
-      <td><button onclick="${btnClick}" style="padding:5px 10px;border:1px solid rgba(30,91,168,.3);border-radius:6px;background:rgba(30,91,168,.06);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--blue)">💳 Pagos</button></td>
+      <td><button onclick="${escapeHtml(btnClick)}" style="padding:5px 10px;border:1px solid rgba(30,91,168,.3);border-radius:6px;background:rgba(30,91,168,.06);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--blue)">💳 Pagos</button></td>
     </tr>`;
   }).join('');
 
@@ -4311,7 +4321,7 @@ function renderPaqRow(nombre, cantidad, precio, total, color, maxTotal) {
         <div class="paq-info">
           <div class="paq-name">
             <div class="paq-dot" style="background:${color}"></div>
-            ${nombre}
+            ${escapeHtml(nombre)}
           </div>
           <div class="paq-formula">${cantidad} × ${precio.toLocaleString('es-ES')}€</div>
         </div>
@@ -4326,7 +4336,7 @@ function renderPaqRow(nombre, cantidad, precio, total, color, maxTotal) {
 function renderFilaJugador(nombre, comPorJug, numJugadores, estado, total) {
   return `
     <tr>
-      <td><div class="com-name">${nombre}</div><div class="com-name-sub">Comercial activo/a</div></td>
+      <td><div class="com-name">${escapeHtml(nombre)}</div><div class="com-name-sub">Comercial activo/a</div></td>
       <td style="text-align:right"><span class="com-amt">${comPorJug}€</span></td>
       <td style="text-align:right"><span class="com-count">${numJugadores}</span></td>
       <td><div class="${total > 0 ? 'com-total-cell' : 'com-zero'}">${total.toLocaleString('es-ES')}€</div></td>
@@ -4336,7 +4346,7 @@ function renderFilaJugador(nombre, comPorJug, numJugadores, estado, total) {
 function renderFilaAcompanante(nombre, comDoble, comSencilla, numAcomp, total) {
   return `
     <tr>
-      <td><div class="com-name">${nombre}</div><div class="com-name-sub">Comercial activo/a</div></td>
+      <td><div class="com-name">${escapeHtml(nombre)}</div><div class="com-name-sub">Comercial activo/a</div></td>
       <td style="text-align:right"><span class="com-amt">${comDoble}€</span></td>
       <td style="text-align:right"><span class="com-amt">${comSencilla}€</span></td>
       <td style="text-align:right"><span class="com-count">${numAcomp}</span></td>
@@ -4362,8 +4372,8 @@ function renderMobileJugador(nombre, comPorJug, numJugadores, estado, total, idx
   return `
     <div class="com-mobile-card">
       <div class="com-mobile-card-name">
-        ${nombre}
-        <div class="com-mobile-avatar" style="background:${color}">${iniciales(nombre)}</div>
+        ${escapeHtml(nombre)}
+        <div class="com-mobile-avatar" style="background:${color}">${escapeHtml(iniciales(nombre))}</div>
       </div>
       <div class="com-mobile-row">
         <span class="com-mobile-key">Com. por jugador</span>
@@ -4386,8 +4396,8 @@ function renderMobileAcompanante(nombre, comDoble, comSencilla, numAcomp, total,
   return `
     <div class="com-mobile-card">
       <div class="com-mobile-card-name">
-        ${nombre}
-        <div class="com-mobile-avatar" style="background:${color}">${iniciales(nombre)}</div>
+        ${escapeHtml(nombre)}
+        <div class="com-mobile-avatar" style="background:${color}">${escapeHtml(iniciales(nombre))}</div>
       </div>
       <div class="com-mobile-row">
         <span class="com-mobile-key">Com. hab. doble</span>
@@ -4509,15 +4519,15 @@ function renderAdminTable(rows) {
     const tipoBg = tp.toLowerCase().includes('jug') ? 'rgba(30,91,168,.1)' : tp.toLowerCase().includes('staff') ? 'rgba(124,58,237,.1)' : 'rgba(22,101,52,.08)';
     const tipoColor = tp.toLowerCase().includes('jug') ? 'var(--blue)' : tp.toLowerCase().includes('staff') ? '#7c3aed' : '#166534';
     return `<tr onclick="openDetailModal(${origIdx})" style="cursor:pointer">
-      <td style="font-weight:500">${nb}</td>
-      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${tipoBg};color:${tipoColor}">${tp}</span></td>
-      <td style="font-size:12px;color:var(--muted)">${em}</td>
-      <td style="font-size:12px">${ph}</td>
-      <td style="font-size:12px">${fn}</td>
-      <td style="font-size:12px;color:var(--muted)">${club || '—'}</td>
+      <td style="font-weight:500">${escapeHtml(nb)}</td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${tipoBg};color:${tipoColor}">${escapeHtml(tp)}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${escapeHtml(em)}</td>
+      <td style="font-size:12px">${escapeHtml(ph)}</td>
+      <td style="font-size:12px">${escapeHtml(fn)}</td>
+      <td style="font-size:12px;color:var(--muted)">${escapeHtml(club) || '—'}</td>
       <td style="text-align:center">${tiq}</td>
-      <td style="font-size:12px">${hab}</td>
-      <td><span class="${cls}">${paso}</span></td>
+      <td style="font-size:12px">${escapeHtml(hab)}</td>
+      <td><span class="${cls}">${escapeHtml(paso)}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="event.stopPropagation();openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
     </tr>`;
   }).join('');
@@ -4642,7 +4652,7 @@ function openDetailModal(idx) {
 
   document.getElementById('detail-modal-title-name').textContent = n.nombre || 'Detalle del participante';
   document.getElementById('detail-modal-body').innerHTML = items.map(([label, val]) =>
-    `<div class="mfield"><label>${label}</label><div style="font-size:14px;color:var(--navy);padding:4px 0">${val}</div></div>`
+    `<div class="mfield"><label>${escapeHtml(label)}</label><div style="font-size:14px;color:var(--navy);padding:4px 0">${escapeHtml(val)}</div></div>`
   ).join('');
   document.getElementById('detail-modal').classList.add('open');
 }
@@ -5143,7 +5153,7 @@ function buildCategorias() {
         html += `<tr><td colspan="4" style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 16px;">Sin jugadores en esta categoría</td></tr>`;
       } else {
         jug.forEach((j,i)=>{
-          html += `<tr style="background:${i%2===0?'var(--off)':'#fff'}"><td style="font-weight:500">${j.nombre}</td><td style="font-size:12px;color:var(--muted)">${j.club||'—'}</td><td style="font-size:12px;color:var(--muted)">${j.fnDisp}</td><td style="font-size:12px;color:var(--muted);text-align:center">${j.edad!==null?j.edad:'—'}</td></tr>`;
+          html += `<tr style="background:${i%2===0?'var(--off)':'#fff'}"><td style="font-weight:500">${escapeHtml(j.nombre)}</td><td style="font-size:12px;color:var(--muted)">${escapeHtml(j.club)||'—'}</td><td style="font-size:12px;color:var(--muted)">${escapeHtml(j.fnDisp)}</td><td style="font-size:12px;color:var(--muted);text-align:center">${j.edad!==null?j.edad:'—'}</td></tr>`;
         });
       }
     });
@@ -5184,8 +5194,8 @@ function renderAdminCategorias(cats) {
     } else {
       cat.jugadores.forEach((j, idx) => {
         html += `<tr style="background:${idx%2===0?'var(--off)':'#fff'}">
-          <td style="font-weight:500">${j.nombre}</td>
-          <td style="font-size:12px;color:var(--muted)">${j.fecha}</td>
+          <td style="font-weight:500">${escapeHtml(j.nombre)}</td>
+          <td style="font-size:12px;color:var(--muted)">${escapeHtml(j.fecha)}</td>
         </tr>`;
       });
     }
@@ -5210,11 +5220,11 @@ function loadAdminComunicados() {
         return `<div class="comun-admin-item">
           <div class="comun-admin-body">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
-              <span class="comun-admin-fecha">${m.fecha || ''}</span>
-              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(30,91,168,.1);color:var(--blue);font-weight:500">${destText}</span>
+              <span class="comun-admin-fecha">${escapeHtml(m.fecha)}</span>
+              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(30,91,168,.1);color:var(--blue);font-weight:500">${escapeHtml(destText)}</span>
             </div>
-            <div class="comun-admin-titulo">${m.titulo || ''}</div>
-            <div class="comun-admin-preview">${m.mensaje || ''}</div>
+            <div class="comun-admin-titulo">${escapeHtml(m.titulo)}</div>
+            <div class="comun-admin-preview">${escapeHtml(m.mensaje)}</div>
           </div>
           ${isEditAdmin() ? `<button class="btn-del" onclick="adminDeleteComunicado(this,'${encodeURIComponent(m.titulo||'')}','${encodeURIComponent(m.fecha||'')}')">Eliminar</button>` : ''}
         </div>`;
@@ -5266,8 +5276,8 @@ function poblarComunColegio(filtro) {
   list.innerHTML = colegios.map(colegio => {
     const checked = prevChecked.has(colegio) ? ' checked' : '';
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background=''">
-      <input type="checkbox" value="${colegio.replace(/"/g,'&quot;')}"${checked} onchange="actualizarCuentaColegio()" style="accent-color:var(--blue);width:15px;height:15px;flex-shrink:0">
-      <span>🏫 ${colegio}</span>
+      <input type="checkbox" value="${escapeHtml(colegio)}"${checked} onchange="actualizarCuentaColegio()" style="accent-color:var(--blue);width:15px;height:15px;flex-shrink:0">
+      <span>🏫 ${escapeHtml(colegio)}</span>
     </label>`;
   }).join('');
   actualizarCuentaColegio();
@@ -5328,8 +5338,8 @@ function poblarComunIndividual(filtro) {
     if (!email) return '';
     const checked = prevChecked.has(email) ? ' checked' : '';
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background=''">
-      <input type="checkbox" value="${email}"${checked} onchange="actualizarCuentaIndividual()" style="accent-color:var(--blue);width:15px;height:15px;flex-shrink:0">
-      <span>${nombre} <span style="color:var(--muted);font-size:11px">${email}</span></span>
+      <input type="checkbox" value="${escapeHtml(email)}"${checked} onchange="actualizarCuentaIndividual()" style="accent-color:var(--blue);width:15px;height:15px;flex-shrink:0">
+      <span>${escapeHtml(nombre)} <span style="color:var(--muted);font-size:11px">${escapeHtml(email)}</span></span>
     </label>`;
   }).join('');
   actualizarCuentaIndividual();
@@ -5449,18 +5459,20 @@ function renderAdminAcceso() {
     const rolLabel = a.rol === 'editar' ? 'Ver y editar' : 'Solo ver';
     const rolColor = a.rol === 'editar' ? 'rgba(22,101,52,.12)' : 'rgba(30,91,168,.1)';
     const rolTextColor = a.rol === 'editar' ? '#166534' : 'var(--blue)';
+    const cambiarRolClick = `adminCambiarRolAcceso('${a.email.replace(/'/g,"\\'")}', this.value)`;
+    const eliminarClick = `adminEliminarAcceso('${a.email.replace(/'/g,"\\'")}', this)`;
     return `
     <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:#fff">
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:500;color:var(--navy)">${a.email}</div>
-        ${a.nombre ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${a.nombre}</div>` : ''}
+        <div style="font-size:13px;font-weight:500;color:var(--navy)">${escapeHtml(a.email)}</div>
+        ${a.nombre ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${escapeHtml(a.nombre)}</div>` : ''}
       </div>
-      <select onchange="adminCambiarRolAcceso('${a.email}', this.value)"
+      <select onchange="${escapeHtml(cambiarRolClick)}"
               style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--navy);background:#fff;cursor:pointer">
         <option value="ver"${a.rol !== 'editar' ? ' selected' : ''}>Solo ver</option>
         <option value="editar"${a.rol === 'editar' ? ' selected' : ''}>Ver y editar</option>
       </select>
-      <button onclick="adminEliminarAcceso('${a.email}', this)" class="btn-del">Eliminar</button>
+      <button onclick="${escapeHtml(eliminarClick)}" class="btn-del">Eliminar</button>
     </div>`;
   }).join('');
 }
