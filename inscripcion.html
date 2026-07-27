@@ -258,6 +258,7 @@ img, video, iframe, table {
           <option value="">Selecciona</option>
           <option value="individual">Individual</option>
           <option value="doble">Doble (con otro acompañante)</option>
+          <option value="solo_actividades">Solo actividades (sin alojamiento)</option>
         </select>
       </div>
       <div style="grid-column:1/-1">
@@ -265,6 +266,9 @@ img, video, iframe, table {
         <input class="finput" id="a-jugador" type="text" placeholder="Nombre completo del jugador inscrito">
       </div>
     </div>
+
+    <!-- NOTA SOLO ACTIVIDADES (solo si sin alojamiento) -->
+    <div id="solo-act-note" class="info-note" style="display:none">Esta opción <strong>no incluye alojamiento</strong>: el acompañante participa únicamente en las actividades del programa.</div>
 
     <!-- SECCIÓN COMPAÑERO DE HABITACIÓN (solo si doble) -->
     <div id="p2-section" style="display:none;animation:fadeIn .3s ease">
@@ -373,6 +377,7 @@ function onHabitacion() {
     document.getElementById('p2-nombre').classList.remove('error');
     document.getElementById('p2-pasaporte').classList.remove('error');
   }
+  document.getElementById('solo-act-note').style.display = val === 'solo_actividades' ? 'block' : 'none';
 }
 
 function selTiq(tipo, val) {
@@ -452,7 +457,7 @@ async function submitForm(tipo) {
     salud_alergias: '', acudiente: '', relacion: '',
     tiquete_aereo: tiqAcompanante === 'si' ? 'Con tiquete' : 'Sin tiquete',
     programa: 'RMF Clinic 2026',
-    habitacion: document.getElementById('a-habitacion').value,
+    habitacion: document.getElementById('a-habitacion').value === 'solo_actividades' ? '' : document.getElementById('a-habitacion').value,
     jugador_acompana: document.getElementById('a-jugador').value.trim(),
     nombre_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-nombre').value.trim() : '',
     pasaporte_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-pasaporte').value.trim() : '',
