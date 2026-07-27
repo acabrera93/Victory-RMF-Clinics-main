@@ -1676,6 +1676,10 @@ function agregarParticipante(data) {
     if (!dataByNorm['paso_actual']) dataByNorm['paso_actual'] = '1';
     if (!dataByNorm['fuente'])      dataByNorm['fuente']      = 'Panel Admin';
     if (!dataByNorm['tc_aceptado']) dataByNorm['tc_aceptado'] = 'No';
+    // Timestamp (col A) siempre generado por el servidor: el panel admin no lo envía,
+    // y si esta columna queda vacía, el escenario de Make que agrega inscripciones del
+    // formulario público pierde la referencia de "última fila" y escribe sobre el encabezado.
+    dataByNorm['timestamp'] = new Date().toISOString();
 
     // Construir fila alineada con cabeceras del Sheet
     const newRow = headers.map(function(h, j) {
