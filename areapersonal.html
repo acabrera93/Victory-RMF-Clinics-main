@@ -671,6 +671,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="pay-detail" id="d1tc">
         <div class="info-box">Ingresa el monto en COP calculado arriba. En el campo referencia escribe tu <strong>nombre completo</strong>.</div>
         <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a>
+        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
       </div>
       <div class="pay-detail" id="d1tr">
         <div class="bank-card">
@@ -682,6 +683,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="ok-box" style="margin-top:14px;">
           📎 Por favor envía tu comprobante de pago al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Reserva — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
         </div>
+        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> además del correo, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
       </div>
 
       <!-- UPLOAD COMPROBANTE RESERVA -->
@@ -730,7 +732,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtc-total">$ —</div><div class="pamount-fee" id="ptiqtc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="ptiqtr" onclick="selPay('tiq','tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
-      <div class="pay-detail" id="dtiqtc"><div class="info-box">Referencia: <strong>tu nombre + TIQUETE</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar tiquete con Bold →</a></div>
+      <div class="pay-detail" id="dtiqtc">
+        <div class="info-box">Referencia: <strong>tu nombre + TIQUETE</strong>.</div>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar tiquete con Bold →</a>
+        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
+      </div>
       <div class="pay-detail" id="dtiqtr">
         <div class="bank-card">
           <div class="brow"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
@@ -740,6 +746,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="ok-box" style="margin-top:14px;">
           📎 Por favor envía tu comprobante del tiquete al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Tiquete — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
         </div>
+        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> además del correo, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
       </div>
 
       <!-- UPLOAD COMPROBANTE TIQUETE -->
@@ -778,7 +785,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tc-total">$ —</div><div class="pamount-fee" id="p2tc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="p2tr" onclick="selPay(2,'tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
-      <div class="pay-detail" id="d2tc"><div class="info-box">Referencia: <strong>tu nombre completo</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a></div>
+      <div class="pay-detail" id="d2tc">
+        <div class="info-box">Referencia: <strong>tu nombre completo</strong>.</div>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a>
+        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
+      </div>
       <div class="pay-detail" id="d2tr">
         <div class="bank-card">
           <div class="brow"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
@@ -789,6 +800,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="ok-box" style="margin-top:14px;">
           📎 Por favor envía tu comprobante del pago final al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Pago Final — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
         </div>
+        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> además del correo, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
       </div>
 
       <!-- UPLOAD COMPROBANTE PAGO FINAL -->
