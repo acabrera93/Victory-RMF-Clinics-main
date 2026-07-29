@@ -670,8 +670,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div class="pay-detail" id="d1tc">
         <div class="info-box">Ingresa el monto en COP calculado arriba. En el campo referencia escribe tu <strong>nombre completo</strong>.</div>
-        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a>
-        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn" onclick="avisoComprobante()">💳 Pagar con Bold →</a>
       </div>
       <div class="pay-detail" id="d1tr">
         <div class="bank-card">
@@ -734,8 +733,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div class="pay-detail" id="dtiqtc">
         <div class="info-box">Referencia: <strong>tu nombre + TIQUETE</strong>.</div>
-        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar tiquete con Bold →</a>
-        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn" onclick="avisoComprobante()">💳 Pagar tiquete con Bold →</a>
       </div>
       <div class="pay-detail" id="dtiqtr">
         <div class="bank-card">
@@ -787,8 +785,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div class="pay-detail" id="d2tc">
         <div class="info-box">Referencia: <strong>tu nombre completo</strong>.</div>
-        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a>
-        <div style="margin-top:14px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.</div>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn" onclick="avisoComprobante()">💳 Pagar con Bold →</a>
       </div>
       <div class="pay-detail" id="d2tr">
         <div class="bank-card">
@@ -2683,6 +2680,11 @@ function onTC() {
     const ds3 = document.getElementById('ds3');
     if (ds3) ds3.style.display = '';
   }
+}
+
+// ── AVISO COMPROBANTE (Bold) ───────────────────────────────────────────────────
+function avisoComprobante() {
+  alert('📎 Importante: después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.');
 }
 
 // ── PAY SELECT ────────────────────────────────────────────────────────────────
