@@ -598,7 +598,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <!-- Opción agregar tiquete (solo si vino sin tiquete) — PRIMERO -->
       <div id="tiq-optin" style="display:none" class="tiq-box">
         <h4>✈️ ¿Deseas agregar el tiquete aéreo?</h4>
-        <p>No lo incluiste en la inscripción. Puedes agregarlo ahora — costo aprox. <strong>~1.150 EUR</strong> por persona (vuelo grupal BOG–MAD–BOG, fecha fija).</p>
+        <p>No lo incluiste en la inscripción. Puedes agregarlo ahora — costo <strong>$4.050.000 COP</strong> por persona (vuelo grupal BOG–MAD–BOG, fecha fija).</p>
         <div class="tiq-btns">
           <button class="btn-tiq-yes" id="btn-tiq-si" onclick="setTiquete(true)">✈️ Sí, agregar tiquete</button>
           <button class="btn-tiq-no" onclick="setTiquete(false)">No, gestiono mi tiquete</button>
@@ -710,16 +710,15 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="ctitle">Pago del tiquete aéreo</div>
       <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
       <div style="background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:20px;margin-bottom:20px">
-        <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo aprox. <strong>~1.000 EUR</strong> por persona.</p>
+        <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>$4.050.000 COP</strong> por persona.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">✈️</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Vuelo grupo</div><div style="font-size:10px;color:var(--muted)">BOG–MAD–BOG</div></div>
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">📅</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Fecha límite</div><div style="font-size:10px;color:var(--muted)">1 de junio 2026</div></div>
-          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo aprox.</div><div style="font-size:10px;color:var(--muted)">~1.000 EUR / persona</div></div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo</div><div style="font-size:10px;color:var(--muted)">$4.050.000 COP / persona</div></div>
         </div>
       </div>
-      <div class="calc-row">
-        <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur-tiq" type="number" value="1000" min="1" oninput="calcTiq()"></div>
-        <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
+      <div class="calc-row" style="grid-template-columns:1fr">
+        <div><div class="clabel">Valor del tiquete (COP)</div><input class="cinput" id="eur-tiq" type="number" value="4050000" min="1" oninput="calcTiq()"></div>
       </div>
       <div class="cresult" style="margin-bottom:20px">
         <div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop-tiq">$ —</div></div>
@@ -2070,12 +2069,12 @@ function calcPaymentTotals() {
   }).length;
   const reserva = 1000 * reservaCount;
 
-  // Tiquete: ~1.000€ por participante con tiquete
+  // Tiquete: $4.050.000 COP (precio fijo) por participante con tiquete
   const tiqCount = allParticipants.filter(p => {
     const n = normalizeParticipant(p) || p;
     return n.tiquete_aereo === 'Con tiquete';
   }).length;
-  const tiquete = 1000 * tiqCount;
+  const tiquete = 4050000 * tiqCount;
 
   // Pago final: jugador=1.790, acomp solo actividades (>12a=590, ≤12a=190), acomp doble=1.190, acomp sencilla=1.510
   let final = 0;
@@ -2112,7 +2111,7 @@ function applyPaymentTotals(t) {
 
   // Tiquete: input
   const etiq = document.getElementById('eur-tiq');
-  if (etiq) { etiq.value = t.tiquete || 1000; calcTiq(); }
+  if (etiq) { etiq.value = t.tiquete || 4050000; calcTiq(); }
 
   // Pago final: input + subtítulo
   const e2 = document.getElementById('eur2');
@@ -2123,7 +2122,7 @@ function applyPaymentTotals(t) {
   // Actualizar descripciones de pasos
   STEP_DEFS[2].desc = `${t.reserva.toLocaleString('es-CO')} EUR para confirmar cupo`;
   const idxTiq = STEP_DEFS.findIndex(s => s.tiqOnly);
-  if (idxTiq > -1 && t.tiquete > 0) STEP_DEFS[idxTiq].desc = `${t.tiquete.toLocaleString('es-CO')} EUR · Vuelo BOG–MAD–BOG`;
+  if (idxTiq > -1 && t.tiquete > 0) STEP_DEFS[idxTiq].desc = `${t.tiquete.toLocaleString('es-CO')} COP · Vuelo BOG–MAD–BOG`;
   const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
   if (idxFinal > -1) STEP_DEFS[idxFinal].desc = `${t.final.toLocaleString('es-CO')} EUR antes jul 2026`;
   buildSteps();
@@ -2131,11 +2130,11 @@ function applyPaymentTotals(t) {
 }
 
 function buildBreakdown(t) {
-  function bkRow(nombre, sub, amt) {
-    return `<div class="bkrow"><span class="bk-name"><strong>${escapeHtml(nombre)}</strong><span class="bk-sub">(${escapeHtml(sub)})</span></span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
+  function bkRow(nombre, sub, amt, currency) {
+    return `<div class="bkrow"><span class="bk-name"><strong>${escapeHtml(nombre)}</strong><span class="bk-sub">(${escapeHtml(sub)})</span></span><span class="bk-amt">${amt.toLocaleString('es-CO')} ${currency || 'EUR'}</span></div>`;
   }
-  function totalRow(label, amt) {
-    return `<div class="bkrow"><span>${escapeHtml(label)}</span><span class="bk-amt">${amt.toLocaleString('es-CO')} EUR</span></div>`;
+  function totalRow(label, amt, currency) {
+    return `<div class="bkrow"><span>${escapeHtml(label)}</span><span class="bk-amt">${amt.toLocaleString('es-CO')} ${currency || 'EUR'}</span></div>`;
   }
 
   // Reserva
@@ -2155,7 +2154,7 @@ function buildBreakdown(t) {
   if (bt) {
     const tiqPax = allParticipants.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
     if (tiqPax.length > 1) {
-      bt.innerHTML = tiqPax.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', 1000)).join('') + totalRow('Total tiquete', t.tiquete);
+      bt.innerHTML = tiqPax.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', 4050000, 'COP')).join('') + totalRow('Total tiquete', t.tiquete, 'COP');
       bt.style.display = 'block';
     } else { bt.style.display = 'none'; }
   }
@@ -2504,10 +2503,8 @@ function calc2() {
   updatePayAmounts('p2tc-total','p2tc-fee','p2tr-total', base);
 }
 function calcTiq() {
-  if (!tasa) return;
-  const e = parseFloat(document.getElementById('eur-tiq').value) || 0;
-  const base = e * tasa;
-  document.getElementById('tasa-tiq').value = fmtT(tasa);
+  // Precio fijo en COP (no depende de la TRM, a diferencia de reserva/pago final)
+  const base = parseFloat(document.getElementById('eur-tiq').value) || 0;
   document.getElementById('cop-tiq').textContent = fmt(base);
   updatePayAmounts('ptiqtc-total','ptiqtc-fee','ptiqtr-total', base);
 }
@@ -2551,7 +2548,7 @@ function getTyC() {
 </ul>
 <h3>2. Precio del programa y forma de pago</h3>
 <ul>
-  <li>Costo por participante: <strong>2.790 EUR</strong>${conTiq ? ' + tiquete aéreo (~1.150 EUR)' : ' (sin tiquete aéreo)'}</li>
+  <li>Costo por participante: <strong>2.790 EUR</strong>${conTiq ? ' + tiquete aéreo ($4.050.000 COP)' : ' (sin tiquete aéreo)'}</li>
   <li>Pago de reserva: <strong>1.000 EUR</strong> — fecha límite <strong>1 de junio 2026</strong></li>
   <li>2do pago: <strong>1.790 EUR</strong> — fecha límite <strong>30 de julio 2026</strong></li>
   <li>Los pagos pueden realizarse en pesos colombianos (COP) según la TRM del día, mediante transferencia bancaria o tarjeta</li>
@@ -4885,7 +4882,7 @@ function openPagosModal(idx, nombreOverride) {
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div><div class="clabel">Valor EUR</div><input type="number" id="pago-tiquete-eur" placeholder="1000" style="${inputStyle}"></div>
-            <div><div class="clabel">Valor COP</div><input type="number" id="pago-tiquete-cop" placeholder="4350000" style="${inputStyle}"></div>
+            <div><div class="clabel">Valor COP</div><input type="number" id="pago-tiquete-cop" placeholder="4050000" style="${inputStyle}"></div>
           </div>
           <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-tiquete-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${currentPaquete!=='Premium'?' selected':''}>Estándar</option><option${currentPaquete==='Premium'?' selected':''}>Premium</option></select></div>
           <button onclick="registrarPagoDesdePanel('Tiquete')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Registrar pago de Tiquete</button>
