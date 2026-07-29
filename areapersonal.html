@@ -1815,6 +1815,7 @@ let tipo = 'jugador';
 let conTiq = false;
 let soloAct = false;
 let esStaffView = false;
+let esComercialOnly = false;
 let grupoPaso = 1;
 let programa = '';
 let adminLoaded = false;
@@ -2222,6 +2223,7 @@ async function doLogin() {
 
     // Comercial sin participantes → panel de comisiones únicamente
     if (rawParticipants.length === 0 && isComercial) {
+      participantEmail = email;
       showComercialOnly(comercialJson);
       return;
     }
@@ -3345,7 +3347,7 @@ function switchSection(section, noScroll) {
     if (cur) { cur.classList.add('active'); if (!noScroll) cur.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } else {
     stepsRow.style.display = 'none';
-    if (resumenCard) resumenCard.style.display = section === 'admin' ? 'none' : '';
+    if (resumenCard) resumenCard.style.display = (section === 'admin' || (section === 'comercial' && esComercialOnly)) ? 'none' : '';
     const el = document.getElementById('panel-' + section);
     if (el) { el.classList.add('active'); if (!noScroll) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     if (section === 'fotos' && !fotosLoaded) loadFotos();
@@ -3602,10 +3604,15 @@ function showComercialOnly(data) {
   document.getElementById('dtipo').textContent = '💼 Comercial';
   document.getElementById('btn-toggle-tiq').style.display = 'none';
   document.getElementById('section-tabs').style.display = 'none';
+  esComercialOnly = true;
   window._comercialData = data;
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-comercial').classList.add('active');
-  renderComercialPanel();
+  if (sessionStorage.getItem('auth_comercial')) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-comercial').classList.add('active');
+    renderComercialPanel();
+  } else {
+    openPasswordGate('comercial');
+  }
 }
 
 function renderComercialPanel() {
