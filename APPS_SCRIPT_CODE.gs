@@ -264,12 +264,29 @@ function buscarParticipantes(email) {
     }
 
     Logger.log('buscarParticipantes: encontrados=' + participants.length);
+    if (participants.length > 0) notificarAccesoAreaPersonal(emailNorm, participants);
     return ContentService.createTextOutput(JSON.stringify(participants))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     Logger.log('buscarParticipantes error: ' + err);
     return ContentService.createTextOutput(JSON.stringify({ _debug: true, catch_error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ───── NOTIFICAR ACCESO AL ÁREA PERSONAL ───────────────────────────────────────
+function notificarAccesoAreaPersonal(email, participants) {
+  try {
+    const nombres = participants.map(function(p) {
+      for (const k in p) { if (String(k).toLowerCase().trim() === 'nombre') return p[k]; }
+      return '';
+    }).filter(function(n) { return n; });
+    const quien = nombres.length ? (nombres.join(' + ') + ' (' + email + ')') : email;
+    const fecha = Utilities.formatDate(new Date(), 'America/Bogota', 'dd/MM/yyyy HH:mm');
+    GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net', '[Área Personal] Acceso — ' + (nombres[0] || email),
+      quien + ' entró a su área personal.\n\nFecha: ' + fecha, { name: 'Real Madrid Foundation Clinic' });
+  } catch (err) {
+    Logger.log('notificarAccesoAreaPersonal error: ' + err);
   }
 }
 
