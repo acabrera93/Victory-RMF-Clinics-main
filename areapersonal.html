@@ -831,7 +831,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="dicon">📋</div>
         <div style="flex:1">
           <div class="dtitle">Permiso de salida del país</div>
-          <div class="ddesc"><strong>Requerido solo si incluye tiquete aéreo.</strong> Firmado por ambos padres o tutores legales, autenticado ante notario. Formato oficial requerido.</div>
+          <div class="ddesc"><strong>Requerido solo para menores de edad con tiquete aéreo.</strong> Firmado por ambos padres o tutores legales, autenticado ante notario. Formato oficial requerido.</div>
           <div class="dstatus" id="ds2">⏳ Pendiente</div>
           <div class="upload" onclick="document.getElementById('di2').click()">
             <div style="font-size:22px">📎</div>
@@ -845,7 +845,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="dicon">📄</div>
         <div style="flex:1">
           <div class="dtitle">Registro civil de nacimiento</div>
-          <div class="ddesc"><strong>Requerido solo si incluye tiquete aéreo.</strong> Original o copia autenticada por notario. Necesario para viajes internacionales.</div>
+          <div class="ddesc"><strong>Requerido solo para menores de edad con tiquete aéreo.</strong> Original o copia autenticada por notario. Necesario para viajes internacionales.</div>
           <div class="dstatus" id="ds4">⏳ Pendiente</div>
           <div class="upload" onclick="document.getElementById('di4').click()">
             <div style="font-size:22px">📎</div>
@@ -2052,12 +2052,16 @@ function updatePermisoDoc(u) {
   const el = document.getElementById('permiso-doc');
   const elReg = document.getElementById('registro-civil-doc');
   if (!el) return;
-  const grupoTieneTiquete = allParticipants.some(raw => {
-    const p = normalizeParticipant(raw) || raw;
-    return p.tiquete_aereo === 'Con tiquete';
-  });
-  el.style.display = grupoTieneTiquete ? '' : 'none';
-  if (elReg) elReg.style.display = grupoTieneTiquete ? '' : 'none';
+  // Permiso de salida y registro civil solo aplican al propio participante
+  // cuando tiene tiquete aéreo Y además es menor de edad (misma fórmula de
+  // edad de referencia que calcEdadRefFront: al 2 de octubre de 2026).
+  const tieneTiquete = !!(u && u.tiquete_aereo === 'Con tiquete');
+  const fObj = u ? parseFechaNacFront(u.fecha_nacimiento || '') : null;
+  const edad = fObj ? calcEdadRefFront(fObj) : null;
+  const esMenor = edad !== null && edad < 18;
+  const requiereDocsExtra = tieneTiquete && esMenor;
+  el.style.display = requiereDocsExtra ? '' : 'none';
+  if (elReg) elReg.style.display = requiereDocsExtra ? '' : 'none';
 }
 
 // ── CÁLCULO DE TOTALES POR GRUPO ──────────────────────────────────────────────
