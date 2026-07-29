@@ -718,10 +718,18 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
     const data = sheet.getDataRange().getValues();
     const headers = data[0] || [];
 
+    // Buscar columna de email por nombre de cabecera (fallback a columna A si no se encuentra)
+    let emailColDocs = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailColDocs = j; break; }
+    }
+    if (emailColDocs < 0) emailColDocs = 0;
+
     // Buscar email en la hoja
     let rowIndex = -1;
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0]?.toString().toLowerCase() === email) {
+      if (String(data[i][emailColDocs] || '').toLowerCase().trim() === email) {
         rowIndex = i + 1; // +1 porque Sheets es 1-indexed
         break;
       }
@@ -742,9 +750,98 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
         const formula = `=HYPERLINK("${fileUrl}","${fileName}")`;
         sheet.getRange(rowIndex, colIndex + 1).setValue(formula);
       }
+
+      // Solo para documentos de identidad (pasaporte/permiso/registro_civil), no
+      // comprobantes de pago: recalcular y escribir el contador "X/Y" en Inscripciones.
+      if (!tipoPago) {
+        const rowValues = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+        const requeridos = getDocumentosRequeridos(email);
+        const colsRequeridas = requeridos === 3
+          ? ['doc_pasaporte', 'doc_permiso', 'doc_registro_civil']
+          : ['doc_pasaporte'];
+        let subidos = 0;
+        colsRequeridas.forEach(function (cn) {
+          const idx = headers.indexOf(cn);
+          if (idx >= 0 && rowValues[idx] !== '' && rowValues[idx] !== null) subidos++;
+        });
+        actualizarContadorDocumentos(email, subidos, requeridos);
+      }
+    } else {
+      Logger.log('updateSheetWithUpload: email no encontrado en la hoja Documentos: ' + email);
     }
   } catch (err) {
     Logger.log('Sheet update error: ' + err);
+  }
+}
+
+// ───── DOCUMENTOS REQUERIDOS POR PARTICIPANTE ──────────────────────────────────
+// Regla: se requieren 3 documentos (pasaporte + permiso de salida + registro
+// civil) solo si el participante tiene tiquete aéreo Y además es menor de edad
+// (edad de referencia al 2 de octubre de 2026, inicio del programa — misma
+// fórmula que calcEdadRef/parseFechaNacimiento, ya usadas en getAdminCategorias).
+// En cualquier otro caso (sin tiquete, o mayor de edad) solo se requiere 1
+// (pasaporte).
+function getDocumentosRequeridos(email) {
+  try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    if (!emailNorm) return 1;
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    let emailCol = -1, tiqueteCol = -1, fechaCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+      if (h === 'tiquete aereo' || h === 'tiquete aéreo') tiqueteCol = j;
+      if (h.indexOf('fecha') >= 0 && h.indexOf('nac') >= 0) fechaCol = j;
+    }
+    if (emailCol < 0) { Logger.log('getDocumentosRequeridos: columna Email no encontrada'); return 1; }
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) {
+        const tieneTiquete = tiqueteCol >= 0 && String(data[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
+        const fechaObj = fechaCol >= 0 ? parseFechaNacimiento(data[i][fechaCol]) : null;
+        const edad = calcEdadRef(fechaObj);
+        const esMenor = edad !== null && edad < 18;
+        return (tieneTiquete && esMenor) ? 3 : 1;
+      }
+    }
+    Logger.log('getDocumentosRequeridos: email no encontrado en Inscripciones: ' + email);
+    return 1;
+  } catch (err) {
+    Logger.log('getDocumentosRequeridos error: ' + err);
+    return 1;
+  }
+}
+
+// ───── ACTUALIZAR CONTADOR "X/Y" EN INSCRIPCIONES ──────────────────────────────
+// Escribe en la columna "Documentos" (Inscripciones) el texto "X/Y": X = cuántos
+// de los documentos requeridos ya fueron subidos, Y = total requerido (ver
+// getDocumentosRequeridos). Busca ambas columnas por nombre de cabecera.
+function actualizarContadorDocumentos(email, subidos, requeridos) {
+  try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    let emailCol = -1, docsCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+      if (h === 'documentos') docsCol = j;
+    }
+    if (emailCol < 0) { Logger.log('actualizarContadorDocumentos: columna Email no encontrada'); return; }
+    if (docsCol < 0) { Logger.log('actualizarContadorDocumentos: columna "Documentos" no encontrada en Inscripciones'); return; }
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) {
+        sheet.getRange(i + 1, docsCol + 1).setValue(subidos + '/' + requeridos);
+        return;
+      }
+    }
+    Logger.log('actualizarContadorDocumentos: email no encontrado en Inscripciones: ' + email);
+  } catch (err) {
+    Logger.log('actualizarContadorDocumentos error: ' + err);
   }
 }
 
