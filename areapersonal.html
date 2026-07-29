@@ -2334,6 +2334,11 @@ function loadParticipant(p) {
   programa = participant.programa || '';
   habitacion = participant.habitacion || '';
 
+  // Cargar el texto de T&C de inmediato, independiente del estado del checkbox
+  // y antes de cualquier otra actualización de UI que pueda fallar más abajo.
+  const tcTextEl = document.getElementById('tc-text');
+  if (tcTextEl) { try { tcTextEl.innerHTML = getTyC(); } catch (e) {} }
+
   document.getElementById('dn').textContent = nombre;
   document.getElementById('dtipo').textContent = tipo.includes('jug') ? '⚽ Jugador' : tipo.includes('staff') ? '👥 Staff' : '👨‍👩‍👧 Acompañante';
   document.getElementById('ref1').textContent = nombre;
@@ -2378,7 +2383,7 @@ function applyPasoActual(paso) {
   const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
   if (idxFinal > -1) STEP_DEFS[idxFinal].done = paso >= 5;
   const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
-  if (idxDocs > -1) STEP_DEFS[idxDocs].done = paso >= 6;
+  if (idxDocs > -1) STEP_DEFS[idxDocs].done = paso >= 7;
 
   // Ir al panel correcto según paso
   const panelMap = {1:'panel-tc', 2:'panel-tc', 3:'panel2', 4:'panel-tiq', 5:'panel3', 6:'panel4', 7:'panel-done'};
@@ -2406,9 +2411,10 @@ function buildSteps() {
   const row = document.getElementById('steps-row');
   row.innerHTML = '';
   const pagosBloqueados = !esStaffView && grupoPaso >= 6;
+  const bienvenidaBloqueada = grupoPaso < 7;
   const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct) && (!s.skipForStaff || !esStaffView));
   visible.forEach((s, i) => {
-    const bloqueado = pagosBloqueados && PANELES_PAGO_BLOQUEABLES.includes(s.panel);
+    const bloqueado = (pagosBloqueados && PANELES_PAGO_BLOQUEABLES.includes(s.panel)) || (s.panel === 'panel-done' && bienvenidaBloqueada);
     const d = document.createElement('div');
     d.className = 'step' + (s.done ? ' done' : '') + (s.panel === curPanel ? ' active' : '') + (bloqueado ? ' locked' : '');
     if (s.panel && !bloqueado) d.onclick = () => goPanel(s.panel);
@@ -2419,6 +2425,7 @@ function buildSteps() {
 
 function goPanel(id, noScroll) {
   if (!esStaffView && grupoPaso >= 6 && PANELES_PAGO_BLOQUEABLES.includes(id)) return;
+  if (id === 'panel-done' && grupoPaso < 7) return;
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   const el = document.getElementById(id);
   if (el) { el.classList.add('active'); curPanel = id; }
