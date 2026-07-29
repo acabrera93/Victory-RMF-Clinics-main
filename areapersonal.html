@@ -670,7 +670,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div class="pay-detail" id="d1tc">
         <div class="info-box">Ingresa el monto en COP calculado arriba. En el campo referencia escribe tu <strong>nombre completo</strong>.</div>
-        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn" onclick="avisoComprobante('reserva')">💳 Pagar con Bold →</a>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a>
       </div>
       <div class="pay-detail" id="d1tr">
         <div class="bank-card">
@@ -733,7 +733,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div class="pay-detail" id="dtiqtc">
         <div class="info-box">Referencia: <strong>tu nombre + TIQUETE</strong>.</div>
-        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn" onclick="avisoComprobante('tiquete')">💳 Pagar tiquete con Bold →</a>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar tiquete con Bold →</a>
       </div>
       <div class="pay-detail" id="dtiqtr">
         <div class="bank-card">
@@ -785,7 +785,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div class="pay-detail" id="d2tc">
         <div class="info-box">Referencia: <strong>tu nombre completo</strong>.</div>
-        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn" onclick="avisoComprobante('final')">💳 Pagar con Bold →</a>
+        <a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a>
       </div>
       <div class="pay-detail" id="d2tr">
         <div class="bank-card">
@@ -1791,20 +1791,20 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 </div>
 
-<!-- MODAL MONTO A PAGAR EN BOLD -->
+<!-- MODAL MONTO A PAGAR (tarjeta/Bold o transferencia) -->
 <div class="modal-overlay" id="bold-monto-modal" onclick="if(event.target===this)closeBoldModal()">
   <div class="modal-box" style="max-width:380px;text-align:center">
-    <div style="font-size:36px;margin-bottom:6px">💳</div>
-    <div style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:16px">Vas a pagar con Bold</div>
+    <div id="bold-modal-icono" style="font-size:36px;margin-bottom:6px">💳</div>
+    <div id="bold-modal-title" style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:16px">Vas a pagar con Bold</div>
 
     <div style="background:rgba(30,91,168,.06);border:1px solid rgba(30,91,168,.2);border-radius:10px;padding:16px 18px;margin-bottom:8px">
-      <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Monto a ingresar en Bold</div>
+      <div id="bold-modal-label" style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Monto a ingresar en Bold</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
         <div id="bold-monto-valor" style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.5px;color:var(--navy)">$ — COP</div>
         <button id="bold-copiar-btn" onclick="copiarMontoBold()" style="padding:6px 12px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">📋 Copiar monto</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--muted);font-style:italic;margin:0 0 18px">Ingresa exactamente este monto al abrir Bold.</p>
+    <p id="bold-modal-nota" style="font-size:12px;color:var(--muted);font-style:italic;margin:0 0 18px">Ingresa exactamente este monto al abrir Bold.</p>
 
     <div style="background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;text-align:left;margin-bottom:18px">
       📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.
@@ -2705,30 +2705,48 @@ function onTC() {
   }
 }
 
-// ── AVISO COMPROBANTE + MONTO BOLD ─────────────────────────────────────────────
-// El monto exacto se lee del total "tarjeta" ya calculado en pantalla para ese
-// panel (p1tc-total / ptiqtc-total / p2tc-total), que ya incluye la tasa correcta
-// (TRM_RESERVA fija para reserva/tiquete, tasa en vivo para pago final) y el
-// recargo de tarjeta — así el popup nunca puede desalinearse de esos cálculos.
-function avisoComprobante(panel) {
-  const totalIdByPanel = { reserva: 'p1tc-total', tiquete: 'ptiqtc-total', final: 'p2tc-total' };
-  const totalEl = document.getElementById(totalIdByPanel[panel] || '');
+// ── AVISO COMPROBANTE + MONTO A PAGAR ──────────────────────────────────────────
+// Se dispara al SELECCIONAR el método de pago (tarjeta o transferencia), no al
+// hacer clic en el link de Bold. El monto exacto se lee del total ya calculado
+// en pantalla para ese panel y método (p1tc-total/p1tr-total, etc.), que ya
+// incluye la tasa correcta (TRM_RESERVA fija para reserva/tiquete, tasa en vivo
+// para pago final) y el recargo de tarjeta cuando aplica — así el popup nunca
+// puede desalinearse de esos cálculos.
+function avisoComprobante(panel, tipo) {
+  const totalIdByPanel = {
+    reserva: { tc: 'p1tc-total',   tr: 'p1tr-total' },
+    tiquete: { tc: 'ptiqtc-total', tr: 'ptiqtr-total' },
+    final:   { tc: 'p2tc-total',   tr: 'p2tr-total' }
+  };
+  const totalId = (totalIdByPanel[panel] || {})[tipo];
+  const totalEl = document.getElementById(totalId || '');
   const montoTxt = (totalEl && totalEl.textContent.trim()) || '$ —';
+
+  const esTarjeta = tipo === 'tc';
+  const iconoEl = document.getElementById('bold-modal-icono');
+  const titleEl = document.getElementById('bold-modal-title');
+  const labelEl = document.getElementById('bold-modal-label');
+  const notaEl = document.getElementById('bold-modal-nota');
+  if (iconoEl) iconoEl.textContent = esTarjeta ? '💳' : '🏦';
+  if (titleEl) titleEl.textContent = esTarjeta ? 'Vas a pagar con Bold' : 'Vas a pagar por transferencia';
+  if (labelEl) labelEl.textContent = esTarjeta ? 'Monto a ingresar en Bold' : 'Monto a transferir';
+  if (notaEl) notaEl.textContent = esTarjeta ? 'Ingresa exactamente este monto al abrir Bold.' : 'Transfiere exactamente este monto a la cuenta bancaria indicada.';
+
   const montoEl = document.getElementById('bold-monto-valor');
   if (montoEl) montoEl.textContent = montoTxt + ' COP';
   const modal = document.getElementById('bold-monto-modal');
   if (modal) modal.classList.add('open');
-  notificarClickBold(panel, montoTxt);
+  notificarClickBold(panel, tipo, montoTxt);
 }
 
-// Aviso al admin de que un participante hizo clic en "Pagar con Bold" — fire-and-forget.
-function notificarClickBold(panel, monto) {
+// Aviso al admin de que un participante seleccionó método de pago — fire-and-forget.
+function notificarClickBold(panel, tipo, monto) {
   if (!participantEmail) return;
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'notificar_click_bold', email: participantEmail, nombre, panel, monto }),
+    body: JSON.stringify({ action: 'notificar_click_bold', email: participantEmail, nombre, panel, tipo, monto }),
     keepalive: true
   }).catch(() => {});
 }
@@ -2763,6 +2781,9 @@ function selPay(panel, tipo) {
   document.getElementById(m.tr).classList.toggle('sel', tipo!=='tc');
   document.getElementById(m.dtc).classList.toggle('vis', tipo==='tc');
   document.getElementById(m.dtr).classList.toggle('vis', tipo!=='tc');
+
+  const panelKeyMap = { 1: 'reserva', 2: 'final', tiq: 'tiquete' };
+  avisoComprobante(panelKeyMap[panel], tipo);
 }
 
 // ── DOC UPLOAD ────────────────────────────────────────────────────────────────

@@ -290,18 +290,20 @@ function notificarAccesoAreaPersonal(email, participants) {
   }
 }
 
-// ───── NOTIFICAR CLIC EN "PAGAR CON BOLD" ──────────────────────────────────────
+// ───── NOTIFICAR SELECCIÓN DE MÉTODO DE PAGO (tarjeta/Bold o transferencia) ────
 function notificarClickBold(data) {
   try {
     const email = String(data.email || '').trim();
     const nombre = String(data.nombre || '').trim();
     const panelLabels = { reserva: 'Reserva', tiquete: 'Tiquete aéreo', final: 'Pago Final' };
     const panelLabel = panelLabels[String(data.panel || '').trim()] || String(data.panel || 'Pago');
+    const esTarjeta = String(data.tipo || '').trim() === 'tc';
+    const metodoLabel = esTarjeta ? 'Tarjeta (Bold)' : 'Transferencia bancaria';
     const monto = String(data.monto || '').trim();
     const quien = nombre ? (nombre + ' (' + email + ')') : email;
     const fecha = Utilities.formatDate(new Date(), 'America/Bogota', 'dd/MM/yyyy HH:mm');
-    const subject = '[Área Personal] Clic en Bold — ' + (nombre || email) + ' · ' + panelLabel;
-    const body = quien + ' hizo clic en "Pagar con Bold" para ' + panelLabel + '.\n\n' +
+    const subject = '[Área Personal] Seleccionó método de pago — ' + (nombre || email) + ' · ' + panelLabel;
+    const body = quien + ' seleccionó pagar por "' + metodoLabel + '" para ' + panelLabel + '.\n\n' +
       'Monto mostrado: ' + (monto || 'no disponible') + '\n' +
       'Fecha: ' + fecha;
     GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net', subject, body, { name: 'Real Madrid Foundation Clinic' });
