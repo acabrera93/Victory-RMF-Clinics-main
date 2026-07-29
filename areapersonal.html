@@ -621,8 +621,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <div class="card">
       <div class="ctitle">Calculadora EUR → COP</div>
-      <p style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago se realiza en <strong>pesos colombianos (COP)</strong>. Ingresa el monto en euros y te mostramos el equivalente al tipo de cambio de referencia de mercado:</p>
-      <p id="tasa-fecha" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Actualizando tasa...</p>
+      <p style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
       <div class="calc-row">
         <div>
           <div class="clabel">Monto en euros (€)</div>
@@ -653,10 +653,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
       <div class="pay-grid">
         <div class="pay-opt" id="p1tc" onclick="selPay(1,'tc')">
-          <div class="pbadge">+3% tarjeta</div>
+          <div class="pbadge">+3,5% tarjeta</div>
           <div class="picon">💳</div>
           <div class="ptitle">Tarjeta de crédito</div>
-          <div class="pdesc">Paga con Bold. Se aplica un recargo del 3% por pago con tarjeta.</div>
+          <div class="pdesc">Paga con Bold. Se aplica un recargo del 3,5% por pago con tarjeta.</div>
           <div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p1tc-total">$ —</div><div class="pamount-fee" id="p1tc-fee">incl. recargo $ —</div></div>
         </div>
         <div class="pay-opt" id="p1tr" onclick="selPay(1,'tr')">
@@ -725,7 +725,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div id="calc-note-tiq" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
       <div class="pay-grid">
-        <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+3% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtc-total">$ —</div><div class="pamount-fee" id="ptiqtc-fee">incl. recargo $ —</div></div></div>
+        <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtc-total">$ —</div><div class="pamount-fee" id="ptiqtc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="ptiqtr" onclick="selPay('tiq','tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
       <div class="pay-detail" id="dtiqtc"><div class="info-box">Referencia: <strong>tu nombre + TIQUETE</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar tiquete con Bold →</a></div>
@@ -773,7 +773,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
       <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
       <div class="pay-grid">
-        <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+3% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tc-total">$ —</div><div class="pamount-fee" id="p2tc-fee">incl. recargo $ —</div></div></div>
+        <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tc-total">$ —</div><div class="pamount-fee" id="p2tc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="p2tr" onclick="selPay(2,'tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
       <div class="pay-detail" id="d2tc"><div class="info-box">Referencia: <strong>tu nombre completo</strong>.</div><a href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" class="bold-btn">💳 Pagar con Bold →</a></div>
@@ -2432,6 +2432,7 @@ function goPanel(id, noScroll) {
 // ── TASA ─────────────────────────────────────────────────────────────────────
 const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + 1% margen
 let tasa = TASA_FALLBACK;
+const TRM_RESERVA = 4288; // TRM oficial del 1 de junio de 2026 (fecha límite de pago de reserva) — tasa fija, no cambia
 
 function updateTasaFecha() {
   const el = document.getElementById('tasa-fecha');
@@ -2477,7 +2478,7 @@ function fmtT(n) { return '$ ' + Math.round(n).toLocaleString('es-CO') + ' / EUR
 
 function updateCalcs() { calc1(); calc2(); calcTiq(); }
 function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
-  const fee = base * 0.03;
+  const fee = base * 0.035;
   const total = base + fee;
   const elTcT = document.getElementById(tcTotalId);
   const elTcF = document.getElementById(tcFeeId);
@@ -2487,10 +2488,11 @@ function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
   if (elTrT) elTrT.textContent = fmt(base);
 }
 function calc1() {
-  if (!tasa) return;
+  // Tasa fija de la reserva: TRM del 1 de junio de 2026, fecha límite de pago de
+  // reserva — no depende de la tasa en vivo (a diferencia del pago final).
   const e = parseFloat(document.getElementById('eur1').value) || 0;
-  const base = e * tasa;
-  document.getElementById('tasa1').value = fmtT(tasa);
+  const base = e * TRM_RESERVA;
+  document.getElementById('tasa1').value = fmtT(TRM_RESERVA);
   document.getElementById('cop1').textContent = fmt(base);
   updatePayAmounts('p1tc-total','p1tc-fee','p1tr-total', base);
 }
