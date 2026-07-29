@@ -290,6 +290,28 @@ function notificarAccesoAreaPersonal(email, participants) {
   }
 }
 
+// ───── NOTIFICAR CLIC EN "PAGAR CON BOLD" ──────────────────────────────────────
+function notificarClickBold(data) {
+  try {
+    const email = String(data.email || '').trim();
+    const nombre = String(data.nombre || '').trim();
+    const panelLabels = { reserva: 'Reserva', tiquete: 'Tiquete aéreo', final: 'Pago Final' };
+    const panelLabel = panelLabels[String(data.panel || '').trim()] || String(data.panel || 'Pago');
+    const monto = String(data.monto || '').trim();
+    const quien = nombre ? (nombre + ' (' + email + ')') : email;
+    const fecha = Utilities.formatDate(new Date(), 'America/Bogota', 'dd/MM/yyyy HH:mm');
+    const subject = '[Área Personal] Clic en Bold — ' + (nombre || email) + ' · ' + panelLabel;
+    const body = quien + ' hizo clic en "Pagar con Bold" para ' + panelLabel + '.\n\n' +
+      'Monto mostrado: ' + (monto || 'no disponible') + '\n' +
+      'Fecha: ' + fecha;
+    GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net', subject, body, { name: 'Real Madrid Foundation Clinic' });
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('notificarClickBold error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
 function listFiles(folderId, filter) {
   const folder = DriveApp.getFolderById(folderId);
   const files = folder.getFiles();
@@ -457,6 +479,7 @@ function doPost(e) {
         if (parsed.action === 'actualizar_paso' && parsed.email && parsed.paso_actual) {
           return actualizarPasoTodos(parsed.email, parsed.paso_actual);
         }
+        if (parsed.action === 'notificar_click_bold') return notificarClickBold(parsed);
         if (parsed.action === 'publicar_comunicado') return publicarComunicado(parsed);
         if (parsed.action === 'eliminar_comunicado') return eliminarComunicado(parsed);
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
