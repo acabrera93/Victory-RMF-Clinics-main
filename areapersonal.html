@@ -1810,7 +1810,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.
     </div>
 
-    <button onclick="closeBoldModal()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Entendido →</button>
+    <a id="bold-modal-cta-bold" href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" onclick="closeBoldModal()" style="display:none;width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;box-sizing:border-box;text-align:center">💳 Pagar con Bold →</a>
+    <button id="bold-modal-cta-cerrar" onclick="closeBoldModal()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Entendido →</button>
   </div>
 </div>
 
@@ -2731,6 +2732,11 @@ function avisoComprobante(panel, tipo) {
   if (titleEl) titleEl.textContent = esTarjeta ? 'Vas a pagar con Bold' : 'Vas a pagar por transferencia';
   if (labelEl) labelEl.textContent = esTarjeta ? 'Monto a ingresar en Bold' : 'Monto a transferir';
   if (notaEl) notaEl.textContent = esTarjeta ? 'Ingresa exactamente este monto al abrir Bold.' : 'Transfiere exactamente este monto a la cuenta bancaria indicada.';
+
+  const ctaBoldEl = document.getElementById('bold-modal-cta-bold');
+  const ctaCerrarEl = document.getElementById('bold-modal-cta-cerrar');
+  if (ctaBoldEl) ctaBoldEl.style.display = esTarjeta ? 'block' : 'none';
+  if (ctaCerrarEl) ctaCerrarEl.style.display = esTarjeta ? 'none' : 'block';
 
   const montoEl = document.getElementById('bold-monto-valor');
   if (montoEl) montoEl.textContent = montoTxt + ' COP';
