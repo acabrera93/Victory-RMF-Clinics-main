@@ -2962,13 +2962,18 @@ function marcarComprobantePendiente(tipoPago) {
   const eurInputId = { reserva: 'eur1', tiquete: 'eur-tiq', final: 'eur2' }[tipoPago];
   const eurEl = document.getElementById(eurInputId);
   const eur = eurEl ? (parseFloat(eurEl.value) || 0) : 0;
+  // También se envía el COP ya calculado en pantalla (mismo total que ve el
+  // participante antes de pagar), para no depender de que el admin lo tipee de nuevo.
+  const copDisplayId = { reserva: 'cop1', tiquete: 'cop-tiq', final: 'cop2' }[tipoPago];
+  const copEl = document.getElementById(copDisplayId);
+  const cop = copEl ? (parseFloat((copEl.textContent || '').replace(/[^\d]/g, '')) || 0) : 0;
   const hoy = new Date().toISOString().slice(0, 10);
   const comprobanteUrl = comprobanteUrls[tipoPago] || '';
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, fecha: hoy, comprobante_url: comprobanteUrl }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, cop, fecha: hoy, comprobante_url: comprobanteUrl }),
     keepalive: true
   }).catch(() => {});
 }
@@ -4252,15 +4257,23 @@ function renderRecaudacion(fin) {
   const gastosPagCop = gastos.pagado_cop || 0;
   const gastosTasa   = gastos.tasa_media || TASA_EUR_COP;
   const gastosPct    = gastos.pct > 0 ? Math.min(100, Math.round(gastos.pct > 1 ? gastos.pct : gastos.pct * 100)) : 0;
+  // Tasa real EUR→COP: media de los pagos que tienen ambos valores registrados
+  // (misma tasa que se muestra en la tarjeta "Tasa EUR → COP"). Solo se usa la
+  // constante fija como respaldo si aún no hay pagos en COP registrados.
+  const pagosConTasa = (fin.pagos_lista || []).filter(p => p.cop > 0 && p.eur > 0);
+  const tasaReal = pagosConTasa.length > 0
+    ? Math.round(pagosConTasa.reduce((s, p) => s + p.cop, 0) / pagosConTasa.reduce((s, p) => s + p.eur, 0))
+    : 0;
+  const tasaUsar = tasaReal > 0 ? tasaReal : TASA_EUR_COP;
   const isCop = adminCurrency === 'cop';
-  const fmt = v => isCop ? '$ ' + Math.round(v * TASA_EUR_COP).toLocaleString('es-CO') : v.toLocaleString('es-CO') + ' €';
+  const fmt = v => isCop ? '$ ' + Math.round(v * tasaUsar).toLocaleString('es-CO') : v.toLocaleString('es-CO') + ' €';
   const gastosPagStr  = isCop && gastosPagCop > 0 ? '$ ' + Math.round(gastosPagCop).toLocaleString('es-CO') : gastosPag.toLocaleString('es-CO') + ' €';
   const gastosPresStr = isCop ? '$ ' + Math.round(gastosPres * gastosTasa).toLocaleString('es-CO') : gastosPres.toLocaleString('es-CO') + ' €';
   // Dinero en caja = recaudado − gastos pagados
   const enCajaEur = Math.max(0, recaudado - gastosPag);
   const enCajaCop = isCop && gastosPagCop > 0
-    ? Math.max(0, Math.round(recaudado * TASA_EUR_COP) - gastosPagCop)
-    : Math.max(0, Math.round(enCajaEur * TASA_EUR_COP));
+    ? Math.max(0, Math.round(recaudado * tasaUsar) - gastosPagCop)
+    : Math.max(0, Math.round(enCajaEur * tasaUsar));
   const enCajaStr = isCop ? '$ ' + enCajaCop.toLocaleString('es-CO') : enCajaEur.toLocaleString('es-CO') + ' €';
   const pctRec  = ingresos > 0 ? Math.min(100, Math.round(recaudado / ingresos * 100)) : 0;
   const pctCaja = recaudado > 0 ? Math.min(100, Math.round(enCajaEur / recaudado * 100)) : 0;
