@@ -1288,7 +1288,7 @@ function getAdminFinanciero(params) {
       var lastPagRow = pagosSheet.getLastRow();
       var pagData = [];
       if (lastPagRow >= 6) {
-        pagData = pagosSheet.getRange('A6:I' + lastPagRow).getValues();
+        pagData = pagosSheet.getRange('A6:K' + lastPagRow).getValues();
         var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
         var currentNombre = '';
         var currentTipo   = '';
@@ -1313,7 +1313,8 @@ function getAdminFinanciero(params) {
             tipo: currentTipo, nombre: currentNombre, fecha: fmtDate(fechaVal),
             cop: num(r[3]), eur: eurAmt,
             estado: str(r[5]), paquete: str(r[6]), notas: str(r[7]),
-            comprobante_url: str(r[8])
+            comprobante_url: str(r[8]),
+            ia_status: str(r[9]), ia_detalle: str(r[10])
           });
         }
       }
