@@ -20,6 +20,15 @@ const SHEET_ID = "1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss"; // Tu Google Sh
 
 const ADMIN_EMAILS_LIST = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
 
+function getAnthropicApiKey_() {
+  return PropertiesService.getScriptProperties().getProperty('anthropic_api_key') || '';
+}
+
+// Ejecutar UNA VEZ desde el editor de Apps Script para guardar la key (nunca en el código):
+function configurarAnthropicApiKey() {
+  PropertiesService.getScriptProperties().setProperty('anthropic_api_key', 'sk-ant-...PEGAR_AQUI...');
+}
+
 // Contraseña inicial leída desde PropertiesService (nunca en código).
 // Configurar ejecutando configurarContraseniaInicial() UNA VEZ desde el editor de Apps Script.
 function getDefaultPassword() {
@@ -1537,6 +1546,96 @@ function registrarPago(data) {
 // admin. Solo cambia el estado a "Pendiente de confirmar" — nunca sobreescribe
 // un pago que el admin ya marcó "Completo" o "Parcial" manualmente. Reutiliza
 // el mismo patrón de búsqueda/inserción de fila que registrarPago().
+// ───── VERIFICACIÓN IA DE COMPROBANTES ─────────────────────────────────────────
+function verificarComprobanteIA_(fileId, eurEsperado, copEsperado, metodoPago) {
+  try {
+    const apiKey = getAnthropicApiKey_();
+    if (!apiKey) return { status: 'manual', detalle: 'IA no configurada' };
+    if (!fileId) return { status: 'manual', detalle: 'Sin archivo para leer' };
+
+    const file = DriveApp.getFileById(fileId);
+    const blob = file.getBlob();
+    const mimeType = blob.getContentType();
+    const base64 = Utilities.base64Encode(blob.getBytes());
+
+    const esPdf = mimeType === 'application/pdf';
+    const contentBlock = esPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
+      : { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } };
+
+    const prompt = 'Este es un comprobante de pago (transferencia bancaria o recibo de tarjeta). '
+      + 'Extrae el monto total pagado y la moneda. Responde SOLO con JSON, sin texto adicional, '
+      + 'con este formato exacto: {"monto": <numero o null>, "moneda": "COP"|"EUR"|"USD"|"OTRA"|null, '
+      + '"confianza": "alta"|"media"|"baja", "nota": "<breve razon si la confianza no es alta>"}';
+
+    const payload = {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: [contentBlock, { type: 'text', text: prompt }] }]
+    };
+
+    const response = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() !== 200) {
+      Logger.log('Anthropic API error: ' + response.getContentText());
+      return { status: 'manual', detalle: 'Error IA (' + response.getResponseCode() + ')' };
+    }
+
+    const result = JSON.parse(response.getContentText());
+    const textBlock = (result.content || []).find(function (b) { return b.type === 'text'; });
+    if (!textBlock) return { status: 'manual', detalle: 'IA no devolvió lectura' };
+
+    let parsed;
+    try {
+      parsed = JSON.parse(textBlock.text.replace(/```json|```/g, '').trim());
+    } catch (e) {
+      return { status: 'manual', detalle: 'Respuesta IA no interpretable' };
+    }
+
+    return evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago);
+  } catch (err) {
+    Logger.log('verificarComprobanteIA_ error: ' + err);
+    return { status: 'manual', detalle: 'Error técnico al verificar' };
+  }
+}
+
+// Compara lo leído por la IA contra el monto esperado, con tolerancia según método de pago:
+// 0.3% para transferencia (debe calzar casi exacto), 1% para tarjeta (redondeo del procesador Bold).
+function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
+  const monto = parseFloat(parsed.monto);
+  const moneda = String(parsed.moneda || '').toUpperCase();
+  const confianza = String(parsed.confianza || '').toLowerCase();
+
+  if (!monto || isNaN(monto) || confianza === 'baja') {
+    return { status: 'manual', detalle: 'Imagen ilegible o monto no detectado' };
+  }
+
+  const porcentajeTolerancia = (metodoPago === 'tarjeta') ? 0.01 : 0.003;
+
+  let esperado = 0, monedaLabel = '';
+  if (moneda === 'COP' && copEsperado > 0) {
+    esperado = copEsperado; monedaLabel = 'COP';
+  } else if ((moneda === 'EUR' || moneda === 'USD') && eurEsperado > 0) {
+    esperado = eurEsperado; monedaLabel = moneda;
+  } else {
+    return { status: 'revisar', detalle: 'Moneda detectada (' + moneda + ') no coincide con lo esperado' };
+  }
+
+  const tolerancia = Math.max(esperado * porcentajeTolerancia, monedaLabel === 'COP' ? 1000 : 1);
+  const diff = Math.abs(monto - esperado);
+
+  if (diff <= tolerancia) {
+    return { status: 'coincide', detalle: 'Coincide · ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') };
+  }
+  return { status: 'revisar', detalle: 'Detectó ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') + ', se esperaba ' + esperado.toLocaleString('es-CO') };
+}
+
 function marcarComprobanteSubido(data) {
   try {
     var nombre = String(data.nombre || '').trim();
@@ -1545,6 +1644,8 @@ function marcarComprobanteSubido(data) {
     var eur = parseFloat(data.eur) || 0;
     var cop = parseFloat(data.cop) || 0;
     var comprobanteUrl = String(data.comprobante_url || '').trim();
+    var fileId = String(data.file_id || '').trim();
+    var metodoPago = String(data.metodo_pago || 'transferencia').trim();
     var fechaStr = String(data.fecha || '').trim();
     var fechaDate = new Date();
     if (fechaStr) {
@@ -1592,6 +1693,8 @@ function marcarComprobanteSubido(data) {
       }
     }
 
+    var resultadoIA = verificarComprobanteIA_(fileId, eur, cop, metodoPago);
+
     if (targetSheetRow > 0) {
       var estadoActual = String(pagosSheet.getRange(targetSheetRow, 6).getValue() || '').trim().toLowerCase();
       if (estadoActual === 'completo' || estadoActual === 'parcial') {
@@ -1602,11 +1705,14 @@ function marcarComprobanteSubido(data) {
       if (eur > 0) pagosSheet.getRange(targetSheetRow, 5).setValue(eur); // col E = eur
       pagosSheet.getRange(targetSheetRow, 6).setValue('Pendiente de confirmar'); // col F = estado
       if (comprobanteUrl) pagosSheet.getRange(targetSheetRow, 9).setValue(comprobanteUrl); // col I = link al comprobante en Drive
+      pagosSheet.getRange(targetSheetRow, 10).setValue(resultadoIA.status);  // col J = estado IA
+      pagosSheet.getRange(targetSheetRow, 11).setValue(resultadoIA.detalle); // col K = detalle IA
     } else {
-      var newRow = [tipoParticipante, nombre, fechaDate, cop > 0 ? cop : '', eur, 'Pendiente de confirmar', '', tipo, comprobanteUrl];
+      var newRow = [tipoParticipante, nombre, fechaDate, cop > 0 ? cop : '', eur, 'Pendiente de confirmar', '', tipo, comprobanteUrl, resultadoIA.status, resultadoIA.detalle];
+      var filaInsertada = -1;
       if (blockPagoFinalRow > 0) {
         pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
-        pagosSheet.getRange(blockPagoFinalRow, 1, 1, 9).setValues([newRow]);
+        filaInsertada = blockPagoFinalRow;
       } else {
         var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
         var lastDataRow = startRow - 1;
@@ -1614,10 +1720,10 @@ function marcarComprobanteSubido(data) {
           var gv = String(allData[k][7] || '').trim().toLowerCase();
           if (tiposValidos[gv]) lastDataRow = startRow + k;
         }
-        var insertRow = lastDataRow + 1;
-        pagosSheet.insertRowsBefore(insertRow, 1);
-        pagosSheet.getRange(insertRow, 1, 1, 9).setValues([newRow]);
+        filaInsertada = lastDataRow + 1;
+        pagosSheet.insertRowsBefore(filaInsertada, 1);
       }
+      pagosSheet.getRange(filaInsertada, 1, 1, 11).setValues([newRow]);
     }
 
     return sendResponse(200, { ok: true });
