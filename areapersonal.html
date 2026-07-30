@@ -540,6 +540,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div>
       <h1>¡Bienvenido/a, <span id="dn">Participante</span>!</h1>
       <p>Real Madrid Foundation Clinic · 2–10 Octubre 2026 · Madrid, España</p>
+      <div id="countdown-pill" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:20px;padding:6px 14px;margin-top:8px;">
+        <span style="font-size:14px;">📅</span>
+        <span id="countdown-text" style="font-size:13px;color:#fff;font-weight:500;">Calculando...</span>
+      </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
       <div class="badge" id="dtipo">⚽ Jugador</div>
@@ -2363,6 +2367,47 @@ function buildParticipantTabs(participants) {
   });
 }
 
+// Countdown en vivo hacia el inicio del programa (2 de octubre 2026, hora Madrid).
+// Se actualiza cada segundo. Si la fecha ya pasó, muestra un mensaje de cierre
+// en vez de un conteo negativo — evita el caso confuso de "faltan -14 días".
+let _countdownInterval = null;
+function iniciarCountdownViaje() {
+  const el = document.getElementById('countdown-text');
+  if (!el) return;
+  const inicioViaje = new Date('2026-10-02T09:00:00+02:00').getTime();
+  const finViaje = new Date('2026-10-10T23:59:59+02:00').getTime();
+
+  function tick() {
+    const ahora = Date.now();
+    const diff = inicioViaje - ahora;
+
+    if (ahora > finViaje) {
+      el.textContent = '¡Ya viviste tu experiencia en Madrid! 🏆';
+      if (_countdownInterval) clearInterval(_countdownInterval);
+      return;
+    }
+    if (diff <= 0) {
+      el.textContent = '¡Estás en Madrid ahora mismo! ⚽';
+      return;
+    }
+
+    const dias = Math.floor(diff / 86400000);
+    const horas = Math.floor((diff % 86400000) / 3600000);
+    const minutos = Math.floor((diff % 3600000) / 60000);
+    const segundos = Math.floor((diff % 60000) / 1000);
+
+    if (dias > 0) {
+      el.textContent = `Faltan ${dias}d ${horas}h ${minutos}m para Madrid`;
+    } else {
+      el.textContent = `Faltan ${horas}h ${minutos}m ${segundos}s para Madrid`;
+    }
+  }
+
+  tick();
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  _countdownInterval = setInterval(tick, 1000);
+}
+
 // Solo actualiza la info personal del participante (nombre, resumen, vinculados).
 // Los pasos y pagos son globales para el grupo y NO se tocan aquí.
 function loadParticipant(p) {
@@ -2377,6 +2422,8 @@ function loadParticipant(p) {
   // y antes de cualquier otra actualización de UI que pueda fallar más abajo.
   const tcTextEl = document.getElementById('tc-text');
   if (tcTextEl) { try { tcTextEl.innerHTML = getTyC(); } catch (e) {} }
+
+  iniciarCountdownViaje();
 
   document.getElementById('dn').textContent = nombre;
   document.getElementById('dtipo').textContent = tipo.includes('jug') ? '⚽ Jugador' : tipo.includes('staff') ? '👥 Staff' : '👨‍👩‍👧 Acompañante';
