@@ -482,6 +482,7 @@ function doPost(e) {
           return actualizarPasoTodos(parsed.email, parsed.paso_actual);
         }
         if (parsed.action === 'notificar_click_bold') return notificarClickBold(parsed);
+        if (parsed.action === 'marcar_comprobante_pendiente') return marcarComprobanteSubido(parsed);
         if (parsed.action === 'publicar_comunicado') return publicarComunicado(parsed);
         if (parsed.action === 'eliminar_comunicado') return eliminarComunicado(parsed);
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
@@ -1278,7 +1279,7 @@ function getAdminFinanciero(params) {
       var lastPagRow = pagosSheet.getLastRow();
       var pagData = [];
       if (lastPagRow >= 6) {
-        pagData = pagosSheet.getRange('A6:H' + lastPagRow).getValues();
+        pagData = pagosSheet.getRange('A6:I' + lastPagRow).getValues();
         var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
         var currentNombre = '';
         var currentTipo   = '';
@@ -1302,7 +1303,8 @@ function getAdminFinanciero(params) {
           result.pagos_lista.push({
             tipo: currentTipo, nombre: currentNombre, fecha: fmtDate(fechaVal),
             cop: num(r[3]), eur: eurAmt,
-            estado: str(r[5]), paquete: str(r[6]), notas: str(r[7])
+            estado: str(r[5]), paquete: str(r[6]), notas: str(r[7]),
+            comprobante_url: str(r[8])
           });
         }
       }
@@ -1525,6 +1527,100 @@ function registrarPago(data) {
     return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
   } catch (err) {
     Logger.log('registrarPago error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── MARCAR COMPROBANTE SUBIDO (participante) → "Pendiente de confirmar" ────
+// Se llama automáticamente cuando el participante confirma la subida de su
+// comprobante (enviarComprobante() en el frontend), SIN pasar por el panel
+// admin. Solo cambia el estado a "Pendiente de confirmar" — nunca sobreescribe
+// un pago que el admin ya marcó "Completo" o "Parcial" manualmente. Reutiliza
+// el mismo patrón de búsqueda/inserción de fila que registrarPago().
+function marcarComprobanteSubido(data) {
+  try {
+    var nombre = String(data.nombre || '').trim();
+    var tipo = String(data.tipo || '').trim(); // Reserva | Tiquete | Pago Final
+    if (!nombre || !tipo) return sendResponse(400, { ok: false, error: 'nombre y tipo requeridos' });
+    var eur = parseFloat(data.eur) || 0;
+    var comprobanteUrl = String(data.comprobante_url || '').trim();
+    var fechaStr = String(data.fecha || '').trim();
+    var fechaDate = new Date();
+    if (fechaStr) {
+      var fp = fechaStr.split('-');
+      if (fp.length === 3) fechaDate = new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]));
+    }
+
+    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+
+    var lastRow = pagosSheet.getLastRow();
+    var startRow = 6;
+    var numRows = lastRow - startRow + 1;
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, 8).getValues() : [];
+
+    var nombreLower = nombre.toLowerCase();
+    var tipoLower = tipo.toLowerCase();
+    var inBlock = false;
+    var targetSheetRow = -1;
+    var blockPagoFinalRow = -1;
+    var tipoParticipante = String(data.tipo_participante || '').trim();
+
+    for (var i = 0; i < allData.length; i++) {
+      var cellB = String(allData[i][1] || '').trim(); // col B = nombre
+      var cellH = String(allData[i][7] || '').trim(); // col H = concepto
+
+      if (cellB) {
+        if (cellB.toLowerCase() === nombreLower) {
+          inBlock = true;
+          if (!tipoParticipante) tipoParticipante = String(allData[i][0] || '').trim();
+        } else if (inBlock) {
+          break;
+        }
+      }
+
+      if (inBlock) {
+        if (cellH.toLowerCase() === tipoLower) {
+          targetSheetRow = startRow + i;
+          break;
+        }
+        if (cellH.toLowerCase() === 'pago final') {
+          blockPagoFinalRow = startRow + i;
+        }
+      }
+    }
+
+    if (targetSheetRow > 0) {
+      var estadoActual = String(pagosSheet.getRange(targetSheetRow, 6).getValue() || '').trim().toLowerCase();
+      if (estadoActual === 'completo' || estadoActual === 'parcial') {
+        return sendResponse(200, { ok: true, skipped: true }); // nunca pisar un pago ya confirmado por el admin
+      }
+      pagosSheet.getRange(targetSheetRow, 3).setValue(fechaDate); // col C = fecha
+      if (eur > 0) pagosSheet.getRange(targetSheetRow, 5).setValue(eur); // col E = eur
+      pagosSheet.getRange(targetSheetRow, 6).setValue('Pendiente de confirmar'); // col F = estado
+      if (comprobanteUrl) pagosSheet.getRange(targetSheetRow, 9).setValue(comprobanteUrl); // col I = link al comprobante en Drive
+    } else {
+      var newRow = [tipoParticipante, nombre, fechaDate, '', eur, 'Pendiente de confirmar', '', tipo, comprobanteUrl];
+      if (blockPagoFinalRow > 0) {
+        pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
+        pagosSheet.getRange(blockPagoFinalRow, 1, 1, 9).setValues([newRow]);
+      } else {
+        var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
+        var lastDataRow = startRow - 1;
+        for (var k = 0; k < allData.length; k++) {
+          var gv = String(allData[k][7] || '').trim().toLowerCase();
+          if (tiposValidos[gv]) lastDataRow = startRow + k;
+        }
+        var insertRow = lastDataRow + 1;
+        pagosSheet.insertRowsBefore(insertRow, 1);
+        pagosSheet.getRange(insertRow, 1, 1, 9).setValues([newRow]);
+      }
+    }
+
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('marcarComprobanteSubido error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
