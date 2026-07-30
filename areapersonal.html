@@ -2415,12 +2415,15 @@ function applyPasoActual(paso) {
   // Marcar pasos completados según número de paso
   STEP_DEFS[0].done = true; // Inscripción siempre done
   STEP_DEFS[1].done = paso >= 2; // T&C
+  // paso 3/4/5 solo significan "llegó a esa pantalla" (aún sin pagar) — el pago
+  // real recién se confirma cuando el paso avanza AL SIGUIENTE (ver enviarComprobante),
+  // así que el check verde debe esperar a ese siguiente valor, no al de llegada.
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
-  if (idxReserva > -1) STEP_DEFS[idxReserva].done = paso >= 3;
+  if (idxReserva > -1) STEP_DEFS[idxReserva].done = paso >= 4;
   const idxTiq = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
-  if (idxTiq > -1) STEP_DEFS[idxTiq].done = paso >= 4;
+  if (idxTiq > -1) STEP_DEFS[idxTiq].done = paso >= 5;
   const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
-  if (idxFinal > -1) STEP_DEFS[idxFinal].done = paso >= 5;
+  if (idxFinal > -1) STEP_DEFS[idxFinal].done = paso >= 6;
   const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
   if (idxDocs > -1) STEP_DEFS[idxDocs].done = paso >= 7;
 
