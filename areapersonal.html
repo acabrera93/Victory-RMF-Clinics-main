@@ -2856,6 +2856,10 @@ function resetDocumento(tipoDocumento) {
   if (inp) { inp.value = ''; inp.click(); }
 }
 
+// URL de Drive del comprobante recién subido, por tipo de pago — se llena al
+// subir y se envía al admin junto con el estado "Pendiente de confirmar".
+const comprobanteUrls = {};
+
 function uploadComprobante(inp, tipoPago) {
   const file = inp.files[0];
   if (!file) return;
@@ -2888,11 +2892,12 @@ function uploadComprobante(inp, tipoPago) {
 
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body: JSON.stringify(payload)
     })
-      .then(() => {
+      .then(r => r.json())
+      .then(res => {
+        if (res && res.url) comprobanteUrls[tipoPago] = res.url;
         if (statusEl) {
           statusEl.innerHTML = `✅ ${file.name} <button onclick="resetComprobante('${tipoPago}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
           statusEl.classList.add('ok');
@@ -2933,6 +2938,7 @@ function enviarComprobante(tipoPago) {
   let paso = pasoMap[tipoPago];
   if (tipoPago === 'reserva' && !conTiq) paso = 5; // sin tiquete: salta directo a paso 5
   actualizarPaso(paso);
+  marcarComprobantePendiente(tipoPago);
   const btn = document.getElementById(`comp-${tipoPago}-btn`);
   if (btn) btn.style.display = 'none';
   const validando = document.getElementById(`comp-${tipoPago}-validando`);
@@ -2940,6 +2946,28 @@ function enviarComprobante(tipoPago) {
   setTimeout(() => {
     applyPasoActual(paso);
   }, 1500);
+}
+
+// Avisa al panel admin de que ya se subió el comprobante — cambia el estado de
+// "Sin pago" a "Pendiente de confirmar" en la hoja Pagos, sin marcarlo como
+// Completo (eso sigue siendo una decisión manual del admin). Se incluye el
+// monto ya calculado en pantalla porque el admin filtra/oculta filas sin monto.
+function marcarComprobantePendiente(tipoPago) {
+  if (!nombre) return;
+  const tipoLabel = { reserva: 'Reserva', tiquete: 'Tiquete', final: 'Pago Final' }[tipoPago];
+  const tipoParticipante = tipo ? (tipo.charAt(0).toUpperCase() + tipo.slice(1)) : '';
+  const eurInputId = { reserva: 'eur1', tiquete: 'eur-tiq', final: 'eur2' }[tipoPago];
+  const eurEl = document.getElementById(eurInputId);
+  const eur = eurEl ? (parseFloat(eurEl.value) || 0) : 0;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const comprobanteUrl = comprobanteUrls[tipoPago] || '';
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, fecha: hoy, comprobante_url: comprobanteUrl }),
+    keepalive: true
+  }).catch(() => {});
 }
 
 // ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
@@ -4016,6 +4044,7 @@ function toggleCurrency(c) {
 function statusChip(estado) {
   const s = (estado || '').toLowerCase();
   if (!s || s === 'sin pago' || s === 'pendiente') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#f1f5f9;color:var(--muted)">Sin pago</span>`;
+  if (s === 'pendiente de confirmar') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(30,91,168,.12);color:var(--blue)">⏳ Pendiente de confirmar</span>`;
   if (s === 'completo' || s === 'pagado') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(22,101,52,.12);color:#166534">${escapeHtml(estado)}</span>`;
   if (s === 'parcial' || s === 'abono') return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(217,119,6,.12);color:#92400e">${escapeHtml(estado)}</span>`;
   return `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(239,68,68,.1);color:#991b1b">${escapeHtml(estado)}</span>`;
@@ -4364,7 +4393,11 @@ function renderAdminPagos(fin) {
 
   const fmtPago = (pago) => {
     if (!pago || !pago.eur) return `<div>${statusChip('')}</div>`;
-    return `<div>${statusChip(pago.estado)}</div>
+    const esPendienteConfirmar = (pago.estado || '').toLowerCase().trim() === 'pendiente de confirmar';
+    const chip = (esPendienteConfirmar && pago.comprobante_url)
+      ? `<a href="${escapeHtml(pago.comprobante_url)}" target="_blank" rel="noopener" style="text-decoration:none;cursor:pointer" title="Ver comprobante en Drive">${statusChip(pago.estado)}</a>`
+      : statusChip(pago.estado);
+    return `<div>${chip}</div>
       <div style="font-size:12px;font-weight:600;color:var(--navy);margin-top:3px">${pago.eur.toLocaleString('es-CO')} €</div>
       <div style="font-size:11px;color:var(--muted)">${escapeHtml(pago.fecha)}</div>`;
   };
@@ -5019,22 +5052,33 @@ function openPagosModal(idx, nombreOverride) {
       </div>`;
     }
 
-    const statusColor = ex ? '#166534' : '#92400e';
-    const statusText = ex ? `✓ Registrado · ${ex.fecha} · ${ex.eur.toLocaleString('es-CO')}€` : 'Pendiente';
+    const estadoActual = ex ? ex.estado : 'Completo';
+    const esPendienteConfirmar = estadoActual.toLowerCase().trim() === 'pendiente de confirmar';
+    const statusColor = !ex ? '#92400e' : esPendienteConfirmar ? 'var(--blue)' : '#166534';
+    const statusText = !ex ? 'Pendiente' : (esPendienteConfirmar ? '⏳ Pendiente de confirmar' : '✓ Registrado') + ` · ${ex.fecha} · ${ex.eur.toLocaleString('es-CO')}€`;
+    const comprobanteLink = (ex && ex.comprobante_url)
+      ? `<a href="${escapeHtml(ex.comprobante_url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:10px;display:inline-block">📎 Ver comprobante subido por el participante</a><br>`
+      : '';
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-weight:600;color:var(--navy);font-size:14px">${tipoIcons[tipo] || '💳'} ${tipo}</div>
         <div style="font-size:12px;color:${statusColor};font-weight:500">${statusText}</div>
       </div>
+      ${comprobanteLink}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div><div class="clabel">Fecha</div><input type="date" id="pago-${tid}-fecha" value="${fechaToInput(ex ? ex.fecha : '')}" style="${inputStyle}"></div>
-        <div><div class="clabel">Estado</div><select id="pago-${tid}-estado" style="${selectStyle}"><option${ex&&ex.estado==='Parcial'?' selected':''}>Parcial</option><option${!ex||ex.estado==='Completo'?' selected':''}>Completo</option></select></div>
+        <div><div class="clabel">Estado</div><select id="pago-${tid}-estado" style="${selectStyle}">
+          <option${estadoActual==='Parcial'?' selected':''}>Parcial</option>
+          <option${esPendienteConfirmar?' selected':''}>Pendiente de confirmar</option>
+          <option${!esPendienteConfirmar&&estadoActual!=='Parcial'?' selected':''}>Completo</option>
+        </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div><div class="clabel">Valor EUR</div><input type="number" id="pago-${tid}-eur" value="${ex ? ex.eur : ''}" placeholder="1000" style="${inputStyle}"></div>
         <div><div class="clabel">Valor COP</div><input type="number" id="pago-${tid}-cop" value="${ex ? ex.cop : ''}" placeholder="4350000" style="${inputStyle}"></div>
       </div>
       <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${paqueteVal!=='Premium'?' selected':''}>Estándar</option><option${paqueteVal==='Premium'?' selected':''}>Premium</option></select></div>
+      ${esPendienteConfirmar ? `<button onclick="document.getElementById('pago-${tid}-estado').value='Completo';registrarPagoDesdePanel('${tipo}')" style="width:100%;margin-bottom:8px;padding:11px;background:#166534;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">✓ Confirmar pago de ${tipo}</button>` : ''}
       <button onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">${ex ? 'Actualizar' : 'Registrar'} pago de ${tipo}</button>
     </div>`;
   }).join('');
