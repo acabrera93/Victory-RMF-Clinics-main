@@ -541,6 +541,86 @@ function emailEsParticipante_(email) {
   return false;
 }
 
+// Busca el email de un participante por nombre exacto en la hoja principal
+// (misma lógica de columnas que emailEsParticipante_, pero devuelve el email
+// en vez de un booleano). Usada para notificar confirmación de pago.
+function buscarEmailPorNombre_(nombre) {
+  const nombreNorm = String(nombre || '').toLowerCase().trim();
+  if (!nombreNorm) return '';
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  let emailCol = -1, nombreCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = String(headers[j]).toLowerCase().trim();
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+    if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
+  }
+  if (emailCol < 0 || nombreCol < 0) return '';
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][nombreCol] || '').toLowerCase().trim() === nombreNorm) {
+      return String(data[i][emailCol] || '').trim();
+    }
+  }
+  return '';
+}
+
+// Envía al participante la confirmación de que su pago quedó registrado.
+// `estado` determina el texto y color: "Completo" = verde/confirmado,
+// "Parcial" = ámbar/abono (sin mencionar cuánto falta por pagar, ese dato
+// no siempre es fijo y no queremos arriesgarnos a mostrar un número incorrecto).
+// Se llama en CADA registro desde registrarPago(), incluyendo abonos repetidos
+// al mismo concepto — cada uno deja su propio correo como comprobante.
+function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
+  try {
+    const email = buscarEmailPorNombre_(nombre);
+    if (!email) {
+      Logger.log('notificarPagoConfirmado: no se encontró email para ' + nombre);
+      return;
+    }
+    const esCompleto = String(estado || '').toLowerCase().trim() === 'completo';
+    const tipoLabels = { 'reserva': 'la Reserva', 'tiquete': 'el Tiquete Aéreo', 'pago final': 'el Pago Final' };
+    const tipoLabel = tipoLabels[String(tipo || '').toLowerCase().trim()] || tipo;
+    const montoTexto = (cop > 0 ? '$' + Math.round(cop).toLocaleString('es-CO') + ' COP' : '')
+      + (cop > 0 && eur > 0 ? ' · ' : '')
+      + (eur > 0 ? eur.toLocaleString('es-CO') + ' €' : '');
+    const link = 'https://victory-rmf-clinics.netlify.app/areapersonal.html';
+    const colorHeader = esCompleto ? '#166534' : '#854f0b';
+    const colorMonto  = esCompleto ? '#166534' : '#854f0b';
+    const tituloHeader = esCompleto ? 'Pago confirmado' : 'Abono registrado';
+    const montoLabel = esCompleto ? 'Monto confirmado' : 'Abono recibido';
+    const cuerpoTexto = esCompleto
+      ? 'Confirmamos que tu pago correspondiente a <strong>' + tipoLabel + '</strong> ha sido registrado correctamente.'
+      : 'Registramos un abono a cuenta de <strong>' + tipoLabel + '</strong>. Este pago queda guardado en tu historial de pagos.';
+    const subject = (esCompleto ? '✅ Pago confirmado — ' : '💰 Abono registrado — ') + tipoLabel + ' · RMF Clinic 2026';
+    const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto">'
+      + '<div style="background:' + colorHeader + ';padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
+      + '<table cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto"><tr>'
+      + '<td style="vertical-align:middle;padding:0"><img src="https://drive.google.com/uc?export=view&id=1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="48" style="display:block;height:48px;width:auto"></td>'
+      + '<td style="vertical-align:middle;padding:0 14px"><div style="width:1px;height:36px;background:rgba(255,255,255,0.45)"></div></td>'
+      + '<td style="vertical-align:middle;padding:0"><img src="https://drive.google.com/uc?export=view&id=1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundacion Revel" height="40" style="display:block;height:40px;width:auto"></td>'
+      + '</tr></table>'
+      + '<h2 style="color:#fff;margin:0 0 4px;font-size:18px">Real Madrid Foundation Clinic 2026</h2>'
+      + '<p style="color:rgba(255,255,255,.85);margin:0;font-size:13px;font-weight:600">' + tituloHeader + '</p></div>'
+      + '<div style="background:#f8fafc;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
+      + '<p style="color:#334155;margin-top:0">Hola ' + nombre + ',</p>'
+      + '<p style="color:#334155">' + cuerpoTexto + '</p>'
+      + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
+      + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">' + montoLabel + '</p>'
+      + '<p style="font-size:18px;color:' + colorMonto + ';font-weight:600;margin:0">' + montoTexto + '</p></div>'
+      + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Ver mi área personal →</a>'
+      + '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Si tienes dudas, escríbenos por WhatsApp o al correo alejandro.cabrera@fundacionrevel.net.</p>'
+      + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Real Madrid Foundation Clinic 2026</p></div></div>';
+    GmailApp.sendEmail(email, subject, (esCompleto ? 'Tu pago' : 'Tu abono') + ' de ' + tipoLabel + ' ha sido registrado: ' + link, {
+      htmlBody: htmlBody,
+      replyTo: 'alejandro.cabrera@fundacionrevel.net',
+      name: 'Real Madrid Foundation Clinic'
+    });
+  } catch (err) {
+    Logger.log('notificarPagoConfirmado error: ' + err);
+  }
+}
+
 // ───── HANDLE MULTIPART (archivos reales) ──────────────────────────────────────
 function handleMultipartUpload(e) {
   const params = e.parameter || {};
@@ -1531,6 +1611,10 @@ function registrarPago(data) {
           pagosSheet.getRange(startRow + j, 7).setValue(paquete); // col G = column 7
         }
       }
+    }
+
+    if (estado.toLowerCase().trim() === 'completo' || estado.toLowerCase().trim() === 'parcial') {
+      notificarPagoConfirmado(nombre, tipo, eur, cop, estado);
     }
 
     actualizarResumenPagos(pagosSheet);
