@@ -1543,6 +1543,7 @@ function marcarComprobanteSubido(data) {
     var tipo = String(data.tipo || '').trim(); // Reserva | Tiquete | Pago Final
     if (!nombre || !tipo) return sendResponse(400, { ok: false, error: 'nombre y tipo requeridos' });
     var eur = parseFloat(data.eur) || 0;
+    var cop = parseFloat(data.cop) || 0;
     var comprobanteUrl = String(data.comprobante_url || '').trim();
     var fechaStr = String(data.fecha || '').trim();
     var fechaDate = new Date();
@@ -1597,11 +1598,12 @@ function marcarComprobanteSubido(data) {
         return sendResponse(200, { ok: true, skipped: true }); // nunca pisar un pago ya confirmado por el admin
       }
       pagosSheet.getRange(targetSheetRow, 3).setValue(fechaDate); // col C = fecha
+      if (cop > 0) pagosSheet.getRange(targetSheetRow, 4).setValue(cop); // col D = cop
       if (eur > 0) pagosSheet.getRange(targetSheetRow, 5).setValue(eur); // col E = eur
       pagosSheet.getRange(targetSheetRow, 6).setValue('Pendiente de confirmar'); // col F = estado
       if (comprobanteUrl) pagosSheet.getRange(targetSheetRow, 9).setValue(comprobanteUrl); // col I = link al comprobante en Drive
     } else {
-      var newRow = [tipoParticipante, nombre, fechaDate, '', eur, 'Pendiente de confirmar', '', tipo, comprobanteUrl];
+      var newRow = [tipoParticipante, nombre, fechaDate, cop > 0 ? cop : '', eur, 'Pendiente de confirmar', '', tipo, comprobanteUrl];
       if (blockPagoFinalRow > 0) {
         pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
         pagosSheet.getRange(blockPagoFinalRow, 1, 1, 9).setValues([newRow]);
