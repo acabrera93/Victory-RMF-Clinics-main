@@ -2778,6 +2778,8 @@ function copiarMontoBold() {
   }).catch(() => {});
 }
 
+const metodoPagoSel = {}; // 'tarjeta' | 'transferencia', por tipoPago: 'reserva' | 'tiquete' | 'final'
+
 // ── PAY SELECT ────────────────────────────────────────────────────────────────
 function selPay(panel, tipo) {
   const map = {
@@ -2793,6 +2795,7 @@ function selPay(panel, tipo) {
 
   const panelKeyMap = { 1: 'reserva', 2: 'final', tiq: 'tiquete' };
   avisoComprobante(panelKeyMap[panel], tipo);
+  metodoPagoSel[panelKeyMap[panel]] = (tipo === 'tc') ? 'tarjeta' : 'transferencia';
 }
 
 // ── DOC UPLOAD ────────────────────────────────────────────────────────────────
@@ -2862,6 +2865,7 @@ function resetDocumento(tipoDocumento) {
 // URL de Drive del comprobante recién subido, por tipo de pago — se llena al
 // subir y se envía al admin junto con el estado "Pendiente de confirmar".
 const comprobanteUrls = {};
+const comprobanteFileIds = {}; // fileId de Drive, necesario para que el backend lo lea y lo verifique con IA
 
 function uploadComprobante(inp, tipoPago) {
   const file = inp.files[0];
@@ -2901,6 +2905,7 @@ function uploadComprobante(inp, tipoPago) {
       .then(r => r.json())
       .then(res => {
         if (res && res.url) comprobanteUrls[tipoPago] = res.url;
+        if (res && res.id) comprobanteFileIds[tipoPago] = res.id;
         if (statusEl) {
           statusEl.innerHTML = `✅ ${file.name} <button onclick="resetComprobante('${tipoPago}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
           statusEl.classList.add('ok');
@@ -2969,11 +2974,13 @@ function marcarComprobantePendiente(tipoPago) {
   const cop = copEl ? (parseFloat((copEl.textContent || '').replace(/[^\d]/g, '')) || 0) : 0;
   const hoy = new Date().toISOString().slice(0, 10);
   const comprobanteUrl = comprobanteUrls[tipoPago] || '';
+  const fileId = comprobanteFileIds[tipoPago] || '';
+  const metodoPago = metodoPagoSel[tipoPago] || 'transferencia';
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, cop, fecha: hoy, comprobante_url: comprobanteUrl }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, cop, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago }),
     keepalive: true
   }).catch(() => {});
 }
