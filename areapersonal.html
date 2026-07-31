@@ -2906,6 +2906,19 @@ function avisoComprobante(panel, tipo) {
   const totalEl = document.getElementById(totalId || '');
   const montoTxt = (totalEl && totalEl.textContent.trim()) || '$ —';
 
+  // EUR y tasa que ya se muestran en el mismo panel — se envían junto al monto
+  // en COP para que el correo al admin refleje exactamente lo que ve el participante.
+  const eurTasaIdByPanel = {
+    reserva: { eur: 'eur1',    tasa: 'tasa1' },
+    tiquete: { eur: 'eur-tiq', tasa: 'tasa-tiq' },
+    final:   { eur: 'eur2',    tasa: 'tasa2' }
+  };
+  const eurTasaIds = eurTasaIdByPanel[panel] || {};
+  const eurEl = document.getElementById(eurTasaIds.eur || '');
+  const tasaEl = document.getElementById(eurTasaIds.tasa || '');
+  const eurTxt = (eurEl && eurEl.value) ? (eurEl.value + ' EUR') : '—';
+  const tasaTxt = (tasaEl && tasaEl.value.trim()) || '—';
+
   const esTarjeta = tipo === 'tc';
   const iconoEl = document.getElementById('bold-modal-icono');
   const titleEl = document.getElementById('bold-modal-title');
@@ -2925,17 +2938,17 @@ function avisoComprobante(panel, tipo) {
   if (montoEl) montoEl.textContent = montoTxt + ' COP';
   const modal = document.getElementById('bold-monto-modal');
   if (modal) modal.classList.add('open');
-  notificarClickBold(panel, tipo, montoTxt);
+  notificarClickBold(panel, tipo, montoTxt, eurTxt, tasaTxt);
 }
 
 // Aviso al admin de que un participante seleccionó método de pago — fire-and-forget.
-function notificarClickBold(panel, tipo, monto) {
+function notificarClickBold(panel, tipo, monto, eur, tasa) {
   if (!participantEmail) return;
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'notificar_click_bold', email: participantEmail, nombre, panel, tipo, monto }),
+    body: JSON.stringify({ action: 'notificar_click_bold', email: participantEmail, nombre, panel, tipo, monto, eur, tasa }),
     keepalive: true
   }).catch(() => {});
 }
