@@ -667,8 +667,9 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div class="card pay-lock" id="pay-card1">
       <div class="ctitle">Pago de reserva — 1.000 EUR</div>
       <div id="breakdown-reserva" class="breakdown-box" style="display:none"></div>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
-      <div class="pay-grid">
+      <p id="pay-card1-hint" style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
+      <div id="pago-exitoso-reserva" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago de reserva completado exitosamente</div>
+      <div id="pay-grid-reserva" class="pay-grid">
         <div class="pay-opt" id="p1tc" onclick="selPay(1,'tc')">
           <div class="pbadge">+3,5% tarjeta</div>
           <div class="picon">💳</div>
@@ -702,7 +703,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
 
       <!-- UPLOAD COMPROBANTE RESERVA -->
-      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+      <div id="upload-block-reserva" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
         <div class="ctitle">Subir comprobante de pago — Reserva</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Después de realizar el pago, sube el comprobante (captura de pantalla, recibo o PDF) — puedes adjuntar más de uno si hiciste varios pagos — y confirma cuando estés listo.</p>
         <div class="upload" onclick="document.getElementById('comp-reserva-input').click()">
@@ -743,7 +744,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop-tiq">$ —</div></div>
       </div>
       <div id="calc-note-tiq" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
-      <div class="pay-grid">
+      <div id="pago-exitoso-tiquete" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago de tiquete aéreo completado exitosamente</div>
+      <div id="pay-grid-tiquete" class="pay-grid">
         <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtc-total">$ —</div><div class="pamount-fee" id="ptiqtc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="ptiqtr" onclick="selPay('tiq','tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
@@ -764,7 +766,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
 
       <!-- UPLOAD COMPROBANTE TIQUETE -->
-      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+      <div id="upload-block-tiquete" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
         <div class="ctitle">Subir comprobante de pago — Tiquete aéreo</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Después de realizar el pago del tiquete, sube el comprobante — puedes adjuntar más de uno si hiciste varios pagos — y confirma cuando estés listo.</p>
         <div class="upload" onclick="document.getElementById('comp-tiquete-input').click()">
@@ -796,7 +798,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 16px;"></div>
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
       <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
-      <div class="pay-grid">
+      <div id="pago-exitoso-final" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago final completado exitosamente</div>
+      <div id="pay-grid-final" class="pay-grid">
         <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tc-total">$ —</div><div class="pamount-fee" id="p2tc-fee">incl. recargo $ —</div></div></div>
         <div class="pay-opt" id="p2tr" onclick="selPay(2,'tr')"><div class="pbadge">Sin recargo</div><div class="picon">🏦</div><div class="ptitle">Transferencia</div><div class="pdesc">Bancolombia. Sin costos adicionales.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tr-total">$ —</div><div class="pamount-fee" style="color:var(--green)">Sin recargo adicional</div></div></div>
       </div>
@@ -818,7 +821,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
 
       <!-- UPLOAD COMPROBANTE PAGO FINAL -->
-      <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
+      <div id="upload-block-final" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border);">
         <div class="ctitle">Subir comprobante de pago — Pago final</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Después de realizar el pago final, sube el comprobante — puedes adjuntar más de uno si hiciste varios pagos — y confirma cuando estés listo.</p>
         <div class="upload" onclick="document.getElementById('comp-final-input').click()">
@@ -2475,6 +2478,22 @@ function loadParticipant(p) {
   }
 }
 
+function actualizarPagosCompletados() {
+  const config = [
+    { done: STEP_DEFS.find(s => s.panel === 'panel2')?.done, elems: ['pay-card1-hint', 'pay-grid-reserva', 'd1tc', 'd1tr', 'upload-block-reserva'], banner: 'pago-exitoso-reserva' },
+    { done: STEP_DEFS.find(s => s.panel === 'panel-tiq')?.done, elems: ['pay-grid-tiquete', 'dtiqtc', 'dtiqtr', 'upload-block-tiquete'], banner: 'pago-exitoso-tiquete' },
+    { done: STEP_DEFS.find(s => s.panel === 'panel3')?.done, elems: ['pay-grid-final', 'd2tc', 'd2tr', 'upload-block-final'], banner: 'pago-exitoso-final' }
+  ];
+  config.forEach(c => {
+    c.elems.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = c.done ? 'none' : '';
+    });
+    const bannerEl = document.getElementById(c.banner);
+    if (bannerEl) bannerEl.style.display = c.done ? 'block' : 'none';
+  });
+}
+
 function applyPasoActual(paso) {
   // Marcar pasos completados según número de paso
   STEP_DEFS[0].done = true; // Inscripción siempre done
@@ -2490,6 +2509,8 @@ function applyPasoActual(paso) {
   if (idxFinal > -1) STEP_DEFS[idxFinal].done = paso >= 6;
   const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
   if (idxDocs > -1) STEP_DEFS[idxDocs].done = paso >= 7;
+
+  actualizarPagosCompletados();
 
   // Ir al panel correcto según paso
   const panelMap = {1:'panel-tc', 2:'panel-tc', 3:'panel2', 4:'panel-tiq', 5:'panel3', 6:'panel4', 7:'panel-done'};
