@@ -1659,6 +1659,10 @@ function showStatus(type, msg, onClick) {
 @keyframes wa-pulse{0%,100%{box-shadow:0 8px 28px rgba(37,211,102,.65)}50%{box-shadow:0 8px 28px rgba(37,211,102,.65),0 0 0 16px rgba(37,211,102,.2)}}
 #wa-circle{animation:wa-pulse 3s ease-in-out infinite}
 #wa-circle:hover{transform:scale(1.08);animation:none}
+@media (max-width: 480px) {
+  #wa-circle { width: 58px; height: 58px; bottom: 16px; right: 16px; }
+  #wa-circle svg { width: 32px; height: 32px; }
+}
 @media (max-width: 900px) {
   .nav-inner { padding: 0 16px; height: 57px; }
   .nav-logo-link img { height: 23px; }
@@ -1822,6 +1826,7 @@ function showStatus(type, msg, onClick) {
   .nav-hamburger { display: flex; }
   #nav-links { display: none !important; }
   nav { position: relative; }
+  body { padding-top: 0; }
 }
 /* Evitar scroll horizontal y desbordamiento en móvil */
 html {

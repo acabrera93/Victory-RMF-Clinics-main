@@ -215,7 +215,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .btn-del:hover{background:#dc2626;color:#fff;border-color:#dc2626}
 .foto-upload-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
 .foto-upload-zone:hover,.foto-upload-zone.drag{border-color:var(--blue);background:rgba(30,91,168,.04)}
-@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}.modal-grid{grid-template-columns:1fr}.mfield.full{grid-column:1}}
+@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}.modal-grid{grid-template-columns:1fr}.mfield.full{grid-column:1}#pagos-modal-body>div>div[style*="justify-content:space-between"]{flex-direction:column!important;align-items:flex-start!important;gap:4px!important}#pagos-modal-body div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes badge-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
 /* COMERCIAL DASHBOARD */
@@ -4026,23 +4026,52 @@ function adminSection(section) {
   }
 }
 
-function loadAdmin(force) {
+function mostrarErrorAdmin() {
+  let banner = document.getElementById('admin-error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'admin-error-banner';
+    banner.style.cssText = 'background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#991b1b;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap';
+    banner.innerHTML = '<span>⚠️ No se pudo cargar la información. Revisa tu conexión.</span><button onclick="loadAdmin(true)" style="padding:7px 14px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif;">↻ Reintentar</button>';
+    const contenedor = document.getElementById('admin-sec-dashboard');
+    if (contenedor) contenedor.prepend(banner);
+  }
+  banner.style.display = 'flex';
+}
+
+function ocultarErrorAdmin() {
+  const banner = document.getElementById('admin-error-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function loadAdmin(force, intento) {
+  intento = intento || 1;
   if (adminLoaded && !force) return;
-  adminLoaded = true;
   document.getElementById('kpi-participantes').textContent = '…';
+  ocultarErrorAdmin();
   const t = Date.now();
+  let falloParticipantes = false, falloFinanciero = false, falloAcceso = false;
   Promise.all([
-    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => []),
-    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => null),
-    fetch(APPS_SCRIPT_URL + '?action=admin_acceso&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => [])
+    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => { falloParticipantes = true; return []; }),
+    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => { falloFinanciero = true; return null; }),
+    fetch(APPS_SCRIPT_URL + '?action=admin_acceso&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' }).then(r => r.json()).catch(() => { falloAcceso = true; return []; })
   ])
   .then(([parts, fin, acceso]) => {
+    const todoFallo = falloParticipantes && falloFinanciero && falloAcceso;
+    if (todoFallo) {
+      if (intento < 2) {
+        setTimeout(() => loadAdmin(true, intento + 1), 1500);
+        return;
+      }
+      adminLoaded = false;
+      mostrarErrorAdmin();
+      document.getElementById('kpi-participantes').textContent = 'Error';
+      return;
+    }
+    adminLoaded = true;
     adminData = Array.isArray(parts) ? parts : [];
     adminFinData = fin && !fin.error ? fin : null;
     adminAccesoList = Array.isArray(acceso) ? acceso : [];
-    if (!adminData.length && !adminFinData) {
-      document.getElementById('kpi-participantes').textContent = 'Error';
-    }
     adminLastLoaded = Date.now();
     renderAdminDashboard(adminData, adminFinData);
     filterAdminTable();
@@ -4050,13 +4079,14 @@ function loadAdmin(force) {
     applyAdminPermissions();
     const stabAcceso = document.getElementById('stab-acceso');
     if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
-    // Re-render whichever section is currently visible
     const activeAsec = (document.querySelector('.asnav-btn.active') || {}).dataset?.asec;
     if (activeAsec === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
     if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
   })
   .catch(err => {
     console.error('loadAdmin error:', err);
+    adminLoaded = false;
+    mostrarErrorAdmin();
     document.getElementById('kpi-participantes').textContent = 'Error';
   });
 }
@@ -5934,6 +5964,10 @@ function adminHandleFotoUpload(files) {
 @keyframes wa-pulse{0%,100%{box-shadow:0 8px 28px rgba(37,211,102,.65)}50%{box-shadow:0 8px 28px rgba(37,211,102,.65),0 0 0 16px rgba(37,211,102,.2)}}
 #wa-circle{animation:wa-pulse 3s ease-in-out infinite}
 #wa-circle:hover{transform:scale(1.08);animation:none}
+@media (max-width: 480px) {
+  #wa-circle { width: 58px; height: 58px; bottom: 16px; right: 16px; }
+  #wa-circle svg { width: 32px; height: 32px; }
+}
 @media (max-width: 900px) {
   nav { padding: 12px 20px; }
   .nav-logos img { height: 28px; }
@@ -6513,7 +6547,7 @@ img, video, iframe, table { max-width: 100%; }
       <div style="color:rgba(255,255,255,0.55);font-size:12px;margin-top:2px;">Desplázate hacia abajo en el menú hasta encontrarlo</div>
     </div>
   </div>
-  <button onclick="document.getElementById('ios-install').style.display='none'" style="width:100%;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;">Entendido</button>
+  <button onclick="document.getElementById('ios-install').style.display='none';document.getElementById('wa-circle').style.display='flex';" style="width:100%;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;">Entendido</button>
 </div>
 
 <script>
@@ -6547,11 +6581,13 @@ img, video, iframe, table { max-width: 100%; }
           <div style="font-weight:600;font-size:14px;margin-bottom:6px;">Abre esta página en Safari</div>
           <div style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.6;">En iPhone, la instalación solo funciona desde <strong style="color:#fff;">Safari</strong>. Chrome no lo permite.<br><br>Pulsa los tres puntos <strong style="color:#fff;">···</strong> arriba a la derecha y selecciona <strong style="color:#fff;">"Abrir en Safari"</strong>.</div>
         </div>
-        <button onclick="document.getElementById('ios-install').style.display='none'" style="width:100%;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;">Entendido</button>
+        <button onclick="document.getElementById('ios-install').style.display='none';document.getElementById('wa-circle').style.display='flex';" style="width:100%;background:rgba(255,255,255,0.12);border:none;color:#fff;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;font-weight:500;">Entendido</button>
       `;
       panel.style.display = 'block';
+      document.getElementById('wa-circle').style.display = 'none';
     } else if (esSafari) {
       panel.style.display = 'block';
+      document.getElementById('wa-circle').style.display = 'none';
     }
   }
 </script>
