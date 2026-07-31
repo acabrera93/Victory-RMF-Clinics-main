@@ -2169,17 +2169,24 @@ function calcPaymentTotals() {
   const abonoReserva = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva || 0), 0);
   const abonoTiquete = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete || 0), 0);
   const abonoFinal = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final || 0), 0);
-  const abonoReservaFecha = (allParticipants.map(raw => (normalizeParticipant(raw) || raw).abono_reserva_fecha).filter(Boolean)[0]) || '';
-  const abonoTiqueteFecha = (allParticipants.map(raw => (normalizeParticipant(raw) || raw).abono_tiquete_fecha).filter(Boolean)[0]) || '';
-  const abonoFinalFecha = (allParticipants.map(raw => (normalizeParticipant(raw) || raw).abono_final_fecha).filter(Boolean)[0]) || '';
+  // Detalle de cada abono individual (monto + fecha) — si más de un participante del
+  // grupo pagó por separado el mismo concepto, se listan todos en vez de mostrar
+  // arbitrariamente la fecha del primero.
+  const detalleAbonos = (campoMonto, campoFecha) => allParticipants
+    .map(raw => normalizeParticipant(raw) || raw)
+    .filter(p => (p[campoMonto] || 0) > 0)
+    .map(p => ({ monto: p[campoMonto], fecha: p[campoFecha] || '' }));
+  const abonosReservaDetalle = detalleAbonos('abono_reserva', 'abono_reserva_fecha');
+  const abonosTiqueteDetalle = detalleAbonos('abono_tiquete', 'abono_tiquete_fecha');
+  const abonosFinalDetalle = detalleAbonos('abono_final', 'abono_final_fecha');
 
-  return { reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal, abonoReservaFecha, abonoTiqueteFecha, abonoFinalFecha };
+  return { reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal, abonosReservaDetalle, abonosTiqueteDetalle, abonosFinalDetalle };
 }
 
 function applyPaymentTotals(t) {
   // Reserva: input + título del card, usando lo restante si hay abono
   const e1 = document.getElementById('eur1');
-  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonoReservaFecha);
+  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonosReservaDetalle);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.reserva = restanteReserva;
   if (e1) { e1.value = restanteReserva; calc1(); }
@@ -2197,7 +2204,7 @@ function applyPaymentTotals(t) {
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
   const totalTiqueteEur = TIQUETE_EUR * (t.tiqCount || 1);
-  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonoTiqueteFecha);
+  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
@@ -2208,7 +2215,7 @@ function applyPaymentTotals(t) {
 
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
-  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonoFinalFecha);
+  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonosFinalDetalle);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.final = restanteFinal;
   if (e2) { e2.value = restanteFinal; calc2(); }
@@ -2671,7 +2678,7 @@ function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
   if (elTrT) elTrT.textContent = fmt(base);
 }
 
-function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, fecha) {
+function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, detalleAbonos) {
   const aviso = document.getElementById(idAviso);
   const input = document.getElementById(idInput);
   if (!aviso || !input) return 0;
@@ -2682,14 +2689,26 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
     return 0; // cubierto por completo — el banner de "pago completado" existente se encarga del resto
   }
   aviso.style.display = 'block';
+  const detalles = Array.isArray(detalleAbonos) ? detalleAbonos : [];
+  // Un solo abono: la fecha se muestra junto al total, como antes. Dos o más
+  // (ej. jugador + acompañante pagaron por separado): se listan todos con su propia fecha.
+  const fechaUnica = detalles.length === 1 ? detalles[0].fecha : '';
+  const listaDetalle = detalles.length > 1
+    ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--gborder)">
+        ${detalles.map(d => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--green);opacity:0.85;margin-top:3px">
+          <span>${d.fecha ? escapeHtml(d.fecha) : '—'}</span><span>${d.monto.toLocaleString('es-CO')} EUR</span>
+        </div>`).join('')}
+      </div>`
+    : '';
   aviso.innerHTML = `
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px">
       <div style="background:var(--gbg);padding:14px 16px;border-bottom:1px dashed var(--gborder)">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);margin-bottom:5px">✅ Abono recibido</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
           <div style="font-size:20px;font-weight:700;color:var(--green)">${abono.toLocaleString('es-CO')} EUR</div>
-          ${fecha ? `<div style="font-size:12px;color:var(--green);opacity:0.8">${escapeHtml(fecha)}</div>` : ''}
+          ${fechaUnica ? `<div style="font-size:12px;color:var(--green);opacity:0.8">${escapeHtml(fechaUnica)}</div>` : ''}
         </div>
+        ${listaDetalle}
       </div>
       <div style="background:rgba(217,119,6,.07);padding:14px 16px">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#92400e;margin-bottom:5px">⏳ Saldo pendiente de ${escapeHtml(labelConcepto)}</div>
@@ -3237,8 +3256,9 @@ function enviarComprobante(tipoPago) {
   const esPagoCompleto = eurSubmitted >= (restantePend - 1); // -1 para tolerar redondeos menores
 
   Promise.all(files.map(file => subirUnComprobante(file, tipoPago)))
-    .then(() => {
-      marcarComprobantePendiente(tipoPago);
+    .then((resultados) => {
+      const urlsNuevas = resultados.map(r => r && r.url).filter(Boolean);
+      marcarComprobantePendiente(tipoPago, urlsNuevas);
 
       if (esPagoCompleto) {
         const pasoMap = { reserva: 4, tiquete: 5, final: 6 };
@@ -3275,7 +3295,7 @@ function enviarComprobante(tipoPago) {
 // "Sin pago" a "Pendiente de confirmar" en la hoja Pagos, sin marcarlo como
 // Completo (eso sigue siendo una decisión manual del admin). Se incluye el
 // monto ya calculado en pantalla porque el admin filtra/oculta filas sin monto.
-function marcarComprobantePendiente(tipoPago) {
+function marcarComprobantePendiente(tipoPago, urlsNuevas) {
   if (!nombre) return;
   const tipoLabel = { reserva: 'Reserva', tiquete: 'Tiquete', final: 'Pago Final' }[tipoPago];
   const tipoParticipante = tipo ? (tipo.charAt(0).toUpperCase() + tipo.slice(1)) : '';
@@ -3288,7 +3308,9 @@ function marcarComprobantePendiente(tipoPago) {
   const copEl = document.getElementById(copDisplayId);
   const cop = copEl ? (parseFloat((copEl.textContent || '').replace(/[^\d]/g, '')) || 0) : 0;
   const hoy = new Date().toISOString().slice(0, 10);
-  const comprobanteUrl = comprobanteUrls[tipoPago] || '';
+  // Todos los comprobantes subidos en ESTA tanda (puede haber más de uno) — el
+  // backend los agrega, uno por línea, a los que ya hubiera de envíos anteriores.
+  const comprobanteUrl = (urlsNuevas && urlsNuevas.length) ? urlsNuevas.join('\n') : (comprobanteUrls[tipoPago] || '');
   const fileId = comprobanteFileIds[tipoPago] || '';
   const metodoPago = metodoPagoSel[tipoPago] || 'transferencia';
   fetch(APPS_SCRIPT_URL, {
@@ -4833,8 +4855,12 @@ function renderAdminPagos(fin) {
   const fmtPago = (pago) => {
     if (!pago || !pago.eur) return `<div>${statusChip('')}</div>`;
     const esPendienteConfirmar = (pago.estado || '').toLowerCase().trim() === 'pendiente de confirmar';
-    const chip = (esPendienteConfirmar && pago.comprobante_url)
-      ? `<a href="${escapeHtml(pago.comprobante_url)}" target="_blank" rel="noopener" style="text-decoration:none;cursor:pointer" title="Ver comprobante en Drive">${statusChip(pago.estado)}</a>`
+    // La celda puede traer más de un link de comprobante (uno por línea, por abonos
+    // sucesivos) — aquí solo se enlaza el primero; todos se listan en el detalle del modal.
+    const urlsComprobante = pago.comprobante_url ? pago.comprobante_url.split('\n').filter(Boolean) : [];
+    const tituloComprobante = urlsComprobante.length > 1 ? `Ver comprobantes en Drive (${urlsComprobante.length})` : 'Ver comprobante en Drive';
+    const chip = (esPendienteConfirmar && urlsComprobante.length)
+      ? `<a href="${escapeHtml(urlsComprobante[0])}" target="_blank" rel="noopener" style="text-decoration:none;cursor:pointer" title="${tituloComprobante}">${statusChip(pago.estado)}</a>`
       : statusChip(pago.estado);
     const ia = esPendienteConfirmar ? iaBadge(pago.ia_status, pago.ia_detalle) : '';
     return `<div>${chip}</div>
@@ -5500,8 +5526,11 @@ function openPagosModal(idx, nombreOverride) {
     const iaLine = (esPendienteConfirmar && ex && ex.ia_status)
       ? `<div style="margin-bottom:10px">${iaBadge(ex.ia_status, ex.ia_detalle)}</div>`
       : '';
-    const comprobanteLink = (ex && ex.comprobante_url)
-      ? `<a href="${escapeHtml(ex.comprobante_url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:10px;display:inline-block">📎 Ver comprobante subido por el participante</a><br>`
+    // Puede haber más de un comprobante (uno por línea en la celda) si el participante
+    // subió varios abonos sucesivos para el mismo concepto — se listan todos.
+    const urlsComprobanteEx = (ex && ex.comprobante_url) ? ex.comprobante_url.split('\n').filter(Boolean) : [];
+    const comprobanteLink = urlsComprobanteEx.length
+      ? urlsComprobanteEx.map((url, i) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:6px;display:inline-block">📎 Ver comprobante${urlsComprobanteEx.length > 1 ? ' ' + (i + 1) : ''} subido por el participante</a><br>`).join('')
       : '';
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -5522,6 +5551,11 @@ function openPagosModal(idx, nombreOverride) {
         <div><div class="clabel">Valor EUR</div><input type="number" id="pago-${tid}-eur" value="${ex ? ex.eur : ''}" placeholder="1000" style="${inputStyle}"></div>
         <div><div class="clabel">Valor COP</div><input type="number" id="pago-${tid}-cop" value="${ex ? ex.cop : ''}" placeholder="4350000" style="${inputStyle}"></div>
       </div>
+      ${ex ? `<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:10px;padding:10px;background:var(--off);border-radius:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:110px"><div class="clabel">+ Abono adicional (EUR)</div><input type="number" id="pago-${tid}-abono-add" placeholder="ej. 500" style="${inputStyle}"></div>
+        <div style="flex:1;min-width:130px"><div class="clabel">+ COP real</div><input type="number" id="pago-${tid}-abono-add-cop" placeholder="del comprobante" style="${inputStyle}"></div>
+        <button type="button" onclick="agregarAbonoModal('${tid}','${tipo}')" style="padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">+ Agregar</button>
+      </div>` : ''}
       <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${paqueteVal!=='Premium'?' selected':''}>Estándar</option><option${paqueteVal==='Premium'?' selected':''}>Premium</option></select></div>
       ${esPendienteConfirmar ? `<button onclick="document.getElementById('pago-${tid}-estado').value='Completo';registrarPagoDesdePanel('${tipo}')" style="width:100%;margin-bottom:8px;padding:11px;background:#166534;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">✓ Confirmar pago de ${tipo}</button>` : ''}
       <button onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">${ex ? 'Actualizar' : 'Registrar'} pago de ${tipo}</button>
@@ -5541,6 +5575,31 @@ function closePagosModal() {
 function activarTiquete() {
   document.getElementById('tiquete-locked').style.display = 'none';
   document.getElementById('tiquete-form').style.display = '';
+}
+
+// Suma un abono adicional al monto ya cargado en los campos Valor EUR/COP del
+// modal, en vez de que el admin tenga que calcular la suma a mano y sobreescribir
+// el campo. EUR y COP son OBLIGATORIOS — se exige el COP real del comprobante
+// (no se estima) porque cada abono puede haberse pagado a una tasa distinta, y
+// como al congelar el pago para el participante la tasa mostrada se calcula como
+// COP total / EUR total (ver aplicarCongelamiento), mantener aquí el COP real
+// acumulado hace que esa tasa congelada quede como la media ponderada real de
+// todos los abonos.
+function agregarAbonoModal(tid, tipo) {
+  const abonoEl = document.getElementById(`pago-${tid}-abono-add`);
+  const abonoCopEl = document.getElementById(`pago-${tid}-abono-add-cop`);
+  const eurEl = document.getElementById(`pago-${tid}-eur`);
+  const copEl = document.getElementById(`pago-${tid}-cop`);
+  if (!abonoEl || !abonoCopEl || !eurEl || !copEl) return;
+  const abonoEur = parseFloat(abonoEl.value) || 0;
+  const abonoCop = parseFloat(abonoCopEl.value) || 0;
+  if (abonoEur <= 0 || abonoCop <= 0) { alert('Escribe el monto en EUR y en COP del abono a agregar (ambos son obligatorios).'); return; }
+  const baseEur = parseFloat(eurEl.value) || 0;
+  const baseCop = parseFloat(copEl.value) || 0;
+  eurEl.value = baseEur + abonoEur;
+  copEl.value = baseCop + abonoCop;
+  abonoEl.value = '';
+  if (abonoCopEl) abonoCopEl.value = '';
 }
 
 function registrarPagoDesdePanel(tipo) {

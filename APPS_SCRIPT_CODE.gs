@@ -1931,14 +1931,28 @@ function marcarComprobanteSubido(data) {
 
     if (targetSheetRow > 0) {
       var estadoActual = String(pagosSheet.getRange(targetSheetRow, 6).getValue() || '').trim().toLowerCase();
-      if (estadoActual === 'completo' || estadoActual === 'parcial') {
-        return sendResponse(200, { ok: true, skipped: true }); // nunca pisar un pago ya confirmado por el admin
+      if (estadoActual === 'completo') {
+        return sendResponse(200, { ok: true, skipped: true }); // nunca pisar un pago ya confirmado como completo
       }
+      // Si ya había un abono "Parcial" confirmado por el admin, este comprobante nuevo
+      // es un abono de SEGUIMIENTO sobre el mismo saldo — se suma al monto ya validado
+      // en vez de reemplazarlo, para no perder el registro del abono anterior.
+      var eurPrevio = estadoActual === 'parcial' ? (parseFloat(pagosSheet.getRange(targetSheetRow, 5).getValue()) || 0) : 0;
+      var copPrevio = estadoActual === 'parcial' ? (parseFloat(pagosSheet.getRange(targetSheetRow, 4).getValue()) || 0) : 0;
+      var eurAcumulado = eurPrevio + eur;
+      var copAcumulado = copPrevio + cop;
+
       pagosSheet.getRange(targetSheetRow, 3).setValue(fechaDate); // col C = fecha
-      if (cop > 0) pagosSheet.getRange(targetSheetRow, 4).setValue(cop); // col D = cop
-      if (eur > 0) pagosSheet.getRange(targetSheetRow, 5).setValue(eur); // col E = eur
+      if (copAcumulado > 0) pagosSheet.getRange(targetSheetRow, 4).setValue(copAcumulado); // col D = cop
+      if (eurAcumulado > 0) pagosSheet.getRange(targetSheetRow, 5).setValue(eurAcumulado); // col E = eur
       pagosSheet.getRange(targetSheetRow, 6).setValue('Pendiente de confirmar'); // col F = estado
-      if (comprobanteUrl) pagosSheet.getRange(targetSheetRow, 9).setValue(comprobanteUrl); // col I = link al comprobante en Drive
+      if (comprobanteUrl) {
+        // Acumular links: cada comprobante nuevo se agrega en una línea nueva de la
+        // misma celda (col I), sin borrar los comprobantes ya subidos antes.
+        var urlExistente = String(pagosSheet.getRange(targetSheetRow, 9).getValue() || '').trim();
+        var urlFinal = urlExistente ? (urlExistente + '\n' + comprobanteUrl) : comprobanteUrl;
+        pagosSheet.getRange(targetSheetRow, 9).setValue(urlFinal);
+      }
       pagosSheet.getRange(targetSheetRow, 10).setValue(resultadoIA.status);  // col J = estado IA
       pagosSheet.getRange(targetSheetRow, 11).setValue(resultadoIA.detalle); // col K = detalle IA
     } else {
