@@ -224,7 +224,14 @@ function getAbonosValidados_(nombre) {
   function normNombreGS(s) {
     return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
-  const resultado = { reserva: 0, tiquete: 0, final: 0 };
+  function fmtDateGS(v) {
+    if (v instanceof Date) return String(v.getDate()).padStart(2,'0') + '/' + String(v.getMonth()+1).padStart(2,'0') + '/' + v.getFullYear();
+    return String(v == null ? '' : v).trim();
+  }
+  const resultado = {
+    reserva: 0, tiquete: 0, final: 0,
+    reserva_fecha: '', tiquete_fecha: '', final_fecha: ''
+  };
   try {
     const nombreNorm = normNombreGS(nombre);
     if (!nombreNorm) return resultado;
@@ -239,6 +246,7 @@ function getAbonosValidados_(nombre) {
       var s = String(v == null ? '' : v).trim().replace(/[€$\s]/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.');
       return parseFloat(s) || 0;
     };
+    const fechaMasReciente = { reserva: null, tiquete: null, final: null };
     let currentNombre = '';
     for (let i = 0; i < data.length; i++) {
       const r = data[i];
@@ -252,10 +260,16 @@ function getAbonosValidados_(nombre) {
       if (estado !== 'completo' && estado !== 'parcial') continue; // solo validados
       const eurAmt = num(r[4]);
       if (eurAmt <= 0) continue;
-      const concepto = String(r[7] || '').toLowerCase().trim();
-      if (concepto === 'reserva') resultado.reserva += eurAmt;
-      else if (concepto === 'tiquete') resultado.tiquete += eurAmt;
-      else if (concepto === 'pago final') resultado.final += eurAmt;
+      const conceptoRaw = String(r[7] || '').toLowerCase().trim();
+      const concepto = conceptoRaw === 'pago final' ? 'final' : conceptoRaw;
+      if (concepto !== 'reserva' && concepto !== 'tiquete' && concepto !== 'final') continue;
+      resultado[concepto] += eurAmt;
+      const fechaCelda = r[2];
+      const fechaComparable = (fechaCelda instanceof Date) ? fechaCelda : new Date(String(fechaCelda));
+      if (!isNaN(fechaComparable.getTime()) && (!fechaMasReciente[concepto] || fechaComparable > fechaMasReciente[concepto])) {
+        fechaMasReciente[concepto] = fechaComparable;
+        resultado[concepto + '_fecha'] = fmtDateGS(fechaCelda);
+      }
     }
   } catch (err) {
     Logger.log('getAbonosValidados_ error: ' + err);
@@ -319,6 +333,9 @@ function buscarParticipantes(email) {
       participant['abono_reserva'] = String(abonos.reserva);
       participant['abono_tiquete'] = String(abonos.tiquete);
       participant['abono_final'] = String(abonos.final);
+      participant['abono_reserva_fecha'] = abonos.reserva_fecha;
+      participant['abono_tiquete_fecha'] = abonos.tiquete_fecha;
+      participant['abono_final_fecha'] = abonos.final_fecha;
       participants.push(participant);
     }
 
