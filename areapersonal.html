@@ -2623,12 +2623,12 @@ function showTasaError() {
 
 async function fetchTasa() {
   try {
-    // Fuente 1: Wise (tasa mid-market pública, mismo endpoint que su widget web, sin API key)
-    const rw = await fetch('https://wise.com/rates/history+live?source=EUR&target=COP&length=1&resolution=daily&unit=day');
+    // Fuente 1: Wise (tasa mid-market), vía proxy del backend — el endpoint público de
+    // Wise no tiene CORS habilitado, así que no se puede leer directo desde el navegador.
+    const rw = await fetch(APPS_SCRIPT_URL + '?action=tasa_wise&_t=' + Date.now(), { redirect: 'follow' });
     const dw = await rw.json();
-    const ultimoWise = Array.isArray(dw) ? dw[dw.length - 1] : null;
-    if (ultimoWise && ultimoWise.value) {
-      tasa = Math.round(parseFloat(ultimoWise.value) * (1 + MARGEN_TASA_PCT));
+    if (dw && dw.ok && dw.value) {
+      tasa = Math.round(parseFloat(dw.value) * (1 + MARGEN_TASA_PCT));
       updateTasaFecha();
       updateCalcs(); return;
     }

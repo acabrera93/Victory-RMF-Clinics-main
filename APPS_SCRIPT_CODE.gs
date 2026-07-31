@@ -186,6 +186,7 @@ function doGet(e) {
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
     if (action === 'mis_pagos') return getMisPagos(params.nombre || '');
+    if (action === 'tasa_wise') return getTasaWise_();
     if (action === 'admin_participantes') return getAdminParticipantes(params);
     if (action === 'admin_financiero') return getAdminFinanciero(params);
     if (action === 'admin_categorias') return getAdminCategorias(params);
@@ -347,6 +348,31 @@ function buscarParticipantes(email) {
     Logger.log('buscarParticipantes error: ' + err);
     return ContentService.createTextOutput(JSON.stringify({ _debug: true, catch_error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Proxy server-side de la tasa mid-market de Wise (EUR->COP). El endpoint público de
+// Wise no tiene CORS habilitado, así que el navegador nunca puede leerlo directamente
+// desde areapersonal.html — UrlFetchApp sí puede, porque corre en el servidor y no
+// está sujeto a la política CORS del navegador.
+function getTasaWise_() {
+  try {
+    const response = UrlFetchApp.fetch(
+      'https://wise.com/rates/history+live?source=EUR&target=COP&length=1&resolution=daily&unit=day',
+      { muteHttpExceptions: true }
+    );
+    if (response.getResponseCode() !== 200) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false })).setMimeType(ContentService.MimeType.JSON);
+    }
+    const data = JSON.parse(response.getContentText());
+    const ultimo = Array.isArray(data) ? data[data.length - 1] : null;
+    if (!ultimo || !ultimo.value) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false })).setMimeType(ContentService.MimeType.JSON);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, value: ultimo.value })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('getTasaWise_ error: ' + err);
+    return ContentService.createTextOutput(JSON.stringify({ ok: false })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
