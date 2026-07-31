@@ -220,6 +220,49 @@ function doGet(e) {
   }
 }
 
+function getAbonosValidados_(nombre) {
+  function normNombreGS(s) {
+    return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+  const resultado = { reserva: 0, tiquete: 0, final: 0 };
+  try {
+    const nombreNorm = normNombreGS(nombre);
+    if (!nombreNorm) return resultado;
+    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return resultado;
+    const lastRow = pagosSheet.getLastRow();
+    if (lastRow < 6) return resultado;
+    const data = pagosSheet.getRange('A6:K' + lastRow).getValues();
+    const num = function(v) {
+      if (typeof v === 'number') return v;
+      var s = String(v == null ? '' : v).trim().replace(/[€$\s]/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.');
+      return parseFloat(s) || 0;
+    };
+    let currentNombre = '';
+    for (let i = 0; i < data.length; i++) {
+      const r = data[i];
+      const rowNombre = String(r[1] || '').trim();
+      if (rowNombre) {
+        if (rowNombre.toLowerCase().indexOf('total') >= 0) { currentNombre = ''; continue; }
+        currentNombre = rowNombre;
+      }
+      if (!currentNombre || normNombreGS(currentNombre) !== nombreNorm) continue;
+      const estado = String(r[5] || '').toLowerCase().trim();
+      if (estado !== 'completo' && estado !== 'parcial') continue; // solo validados
+      const eurAmt = num(r[4]);
+      if (eurAmt <= 0) continue;
+      const concepto = String(r[7] || '').toLowerCase().trim();
+      if (concepto === 'reserva') resultado.reserva += eurAmt;
+      else if (concepto === 'tiquete') resultado.tiquete += eurAmt;
+      else if (concepto === 'pago final') resultado.final += eurAmt;
+    }
+  } catch (err) {
+    Logger.log('getAbonosValidados_ error: ' + err);
+  }
+  return resultado;
+}
+
 function buscarParticipantes(email) {
   try {
     const emailNorm = email.toString().toLowerCase().trim();
@@ -270,6 +313,12 @@ function buscarParticipantes(email) {
         const pv = data[i][20];
         if (pv != null && pv !== '') participant['paso_actual'] = String(pv);
       }
+      // Adjuntar abonos validados (Completo/Parcial) por concepto
+      const nombreParaAbonos = participant['Nombre completo'] || participant['nombre'] || participant['Nombre'] || '';
+      const abonos = getAbonosValidados_(nombreParaAbonos);
+      participant['abono_reserva'] = String(abonos.reserva);
+      participant['abono_tiquete'] = String(abonos.tiquete);
+      participant['abono_final'] = String(abonos.final);
       participants.push(participant);
     }
 
