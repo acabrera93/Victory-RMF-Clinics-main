@@ -2055,6 +2055,9 @@ function normalizeParticipant(raw) {
     abono_reserva: parseFloat(rowVal(raw, 'abono_reserva')) || 0,
     abono_tiquete: parseFloat(rowVal(raw, 'abono_tiquete')) || 0,
     abono_final: parseFloat(rowVal(raw, 'abono_final')) || 0,
+    abono_reserva_fecha: rowVal(raw, 'abono_reserva_fecha') || '',
+    abono_tiquete_fecha: rowVal(raw, 'abono_tiquete_fecha') || '',
+    abono_final_fecha: rowVal(raw, 'abono_final_fecha') || '',
   };
 }
 
@@ -2166,14 +2169,17 @@ function calcPaymentTotals() {
   const abonoReserva = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva || 0), 0);
   const abonoTiquete = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete || 0), 0);
   const abonoFinal = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final || 0), 0);
+  const abonoReservaFecha = (allParticipants.map(raw => (normalizeParticipant(raw) || raw).abono_reserva_fecha).filter(Boolean)[0]) || '';
+  const abonoTiqueteFecha = (allParticipants.map(raw => (normalizeParticipant(raw) || raw).abono_tiquete_fecha).filter(Boolean)[0]) || '';
+  const abonoFinalFecha = (allParticipants.map(raw => (normalizeParticipant(raw) || raw).abono_final_fecha).filter(Boolean)[0]) || '';
 
-  return { reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal };
+  return { reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal, abonoReservaFecha, abonoTiqueteFecha, abonoFinalFecha };
 }
 
 function applyPaymentTotals(t) {
   // Reserva: input + título del card, usando lo restante si hay abono
   const e1 = document.getElementById('eur1');
-  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva');
+  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonoReservaFecha);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.reserva = restanteReserva;
   if (e1) { e1.value = restanteReserva; calc1(); }
@@ -2191,7 +2197,7 @@ function applyPaymentTotals(t) {
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
   const totalTiqueteEur = TIQUETE_EUR * (t.tiqCount || 1);
-  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo');
+  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonoTiqueteFecha);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
@@ -2202,7 +2208,7 @@ function applyPaymentTotals(t) {
 
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
-  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final');
+  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonoFinalFecha);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.final = restanteFinal;
   if (e2) { e2.value = restanteFinal; calc2(); }
@@ -2654,7 +2660,7 @@ function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
   if (elTrT) elTrT.textContent = fmt(base);
 }
 
-function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto) {
+function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, fecha) {
   const aviso = document.getElementById(idAviso);
   const input = document.getElementById(idInput);
   if (!aviso || !input) return 0;
@@ -2665,7 +2671,21 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
     return 0; // cubierto por completo — el banner de "pago completado" existente se encarga del resto
   }
   aviso.style.display = 'block';
-  aviso.innerHTML = `💰 Ya tienes un abono validado de <strong>${abono.toLocaleString('es-CO')} EUR</strong> de ${labelConcepto}. Te falta pagar <strong>${restante.toLocaleString('es-CO')} EUR</strong>.`;
+  aviso.innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px">
+      <div style="background:var(--gbg);padding:14px 16px;border-bottom:1px dashed var(--gborder)">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);margin-bottom:5px">✅ Abono recibido</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-size:20px;font-weight:700;color:var(--green)">${abono.toLocaleString('es-CO')} EUR</div>
+          ${fecha ? `<div style="font-size:12px;color:var(--green);opacity:0.8">${escapeHtml(fecha)}</div>` : ''}
+        </div>
+      </div>
+      <div style="background:rgba(217,119,6,.07);padding:14px 16px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#92400e;margin-bottom:5px">⏳ Saldo pendiente de ${escapeHtml(labelConcepto)}</div>
+        <div style="font-size:20px;font-weight:700;color:#92400e">${restante.toLocaleString('es-CO')} EUR</div>
+      </div>
+    </div>
+  `;
   return restante;
 }
 
