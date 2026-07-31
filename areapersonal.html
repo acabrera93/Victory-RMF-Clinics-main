@@ -644,7 +644,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="calc-row">
         <div>
           <div class="clabel">Monto en euros (€)</div>
-          <input class="cinput" id="eur1" type="number" value="1000" min="1" oninput="calc1()">
+          <input class="cinput ro" id="eur1" type="number" value="1000" min="1" oninput="calc1()" readonly>
         </div>
         <div>
           <div class="clabel">Tasa de referencia</div>
@@ -739,7 +739,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
       <div id="aviso-abono-tiquete" class="info-box" style="display:none"></div>
       <div class="calc-row">
-        <div><div class="clabel">Valor del tiquete (EUR)</div><input class="cinput" id="eur-tiq" type="number" value="993" min="1" oninput="calcTiq()"></div>
+        <div><div class="clabel">Valor del tiquete (EUR)</div><input class="cinput ro" id="eur-tiq" type="number" value="993" min="1" oninput="calcTiq()" readonly></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
       </div>
       <div class="cresult" style="margin-bottom:20px">
@@ -759,7 +759,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="bank-card">
           <div class="brow"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
           <div class="brow"><span class="bkey">Beneficiario</span><span class="bval">Fundación Revel</span></div>
-          <div class="brow"><span class="bkey">Cuenta</span><span class="bval">05962673128</span></div>
+          <div class="brow"><span class="bkey">Cuenta corriente</span><span class="bval">05962673128</span></div>
         </div>
         <div class="ok-box" style="margin-top:14px;">
           📎 Por favor envía tu comprobante del tiquete al correo <strong>alejandro.cabrera@fundacionrevel.net</strong> con el asunto <strong>"Comprobante Tiquete — [tu nombre]"</strong>. Confirmamos en máx. 24 horas hábiles.
@@ -795,7 +795,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="breakdown-final" class="breakdown-box" style="display:none"></div>
       <div id="aviso-abono-final" class="info-box" style="display:none"></div>
       <div class="calc-row">
-        <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur2" type="number" value="1790" min="1" oninput="calc2()"></div>
+        <div><div class="clabel">Monto en euros (€)</div><input class="cinput ro" id="eur2" type="number" value="1790" min="1" oninput="calc2()" readonly></div>
         <div><div class="clabel">Tasa media del mercado</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
       </div>
       <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 16px;"></div>
@@ -814,7 +814,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="bank-card">
           <div class="brow"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
           <div class="brow"><span class="bkey">Beneficiario</span><span class="bval">Fundación Revel</span></div>
-          <div class="brow"><span class="bkey">Cuenta</span><span class="bval">05962673128</span></div>
+          <div class="brow"><span class="bkey">Cuenta corriente</span><span class="bval">05962673128</span></div>
           <div class="brow"><span class="bkey">NIT</span><span class="bval">900636583</span></div>
         </div>
         <div class="ok-box" style="margin-top:14px;">
@@ -1834,7 +1834,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
 
     <a id="bold-modal-cta-bold" href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" onclick="closeBoldModal()" style="display:none;width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;box-sizing:border-box;text-align:center">💳 Pagar con Bold →</a>
-    <button id="bold-modal-cta-cerrar" onclick="closeBoldModal()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Entendido →</button>
+    <button id="bold-modal-cta-cerrar" onclick="verDetallesBancarios()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Ver detalles bancarios →</button>
   </div>
 </div>
 
@@ -2988,6 +2988,20 @@ function onTC() {
   }
 }
 
+// Recuerda qué panel (reserva/tiquete/final) abrió el modal de monto, para que
+// el botón "Ver detalles bancarios" sepa a qué sección de la página volver.
+let boldModalPanelActual = null;
+
+// Lleva al participante hasta los datos de la cuenta bancaria de Fundación Revel
+// del panel donde seleccionó "transferencia" (en vez de solo cerrar el modal).
+function verDetallesBancarios() {
+  closeBoldModal();
+  const idsPorPanel = { reserva: 'd1tr', tiquete: 'dtiqtr', final: 'd2tr' };
+  const id = idsPorPanel[boldModalPanelActual];
+  const el = id ? document.getElementById(id) : null;
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ── AVISO COMPROBANTE + MONTO A PAGAR ──────────────────────────────────────────
 // Se dispara al SELECCIONAR el método de pago (tarjeta o transferencia), no al
 // hacer clic en el link de Bold. El monto exacto se lee del total ya calculado
@@ -2996,6 +3010,7 @@ function onTC() {
 // para pago final) y el recargo de tarjeta cuando aplica — así el popup nunca
 // puede desalinearse de esos cálculos.
 function avisoComprobante(panel, tipo) {
+  boldModalPanelActual = panel;
   const totalIdByPanel = {
     reserva: { tc: 'p1tc-total',   tr: 'p1tr-total' },
     tiquete: { tc: 'ptiqtc-total', tr: 'ptiqtr-total' },
