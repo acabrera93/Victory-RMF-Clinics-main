@@ -3295,16 +3295,35 @@ async function loginWithBiometric() {
       }
     });
     if (assertion) {
-      sessionStorage.setItem('auth_' + _pwdPendingSection, '1');
+      const sec = _pwdPendingSection;
+      if (sec === 'admin') {
+        // Face ID solo prueba identidad local, no renueva el token del servidor.
+        // Verificamos aquí si el token guardado sigue vivo antes de dar acceso.
+        const tokenActual = sessionStorage.getItem('admin_token') || '';
+        let tokenValido = false;
+        if (tokenActual) {
+          try {
+            const check = await fetch(APPS_SCRIPT_URL + '?action=admin_acceso&token=' + encodeURIComponent(tokenActual) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json());
+            tokenValido = Array.isArray(check);
+          } catch (_) { tokenValido = false; }
+        }
+        if (!tokenValido) {
+          errEl.textContent = 'Tu sesión expiró. Ingresa tu contraseña para continuar.';
+          btn.disabled = false;
+          label.textContent = origLabel;
+          return;
+        }
+        adminSessionToken = tokenActual;
+      }
+      sessionStorage.setItem('auth_' + sec, '1');
       document.getElementById('pwd-gate').classList.remove('open');
-      const sec = _pwdPendingSection; _pwdPendingSection = null;
+      _pwdPendingSection = null;
       switchSection(sec);
     }
   } catch(e) {
     if (e.name === 'NotAllowedError') {
       errEl.textContent = 'Autenticación cancelada.';
     } else {
-      // Credential no longer valid — remove it and fall back to password
       localStorage.removeItem('biometric_cred_' + _pwdPendingSection);
       document.getElementById('pwd-biometric-wrap').style.display = 'none';
       errEl.textContent = 'Biométrico no disponible. Usa tu contraseña.';
@@ -4026,7 +4045,7 @@ function adminSection(section) {
   }
 }
 
-function mostrarErrorAdmin(detalles) {
+function mostrarErrorAdmin(detalles, esSesionExpirada) {
   let banner = document.getElementById('admin-error-banner');
   if (!banner) {
     banner = document.createElement('div');
@@ -4036,10 +4055,14 @@ function mostrarErrorAdmin(detalles) {
     if (contenedor) contenedor.prepend(banner);
   }
   const detalleTexto = (detalles || []).filter(Boolean).join(' · ');
+  const mensaje = esSesionExpirada ? '🔒 Tu sesión de administrador expiró (dura 12 horas).' : '⚠️ No se pudo cargar la información.';
+  const boton = esSesionExpirada
+    ? `<button onclick="document.getElementById('admin-error-banner').style.display='none';openPasswordGate('admin');" style="padding:7px 14px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;">Volver a iniciar sesión</button>`
+    : `<button onclick="loadAdmin(true)" style="padding:7px 14px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;">↻ Reintentar</button>`;
   banner.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-      <span>⚠️ No se pudo cargar la información.</span>
-      <button onclick="loadAdmin(true)" style="padding:7px 14px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;">↻ Reintentar</button>
+      <span>${mensaje}</span>
+      ${boton}
     </div>
     <div style="font-family:monospace;font-size:11px;color:#7f1d1d;background:#fff;border-radius:6px;padding:8px;word-break:break-word;user-select:text">${detalleTexto || 'Sin detalle disponible'}</div>
   `;
@@ -4058,6 +4081,7 @@ function loadAdmin(force, intento) {
   ocultarErrorAdmin();
   const t = Date.now();
   let errorParticipantes = null, errorFinanciero = null, errorAcceso = null;
+  let sesionExpirada = false;
   Promise.all([
     fetch(APPS_SCRIPT_URL + '?action=admin_participantes&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -4070,6 +4094,25 @@ function loadAdmin(force, intento) {
       .catch(e => { errorAcceso = e.message || String(e); return []; })
   ])
   .then(([parts, fin, acceso]) => {
+    [parts, fin, acceso].forEach(r => {
+      if (r && !Array.isArray(r) && r.error) {
+        sesionExpirada = true;
+        if (!errorParticipantes && !errorFinanciero && !errorAcceso) {
+          errorParticipantes = errorFinanciero = errorAcceso = r.error;
+        }
+      }
+    });
+
+    if (sesionExpirada) {
+      adminLoaded = false;
+      sessionStorage.removeItem('admin_token');
+      sessionStorage.removeItem('auth_admin');
+      adminSessionToken = '';
+      mostrarErrorAdmin(['Tu sesión de administrador expiró.'], true);
+      document.getElementById('kpi-participantes').textContent = 'Sesión expirada';
+      return;
+    }
+
     const todoFallo = errorParticipantes && errorFinanciero && errorAcceso;
     if (todoFallo) {
       if (intento < 2) {
@@ -4077,10 +4120,11 @@ function loadAdmin(force, intento) {
         return;
       }
       adminLoaded = false;
-      mostrarErrorAdmin([errorParticipantes, errorFinanciero, errorAcceso]);
+      mostrarErrorAdmin([errorParticipantes, errorFinanciero, errorAcceso], false);
       document.getElementById('kpi-participantes').textContent = 'Error';
       return;
     }
+
     adminLoaded = true;
     adminData = Array.isArray(parts) ? parts : [];
     adminFinData = fin && !fin.error ? fin : null;
@@ -4099,7 +4143,7 @@ function loadAdmin(force, intento) {
   .catch(err => {
     console.error('loadAdmin error:', err);
     adminLoaded = false;
-    mostrarErrorAdmin([err.message || String(err)]);
+    mostrarErrorAdmin([err.message || String(err)], false);
     document.getElementById('kpi-participantes').textContent = 'Error';
   });
 }
