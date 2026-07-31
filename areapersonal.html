@@ -2174,6 +2174,8 @@ function applyPaymentTotals(t) {
   // Reserva: input + título del card, usando lo restante si hay abono
   const e1 = document.getElementById('eur1');
   const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva');
+  window.restantePendiente = window.restantePendiente || {};
+  window.restantePendiente.reserva = restanteReserva;
   if (e1) { e1.value = restanteReserva; calc1(); }
   if (pagoYaCongelado('reserva')) aplicarCongelamiento('reserva');
   const pc1 = document.getElementById('pay-card1');
@@ -2190,6 +2192,8 @@ function applyPaymentTotals(t) {
   const etiq = document.getElementById('eur-tiq');
   const totalTiqueteEur = TIQUETE_EUR * (t.tiqCount || 1);
   const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo');
+  window.restantePendiente = window.restantePendiente || {};
+  window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
   if ((t.abonoTiquete || 0) >= totalTiqueteEur && totalTiqueteEur > 0) {
     const idxT = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
@@ -2199,6 +2203,8 @@ function applyPaymentTotals(t) {
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
   const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final');
+  window.restantePendiente = window.restantePendiente || {};
+  window.restantePendiente.final = restanteFinal;
   if (e2) { e2.value = restanteFinal; calc2(); }
   if (pagoYaCongelado('final')) aplicarCongelamiento('final');
   const sub3 = document.getElementById('panel3-subtitle');
@@ -2507,9 +2513,9 @@ function loadParticipant(p) {
 
 function actualizarPagosCompletados() {
   const config = [
-    { done: STEP_DEFS.find(s => s.panel === 'panel2')?.done, elems: ['pay-card1-hint', 'pay-grid-reserva', 'd1tc', 'd1tr', 'upload-block-reserva'], banner: 'pago-exitoso-reserva' },
-    { done: STEP_DEFS.find(s => s.panel === 'panel-tiq')?.done, elems: ['pay-grid-tiquete', 'dtiqtc', 'dtiqtr', 'upload-block-tiquete'], banner: 'pago-exitoso-tiquete' },
-    { done: STEP_DEFS.find(s => s.panel === 'panel3')?.done, elems: ['pay-grid-final', 'd2tc', 'd2tr', 'upload-block-final'], banner: 'pago-exitoso-final' }
+    { done: STEP_DEFS.find(s => s.panel === 'panel2')?.done, elems: ['pay-card1-hint', 'pay-grid-reserva', 'd1tc', 'd1tr', 'upload-block-reserva', 'aviso-abono-reserva'], banner: 'pago-exitoso-reserva' },
+    { done: STEP_DEFS.find(s => s.panel === 'panel-tiq')?.done, elems: ['pay-grid-tiquete', 'dtiqtc', 'dtiqtr', 'upload-block-tiquete', 'aviso-abono-tiquete'], banner: 'pago-exitoso-tiquete' },
+    { done: STEP_DEFS.find(s => s.panel === 'panel3')?.done, elems: ['pay-grid-final', 'd2tc', 'd2tr', 'upload-block-final', 'aviso-abono-final'], banner: 'pago-exitoso-final' }
   ];
   config.forEach(c => {
     c.elems.forEach(id => {
@@ -2529,11 +2535,11 @@ function applyPasoActual(paso) {
   // real recién se confirma cuando el paso avanza AL SIGUIENTE (ver enviarComprobante),
   // así que el check verde debe esperar a ese siguiente valor, no al de llegada.
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
-  if (idxReserva > -1) STEP_DEFS[idxReserva].done = paso >= 4;
+  if (idxReserva > -1) STEP_DEFS[idxReserva].done = (paso >= 4) || STEP_DEFS[idxReserva].done;
   const idxTiq = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
-  if (idxTiq > -1) STEP_DEFS[idxTiq].done = paso >= 5;
+  if (idxTiq > -1) STEP_DEFS[idxTiq].done = (paso >= 5) || STEP_DEFS[idxTiq].done;
   const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
-  if (idxFinal > -1) STEP_DEFS[idxFinal].done = paso >= 6;
+  if (idxFinal > -1) STEP_DEFS[idxFinal].done = (paso >= 6) || STEP_DEFS[idxFinal].done;
   const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
   if (idxDocs > -1) STEP_DEFS[idxDocs].done = paso >= 7;
 
@@ -3189,25 +3195,43 @@ function enviarComprobante(tipoPago) {
   const originalLabel = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.style.cursor = 'wait'; btn.textContent = 'Subiendo...'; }
 
+  // Verificar si el monto que se está subiendo cubre lo que realmente falta pagar,
+  // o si es solo un abono parcial (no debe avanzar el paso en ese caso).
+  const eurInputId = { reserva: 'eur1', tiquete: 'eur-tiq', final: 'eur2' }[tipoPago];
+  const eurEl = document.getElementById(eurInputId);
+  const eurSubmitted = eurEl ? (parseFloat(eurEl.value) || 0) : 0;
+  const restantePend = (window.restantePendiente && window.restantePendiente[tipoPago] != null)
+    ? window.restantePendiente[tipoPago]
+    : eurSubmitted; // si no hay dato de restante (sin abonos previos), se asume el monto completo
+  const esPagoCompleto = eurSubmitted >= (restantePend - 1); // -1 para tolerar redondeos menores
+
   Promise.all(files.map(file => subirUnComprobante(file, tipoPago)))
     .then(() => {
-      const pasoMap = { reserva: 4, tiquete: 5, final: 6 };
-      let paso = pasoMap[tipoPago];
-      if (tipoPago === 'reserva' && !conTiq) paso = 5; // sin tiquete: salta directo a paso 5
-      actualizarPaso(paso);
-      if (tipoPago === 'reserva' || tipoPago === 'final') congelarPago(tipoPago);
       marcarComprobantePendiente(tipoPago);
+
+      if (esPagoCompleto) {
+        const pasoMap = { reserva: 4, tiquete: 5, final: 6 };
+        let paso = pasoMap[tipoPago];
+        if (tipoPago === 'reserva' && !conTiq) paso = 5; // sin tiquete: salta directo a paso 5
+        actualizarPaso(paso);
+        if (tipoPago === 'reserva' || tipoPago === 'final') congelarPago(tipoPago);
+        setTimeout(() => {
+          applyPasoActual(paso);
+          scrollToStepsBar();
+        }, 1500);
+      }
 
       comprobantesStaged[tipoPago] = [];
       const listEl = document.getElementById(COMP_LISTA_ID[tipoPago]);
       if (listEl) listEl.innerHTML = '';
       if (btn) { btn.style.display = 'none'; btn.disabled = false; btn.style.cursor = 'pointer'; btn.textContent = originalLabel; }
       const validando = document.getElementById(`comp-${tipoPago}-validando`);
-      if (validando) validando.style.display = 'block';
-      setTimeout(() => {
-        applyPasoActual(paso);
-        scrollToStepsBar();
-      }, 1500);
+      if (validando) {
+        validando.style.display = 'block';
+        validando.innerHTML = esPagoCompleto
+          ? '⏳ <strong>Comprobante en validación</strong><br><span style="font-size:12px;color:var(--muted);">Nuestro equipo está revisando tu pago. Te notificaremos en máx. 24 horas.</span>'
+          : '⏳ <strong>Abono en validación</strong><br><span style="font-size:12px;color:var(--muted);">Registramos tu abono. Una vez confirmado, el saldo restante se actualizará aquí — el paso avanzará solo cuando el pago esté completo.</span>';
+      }
     })
     .catch(err => {
       console.error('Error subiendo comprobante:', err);
