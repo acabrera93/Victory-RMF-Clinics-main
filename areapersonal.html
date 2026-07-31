@@ -796,7 +796,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="aviso-abono-final" class="info-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur2" type="number" value="1790" min="1" oninput="calc2()"></div>
-        <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
+        <div><div class="clabel">Tasa media del mercado</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
       </div>
       <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 16px;"></div>
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
@@ -2611,7 +2611,7 @@ function updateTasaFecha() {
   if (!el) return;
   const now = new Date();
   const fmt = now.toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-  el.textContent = `Tasa media de cambio del día · Actualizada: ${fmt}`;
+  el.textContent = `Tasa media del mercado · Actualizada: ${fmt}`;
 }
 
 function showTasaError() {
