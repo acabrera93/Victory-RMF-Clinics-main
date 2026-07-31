@@ -1861,6 +1861,7 @@ let allParticipants = [];
 let currentIndex = 0;
 let nombre = 'Participante';
 let participantEmail = '';
+let misPagosValidados = {}; // { reserva: {estado,eur,cop}, final: {...} } — solo lo que el admin ya validó
 let tipo = 'jugador';
 let conTiq = false;
 let soloAct = false;
@@ -2301,6 +2302,7 @@ async function doLogin() {
 
     const primerJug = allParticipants.find(p => p.tipo === 'Jugador') || allParticipants[0];
     loadParticipant(primerJug);
+    cargarMisPagosValidados();
 
     document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
     document.getElementById('tc-text').innerHTML = getTyC();
@@ -2640,6 +2642,22 @@ function pagoYaCongelado(tipoPago) {
   return !!cfg && grupoPaso >= cfg.paso;
 }
 
+// Consulta (sin token, igual que la búsqueda de participante) el estado real
+// de los pagos en la hoja Pagos. Al resolver, si hay pagos ya congelados en
+// pantalla, los vuelve a aplicar para que el valor validado por el admin
+// reemplace la estimación mostrada mientras estaba "Pendiente de confirmar".
+function cargarMisPagosValidados() {
+  if (!nombre) return;
+  fetch(APPS_SCRIPT_URL + '?action=mis_pagos&nombre=' + encodeURIComponent(nombre) + '&_t=' + Date.now(), { redirect: 'follow' })
+    .then(r => r.json())
+    .then(data => {
+      misPagosValidados = (data && typeof data === 'object') ? data : {};
+      if (pagoYaCongelado('reserva')) aplicarCongelamiento('reserva');
+      if (pagoYaCongelado('final')) aplicarCongelamiento('final');
+    })
+    .catch(() => {});
+}
+
 function congelarPago(tipoPago) {
   const cfg = PAGOS_CONGELABLES[tipoPago];
   if (!cfg) return;
@@ -2662,6 +2680,19 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
   const tasaEl = document.getElementById(cfg.tasa);
   const copEl = document.getElementById(cfg.cop);
   let datos = datosForzados;
+  if (!datos) {
+    // Prioridad 1: si el admin ya validó el pago (Completo/Parcial), ese es el
+    // valor real pagado — reemplaza cualquier estimación previa (incluida la
+    // que se congeló al solo enviar el comprobante, aún "Pendiente de confirmar").
+    const validado = misPagosValidados[tipoPago];
+    const estadoValidado = validado ? String(validado.estado || '').toLowerCase() : '';
+    if (validado && (estadoValidado === 'completo' || estadoValidado === 'parcial') && validado.eur > 0) {
+      const tasaReal = validado.cop > 0 ? Math.round(validado.cop / validado.eur) : (tipoPago === 'reserva' ? TRM_RESERVA : tasa);
+      const copReal = validado.cop > 0 ? validado.cop : validado.eur * tasaReal;
+      datos = { eur: String(validado.eur), tasa: fmtT(tasaReal), cop: fmt(copReal) };
+      try { localStorage.setItem(congelarPagoKey(tipoPago), JSON.stringify(datos)); } catch(e) {}
+    }
+  }
   if (!datos) {
     try { datos = JSON.parse(localStorage.getItem(congelarPagoKey(tipoPago)) || 'null'); } catch(e) { datos = null; }
   }

@@ -185,6 +185,7 @@ function doGet(e) {
     if (action === 'comunicaciones') return getComunicaciones();
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
+    if (action === 'mis_pagos') return getMisPagos(params.nombre || '');
     if (action === 'admin_participantes') return getAdminParticipantes(params);
     if (action === 'admin_financiero') return getAdminFinanciero(params);
     if (action === 'admin_categorias') return getAdminCategorias(params);
@@ -280,6 +281,58 @@ function buscarParticipantes(email) {
     Logger.log('buscarParticipantes error: ' + err);
     return ContentService.createTextOutput(JSON.stringify({ _debug: true, catch_error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Devuelve al propio participante (por nombre, sin token — mismo nivel de
+// exposición que buscarParticipantes) el estado real de sus pagos de Reserva/
+// Tiquete/Pago Final según quedaron registrados en la hoja Pagos. Se usa para
+// que el área personal muestre "lo que efectivamente pagó" solo cuando el
+// admin ya validó el pago (estado Completo o Parcial) — mientras esté
+// "Pendiente de confirmar", el frontend sigue mostrando su propio cálculo.
+function getMisPagos(nombre) {
+  try {
+    const nombreNorm = String(nombre || '').toLowerCase().trim();
+    if (!nombreNorm) return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
+
+    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
+
+    const startRow = 6;
+    const lastRow = pagosSheet.getLastRow();
+    const numRows = lastRow - startRow + 1;
+    const allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, 8).getValues() : [];
+
+    const conceptoKey = { 'reserva': 'reserva', 'tiquete': 'tiquete', 'pago final': 'final' };
+    let inBlock = false;
+    const resultado = {};
+
+    for (let i = 0; i < allData.length; i++) {
+      const cellB = String(allData[i][1] || '').trim(); // col B = nombre
+      const cellH = String(allData[i][7] || '').trim(); // col H = concepto
+
+      if (cellB) {
+        if (cellB.toLowerCase() === nombreNorm) { inBlock = true; }
+        else if (inBlock) { break; }
+      }
+
+      if (inBlock) {
+        const key = conceptoKey[cellH.toLowerCase()];
+        if (key) {
+          resultado[key] = {
+            estado: String(allData[i][5] || '').trim(), // col F = estado
+            eur: parseFloat(allData[i][4]) || 0,        // col E = eur
+            cop: parseFloat(allData[i][3]) || 0         // col D = cop
+          };
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(resultado)).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('getMisPagos error: ' + err);
+    return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
