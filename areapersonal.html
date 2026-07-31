@@ -640,6 +640,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="ctitle">Calculadora EUR → COP</div>
       <p style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
       <p style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
+      <div id="aviso-abono-reserva" class="info-box" style="display:none"></div>
       <div class="calc-row">
         <div>
           <div class="clabel">Monto en euros (€)</div>
@@ -668,7 +669,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="ctitle">Pago de reserva — 1.000 EUR</div>
       <div id="breakdown-reserva" class="breakdown-box" style="display:none"></div>
       <p id="pay-card1-hint" style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
-      <div id="aviso-abono-reserva" class="info-box" style="display:none"></div>
       <div id="pago-exitoso-reserva" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago de reserva completado exitosamente</div>
       <div id="pay-grid-reserva" class="pay-grid">
         <div class="pay-opt" id="p1tc" onclick="selPay(1,'tc')">
@@ -727,8 +727,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <!-- PANEL TIQUETE (solo si aplica) -->
   <div class="panel section-anchor" id="panel-tiq">
     <div class="card">
-      <div class="ctitle">Pago del tiquete aéreo</div>
-      <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
       <div style="background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:20px;margin-bottom:20px">
         <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>993 EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
@@ -737,6 +735,9 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo</div><div style="font-size:10px;color:var(--muted)">993 EUR / persona</div></div>
         </div>
       </div>
+      <div class="ctitle">Pago del tiquete aéreo</div>
+      <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
+      <div id="aviso-abono-tiquete" class="info-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Valor del tiquete (EUR)</div><input class="cinput" id="eur-tiq" type="number" value="993" min="1" oninput="calcTiq()"></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
@@ -745,7 +746,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop-tiq">$ —</div></div>
       </div>
       <div id="calc-note-tiq" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
-      <div id="aviso-abono-tiquete" class="info-box" style="display:none"></div>
       <div id="pago-exitoso-tiquete" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago de tiquete aéreo completado exitosamente</div>
       <div id="pay-grid-tiquete" class="pay-grid">
         <div class="pay-opt" id="ptiqtc" onclick="selPay('tiq','tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="ptiqtc-total">$ —</div><div class="pamount-fee" id="ptiqtc-fee">incl. recargo $ —</div></div></div>
@@ -793,6 +793,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div style="font-size:14px;color:var(--muted)">Fecha límite: <strong>30 de julio 2026</strong></div>
       </div>
       <div id="breakdown-final" class="breakdown-box" style="display:none"></div>
+      <div id="aviso-abono-final" class="info-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur2" type="number" value="1790" min="1" oninput="calc2()"></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
@@ -800,7 +801,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 16px;"></div>
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
       <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
-      <div id="aviso-abono-final" class="info-box" style="display:none"></div>
       <div id="pago-exitoso-final" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago final completado exitosamente</div>
       <div id="pay-grid-final" class="pay-grid">
         <div class="pay-opt" id="p2tc" onclick="selPay(2,'tc')"><div class="pbadge">+3,5% tarjeta</div><div class="picon">💳</div><div class="ptitle">Tarjeta de crédito</div><div class="pdesc">Paga con Bold. +3,5% de recargo por tarjeta.</div><div class="pamount"><div class="pamount-label">Total a pagar</div><div class="pamount-value" id="p2tc-total">$ —</div><div class="pamount-fee" id="p2tc-fee">incl. recargo $ —</div></div></div>
