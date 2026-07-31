@@ -362,11 +362,15 @@ function notificarClickBold(data) {
     const esTarjeta = String(data.tipo || '').trim() === 'tc';
     const metodoLabel = esTarjeta ? 'Tarjeta (Bold)' : 'Transferencia bancaria';
     const monto = String(data.monto || '').trim();
+    const eur = String(data.eur || '').trim();
+    const tasa = String(data.tasa || '').trim();
     const quien = nombre ? (nombre + ' (' + email + ')') : email;
     const fecha = Utilities.formatDate(new Date(), 'America/Bogota', 'dd/MM/yyyy HH:mm');
     const subject = '[Área Personal] Seleccionó método de pago — ' + (nombre || email) + ' · ' + panelLabel;
     const body = quien + ' seleccionó pagar por "' + metodoLabel + '" para ' + panelLabel + '.\n\n' +
       'Monto mostrado: ' + (monto || 'no disponible') + '\n' +
+      'Monto en euros: ' + (eur || 'no disponible') + '\n' +
+      'Tasa de cambio pagada: ' + (tasa || 'no disponible') + '\n' +
       'Fecha: ' + fecha;
     GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net', subject, body, { name: 'Real Madrid Foundation Clinic' });
     return sendResponse(200, { ok: true });
