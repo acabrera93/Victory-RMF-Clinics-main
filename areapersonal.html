@@ -2532,16 +2532,13 @@ const STEP_DEFS = [
 
 let curPanel = 'panel-tc';
 
-const PANELES_PAGO_BLOQUEABLES = ['panel2', 'panel-tiq', 'panel3'];
-
 function buildSteps() {
   const row = document.getElementById('steps-row');
   row.innerHTML = '';
-  const pagosBloqueados = !esStaffView && grupoPaso >= 6;
   const bienvenidaBloqueada = grupoPaso < 7;
   const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct) && (!s.skipForStaff || !esStaffView));
   visible.forEach((s, i) => {
-    const bloqueado = (pagosBloqueados && PANELES_PAGO_BLOQUEABLES.includes(s.panel)) || (s.panel === 'panel-done' && bienvenidaBloqueada);
+    const bloqueado = s.panel === 'panel-done' && bienvenidaBloqueada;
     const d = document.createElement('div');
     d.className = 'step' + (s.done ? ' done' : '') + (s.panel === curPanel ? ' active' : '') + (bloqueado ? ' locked' : '');
     if (s.panel && !bloqueado) d.onclick = () => goPanel(s.panel);
@@ -2551,7 +2548,6 @@ function buildSteps() {
 }
 
 function goPanel(id, noScroll) {
-  if (!esStaffView && grupoPaso >= 6 && PANELES_PAGO_BLOQUEABLES.includes(id)) return;
   if (id === 'panel-done' && grupoPaso < 7) return;
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   const el = document.getElementById(id);
