@@ -216,6 +216,12 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .foto-upload-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
 .foto-upload-zone:hover,.foto-upload-zone.drag{border-color:var(--blue);background:rgba(30,91,168,.04)}
 @media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}.modal-grid{grid-template-columns:1fr}.mfield.full{grid-column:1}#pagos-modal-body>div>div[style*="justify-content:space-between"]{flex-direction:column!important;align-items:flex-start!important;gap:4px!important}#pagos-modal-body div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
+@media (max-width: 600px) {
+  .countdown-pill-desktop { display: none !important; }
+  .countdown-pill-mobile { display: inline-flex !important; }
+  .welcome-right { align-items: flex-start !important; width: 100%; }
+  .welcome-right-row { width: 100%; justify-content: space-between; }
+}
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes badge-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
 /* COMERCIAL DASHBOARD */
@@ -540,17 +546,23 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div>
       <h1>¡Bienvenido/a, <span id="dn">Participante</span>!</h1>
       <p>Real Madrid Foundation Clinic · 2–10 Octubre 2026 · Madrid, España</p>
-      <div id="countdown-pill" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:20px;padding:6px 14px;margin-top:8px;">
+      <div id="countdown-pill" class="countdown-pill-desktop" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:20px;padding:6px 14px;margin-top:8px;">
         <span style="font-size:14px;">📅</span>
-        <span id="countdown-text" style="font-size:13px;color:#fff;font-weight:500;">Calculando...</span>
+        <span class="countdown-text" style="font-size:13px;color:#fff;font-weight:500;">Calculando...</span>
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+    <div class="welcome-right" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
       <div class="badge" id="dtipo">⚽ Jugador</div>
-      <button id="btn-toggle-tiq" onclick="toggleTiqueteDesdeWelcome()"
-        style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid rgba(90,157,224,.4);background:transparent;color:var(--blue-bright);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;">
-        ✈️ <span id="tiq-toggle-label">Agregar tiquete aéreo</span>
-      </button>
+      <div class="welcome-right-row" style="display:flex;align-items:center;gap:10px;">
+        <button id="btn-toggle-tiq" onclick="toggleTiqueteDesdeWelcome()"
+          style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid rgba(90,157,224,.4);background:transparent;color:var(--blue-bright);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;">
+          ✈️ <span id="tiq-toggle-label">Agregar tiquete aéreo</span>
+        </button>
+        <div class="countdown-pill-mobile" style="display:none;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:20px;padding:6px 12px;flex-shrink:0;">
+          <span style="font-size:14px;">📅</span>
+          <span class="countdown-text" style="font-size:12px;color:#fff;font-weight:500;white-space:nowrap;">Calculando...</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2372,8 +2384,8 @@ function buildParticipantTabs(participants) {
 // en vez de un conteo negativo — evita el caso confuso de "faltan -14 días".
 let _countdownInterval = null;
 function iniciarCountdownViaje() {
-  const el = document.getElementById('countdown-text');
-  if (!el) return;
+  const els = document.querySelectorAll('.countdown-text');
+  if (!els.length) return;
   const inicioViaje = new Date('2026-10-02T09:00:00+02:00').getTime();
   const finViaje = new Date('2026-10-10T23:59:59+02:00').getTime();
 
@@ -2382,12 +2394,12 @@ function iniciarCountdownViaje() {
     const diff = inicioViaje - ahora;
 
     if (ahora > finViaje) {
-      el.textContent = '¡Ya viviste tu experiencia en Madrid! 🏆';
+      els.forEach(el => { el.textContent = '¡Ya viviste tu experiencia en Madrid! 🏆'; });
       if (_countdownInterval) clearInterval(_countdownInterval);
       return;
     }
     if (diff <= 0) {
-      el.textContent = '¡Estás en Madrid ahora mismo! ⚽';
+      els.forEach(el => { el.textContent = '¡Estás en Madrid ahora mismo! ⚽'; });
       return;
     }
 
@@ -2397,9 +2409,9 @@ function iniciarCountdownViaje() {
     const segundos = Math.floor((diff % 60000) / 1000);
 
     if (dias > 0) {
-      el.textContent = `Faltan ${dias}d ${horas}h ${minutos}m para Madrid`;
+      els.forEach(el => { el.textContent = `Faltan ${dias}d ${horas}h ${minutos}m para Madrid`; });
     } else {
-      el.textContent = `Faltan ${horas}h ${minutos}m ${segundos}s para Madrid`;
+      els.forEach(el => { el.textContent = `Faltan ${horas}h ${minutos}m ${segundos}s para Madrid`; });
     }
   }
 
