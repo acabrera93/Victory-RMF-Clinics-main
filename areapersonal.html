@@ -793,6 +793,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div><div class="clabel">Monto en euros (€)</div><input class="cinput" id="eur2" type="number" value="1790" min="1" oninput="calc2()"></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
       </div>
+      <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 16px;"></div>
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
       <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
       <div class="pay-grid">
@@ -2159,6 +2160,7 @@ function applyPaymentTotals(t) {
   // Reserva: input + título del card
   const e1 = document.getElementById('eur1');
   if (e1) { e1.value = t.reserva; calc1(); }
+  if (pagoYaCongelado('reserva')) aplicarCongelamiento('reserva');
   const pc1 = document.getElementById('pay-card1');
   if (pc1) {
     const h = pc1.querySelector('.ctitle');
@@ -2172,6 +2174,7 @@ function applyPaymentTotals(t) {
   // Pago final: input + subtítulo
   const e2 = document.getElementById('eur2');
   if (e2) { e2.value = t.final; calc2(); }
+  if (pagoYaCongelado('final')) aplicarCongelamiento('final');
   const sub3 = document.getElementById('panel3-subtitle');
   if (sub3) sub3.textContent = `SEGUNDO PAGO — ${t.final.toLocaleString('es-CO')} EUR`;
 
@@ -2539,6 +2542,7 @@ function goPanel(id, noScroll) {
 }
 
 // ── TASA ─────────────────────────────────────────────────────────────────────
+const MARGEN_TASA_COP = 15; // margen fijo sobre la tasa de mercado, en pesos (antes era 0,5%)
 const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + 1% margen
 let tasa = TASA_FALLBACK;
 const TRM_RESERVA = 4288; // TRM oficial del 1 de junio de 2026 (fecha límite de pago de reserva) — tasa fija, no cambia
@@ -2565,7 +2569,7 @@ async function fetchTasa() {
     const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json');
     const d = await r.json();
     if (d && d.eur && d.eur.cop) {
-      tasa = Math.round(parseFloat(d.eur.cop) * 1.005);
+      tasa = Math.round(parseFloat(d.eur.cop)) + MARGEN_TASA_COP;
       updateTasaFecha();
       updateCalcs(); return;
     }
@@ -2575,7 +2579,7 @@ async function fetchTasa() {
     const r2 = await fetch('https://open.er-api.com/v6/latest/EUR');
     const d2 = await r2.json();
     if (d2 && d2.rates && d2.rates.COP) {
-      tasa = Math.round(parseFloat(d2.rates.COP) * 1.005);
+      tasa = Math.round(parseFloat(d2.rates.COP)) + MARGEN_TASA_COP;
       updateTasaFecha();
       updateCalcs(); return;
     }
@@ -2598,6 +2602,7 @@ function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
   if (elTrT) elTrT.textContent = fmt(base);
 }
 function calc1() {
+  if (pagoYaCongelado('reserva')) return; // ya se envió comprobante — el monto queda congelado
   // Tasa fija de la reserva: TRM del 1 de junio de 2026, fecha límite de pago de
   // reserva — no depende de la tasa en vivo (a diferencia del pago final).
   const e = parseFloat(document.getElementById('eur1').value) || 0;
@@ -2607,12 +2612,80 @@ function calc1() {
   updatePayAmounts('p1tc-total','p1tc-fee','p1tr-total', base);
 }
 function calc2() {
+  if (pagoYaCongelado('final')) return; // ya se envió comprobante — el monto y la tasa quedan congelados
   if (!tasa) return;
   const e = parseFloat(document.getElementById('eur2').value) || 0;
   const base = e * tasa;
   document.getElementById('tasa2').value = fmtT(tasa);
   document.getElementById('cop2').textContent = fmt(base);
   updatePayAmounts('p2tc-total','p2tc-fee','p2tr-total', base);
+}
+
+// ── CONGELAR MONTO/TASA TRAS ENVIAR COMPROBANTE ───────────────────────────────
+// Una vez el participante envía el comprobante de reserva o pago final, el
+// monto y la tasa mostrados quedan fijos: no deben recalcularse aunque cambie
+// el total del grupo (ej. se agrega un acompañante) ni la tasa en vivo (pago
+// final). El tiquete queda fuera a propósito — sigue recalculándose igual.
+const PAGOS_CONGELABLES = {
+  reserva: { eur: 'eur1', tasa: 'tasa1', cop: 'cop1', tcTotal: 'p1tc-total', tcFee: 'p1tc-fee', trTotal: 'p1tr-total', paso: 4 },
+  final:   { eur: 'eur2', tasa: 'tasa2', cop: 'cop2', tcTotal: 'p2tc-total', tcFee: 'p2tc-fee', trTotal: 'p2tr-total', paso: 6 }
+};
+
+function congelarPagoKey(tipoPago) {
+  return 'pago_congelado_' + tipoPago + '_' + (participantEmail || nombre || '');
+}
+
+function pagoYaCongelado(tipoPago) {
+  const cfg = PAGOS_CONGELABLES[tipoPago];
+  return !!cfg && grupoPaso >= cfg.paso;
+}
+
+function congelarPago(tipoPago) {
+  const cfg = PAGOS_CONGELABLES[tipoPago];
+  if (!cfg) return;
+  const eurEl = document.getElementById(cfg.eur);
+  const tasaEl = document.getElementById(cfg.tasa);
+  const copEl = document.getElementById(cfg.cop);
+  const datos = {
+    eur: eurEl ? eurEl.value : '',
+    tasa: tasaEl ? tasaEl.value : '',
+    cop: copEl ? copEl.textContent : ''
+  };
+  try { localStorage.setItem(congelarPagoKey(tipoPago), JSON.stringify(datos)); } catch(e) {}
+  aplicarCongelamiento(tipoPago, datos);
+}
+
+function aplicarCongelamiento(tipoPago, datosForzados) {
+  const cfg = PAGOS_CONGELABLES[tipoPago];
+  if (!cfg) return;
+  const eurEl = document.getElementById(cfg.eur);
+  const tasaEl = document.getElementById(cfg.tasa);
+  const copEl = document.getElementById(cfg.cop);
+  let datos = datosForzados;
+  if (!datos) {
+    try { datos = JSON.parse(localStorage.getItem(congelarPagoKey(tipoPago)) || 'null'); } catch(e) { datos = null; }
+  }
+  if (!datos) {
+    // Sin registro local guardado (ej. otro dispositivo o caché borrada): calcular
+    // una vez con la tasa vigente para que monto, tasa y COP queden coherentes
+    // entre sí (en vez de dejar tasa/COP en blanco mientras el monto sí se ve),
+    // y congelar ese resultado desde ahora.
+    const tasaUsar = tipoPago === 'reserva' ? TRM_RESERVA : tasa;
+    const eur = eurEl ? (parseFloat(eurEl.value) || 0) : 0;
+    const base = eur * tasaUsar;
+    datos = { eur: eurEl ? eurEl.value : '', tasa: fmtT(tasaUsar), cop: fmt(base) };
+    try { localStorage.setItem(congelarPagoKey(tipoPago), JSON.stringify(datos)); } catch(e) {}
+  }
+  if (eurEl) eurEl.value = datos.eur;
+  if (tasaEl) tasaEl.value = datos.tasa;
+  if (copEl) copEl.textContent = datos.cop;
+  const base = parseFloat((datos.cop || '').replace(/[^\d]/g, '')) || 0;
+  updatePayAmounts(cfg.tcTotal, cfg.tcFee, cfg.trTotal, base);
+  if (eurEl) {
+    eurEl.readOnly = true;
+    eurEl.classList.add('ro');
+    eurEl.title = 'Monto congelado: ya enviaste tu comprobante de pago';
+  }
 }
 function calcTiq() {
   // Tasa fija del tiquete: TRM del 1 de junio de 2026, misma fecha límite que la reserva
@@ -3018,6 +3091,7 @@ function enviarComprobante(tipoPago) {
       let paso = pasoMap[tipoPago];
       if (tipoPago === 'reserva' && !conTiq) paso = 5; // sin tiquete: salta directo a paso 5
       actualizarPaso(paso);
+      if (tipoPago === 'reserva' || tipoPago === 'final') congelarPago(tipoPago);
       marcarComprobantePendiente(tipoPago);
 
       comprobantesStaged[tipoPago] = [];
@@ -6429,11 +6503,11 @@ img, video, iframe, table { max-width: 100%; }
   }
   .steps::-webkit-scrollbar { display: none; }
   .step {
-    min-width: 72px;
+    min-width: 100px;
     flex-shrink: 0;
     padding: 10px 6px;
   }
-  .stitle { font-size: 10px; }
+  .stitle { font-size: 10px; white-space: nowrap; }
   .sdesc { display: none; }
 
   /* SECTION TABS */
