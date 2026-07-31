@@ -515,6 +515,10 @@ function reiniciar() {
 @keyframes wa-pulse{0%,100%{box-shadow:0 8px 28px rgba(37,211,102,.65)}50%{box-shadow:0 8px 28px rgba(37,211,102,.65),0 0 0 16px rgba(37,211,102,.2)}}
 #wa-circle{animation:wa-pulse 3s ease-in-out infinite}
 #wa-circle:hover{transform:scale(1.08);animation:none}
+@media (max-width: 480px) {
+  #wa-circle { width: 58px; height: 58px; bottom: 16px; right: 16px; }
+  #wa-circle svg { width: 32px; height: 32px; }
+}
 </style>
 <a id="wa-circle" href="https://wa.me/34620301690?text=Hola%20Victory%2C%20tengo%20preguntas%20sobre%20la%20pre-inscripci%C3%B3n%20al%20programa%20RMF%20Clinic%202026" target="_blank" rel="noopener"
    style="position:fixed;bottom:28px;right:28px;z-index:9999;display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:#25D366;border-radius:50%;text-decoration:none;transition:transform .25s;"
