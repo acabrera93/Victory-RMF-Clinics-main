@@ -2600,7 +2600,7 @@ function goPanel(id, noScroll) {
 }
 
 // ── TASA ─────────────────────────────────────────────────────────────────────
-const MARGEN_TASA_PCT = 0.004; // margen sobre la tasa de mercado (0,4%)
+const MARGEN_TASA_PCT = 0.003; // margen sobre la tasa de mercado (0,3%)
 const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + 1% margen
 let tasa = TASA_FALLBACK;
 const TRM_RESERVA = 4288; // TRM oficial del 1 de junio de 2026 (fecha límite de pago de reserva) — tasa fija, no cambia
@@ -2611,7 +2611,7 @@ function updateTasaFecha() {
   if (!el) return;
   const now = new Date();
   const fmt = now.toLocaleString('es-CO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-  el.textContent = `Tasa actualizada: ${fmt} · Se refresca cada 30 min`;
+  el.textContent = `Tasa media de cambio del día · Actualizada: ${fmt}`;
 }
 
 function showTasaError() {
@@ -2623,7 +2623,18 @@ function showTasaError() {
 
 async function fetchTasa() {
   try {
-    // Fuente 1: fawazahmed0/currency-api en jsDelivr (CDN, gratuita, sin API key)
+    // Fuente 1: Wise (tasa mid-market pública, mismo endpoint que su widget web, sin API key)
+    const rw = await fetch('https://wise.com/rates/history+live?source=EUR&target=COP&length=1&resolution=daily&unit=day');
+    const dw = await rw.json();
+    const ultimoWise = Array.isArray(dw) ? dw[dw.length - 1] : null;
+    if (ultimoWise && ultimoWise.value) {
+      tasa = Math.round(parseFloat(ultimoWise.value) * (1 + MARGEN_TASA_PCT));
+      updateTasaFecha();
+      updateCalcs(); return;
+    }
+  } catch(e) {}
+  try {
+    // Fuente 2: fawazahmed0/currency-api en jsDelivr (CDN, gratuita, sin API key)
     const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json');
     const d = await r.json();
     if (d && d.eur && d.eur.cop) {
@@ -2633,7 +2644,7 @@ async function fetchTasa() {
     }
   } catch(e) {}
   try {
-    // Fuente 2: ExchangeRate-API (respaldo)
+    // Fuente 3: ExchangeRate-API (respaldo)
     const r2 = await fetch('https://open.er-api.com/v6/latest/EUR');
     const d2 = await r2.json();
     if (d2 && d2.rates && d2.rates.COP) {
