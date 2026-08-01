@@ -1269,7 +1269,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="admin-subnav">
         <button class="asnav-btn active" data-asec="dashboard" onclick="adminSection('dashboard')">Dashboard</button>
         <button class="asnav-btn" data-asec="participantes" onclick="adminSection('participantes')">Participantes</button>
-        <button class="asnav-btn" data-asec="pagos" onclick="adminSection('pagos')">Pagos</button>
+        <button class="asnav-btn" data-asec="pagos" onclick="adminSection('pagos')" style="position:relative">Pagos<span id="pagos-pendientes-badge" style="display:none;position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;line-height:1;padding:3px 5px;border-radius:9px;min-width:16px;text-align:center"></span></button>
         <button class="asnav-btn" data-asec="comisiones" onclick="adminSection('comisiones')">Comisiones</button>
         <button class="asnav-btn" data-asec="comunicados" onclick="adminSection('comunicados')">Comunicados</button>
         <button class="asnav-btn" data-asec="galeria" onclick="adminSection('galeria')">Galería</button>
@@ -1386,6 +1386,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div class="ctitle" style="margin-bottom:0">Pagos por participante</div>
           <input id="pagos-search" type="text" placeholder="Buscar participante..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
+          <button id="btn-pagos-revisar" onclick="toggleSoloRevisarPagos()" style="padding:7px 14px;border:1px solid rgba(220,38,38,.4);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:#dc2626;font-weight:500">⚠ Solo por revisar</button>
           <button id="btn-pagos-actualizar" onclick="refreshAdminPagos(this)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">↻ Actualizar</button>
         </div>
         <div class="ptable-wrap">
@@ -4419,6 +4420,7 @@ function loadAdmin(force, intento) {
     applyAdminPermissions();
     const stabAcceso = document.getElementById('stab-acceso');
     if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
+    actualizarBadgePagosPendientes(adminFinData);
     const activeAsec = (document.querySelector('.asnav-btn.active') || {}).dataset?.asec;
     if (activeAsec === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
     if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
@@ -4507,15 +4509,30 @@ function statusChip(estado) {
 
 // Badge de verificación IA — solo tiene sentido mostrarlo junto a "Pendiente de
 // confirmar" (una vez el admin marca Completo/Parcial, la verificación IA ya
-// cumplió su propósito y no aporta más). El detalle va en el atributo title
-// como tooltip nativo del navegador, sin necesidad de JS adicional.
-function iaBadge(status, detalle) {
+// cumplió su propósito y no aporta más). Muestra visiblemente el monto esperado
+// y el detalle de la IA (qué detectó y, si aplica, por qué quedó en "revisar").
+function iaBadge(status, detalle, eurEsperado, copEsperado) {
   const s = (status || '').toLowerCase();
   if (!s) return '';
-  const title = escapeHtml(detalle || '');
-  if (s === 'coincide') return `<span title="${title}" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(22,101,52,.12);color:#166534;cursor:help">✓ IA: coincide</span>`;
-  if (s === 'revisar') return `<span title="${title}" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(217,119,6,.12);color:#92400e;cursor:help">⚠ IA: revisar</span>`;
-  return `<span title="${title}" style="display:inline-block;margin-top:3px;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#f1f5f9;color:var(--muted);cursor:help">— IA: manual</span>`;
+  const cfg = s === 'coincide'
+    ? { bg: 'rgba(22,101,52,.12)', color: '#166534', icon: '✓', label: 'IA: coincide' }
+    : s === 'revisar'
+    ? { bg: 'rgba(217,119,6,.12)', color: '#92400e', icon: '⚠', label: 'IA: revisar' }
+    : { bg: '#f1f5f9', color: 'var(--muted)', icon: '—', label: 'IA: manual' };
+  const partesEsperado = [];
+  if (eurEsperado) partesEsperado.push(eurEsperado.toLocaleString('es-CO') + ' €');
+  if (copEsperado) partesEsperado.push(copEsperado.toLocaleString('es-CO') + ' COP');
+  const esperadoLine = partesEsperado.length
+    ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">Esperado: ${partesEsperado.join(' / ')}</div>`
+    : '';
+  const detalleLine = detalle
+    ? `<div style="font-size:10px;color:${cfg.color};margin-top:2px;font-weight:500">${escapeHtml(detalle)}</div>`
+    : '';
+  return `<div style="display:inline-block;margin-top:3px;padding:4px 8px;border-radius:8px;background:var(--off);border-left:3px solid ${cfg.color}">
+    <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${cfg.bg};color:${cfg.color}">${cfg.icon} ${cfg.label}</span>
+    ${esperadoLine}
+    ${detalleLine}
+  </div>`;
 }
 
 function renderAdminDashboard(rows, fin) {
@@ -4776,8 +4793,18 @@ function renderRecaudacion(fin) {
   `;
 }
 
+function actualizarBadgePagosPendientes(fin) {
+  const badge = document.getElementById('pagos-pendientes-badge');
+  if (!badge) return;
+  const pagos = (fin && fin.pagos_lista) || [];
+  const n = pagos.filter(p => (p.estado || '').toLowerCase().trim() === 'pendiente de confirmar').length;
+  badge.textContent = n;
+  badge.style.display = n > 0 ? 'block' : 'none';
+}
+
 function renderAdminPagos(fin) {
   if (!fin) return;
+  actualizarBadgePagosPendientes(fin);
   const recibidos = fin.pagos_recibidos || {};
   const pagos = fin.pagos_lista || [];
   const totalEur = recibidos.total_eur || 0;
@@ -4877,7 +4904,7 @@ function renderAdminPagos(fin) {
     const chip = (esPendienteConfirmar && urlsComprobante.length)
       ? `<a href="${escapeHtml(urlsComprobante[0])}" target="_blank" rel="noopener" style="text-decoration:none;cursor:pointer" title="${tituloComprobante}">${statusChip(pago.estado)}</a>`
       : statusChip(pago.estado);
-    const ia = esPendienteConfirmar ? iaBadge(pago.ia_status, pago.ia_detalle) : '';
+    const ia = esPendienteConfirmar ? iaBadge(pago.ia_status, pago.ia_detalle, pago.eur, pago.cop) : '';
     return `<div>${chip}</div>
       ${ia ? `<div>${ia}</div>` : ''}
       <div style="font-size:12px;font-weight:600;color:var(--navy);margin-top:3px">${pago.eur.toLocaleString('es-CO')} €</div>
@@ -4910,7 +4937,9 @@ function renderAdminPagos(fin) {
       ? `<span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${escapeHtml(tipoPart)}</span>`
       : '<span style="color:var(--muted);font-size:12px">—</span>';
     const acudienteKey = (adRow.acudiente || '').toLowerCase();
-    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}">
+    const esPendienteConfirmar = p => p && (p.estado || '').toLowerCase().trim() === 'pendiente de confirmar';
+    const tieneRevisar = esPendienteConfirmar(reserva) || esPendienteConfirmar(tiquete) || esPendienteConfirmar(pagoFinal);
+    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-revisar="${tieneRevisar ? '1' : '0'}">
       <td>${tipoBadge}</td>
       <td style="font-weight:500">${escapeHtml(nombre)}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
@@ -4926,18 +4955,34 @@ function renderAdminPagos(fin) {
     body: JSON.stringify({ action: 'sincronizar_participantes', token: adminSessionToken }), redirect:'follow' }).catch(()=>{});
 }
 
+let soloRevisarPagos = false;
+
 function filtrarTablaPagos(q) {
   const term = (q || '').toLowerCase().trim();
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
-    tr.style.display = (!term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term)) ? '' : 'none';
+    const pasaTexto = !term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term);
+    const pasaRevisar = !soloRevisarPagos || tr.dataset.revisar === '1';
+    tr.style.display = (pasaTexto && pasaRevisar) ? '' : 'none';
   });
 }
 
-// Reaplica el término de búsqueda actual tras un re-render de la tabla de Pagos
-// (evita que refrescos de datos o acciones de guardado limpien visualmente el filtro).
+function toggleSoloRevisarPagos() {
+  soloRevisarPagos = !soloRevisarPagos;
+  const btn = document.getElementById('btn-pagos-revisar');
+  if (btn) {
+    btn.style.background = soloRevisarPagos ? '#dc2626' : '#fff';
+    btn.style.color = soloRevisarPagos ? '#fff' : '#dc2626';
+  }
+  const search = document.getElementById('pagos-search');
+  filtrarTablaPagos(search ? search.value : '');
+}
+
+// Reaplica el término de búsqueda y el filtro "solo por revisar" tras un re-render
+// de la tabla de Pagos (evita que refrescos de datos o acciones de guardado limpien
+// visualmente los filtros activos).
 function reapplyPagosFilter() {
   const el = document.getElementById('pagos-search');
-  if (el && el.value) filtrarTablaPagos(el.value);
+  filtrarTablaPagos(el ? el.value : '');
 }
 
 // Pasos
@@ -5539,7 +5584,7 @@ function openPagosModal(idx, nombreOverride) {
     const statusColor = !ex ? '#92400e' : esPendienteConfirmar ? 'var(--blue)' : '#166534';
     const statusText = !ex ? 'Pendiente' : (esPendienteConfirmar ? '⏳ Pendiente de confirmar' : '✓ Registrado') + ` · ${ex.fecha} · ${ex.eur.toLocaleString('es-CO')}€`;
     const iaLine = (esPendienteConfirmar && ex && ex.ia_status)
-      ? `<div style="margin-bottom:10px">${iaBadge(ex.ia_status, ex.ia_detalle)}</div>`
+      ? `<div style="margin-bottom:10px">${iaBadge(ex.ia_status, ex.ia_detalle, ex.eur, ex.cop)}</div>`
       : '';
     // Puede haber más de un comprobante (uno por línea en la celda) si el participante
     // subió varios abonos sucesivos para el mismo concepto — se listan todos.
