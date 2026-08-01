@@ -765,6 +765,17 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
       replyTo: 'alejandro.cabrera@fundacionrevel.net',
       name: 'Real Madrid Foundation Clinic'
     });
+    // Copia al admin de lo enviado al participante, para que quede constancia
+    // sin tener que ir a revisar el Sheet — falla en try/catch propio para no
+    // afectar el correo ya enviado al participante si esta parte falla.
+    try {
+      GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net', '[Admin] Copia — ' + subject, '', {
+        htmlBody: '<p style="font-family:Arial,sans-serif;font-size:13px;color:#64748b;margin:0 0 12px">Copia del correo enviado a <strong>' + nombre + '</strong> (' + email + ').</p>' + htmlBody,
+        name: 'Real Madrid Foundation Clinic'
+      });
+    } catch (errAdmin) {
+      Logger.log('notificarPagoConfirmado (copia admin) error: ' + errAdmin);
+    }
   } catch (err) {
     Logger.log('notificarPagoConfirmado error: ' + err);
   }
