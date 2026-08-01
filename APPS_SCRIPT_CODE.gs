@@ -2926,3 +2926,150 @@ function crearTriggerSyncLeads() {
   Logger.log('Trigger de sincronización a Leads creado correctamente.');
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// CORREO DE CUMPLEAÑOS AUTOMÁTICO (solo Jugadores, hasta los 18 años)
+// ═══════════════════════════════════════════════════════════════════════
+
+function obtenerNombrePila_(nombreCompleto) {
+  const partes = String(nombreCompleto || '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 2) return partes[0] || '';
+  return partes.slice(0, 2).join(' ');
+}
+
+function buildCumpleanosHtml_(nombreCompleto, edad) {
+  const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
+  return `
+<div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+    <div style="background:#0b1f3a;padding:32px 30px 26px;text-align:center;">
+      <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory" style="height:34px;margin:0 8px;">
+      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF" style="height:34px;margin:0 8px;">
+      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:34px;margin:0 8px;">
+    </div>
+    <div style="background:#0b1f3a;padding:0 30px 40px;text-align:center;">
+      <div style="font-size:52px;line-height:1;margin-bottom:6px;">&#x1F389;\u{26BD}</div>
+      <h1 style="font-family:'Bebas Neue',sans-serif;color:#fff;font-size:38px;letter-spacing:1px;margin:0 0 6px;">¡Feliz cumpleaños, ${primerNombre}!</h1>
+      <span style="display:inline-block;background:#d4a017;color:#0b1f3a;font-weight:700;font-size:16px;padding:6px 18px;border-radius:30px;margin-top:6px;">Hoy cumples ${edad} años</span>
+    </div>
+    <div style="padding:34px 34px 10px;color:#1a2c4a;">
+      <p style="font-size:18px;font-weight:500;color:#0b1f3a;margin:0 0 18px;">Hoy es un día especial, y todo el equipo de Real Madrid Foundation Clinic quiere ser parte de tu celebración.</p>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Cada año que cumples es un paso más cerca de tus sueños, dentro y fuera de la cancha. Nos llena de orgullo saber que haces parte de esta familia, y no podemos esperar a verte entrenar en la Ciudad del Fútbol del Real Madrid, dando lo mejor de ti en el campo y en cada meta que te propongas en la vida.</p>
+      <div style="background:#f4f7fb;border-left:4px solid #1e5ba8;border-radius:0 10px 10px 0;padding:16px 20px;margin:22px 0;font-style:italic;color:#1e5ba8;font-size:15px;">
+        "Los sueños no son lo que ves mientras duermes, son las cosas que no te dejan dormir." — Cristiano Ronaldo
+      </div>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Que este nuevo año esté lleno de goles, aprendizajes y momentos inolvidables junto a tu familia y tus compañeros de equipo, dentro y fuera del fútbol. Sigue soñando en grande, ${primerNombre} — nosotros seguimos aquí para acompañarte en cada paso del camino.</p>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">¡Feliz cumpleaños, campeón! &#x1F382;\u{26BD}</p>
+    </div>
+    <div style="padding:0 34px 30px;color:#1a2c4a;">
+      <p style="margin:2px 0;font-size:14px;font-weight:700;color:#0b1f3a;margin-top:14px;">Con cariño,</p>
+      <p style="margin:2px 0;font-size:14px;">Equipo Victory Sports · Fundación Revel</p>
+      <p style="margin:2px 0;font-size:14px;">Real Madrid Foundation Clinic 2026</p>
+    </div>
+    <div style="background:#f4f7fb;padding:20px 30px;text-align:center;font-size:12px;color:#8a93a6;">
+      ¿Dudas? Escríbenos por WhatsApp o a <a href="mailto:alejandro.cabrera@fundacionrevel.net" style="color:#1e5ba8;text-decoration:none;">alejandro.cabrera@fundacionrevel.net</a>
+    </div>
+  </div>
+</div>`;
+}
+
+// Revisa diariamente el Sheet de Inscripciones y envía el correo a cada
+// Jugador (nunca Acompañante ni Staff) cuyo cumpleaños sea HOY, al correo
+// del acudiente. SOLO envía si el jugador cumple 18 años o menos — a partir
+// de los 19 deja de recibirlo. Deduplica con PropertiesService para no
+// reenviar el mismo cumpleaños dos veces el mismo año.
+function enviarCorreosCumpleanos() {
+  try {
+    const tz = 'America/Bogota';
+    const hoy = new Date();
+    const hoyMes = parseInt(Utilities.formatDate(hoy, tz, 'M'));
+    const hoyDia = parseInt(Utilities.formatDate(hoy, tz, 'd'));
+    const anioActual = parseInt(Utilities.formatDate(hoy, tz, 'yyyy'));
+
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+
+    let tipoCol = -1, nombreCol = -1, fechaCol = -1, emailCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'tipo') tipoCol = j;
+      if (h === 'nombre') nombreCol = j;
+      if (h === 'fecha nacimiento' || h === 'fecha de nacimiento') fechaCol = j;
+      if (h === 'email' || h === 'correo') emailCol = j;
+    }
+    if (tipoCol < 0 || nombreCol < 0 || fechaCol < 0 || emailCol < 0) {
+      Logger.log('enviarCorreosCumpleanos: no se encontraron todas las columnas necesarias.');
+      return;
+    }
+
+    const props = PropertiesService.getScriptProperties();
+    let enviados = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const tipo = String(row[tipoCol] || '').toLowerCase().trim();
+      if (!tipo.includes('jugador')) continue;
+
+      const fechaObj = parseFechaNacimiento(row[fechaCol]);
+      if (!fechaObj) continue;
+      if (fechaObj.mes !== hoyMes || fechaObj.dia !== hoyDia) continue;
+
+      const nombre = String(row[nombreCol] || '').trim();
+      const email = String(row[emailCol] || '').trim();
+      if (!nombre || !email) continue;
+
+      const edad = anioActual - fechaObj.anio;
+      if (edad <= 0 || edad > 18) continue; // solo hasta los 18 años
+
+      const dedupKey = 'bday_' + anioActual + '_' + normText_(email) + '_' + normText_(nombre);
+      if (props.getProperty(dedupKey)) continue;
+
+      const asunto = '\u{2728}\u{26BD} ¡Feliz cumpleaños, ' + obtenerNombrePila_(nombre) + '!';
+      const htmlBody = buildCumpleanosHtml_(nombre, edad);
+
+      GmailApp.sendEmail(email, asunto, 'Feliz cumpleaños ' + nombre + '! Hoy cumples ' + edad + ' años.', {
+        htmlBody: htmlBody,
+        name: 'Real Madrid Foundation Clinic'
+      });
+
+      // Recordatorio interno: aviso al equipo cada vez que se envía un
+      // correo de cumpleaños, para tener el dato presente aunque no se
+      // revise el Log de ejecuciones.
+      try {
+        GmailApp.sendEmail(
+          'alejandro.cabrera@fundacionrevel.net',
+          '[Recordatorio] Hoy cumple años: ' + nombre + ' (' + edad + ' años)',
+          nombre + ' cumple ' + edad + ' años hoy.\n\n' +
+          'Correo del acudiente: ' + email + '\n' +
+          'Ya se le envió automáticamente el correo de felicitación.',
+          { name: 'Real Madrid Foundation Clinic' }
+        );
+      } catch (notifErr) {
+        Logger.log('Aviso interno de cumpleaños error: ' + notifErr);
+      }
+
+      props.setProperty(dedupKey, 'sent');
+      enviados++;
+    }
+
+    Logger.log('enviarCorreosCumpleanos: ' + enviados + ' correo(s) de cumpleaños enviados.');
+  } catch (err) {
+    Logger.log('enviarCorreosCumpleanos error: ' + err);
+  }
+}
+
+// ── Ejecutar UNA VEZ desde el editor para instalar el trigger diario ────────
+function crearTriggerCumpleanos() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'enviarCorreosCumpleanos') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('enviarCorreosCumpleanos')
+    .timeBased()
+    .everyDays(1)
+    .atHour(8)
+    .inTimezone('America/Bogota')
+    .create();
+  Logger.log('Trigger de cumpleaños creado: correrá todos los días a las 8am (Bogotá).');
+}
+
+
