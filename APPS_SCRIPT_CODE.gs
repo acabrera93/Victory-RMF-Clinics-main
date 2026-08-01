@@ -2800,3 +2800,129 @@ function getComercialData(email) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// SYNC INSCRIPCIONES (solo Jugadores) → LEADS
+// ═══════════════════════════════════════════════════════════════════════
+
+const LEADS_SHEET_ID = '1uIsD7vjvZh0AqQ76lcgLPBpca29lDeDrIQieCM7s0S8';
+const LEADS_TAB_NAME = 'Leads';
+
+// Mapa: encabezado normalizado de LEADS → clave normalizada de Inscripciones
+// (null = no tiene fuente en Inscripciones, se deja vacío)
+const LEADS_FIELD_MAP = {
+  'timestamp': 'timestamp',
+  'nombre': 'nombre',
+  'fecha_de_nacimiento': 'fecha_nacimiento',
+  'pais': 'pais',
+  'whatsapp': 'whatsapp',
+  'email': 'email',
+  'programa': 'programa',
+  'pdf_link': null
+};
+
+function normHeaderKey_(s) {
+  return String(s || '')
+    .toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[\s_\-]+/g, '_');
+}
+
+function normText_(s) {
+  return String(s || '')
+    .toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function getLeadsSheet_() {
+  const ss = SpreadsheetApp.openById(LEADS_SHEET_ID);
+  let sheet = ss.getSheetByName(LEADS_TAB_NAME);
+  if (!sheet) sheet = ss.getSheets()[0];
+  return sheet;
+}
+
+// ── Trigger onChange: dispara con cada fila nueva agregada a Inscripciones ──
+function onChangeInscripciones(e) {
+  try {
+    if (e && e.changeType &&
+        ['INSERT_ROW', 'EDIT', 'INSERT_GRID', 'OTHER'].indexOf(e.changeType) === -1) return;
+
+    const mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const lastRow = mainSheet.getLastRow();
+    if (lastRow < 2) return;
+
+    const props = PropertiesService.getScriptProperties();
+    let lastSynced = parseInt(props.getProperty('leads_last_synced_row')) || 1;
+    if (lastRow <= lastSynced) return;
+
+    const headers = mainSheet.getRange(1, 1, 1, mainSheet.getLastColumn()).getValues()[0];
+    const normHeaders = headers.map(normHeaderKey_);
+    const newRowsValues = mainSheet.getRange(lastSynced + 1, 1, lastRow - lastSynced, mainSheet.getLastColumn()).getValues();
+
+    const leadsSheet = getLeadsSheet_();
+    const leadsHeaders = leadsSheet.getRange(1, 1, 1, leadsSheet.getLastColumn()).getValues()[0];
+    const emailColIdx = leadsHeaders.findIndex(h => normHeaderKey_(h) === 'email');
+    const nombreColIdx = leadsHeaders.findIndex(h => normHeaderKey_(h) === 'nombre');
+
+    const existingKeys = {};
+    const leadsLastRow = leadsSheet.getLastRow();
+    if (leadsLastRow >= 2 && emailColIdx >= 0) {
+      const leadsData = leadsSheet.getRange(2, 1, leadsLastRow - 1, leadsHeaders.length).getValues();
+      leadsData.forEach(function(r) {
+        const em = normText_(r[emailColIdx]);
+        const nm = nombreColIdx >= 0 ? normText_(r[nombreColIdx]) : '';
+        if (em) existingKeys[em + '|||' + nm] = true;
+      });
+    }
+
+    const rowsToAppend = [];
+    newRowsValues.forEach(function(rowValues) {
+      const tieneAlgo = rowValues.some(v => String(v || '').trim() !== '');
+      if (!tieneAlgo) return;
+
+      const dataByNorm = {};
+      normHeaders.forEach(function(nh, idx) { dataByNorm[nh] = rowValues[idx]; });
+
+      const tipo = normText_(dataByNorm['tipo']);
+      if (!tipo.includes('jugador')) return;
+
+      const email = normText_(dataByNorm['email']);
+      const nombre = normText_(dataByNorm['nombre']);
+      const key = email + '|||' + nombre;
+      if (email && existingKeys[key]) return;
+      existingKeys[key] = true;
+
+      const newLeadRow = leadsHeaders.map(function(h) {
+        const sourceKey = LEADS_FIELD_MAP[normHeaderKey_(h)];
+        if (!sourceKey) return '';
+        return dataByNorm[sourceKey] !== undefined ? dataByNorm[sourceKey] : '';
+      });
+      rowsToAppend.push(newLeadRow);
+    });
+
+    if (rowsToAppend.length > 0) {
+      leadsSheet.getRange(leadsSheet.getLastRow() + 1, 1, rowsToAppend.length, leadsHeaders.length).setValues(rowsToAppend);
+      Logger.log('Sincronizadas ' + rowsToAppend.length + ' fila(s) de Jugadores a Leads.');
+    }
+
+    props.setProperty('leads_last_synced_row', String(lastRow));
+  } catch (err) {
+    Logger.log('onChangeInscripciones error: ' + err);
+  }
+}
+
+// ── Ejecutar UNA VEZ desde el editor para instalar el trigger ──────────────
+function crearTriggerSyncLeads() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'onChangeInscripciones') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('onChangeInscripciones')
+    .forSpreadsheet(SHEET_ID)
+    .onChange()
+    .create();
+
+  const mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  PropertiesService.getScriptProperties().setProperty('leads_last_synced_row', String(mainSheet.getLastRow()));
+  Logger.log('Trigger de sincronización a Leads creado correctamente.');
+}
+
