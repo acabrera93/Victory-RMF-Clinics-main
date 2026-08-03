@@ -664,6 +664,8 @@ function doPost(e) {
         if (parsed.action === 'eliminar_comunicado') return eliminarComunicado(parsed);
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
         if (parsed.action === 'registrar_pago') return registrarPago(parsed);
+        if (parsed.action === 'agregar_abono_pago') return agregarAbonoPago(parsed);
+        if (parsed.action === 'actualizar_estado_pago') return actualizarEstadoPago(parsed);
         if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes(parsed);
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'guardar_comercial') return guardarComercial(parsed);
@@ -1536,44 +1538,44 @@ function getAdminFinanciero(params) {
     // ── Pagos recibidos + pagos individuales — hoja "Pagos"
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (pagosSheet) {
-      // Resumen fila 32: D=COP, E=EUR, G32=completos, G33=parciales (col A=tipo agregada)
+      var pc = getPagosColMap_(pagosSheet);
       result.pagos_recibidos = {
         total_eur:  num(pagosSheet.getRange('E32').getValue()),
         total_cop:  num(pagosSheet.getRange('D32').getValue()),
         completos:  num(pagosSheet.getRange('G32').getValue()),
         parciales:  num(pagosSheet.getRange('G33').getValue())
       };
-      // Pagos individuales desde fila 6: A=tipo, B=nombre, C=fecha, D=COP, E=EUR, F=estado, G=paquete, H=concepto
       var lastPagRow = pagosSheet.getLastRow();
       var pagData = [];
+      var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia);
       if (lastPagRow >= 6) {
-        pagData = pagosSheet.getRange('A6:K' + lastPagRow).getValues();
+        pagData = pagosSheet.getRange(6, 1, lastPagRow - 5, readWidth).getValues();
         var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
         var currentNombre = '';
         var currentTipo   = '';
         for (var i = 0; i < pagData.length; i++) {
           var r = pagData[i];
-          var rowNombre = str(r[1]); // col B = nombre (puede estar vacío en sub-filas)
-          var rowTipo   = str(r[0]); // col A = tipo participante
-          // Actualizar bloque actual cuando hay nombre en col B
+          var rowNombre = str(r[pc.nombre_familia - 1]);
+          var rowTipo   = str(r[pc.jugador_acompanante - 1]);
           if (rowNombre) {
             if (rowNombre.toLowerCase().indexOf('total') >= 0) { currentNombre = ''; continue; }
             currentNombre = rowNombre;
             if (rowTipo) currentTipo = rowTipo;
           }
           if (!currentNombre) continue;
-          var eurAmt = num(r[4]);  // col E = EUR
+          var eurAmt = num(r[pc.valor_eur - 1]);
           if (eurAmt <= 0) continue;
-          var tipoG = str(r[7]).toLowerCase();  // col H = concepto
+          var tipoG = str(r[pc.notas - 1]).toLowerCase();
           if (tipoG && !tiposValidos3[tipoG]) continue;
-          var fechaVal = r[2];  // col C = fecha
+          var fechaVal = r[pc.fecha_pago - 1];
           if (!fechaVal || (!(fechaVal instanceof Date) && !str(fechaVal).match(/\d/))) continue;
           result.pagos_lista.push({
             tipo: currentTipo, nombre: currentNombre, fecha: fmtDate(fechaVal),
-            cop: num(r[3]), eur: eurAmt,
-            estado: str(r[5]), paquete: str(r[6]), notas: str(r[7]),
-            comprobante_url: str(r[8]),
-            ia_status: str(r[9]), ia_detalle: str(r[10])
+            cop: num(r[pc.valor_cop - 1]), eur: eurAmt,
+            estado: str(r[pc.estado - 1]), paquete: str(r[pc.paquete - 1]), notas: str(r[pc.notas - 1]),
+            comprobante_url: str(r[pc.comprobante - 1]),
+            historial_abonos: str(r[pc.historial_de_abonos - 1]),
+            ia_status: str(r[pc.verificacion_ia - 1]), ia_detalle: str(r[pc.detalle_ia - 1])
           });
         }
       }
@@ -1693,6 +1695,53 @@ function getAdminFinanciero(params) {
   }
 }
 
+// ── Mapa de columnas de la hoja Pagos por nombre de encabezado (fila 5) ────
+// Evita depender de posiciones fijas: si alguien reordena o inserta una
+// columna en Pagos, este mapa se recalcula solo con que el texto del
+// encabezado en fila 5 no cambie. Devuelve { clave_normalizada: numColumna1Based }.
+function normPagosHeaderKey_(s) {
+  return String(s || '')
+    .toLowerCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function getPagosColMap_(pagosSheet) {
+  var headers = pagosSheet.getRange(5, 1, 1, pagosSheet.getLastColumn()).getValues()[0];
+  var map = {};
+  headers.forEach(function(h, idx) { map[normPagosHeaderKey_(h)] = idx + 1; });
+  return map;
+}
+
+// ── Historial de abonos (columna "Historial de abonos") ───────────────────
+// Formato: "dd/mm/yyyy:eur:cop;dd/mm/yyyy:eur:cop;..." — cada abono es una
+// entrada independiente. Las columnas Valor COP / Valor EUR se reconstruyen
+// como fórmulas de suma (=1000+300) a partir de este historial, para que el
+// propio Sheet quede auditable en vez de mostrar solo un total plano.
+function parseHistorialAbonos_(str) {
+  if (!str) return [];
+  return String(str).split(';').map(function(s) {
+    var parts = s.trim().split(':');
+    if (parts.length < 2) return null;
+    return { fecha: parts[0], eur: parseFloat(parts[1]) || 0, cop: parseFloat(parts[2]) || 0 };
+  }).filter(Boolean);
+}
+
+function buildHistorialString_(entradas) {
+  return entradas.map(function(e) { return e.fecha + ':' + e.eur + ':' + (e.cop || 0); }).join(';');
+}
+
+function buildSumFormula_(entradas, campo) {
+  var valores = entradas.map(function(e) { return e[campo] || 0; }).filter(function(v) { return v > 0; });
+  if (!valores.length) return '';
+  return '=' + valores.join('+');
+}
+
+function formatFechaDDMMYYYY_(dateObj) {
+  return String(dateObj.getDate()).padStart(2, '0') + '/' + String(dateObj.getMonth() + 1).padStart(2, '0') + '/' + dateObj.getFullYear();
+}
+
 // ───── REGISTRAR PAGO EN HOJA PAGOS ──────────────────────────────────────────
 function registrarPago(data) {
   try {
@@ -1711,14 +1760,19 @@ function registrarPago(data) {
     var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+    var pc = getPagosColMap_(pagosSheet);
+    var idxNombre = pc.nombre_familia - 1;
+    var idxNotas  = pc.notas - 1;
+    var idxTipoP  = pc.jugador_acompanante - 1;
 
     var parts = fecha.split('-');
     var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 
-    var lastRow = pagosSheet.getLastRow();
     var startRow = 6;
+    var lastRow = pagosSheet.getLastRow();
     var numRows = lastRow - startRow + 1;
-    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, 8).getValues() : [];
+    var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.notas);
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
 
     var nombreLower = nombre.toLowerCase();
     var tipoLower   = tipo.toLowerCase();
@@ -1728,66 +1782,77 @@ function registrarPago(data) {
     var tipoParticipante = String(data.tipo_participante || '').trim();
 
     for (var i = 0; i < allData.length; i++) {
-      var cellB = String(allData[i][1] || '').trim(); // col B = nombre
-      var cellH = String(allData[i][7] || '').trim(); // col H = concepto
+      var cellB = String(allData[i][idxNombre] || '').trim();
+      var cellH = String(allData[i][idxNotas] || '').trim();
 
       if (cellB) {
         if (cellB.toLowerCase() === nombreLower) {
           inBlock = true;
-          if (!tipoParticipante) tipoParticipante = String(allData[i][0] || '').trim();
+          if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
         } else if (inBlock) {
           break;
         }
       }
 
       if (inBlock) {
-        if (cellH.toLowerCase() === tipoLower) {
-          targetSheetRow = startRow + i;
-          break;
-        }
-        if (cellH.toLowerCase() === 'pago final') {
-          blockPagoFinalRow = startRow + i;
-        }
+        if (cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+        if (cellH.toLowerCase() === 'pago final') blockPagoFinalRow = startRow + i;
       }
     }
 
-    var newRow = [tipoParticipante, nombre, fechaDate, cop > 0 ? cop : '', eur, estado, paquete, tipo];
+    var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas);
+    var newRow = new Array(writeWidth).fill('');
+    newRow[pc.jugador_acompanante - 1] = tipoParticipante;
+    newRow[pc.nombre_familia - 1] = nombre;
+    newRow[pc.fecha_pago - 1] = fechaDate;
+    newRow[pc.valor_cop - 1] = cop > 0 ? cop : '';
+    newRow[pc.valor_eur - 1] = eur;
+    newRow[pc.estado - 1] = estado;
+    newRow[pc.paquete - 1] = paquete;
+    newRow[pc.notas - 1] = tipo;
+    var finalRow = -1;
 
     if (targetSheetRow > 0) {
-      // Row already exists — update it
-      pagosSheet.getRange(targetSheetRow, 1, 1, 8).setValues([newRow]);
+      pagosSheet.getRange(targetSheetRow, 1, 1, writeWidth).setValues([newRow]);
+      finalRow = targetSheetRow;
     } else if (blockPagoFinalRow > 0) {
-      // Participant found but this tipo has no row yet — insert before Pago Final
       pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
-      pagosSheet.getRange(blockPagoFinalRow, 1, 1, 8).setValues([newRow]);
+      pagosSheet.getRange(blockPagoFinalRow, 1, 1, writeWidth).setValues([newRow]);
+      finalRow = blockPagoFinalRow;
     } else {
-      // Participant not in sheet at all — insert before summary row
       var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
       var lastDataRow = startRow - 1;
       for (var k = 0; k < allData.length; k++) {
-        var gv = String(allData[k][7] || '').trim().toLowerCase(); // col H = concepto
+        var gv = String(allData[k][idxNotas] || '').trim().toLowerCase();
         if (tiposValidos[gv]) lastDataRow = startRow + k;
       }
       var insertRow = lastDataRow + 1;
       pagosSheet.insertRowsBefore(insertRow, 1);
-      pagosSheet.getRange(insertRow, 1, 1, 8).setValues([newRow]);
+      pagosSheet.getRange(insertRow, 1, 1, writeWidth).setValues([newRow]);
+      finalRow = insertRow;
     }
 
+    // Historial de abonos: esta función se usa para el PRIMER pago de un
+    // concepto (o para sobrescribir por completo), así que inicializa el
+    // historial con esta única entrada.
+    pagosSheet.getRange(finalRow, pc.historial_de_abonos).setValue(
+      buildHistorialString_([{ fecha: formatFechaDDMMYYYY_(fechaDate), eur: eur, cop: cop }])
+    );
+
     // Sync paquete across all rows of this participant if paquete changed
-    // Re-read data after possible insertions to get updated row positions
     var lastRow2 = pagosSheet.getLastRow();
     var numRows2 = lastRow2 - startRow + 1;
     if (numRows2 > 0) {
-      var allData2 = pagosSheet.getRange(startRow, 1, numRows2, 8).getValues();
+      var allData2 = pagosSheet.getRange(startRow, 1, numRows2, readWidth).getValues();
       var inBlock2 = false;
       for (var j = 0; j < allData2.length; j++) {
-        var cellB2 = String(allData2[j][1] || '').trim(); // col B = nombre
+        var cellB2 = String(allData2[j][idxNombre] || '').trim();
         if (cellB2) {
           if (cellB2.toLowerCase() === nombreLower) { inBlock2 = true; }
           else if (inBlock2) { break; }
         }
-        if (inBlock2 && String(allData2[j][6] || '').trim() !== paquete) { // col G = paquete
-          pagosSheet.getRange(startRow + j, 7).setValue(paquete); // col G = column 7
+        if (inBlock2 && String(allData2[j][pc.paquete - 1] || '').trim() !== paquete) {
+          pagosSheet.getRange(startRow + j, pc.paquete).setValue(paquete);
         }
       }
     }
@@ -1903,7 +1968,7 @@ function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
 function marcarComprobanteSubido(data) {
   try {
     var nombre = String(data.nombre || '').trim();
-    var tipo = String(data.tipo || '').trim(); // Reserva | Tiquete | Pago Final
+    var tipo = String(data.tipo || '').trim();
     if (!nombre || !tipo) return sendResponse(400, { ok: false, error: 'nombre y tipo requeridos' });
     var eur = parseFloat(data.eur) || 0;
     var cop = parseFloat(data.cop) || 0;
@@ -1920,11 +1985,16 @@ function marcarComprobanteSubido(data) {
     var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+    var pc = getPagosColMap_(pagosSheet);
+    var idxNombre = pc.nombre_familia - 1;
+    var idxNotas  = pc.notas - 1;
+    var idxTipoP  = pc.jugador_acompanante - 1;
 
-    var lastRow = pagosSheet.getLastRow();
     var startRow = 6;
+    var lastRow = pagosSheet.getLastRow();
     var numRows = lastRow - startRow + 1;
-    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, 8).getValues() : [];
+    var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.notas);
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
 
     var nombreLower = nombre.toLowerCase();
     var tipoLower = tipo.toLowerCase();
@@ -1934,59 +2004,61 @@ function marcarComprobanteSubido(data) {
     var tipoParticipante = String(data.tipo_participante || '').trim();
 
     for (var i = 0; i < allData.length; i++) {
-      var cellB = String(allData[i][1] || '').trim(); // col B = nombre
-      var cellH = String(allData[i][7] || '').trim(); // col H = concepto
-
+      var cellB = String(allData[i][idxNombre] || '').trim();
+      var cellH = String(allData[i][idxNotas] || '').trim();
       if (cellB) {
         if (cellB.toLowerCase() === nombreLower) {
           inBlock = true;
-          if (!tipoParticipante) tipoParticipante = String(allData[i][0] || '').trim();
-        } else if (inBlock) {
-          break;
-        }
+          if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
+        } else if (inBlock) { break; }
       }
-
       if (inBlock) {
-        if (cellH.toLowerCase() === tipoLower) {
-          targetSheetRow = startRow + i;
-          break;
-        }
-        if (cellH.toLowerCase() === 'pago final') {
-          blockPagoFinalRow = startRow + i;
-        }
+        if (cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+        if (cellH.toLowerCase() === 'pago final') blockPagoFinalRow = startRow + i;
       }
     }
 
     var resultadoIA = verificarComprobanteIA_(fileId, eur, cop, metodoPago);
+    var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
 
     if (targetSheetRow > 0) {
-      var estadoActual = String(pagosSheet.getRange(targetSheetRow, 6).getValue() || '').trim().toLowerCase();
+      var estadoActual = String(pagosSheet.getRange(targetSheetRow, pc.estado).getValue() || '').trim().toLowerCase();
       if (estadoActual === 'completo') {
-        return sendResponse(200, { ok: true, skipped: true }); // nunca pisar un pago ya confirmado como completo
+        return sendResponse(200, { ok: true, skipped: true });
       }
-      // Si ya había un abono "Parcial" confirmado por el admin, este comprobante nuevo
-      // es un abono de SEGUIMIENTO sobre el mismo saldo — se suma al monto ya validado
-      // en vez de reemplazarlo, para no perder el registro del abono anterior.
-      var eurPrevio = estadoActual === 'parcial' ? (parseFloat(pagosSheet.getRange(targetSheetRow, 5).getValue()) || 0) : 0;
-      var copPrevio = estadoActual === 'parcial' ? (parseFloat(pagosSheet.getRange(targetSheetRow, 4).getValue()) || 0) : 0;
-      var eurAcumulado = eurPrevio + eur;
-      var copAcumulado = copPrevio + cop;
+      var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
+      historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop });
 
-      pagosSheet.getRange(targetSheetRow, 3).setValue(fechaDate); // col C = fecha
-      if (copAcumulado > 0) pagosSheet.getRange(targetSheetRow, 4).setValue(copAcumulado); // col D = cop
-      if (eurAcumulado > 0) pagosSheet.getRange(targetSheetRow, 5).setValue(eurAcumulado); // col E = eur
-      pagosSheet.getRange(targetSheetRow, 6).setValue('Pendiente de confirmar'); // col F = estado
+      pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
+      var formulaCop = buildSumFormula_(historialActual, 'cop');
+      var formulaEur = buildSumFormula_(historialActual, 'eur');
+      if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormula(formulaCop);
+      if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormula(formulaEur);
+      pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Pendiente de confirmar');
+      pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
       if (comprobanteUrl) {
-        // Acumular links: cada comprobante nuevo se agrega en una línea nueva de la
-        // misma celda (col I), sin borrar los comprobantes ya subidos antes.
-        var urlExistente = String(pagosSheet.getRange(targetSheetRow, 9).getValue() || '').trim();
+        var urlExistente = String(pagosSheet.getRange(targetSheetRow, pc.comprobante).getValue() || '').trim();
         var urlFinal = urlExistente ? (urlExistente + '\n' + comprobanteUrl) : comprobanteUrl;
-        pagosSheet.getRange(targetSheetRow, 9).setValue(urlFinal);
+        pagosSheet.getRange(targetSheetRow, pc.comprobante).setValue(urlFinal);
       }
-      pagosSheet.getRange(targetSheetRow, 10).setValue(resultadoIA.status);  // col J = estado IA
-      pagosSheet.getRange(targetSheetRow, 11).setValue(resultadoIA.detalle); // col K = detalle IA
+      pagosSheet.getRange(targetSheetRow, pc.verificacion_ia).setValue(resultadoIA.status);
+      pagosSheet.getRange(targetSheetRow, pc.detalle_ia).setValue(resultadoIA.detalle);
     } else {
-      var newRow = [tipoParticipante, nombre, fechaDate, cop > 0 ? cop : '', eur, 'Pendiente de confirmar', '', tipo, comprobanteUrl, resultadoIA.status, resultadoIA.detalle];
+      var historialInicial = buildHistorialString_([{ fecha: fechaFmt, eur: eur, cop: cop }]);
+      var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia);
+      var newRow = new Array(writeWidth).fill('');
+      newRow[pc.jugador_acompanante - 1] = tipoParticipante;
+      newRow[pc.nombre_familia - 1] = nombre;
+      newRow[pc.fecha_pago - 1] = fechaDate;
+      newRow[pc.valor_cop - 1] = cop > 0 ? cop : '';
+      newRow[pc.valor_eur - 1] = eur;
+      newRow[pc.estado - 1] = 'Pendiente de confirmar';
+      newRow[pc.notas - 1] = tipo;
+      newRow[pc.comprobante - 1] = comprobanteUrl;
+      newRow[pc.historial_de_abonos - 1] = historialInicial;
+      newRow[pc.verificacion_ia - 1] = resultadoIA.status;
+      newRow[pc.detalle_ia - 1] = resultadoIA.detalle;
+
       var filaInsertada = -1;
       if (blockPagoFinalRow > 0) {
         pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
@@ -1995,18 +2067,141 @@ function marcarComprobanteSubido(data) {
         var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
         var lastDataRow = startRow - 1;
         for (var k = 0; k < allData.length; k++) {
-          var gv = String(allData[k][7] || '').trim().toLowerCase();
+          var gv = String(allData[k][idxNotas] || '').trim().toLowerCase();
           if (tiposValidos[gv]) lastDataRow = startRow + k;
         }
         filaInsertada = lastDataRow + 1;
         pagosSheet.insertRowsBefore(filaInsertada, 1);
       }
-      pagosSheet.getRange(filaInsertada, 1, 1, 11).setValues([newRow]);
+      pagosSheet.getRange(filaInsertada, 1, 1, writeWidth).setValues([newRow]);
     }
 
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('marcarComprobanteSubido error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function agregarAbonoPago(data) {
+  try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
+    var nombre = String(data.nombre || '').trim();
+    var tipo = String(data.tipo || '').trim();
+    var fecha = String(data.fecha || '').trim();
+    var eur = parseFloat(data.eur) || 0;
+    var cop = parseFloat(data.cop) || 0;
+    if (!nombre || !tipo || !fecha || eur <= 0)
+      return sendResponse(400, { ok: false, error: 'nombre, tipo, fecha y eur son requeridos' });
+
+    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+    var pc = getPagosColMap_(pagosSheet);
+    var idxNombre = pc.nombre_familia - 1;
+    var idxNotas  = pc.notas - 1;
+
+    var parts = fecha.split('-');
+    var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
+
+    var startRow = 6;
+    var lastRow = pagosSheet.getLastRow();
+    var numRows = lastRow - startRow + 1;
+    var readWidth = Math.max(pc.nombre_familia, pc.notas);
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
+    var nombreLower = nombre.toLowerCase();
+    var tipoLower = tipo.toLowerCase();
+    var inBlock = false;
+    var targetSheetRow = -1;
+
+    for (var i = 0; i < allData.length; i++) {
+      var cellB = String(allData[i][idxNombre] || '').trim();
+      var cellH = String(allData[i][idxNotas] || '').trim();
+      if (cellB) {
+        if (cellB.toLowerCase() === nombreLower) inBlock = true;
+        else if (inBlock) break;
+      }
+      if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+    }
+
+    if (targetSheetRow < 0) {
+      return sendResponse(404, { ok: false, error: 'No existe un pago previo para este concepto. Usa "Registrar pago" para el primer abono.' });
+    }
+
+    var estadoActual = String(pagosSheet.getRange(targetSheetRow, pc.estado).getValue() || '').trim().toLowerCase();
+    if (estadoActual === 'completo') {
+      return sendResponse(400, { ok: false, error: 'Este pago ya está marcado como Completo — no se pueden agregar más abonos.' });
+    }
+
+    var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
+    historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop });
+
+    pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
+    var formulaCop = buildSumFormula_(historialActual, 'cop');
+    var formulaEur = buildSumFormula_(historialActual, 'eur');
+    if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormula(formulaCop);
+    if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormula(formulaEur);
+    pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Parcial');
+    pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
+
+    actualizarResumenPagos(pagosSheet);
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('agregarAbonoPago error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function actualizarEstadoPago(data) {
+  try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
+    var nombre = String(data.nombre || '').trim();
+    var tipo = String(data.tipo || '').trim();
+    var estado = String(data.estado || '').trim();
+    var paquete = String(data.paquete || '').trim();
+    if (!nombre || !tipo || !estado) return sendResponse(400, { ok: false, error: 'nombre, tipo y estado son requeridos' });
+
+    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+    var pc = getPagosColMap_(pagosSheet);
+    var idxNombre = pc.nombre_familia - 1;
+    var idxNotas  = pc.notas - 1;
+
+    var startRow = 6;
+    var lastRow = pagosSheet.getLastRow();
+    var numRows = lastRow - startRow + 1;
+    var readWidth = Math.max(pc.nombre_familia, pc.notas);
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
+    var nombreLower = nombre.toLowerCase();
+    var tipoLower = tipo.toLowerCase();
+    var inBlock = false;
+    var targetSheetRow = -1;
+    for (var i = 0; i < allData.length; i++) {
+      var cellB = String(allData[i][idxNombre] || '').trim();
+      var cellH = String(allData[i][idxNotas] || '').trim();
+      if (cellB) {
+        if (cellB.toLowerCase() === nombreLower) inBlock = true;
+        else if (inBlock) break;
+      }
+      if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+    }
+    if (targetSheetRow < 0) return sendResponse(404, { ok: false, error: 'No se encontró el pago a actualizar' });
+
+    pagosSheet.getRange(targetSheetRow, pc.estado).setValue(estado);
+    if (paquete) pagosSheet.getRange(targetSheetRow, pc.paquete).setValue(paquete);
+
+    var eur = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
+    var cop = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
+    if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
+      notificarPagoConfirmado(nombre, tipo, eur, cop, estado);
+    }
+
+    actualizarResumenPagos(pagosSheet);
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('actualizarEstadoPago error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
