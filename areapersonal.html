@@ -3900,16 +3900,22 @@ function switchSection(section, noScroll) {
     b.classList.toggle('active', b.dataset.section === section)
   );
   const stepsRow = document.getElementById('steps-row');
+  const stepsWrap = document.getElementById('steps-wrap');
+  const stepsDots = document.getElementById('steps-dots');
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
 
   const resumenCard = document.getElementById('datos-resumen-card');
   if (section === 'proceso') {
     stepsRow.style.display = '';
+    if (stepsWrap) stepsWrap.style.display = '';
+    if (stepsDots) stepsDots.style.display = '';
     if (resumenCard) resumenCard.style.display = '';
     const cur = document.getElementById(curPanel);
     if (cur) { cur.classList.add('active'); if (!noScroll) cur.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } else {
     stepsRow.style.display = 'none';
+    if (stepsWrap) stepsWrap.style.display = 'none';
+    if (stepsDots) stepsDots.style.display = 'none';
     if (resumenCard) resumenCard.style.display = (section === 'admin' || (section === 'comercial' && esComercialOnly)) ? 'none' : '';
     const el = document.getElementById('panel-' + section);
     if (el) { el.classList.add('active'); if (!noScroll) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
@@ -3983,11 +3989,12 @@ document.addEventListener('keydown', e => {
 
 function loadComunicaciones() {
   comunLoaded = true;
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones', { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail || ''), { redirect: 'follow' })
     .then(r => r.json())
-    .then(msgs => {
+    .then(data => {
+      const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
       const feed = document.getElementById('comun-feed');
-      if (!msgs || !msgs.length) {
+      if (!msgs.length) {
         feed.innerHTML = '<p style="color:var(--muted)">No hay comunicados aún. Los mensajes del equipo Victory aparecerán aquí.</p>';
         return;
       }
@@ -3999,7 +4006,7 @@ function loadComunicaciones() {
         </div>`
       ).join('');
       if (participantEmail) {
-        localStorage.setItem('comun_seen_' + participantEmail, msgs.length.toString());
+        fetch(APPS_SCRIPT_URL + '?action=marcar_comunicados_vistos&email=' + encodeURIComponent(participantEmail) + '&count=' + msgs.length, { redirect: 'follow' }).catch(() => {});
       }
       clearComunBadge();
     })
@@ -4011,12 +4018,12 @@ function loadComunicaciones() {
 
 function checkNuevosComunicados() {
   if (!participantEmail) return;
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones', { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail), { redirect: 'follow' })
     .then(r => r.json())
-    .then(msgs => {
-      if (!Array.isArray(msgs) || !msgs.length) return;
-      const key = 'comun_seen_' + participantEmail;
-      const seen = parseInt(localStorage.getItem(key) || '0');
+    .then(data => {
+      const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
+      const seen = (data && parseInt(data.seen)) || 0;
+      if (!msgs.length) return;
       if (msgs.length > seen) {
         showComunBadge(msgs.length - seen);
         showNuevoMensajeModal();
@@ -4161,6 +4168,8 @@ function showComercialOnly(data) {
   document.getElementById('main-content').style.display = 'block';
   document.getElementById('ptabs-container').style.display = 'none';
   document.getElementById('steps-row').style.display = 'none';
+  document.getElementById('steps-wrap').style.display = 'none';
+  document.getElementById('steps-dots').style.display = 'none';
   document.getElementById('datos-resumen-card').style.display = 'none';
   document.getElementById('welcome-guide').style.display = 'none';
   document.getElementById('dn').textContent = data.nombre;
@@ -4326,6 +4335,8 @@ function showAdminOnly() {
   document.getElementById('main-content').style.display = 'block';
   document.getElementById('ptabs-container').style.display = 'none';
   document.getElementById('steps-row').style.display = 'none';
+  document.getElementById('steps-wrap').style.display = 'none';
+  document.getElementById('steps-dots').style.display = 'none';
   document.getElementById('datos-resumen-card').style.display = 'none';
   document.getElementById('dn').textContent = 'Admin';
   iniciarCountdownViaje();
@@ -5987,8 +5998,9 @@ function loadAdminComunicados() {
   el.innerHTML = '<p style="color:var(--muted)">Cargando...</p>';
   fetch(APPS_SCRIPT_URL + '?action=comunicaciones&_t=' + Date.now(), { redirect:'follow' })
     .then(r => r.json())
-    .then(msgs => {
-      if (!msgs || !msgs.length) { el.innerHTML = '<p style="color:var(--muted)">No hay comunicados publicados.</p>'; return; }
+    .then(data => {
+      const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
+      if (!msgs.length) { el.innerHTML = '<p style="color:var(--muted)">No hay comunicados publicados.</p>'; return; }
       const destLabels = {todos:'👥 Todos',con_tiquete:'✈️ Con tiquete',sin_tiquete:'🛫 Sin tiquete'};
       el.innerHTML = msgs.map(m => {
         const dest = m.destinatario || 'todos';
