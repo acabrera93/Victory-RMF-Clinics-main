@@ -39,6 +39,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .snum{width:24px;height:24px;border-radius:50%;background:rgba(11,31,58,.1);color:var(--muted);font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;margin:0 auto 6px}
 .stitle{font-size:13px;font-weight:500;color:var(--navy)}
 .sdesc{font-size:10px;color:var(--muted);margin-top:2px}
+.steps-fade, .steps-dots { display: none; }
+@media (max-width: 600px) {
+  .steps-fade, .steps-dots { display: flex; }
+}
 /* panels */
 .panel{display:none}.panel.active{display:block}
 /* card */
@@ -606,7 +610,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <button class="stab" id="stab-comercial" data-section="comercial" onclick="switchSection('comercial')" style="display:none">💼 Mis Comisiones</button>
   </div>
 
-  <div class="steps" id="steps-row"></div>
+  <div class="steps-wrap" id="steps-wrap">
+    <div class="steps" id="steps-row"></div>
+    <div class="steps-fade" id="steps-fade"><div class="steps-chev">›</div></div>
+  </div>
+  <div class="steps-dots" id="steps-dots"></div>
 
   <!-- PANEL 2: T&C + CALCULADORA + PAGO RESERVA -->
   <div class="panel section-anchor active" id="panel-tc">
@@ -2579,6 +2587,22 @@ const STEP_DEFS = [
 
 let curPanel = 'panel-tc';
 
+// Oculta el degradado/flecha de "desliza" cuando el usuario ya llegó al
+// final del scroll horizontal del stepper.
+function actualizarFadeSteps() {
+  const row = document.getElementById('steps-row');
+  const fade = document.getElementById('steps-fade');
+  if (!row || !fade) return;
+  const check = () => {
+    const alFinal = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
+    fade.classList.toggle('hide', alFinal || row.scrollWidth <= row.clientWidth);
+  };
+  check();
+  row.removeEventListener('scroll', row._fadeListener || (()=>{}));
+  row._fadeListener = check;
+  row.addEventListener('scroll', check, { passive: true });
+}
+
 function buildSteps() {
   const row = document.getElementById('steps-row');
   row.innerHTML = '';
@@ -2592,6 +2616,17 @@ function buildSteps() {
     d.innerHTML = `<div class="snum">${s.done ? '✓' : i+1}</div><div class="stitle">${s.title}</div><div class="sdesc">${s.desc}</div>`;
     row.appendChild(d);
   });
+  // Puntitos indicadores (uno por paso visible, resalta el activo)
+  const dotsRow = document.getElementById('steps-dots');
+  if (dotsRow) {
+    dotsRow.innerHTML = '';
+    visible.forEach((s) => {
+      const dot = document.createElement('div');
+      dot.className = 'step-dot' + (s.panel === curPanel ? ' active' : '');
+      dotsRow.appendChild(dot);
+    });
+  }
+  actualizarFadeSteps();
 }
 
 function goPanel(id, noScroll) {
@@ -6417,6 +6452,28 @@ function adminHandleFotoUpload(files) {
   .step { min-width: 100px; flex: 0 0 auto; padding: 10px 6px; }
   .stitle { font-size: 10px; white-space: nowrap; }
   .sdesc { display: none; }
+  .steps-wrap { position: relative; }
+  .steps-fade {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 34px;
+    background: linear-gradient(to right, rgba(255,255,255,0), var(--white, #fff) 75%);
+    display: flex; align-items: center; justify-content: flex-end;
+    pointer-events: none; transition: opacity .25s ease;
+  }
+  .steps-fade.hide { opacity: 0; }
+  .steps-chev {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; margin-right: 3px;
+    animation: stepsChevPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes stepsChevPulse {
+    0%, 100% { transform: translateX(0); opacity: .9; }
+    50% { transform: translateX(3px); opacity: 1; }
+  }
+  .steps-dots { display: flex; justify-content: center; gap: 5px; padding: 8px 0 4px; }
+  .step-dot { width: 6px; height: 6px; border-radius: 50%; background: #d7dee9; transition: all .3s; }
+  .step-dot.active { background: var(--blue); width: 16px; border-radius: 3px; }
   .card { padding: 18px 14px; }
   .section-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .section-tabs::-webkit-scrollbar { display: none; }
