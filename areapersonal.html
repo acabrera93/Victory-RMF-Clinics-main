@@ -4589,6 +4589,20 @@ function iaBadge(status, detalle, eurEsperado, copEsperado) {
   </div>`;
 }
 
+// Extrae moneda y monto del texto generado por evaluarComprobante_() en el
+// backend (formato fijo y controlado por nuestro propio código, seguro de
+// parsear con regex). Devuelve null si no hay número que extraer (ej. IA
+// no pudo leer la imagen).
+function extraerMontoIA_(detalle) {
+  if (!detalle) return null;
+  const m = detalle.match(/(?:Detectó|Coincide[^A-Za-z]*)\s*(COP|EUR|USD)\s+([\d.,]+)/i);
+  if (!m) return null;
+  const moneda = m[1].toUpperCase();
+  const monto = parseFloat(m[2].replace(/\./g, '').replace(',', '.'));
+  if (isNaN(monto)) return null;
+  return { moneda, monto };
+}
+
 function renderAdminDashboard(rows, fin) {
   const valid = rows.filter(r => { const n = normalizeParticipant(r) || {}; return n.nombre || n.email || r['2'] || r['3']; });
   const total = valid.length;
@@ -5646,6 +5660,10 @@ function openPagosModal(idx, nombreOverride) {
     const comprobanteLink = urlsComprobanteEx.length
       ? urlsComprobanteEx.map((url, i) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:6px;display:inline-block">📎 Ver comprobante${urlsComprobanteEx.length > 1 ? ' ' + (i + 1) : ''} subido por el participante</a><br>`).join('')
       : '';
+    const iaDetectado = (ex && (ex.ia_status === 'coincide' || ex.ia_status === 'revisar'))
+      ? extraerMontoIA_(ex.ia_detalle) : null;
+    const eurMostrado = (iaDetectado && iaDetectado.moneda !== 'COP') ? iaDetectado.monto : (ex ? ex.eur : '');
+    const copMostrado = (iaDetectado && iaDetectado.moneda === 'COP') ? iaDetectado.monto : (ex ? ex.cop : '');
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-weight:600;color:var(--navy);font-size:14px">${tipoIcons[tipo] || '💳'} ${tipo}</div>
@@ -5662,8 +5680,8 @@ function openPagosModal(idx, nombreOverride) {
         </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div><div class="clabel">Valor EUR</div><input type="number" id="pago-${tid}-eur" value="${ex ? ex.eur : ''}" placeholder="1000" style="${inputStyle}"></div>
-        <div><div class="clabel">Valor COP</div><input type="number" id="pago-${tid}-cop" value="${ex ? ex.cop : ''}" placeholder="4350000" style="${inputStyle}"></div>
+        <div><div class="clabel">Valor EUR</div><input type="number" id="pago-${tid}-eur" value="${eurMostrado}" placeholder="1000" style="${inputStyle}"></div>
+        <div><div class="clabel">Valor COP</div><input type="number" id="pago-${tid}-cop" value="${copMostrado}" placeholder="4350000" style="${inputStyle}"></div>
       </div>
       ${ex ? `<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:10px;padding:10px;background:var(--off);border-radius:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:110px"><div class="clabel">+ Abono adicional (EUR)</div><input type="number" id="pago-${tid}-abono-add" placeholder="ej. 500" style="${inputStyle}"></div>
