@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" id="html-root">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -953,12 +953,13 @@
       </a>
     </div>
     <div class="nav-links" id="nav-links">
-      <a href="memorias.html" class="nav-link">Memorias</a>
-      <a href="#faq" class="nav-link">Preguntas frecuentes</a>
-      <a href="areapersonal.html" class="nav-link">Área Personal</a>
+      <a href="memorias.html" class="nav-link" data-es="Memorias" data-en="Memories">Memorias</a>
+      <a href="#faq" class="nav-link" data-es="Preguntas frecuentes" data-en="FAQ">Preguntas frecuentes</a>
+      <a href="areapersonal.html" class="nav-link" data-es="Área Personal" data-en="Personal Area">Área Personal</a>
       <div class="nav-divider"></div>
-      <a href="inscripcion.html" class="nav-cta" style="background:transparent; border-color:rgba(255,255,255,0.45);">Inscríbete →</a>
-      <a href="#inscripcion" class="nav-cta">Recibir información →</a>
+      <a href="inscripcion.html" class="nav-cta" style="background:transparent; border-color:rgba(255,255,255,0.45);" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
+      <a href="#inscripcion" class="nav-cta" data-es="Recibir información →" data-en="Get free info →">Recibir información →</a>
+      <button class="lang-btn" onclick="toggleLang()" style="background:transparent;border:1px solid rgba(255,255,255,0.45);color:#fff;font-size:12px;font-weight:500;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:8px;">🇬🇧 EN</button>
     </div>
     <button class="nav-hamburger" id="nav-hamburger" aria-label="Abrir menú">
       <span></span><span></span><span></span>
@@ -975,11 +976,12 @@
     </div>
     <div class="nav-drawer-sep"></div>
     <div class="nav-drawer-links">
-      <a href="memorias.html" class="nav-drawer-link">Memorias</a>
-      <a href="#faq" class="nav-drawer-link">Preguntas frecuentes</a>
-      <a href="areapersonal.html" class="nav-drawer-link">Área Personal</a>
-      <a href="inscripcion.html" class="nav-drawer-cta" style="background:transparent; border:1.5px solid rgba(255,255,255,0.4); margin-bottom:6px;">Inscríbete →</a>
-      <a href="#inscripcion" class="nav-drawer-cta">Recibir información →</a>
+      <a href="memorias.html" class="nav-drawer-link" data-es="Memorias" data-en="Memories">Memorias</a>
+      <a href="#faq" class="nav-drawer-link" data-es="Preguntas frecuentes" data-en="FAQ">Preguntas frecuentes</a>
+      <a href="areapersonal.html" class="nav-drawer-link" data-es="Área Personal" data-en="Personal Area">Área Personal</a>
+      <a href="inscripcion.html" class="nav-drawer-cta" style="background:transparent; border:1.5px solid rgba(255,255,255,0.4); margin-bottom:6px;" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
+      <a href="#inscripcion" class="nav-drawer-cta" data-es="Recibir información →" data-en="Get free info →">Recibir información →</a>
+      <button class="lang-btn" onclick="toggleLang()" style="display:block;width:100%;text-align:center;background:transparent;border:1.5px solid rgba(255,255,255,0.4);color:#fff;font-size:14px;font-weight:600;padding:11px 16px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;">🇬🇧 EN</button>
     </div>
   </div>
 </nav>
@@ -997,20 +999,20 @@
 
     <!-- Izquierda: texto -->
     <div>
-      <p class="hero-eyebrow">2 al 10 Octubre 2026 · Madrid, España</p>
+      <p class="hero-eyebrow" data-es="2 al 10 Octubre 2026 · Madrid, España" data-en="October 2–10, 2026 · Madrid, Spain">2 al 10 Octubre 2026 · Madrid, España</p>
       <h1 class="hero-title">
-        ENTRENA EN<br>
-        <span class="line-accent">REAL MADRID</span>
-        <span class="line-italic">Foundation Clinic</span>
+        <span data-es="ENTRENA EN" data-en="TRAIN AT">ENTRENA EN</span><br>
+        <span class="line-accent" data-es="REAL MADRID" data-en="REAL MADRID">REAL MADRID</span>
+        <span class="line-italic" data-es="Foundation Clinic" data-en="Foundation Clinic">Foundation Clinic</span>
       </h1>
-      <p class="hero-sub">
+      <p class="hero-sub" data-es="8 días en Madrid entrenando en la Ciudad Deportiva del Real Madrid con metodología oficial, compitiendo en la Victory Cup y viviendo una experiencia que transforma vidas. Para jóvenes de 8 a 17 años." data-en="8 days in Madrid training at Real Madrid's Sports City with official methodology, competing in the Victory Cup and living an experience that transforms lives. For young athletes ages 8 to 17.">
         8 días en Madrid entrenando en la Ciudad Deportiva del Real Madrid con metodología oficial, compitiendo en la Victory Cup y viviendo una experiencia que transforma vidas. Para jóvenes de 8 a 17 años.
       </p>
       <div class="hero-actions">
-        <a href="#inscripcion" class="btn-primary" style="font-size:18px; padding:20px 44px;">Recibir información gratis →</a>
-        <a href="inscripcion.html" class="btn-secondary">Inscríbete →</a>
+        <a href="#inscripcion" class="btn-primary" style="font-size:18px; padding:20px 44px;" data-es="Recibir información gratis →" data-en="Get free information →">Recibir información gratis →</a>
+        <a href="inscripcion.html" class="btn-secondary" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
       </div>
-      <p style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:8px;">Sin compromiso · respuesta en menos de 24 h</p>
+      <p style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:8px;" data-es="Sin compromiso · respuesta en menos de 24 h" data-en="No commitment · response within 24h">Sin compromiso · respuesta en menos de 24 h</p>
       <div class="hero-trust" style="margin-top:40px;">
         <div class="trust-avatars">
           <div class="trust-avatar">MG</div>
@@ -1019,7 +1021,7 @@
           <div class="trust-avatar">AS</div>
         </div>
         <div class="trust-text">
-          <strong>+1.800 jóvenes han vivido la experiencia</strong>
+          <strong data-es="+1.800 jóvenes han vivido la experiencia" data-en="+1,800 young athletes have lived the experience">+1.800 jóvenes han vivido la experiencia</strong>
         </div>
       </div>
     </div>
@@ -1037,7 +1039,7 @@
       <!-- Badge cupos -->
       <div class="cupos-badge">
         <div class="cupos-dot"></div>
-        <div class="cupos-text">Cupos limitados · <span>Oct 2026</span></div>
+        <div class="cupos-text"><span data-es="Cupos limitados · " data-en="Limited spots · ">Cupos limitados · </span><span>Oct 2026</span></div>
       </div>
     </div>
 
@@ -1396,6 +1398,24 @@
 
 <script src="config.js"></script>
 <script>
+var currentLang = 'es';
+
+function toggleLang(){
+  currentLang = currentLang === 'es' ? 'en' : 'es';
+  const htmlRoot = document.getElementById('html-root');
+  if (htmlRoot) htmlRoot.lang = currentLang;
+  document.querySelectorAll('.lang-btn').forEach(function(btn){
+    btn.textContent = currentLang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES';
+  });
+  document.querySelectorAll('[data-es]').forEach(function(el){
+    var text = el.getAttribute('data-' + currentLang);
+    if (text) {
+      if (el.tagName === 'OPTGROUP') el.label = text;
+      else el.textContent = text;
+    }
+  });
+}
+
 // ─── CONFIGURACIÓN — REEMPLAZA ESTOS VALORES ─────────────────────────────────
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/3gcs8kbhhs9pwlnblt16l5oqybbkc6sh';
 
