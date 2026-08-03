@@ -224,7 +224,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   .countdown-pill-desktop { display: none !important; }
   .countdown-pill-mobile { display: inline-flex !important; }
   .welcome-right { align-items: flex-start !important; width: 100%; }
-  .welcome-right-row { width: 100%; justify-content: space-between; }
+  .welcome-right-row { width: 100%; justify-content: space-between; flex-wrap: wrap; row-gap: 8px; }
+  .countdown-pill-mobile { flex-shrink: 1; min-width: 0; }
 }
 @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes badge-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
@@ -562,7 +563,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           style="font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid rgba(90,157,224,.4);background:transparent;color:var(--blue-bright);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;">
           ✈️ <span id="tiq-toggle-label">Agregar tiquete aéreo</span>
         </button>
-        <div class="countdown-pill-mobile" style="display:none;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:20px;padding:6px 12px;flex-shrink:0;">
+        <div class="countdown-pill-mobile" style="display:none;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:20px;padding:6px 12px;">
           <span style="font-size:14px;">📅</span>
           <span class="countdown-text" style="font-size:12px;color:#fff;font-weight:500;white-space:nowrap;">Calculando...</span>
         </div>
@@ -2592,10 +2593,17 @@ let curPanel = 'panel-tc';
 function actualizarFadeSteps() {
   const row = document.getElementById('steps-row');
   const fade = document.getElementById('steps-fade');
+  const dotsRow = document.getElementById('steps-dots');
   if (!row || !fade) return;
   const check = () => {
-    const alFinal = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4;
-    fade.classList.toggle('hide', alFinal || row.scrollWidth <= row.clientWidth);
+    const maxScroll = row.scrollWidth - row.clientWidth;
+    const alFinal = maxScroll <= 4 || row.scrollLeft >= maxScroll - 4;
+    fade.classList.toggle('hide', alFinal);
+    if (dotsRow && dotsRow.children.length === 3) {
+      const pct = maxScroll > 0 ? row.scrollLeft / maxScroll : 0;
+      const activeIdx = pct < 0.34 ? 0 : (pct < 0.67 ? 1 : 2);
+      Array.from(dotsRow.children).forEach((dot, idx) => dot.classList.toggle('active', idx === activeIdx));
+    }
   };
   check();
   row.removeEventListener('scroll', row._fadeListener || (()=>{}));
@@ -2618,13 +2626,13 @@ function buildSteps() {
   });
   // Puntitos indicadores (uno por paso visible, resalta el activo)
   const dotsRow = document.getElementById('steps-dots');
-  if (dotsRow) {
+  if (dotsRow && dotsRow.children.length !== 3) {
     dotsRow.innerHTML = '';
-    visible.forEach((s) => {
+    for (let d = 0; d < 3; d++) {
       const dot = document.createElement('div');
-      dot.className = 'step-dot' + (s.panel === curPanel ? ' active' : '');
+      dot.className = 'step-dot';
       dotsRow.appendChild(dot);
-    });
+    }
   }
   actualizarFadeSteps();
 }
