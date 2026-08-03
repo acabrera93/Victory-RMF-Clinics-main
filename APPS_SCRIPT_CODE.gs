@@ -614,14 +614,16 @@ function actualizarPasoTodos(email, pasoActual) {
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     const headers = data[0] || [];
-    let emailCol = -1, pasoCol = -1;
+    let emailCol = -1, pasoCol = -1, nombreCol = -1;
     for (let j = 0; j < headers.length; j++) {
       const h = String(headers[j]).toLowerCase().trim();
       if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
       if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+      if (h === 'nombre') nombreCol = j;
     }
     if (emailCol < 0) emailCol = 3;  // Fallback: Columna D (índice 0)
     if (pasoCol < 0) pasoCol = 20;   // Fallback: Columna U (índice 0)
+    if (nombreCol < 0) nombreCol = 2;
     const emailNorm = email.toString().toLowerCase().trim();
     let updated = 0;
     for (let i = 1; i < data.length; i++) {
@@ -631,12 +633,87 @@ function actualizarPasoTodos(email, pasoActual) {
         if (pasoActual_num <= pasoActualSheet) continue; // nunca retroceder
         sheet.getRange(i + 1, pasoCol + 1).setValue(pasoActual);
         updated++;
+        // Proceso 100% completo (paso 7): enviar correo de bienvenida final +
+        // aviso interno, solo la primera vez que se cruza este umbral.
+        if (pasoActual_num === 7 && pasoActualSheet < 7) {
+          const nombreParticipante = String(data[i][nombreCol] || '').trim();
+          if (nombreParticipante) enviarCorreoProcesoCompletado_(emailNorm, nombreParticipante);
+        }
       }
     }
     return sendResponse(200, { ok: true, updated });
   } catch (err) {
     Logger.log('actualizarPasoTodos error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+function buildProcesoCompletadoHtml_(nombreCompleto) {
+  const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
+  return `
+<div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+    <div style="background:#0b1f3a;padding:32px 30px 26px;text-align:center;">
+      <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory" style="height:34px;margin:0 8px;">
+      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF" style="height:34px;margin:0 8px;">
+      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:34px;margin:0 8px;">
+    </div>
+    <div style="background:#0b1f3a;padding:0 30px 40px;text-align:center;">
+      <div style="font-size:52px;line-height:1;margin-bottom:6px;">&#x1F389;\u{2705}</div>
+      <h1 style="font-family:'Bebas Neue',sans-serif;color:#fff;font-size:32px;letter-spacing:1px;margin:0 0 6px;line-height:1.2;">¡Todo listo, ${primerNombre}!</h1>
+      <div style="color:rgba(255,255,255,.75);font-size:14px;">Tu proceso de inscripción está 100% completo</div>
+    </div>
+    <div style="padding:34px 34px 10px;color:#1a2c4a;">
+      <p style="font-size:18px;font-weight:500;color:#0b1f3a;margin:0 0 18px;">Ya completaste cada paso del proceso — pagos, documentos, todo en orden.</p>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Ahora solo queda contar los días para vivir esta experiencia única en la Ciudad Deportiva del Real Madrid. Nuestro equipo ya tiene todo tu registro listo para el Real Madrid Foundation Clinic 2026.</p>
+      <div style="background:#f4f7fb;border-radius:10px;padding:18px 20px;margin:22px 0;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Términos y condiciones aceptados</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Pago de reserva confirmado</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Pago final confirmado</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Documentación validada</div>
+      </div>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Puedes volver a tu área personal cuando quieras para ver los detalles de tu viaje, el álbum de fotos (disponible durante y después del programa), y cualquier comunicado que enviemos antes de octubre.</p>
+      <div style="text-align:center;margin:28px 0 8px;">
+        <a href="https://victory.com.es/areapersonal.html?goto=done" style="display:inline-block;background:#1e5ba8;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 30px;border-radius:8px;">Ver mi Bienvenida →</a>
+      </div>
+      <p style="text-align:center;font-size:13px;color:#6b7688;margin-top:6px;">Te lleva directo a tu pantalla de bienvenida al programa.</p>
+    </div>
+    <div style="padding:10px 34px 30px;color:#1a2c4a;">
+      <p style="margin:2px 0;font-size:14px;font-weight:700;color:#0b1f3a;margin-top:14px;">Con emoción por lo que viene,</p>
+      <p style="margin:2px 0;font-size:14px;">Equipo Victory Sports · Fundación Revel</p>
+      <p style="margin:2px 0;font-size:14px;">Real Madrid Foundation Clinic 2026</p>
+    </div>
+    <div style="background:#f4f7fb;padding:20px 30px;text-align:center;font-size:12px;color:#8a93a6;">
+      ¿Dudas? Escríbenos por WhatsApp o a <a href="mailto:alejandro.cabrera@fundacionrevel.net" style="color:#1e5ba8;text-decoration:none;">alejandro.cabrera@fundacionrevel.net</a>
+    </div>
+  </div>
+</div>`;
+}
+
+function enviarCorreoProcesoCompletado_(email, nombreCompleto) {
+  try {
+    if (!email || !nombreCompleto) return;
+    const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
+    const asunto = '\u{2705} ¡Todo listo, ' + primerNombre + '!';
+    const htmlBody = buildProcesoCompletadoHtml_(nombreCompleto);
+    GmailApp.sendEmail(email, asunto, 'Has completado tu proceso de inscripción. Ingresa a tu área personal para ver los detalles: https://victory.com.es/areapersonal.html?goto=done', {
+      htmlBody: htmlBody,
+      name: 'Real Madrid Foundation Clinic'
+    });
+    try {
+      GmailApp.sendEmail(
+        'alejandro.cabrera@fundacionrevel.net',
+        '[Recordatorio] Proceso completado: ' + nombreCompleto,
+        nombreCompleto + ' completó el 100% de su proceso (pagos + documentación).\n\n' +
+        'Correo del acudiente: ' + email + '\n' +
+        'Ya se le envió automáticamente el correo de bienvenida.',
+        { name: 'Real Madrid Foundation Clinic' }
+      );
+    } catch (notifErr) {
+      Logger.log('Aviso interno proceso completado error: ' + notifErr);
+    }
+  } catch (err) {
+    Logger.log('enviarCorreoProcesoCompletado_ error: ' + err);
   }
 }
 

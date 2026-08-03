@@ -2400,6 +2400,13 @@ async function doLogin() {
     if (tabParam && ['fotos','comunicaciones','saber','admin','comercial'].includes(tabParam)) {
       setTimeout(() => switchSection(tabParam, true), 150); // no scroll en restauración por URL
     }
+    // Link directo desde el correo de "proceso completado" — solo navega si
+    // el participante realmente ya llegó a paso 7 (si no, el paso ya lo lleva
+    // a su panel correspondiente vía applyPasoActual, sin desbloquear nada).
+    const gotoParam = new URLSearchParams(window.location.search).get('goto');
+    if (gotoParam === 'done' && grupoPaso >= 7) {
+      setTimeout(() => goPanel('panel-done'), 200);
+    }
   } catch (e) {
     const emailNorm = email.toLowerCase().trim();
     if (ADMIN_EMAILS.includes(emailNorm)) {
