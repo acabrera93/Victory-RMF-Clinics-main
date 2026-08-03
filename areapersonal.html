@@ -2536,9 +2536,9 @@ function loadParticipant(p) {
 
 function actualizarPagosCompletados() {
   const config = [
-    { done: STEP_DEFS.find(s => s.panel === 'panel2')?.done, elems: ['pay-card1-hint', 'pay-grid-reserva', 'd1tc', 'd1tr', 'upload-block-reserva', 'aviso-abono-reserva'], banner: 'pago-exitoso-reserva' },
-    { done: STEP_DEFS.find(s => s.panel === 'panel-tiq')?.done, elems: ['pay-grid-tiquete', 'dtiqtc', 'dtiqtr', 'upload-block-tiquete', 'aviso-abono-tiquete'], banner: 'pago-exitoso-tiquete' },
-    { done: STEP_DEFS.find(s => s.panel === 'panel3')?.done, elems: ['pay-grid-final', 'd2tc', 'd2tr', 'upload-block-final', 'aviso-abono-final'], banner: 'pago-exitoso-final' }
+    { done: STEP_DEFS.find(s => s.panel === 'panel2')?.done, elems: ['pay-card1-hint', 'pay-grid-reserva', 'd1tc', 'd1tr', 'upload-block-reserva'], banner: 'pago-exitoso-reserva' },
+    { done: STEP_DEFS.find(s => s.panel === 'panel-tiq')?.done, elems: ['pay-grid-tiquete', 'dtiqtc', 'dtiqtr', 'upload-block-tiquete'], banner: 'pago-exitoso-tiquete' },
+    { done: STEP_DEFS.find(s => s.panel === 'panel3')?.done, elems: ['pay-grid-final', 'd2tc', 'd2tr', 'upload-block-final'], banner: 'pago-exitoso-final' }
   ];
   config.forEach(c => {
     c.elems.forEach(id => {
