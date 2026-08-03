@@ -182,7 +182,8 @@ function doGet(e) {
         return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);
       return listFiles(SABER_FOLDER_ID, 'all');
     }
-    if (action === 'comunicaciones') return getComunicaciones();
+    if (action === 'comunicaciones') return getComunicaciones(params.email || '');
+    if (action === 'marcar_comunicados_vistos') return marcarComunicadosVistos(params.email || '', params.count || '0');
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
     if (action === 'mis_pagos') return getMisPagos(params.nombre || '');
@@ -494,17 +495,35 @@ function listFiles(folderId, filter) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function getComunicaciones() {
+function getComunicaciones(email) {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Comunicaciones');
-  if (!sheet) return ContentService.createTextOutput(JSON.stringify([]))
+  const emailNorm = String(email || '').toLowerCase().trim();
+  const seen = emailNorm ? (parseInt(PropertiesService.getScriptProperties().getProperty('comun_seen_' + emailNorm)) || 0) : 0;
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify({ mensajes: [], seen: seen }))
     .setMimeType(ContentService.MimeType.JSON);
   const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return ContentService.createTextOutput(JSON.stringify([]))
+  if (data.length < 2) return ContentService.createTextOutput(JSON.stringify({ mensajes: [], seen: seen }))
     .setMimeType(ContentService.MimeType.JSON);
   const result = data.slice(1).reverse()
     .filter(r => r[0])
     .map(r => ({ fecha: String(r[0]), titulo: String(r[1] || ''), mensaje: String(r[2] || ''), destinatario: String(r[3] || 'todos') }));
-  return ContentService.createTextOutput(JSON.stringify(result))
+  return ContentService.createTextOutput(JSON.stringify({ mensajes: result, seen: seen }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Guarda cuántos comunicados ha visto ya un participante (por email), para que
+// el aviso de "nuevo mensaje" al iniciar sesión sobreviva a cambios de
+// navegador/dispositivo o modo incógnito (a diferencia de localStorage).
+function marcarComunicadosVistos(email, count) {
+  try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    if (emailNorm) {
+      PropertiesService.getScriptProperties().setProperty('comun_seen_' + emailNorm, String(parseInt(count) || 0));
+    }
+  } catch (err) {
+    Logger.log('marcarComunicadosVistos error: ' + err);
+  }
+  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
