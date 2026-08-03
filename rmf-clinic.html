@@ -959,8 +959,11 @@
       <div class="nav-divider"></div>
       <a href="inscripcion.html" class="nav-cta" style="background:transparent; border-color:rgba(255,255,255,0.45);" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
       <a href="#inscripcion" class="nav-cta" data-es="Recibir información →" data-en="Get free info →">Recibir información →</a>
-      <button class="lang-btn" onclick="toggleLang()" style="background:transparent;border:1px solid rgba(255,255,255,0.45);color:#fff;font-size:12px;font-weight:500;padding:8px 14px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:8px;">🇬🇧 EN</button>
     </div>
+    <button class="lang-btn" onclick="toggleLang()" style="display:flex;align-items:center;gap:6px;background:transparent;border:1px solid rgba(255,255,255,0.45);color:#fff;font-size:12px;font-weight:500;padding:7px 12px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;">
+      <img src="https://flagcdn.com/w20/gb.png" alt="EN" style="width:16px;height:auto;display:block;border-radius:2px;">
+      <span class="lang-btn-text">EN</span>
+    </button>
     <button class="nav-hamburger" id="nav-hamburger" aria-label="Abrir menú">
       <span></span><span></span><span></span>
     </button>
@@ -981,7 +984,6 @@
       <a href="areapersonal.html" class="nav-drawer-link" data-es="Área Personal" data-en="Personal Area">Área Personal</a>
       <a href="inscripcion.html" class="nav-drawer-cta" style="background:transparent; border:1.5px solid rgba(255,255,255,0.4); margin-bottom:6px;" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
       <a href="#inscripcion" class="nav-drawer-cta" data-es="Recibir información →" data-en="Get free info →">Recibir información →</a>
-      <button class="lang-btn" onclick="toggleLang()" style="display:block;width:100%;text-align:center;background:transparent;border:1.5px solid rgba(255,255,255,0.4);color:#fff;font-size:14px;font-weight:600;padding:11px 16px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;">🇬🇧 EN</button>
     </div>
   </div>
 </nav>
@@ -1405,7 +1407,15 @@ function toggleLang(){
   const htmlRoot = document.getElementById('html-root');
   if (htmlRoot) htmlRoot.lang = currentLang;
   document.querySelectorAll('.lang-btn').forEach(function(btn){
-    btn.textContent = currentLang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES';
+    var img = btn.querySelector('img');
+    var span = btn.querySelector('.lang-btn-text');
+    if (currentLang === 'es') {
+      if (img) { img.src = 'https://flagcdn.com/w20/gb.png'; img.alt = 'EN'; }
+      if (span) span.textContent = 'EN';
+    } else {
+      if (img) { img.src = 'https://flagcdn.com/w20/es.png'; img.alt = 'ES'; }
+      if (span) span.textContent = 'ES';
+    }
   });
   document.querySelectorAll('[data-es]').forEach(function(el){
     var text = el.getAttribute('data-' + currentLang);
