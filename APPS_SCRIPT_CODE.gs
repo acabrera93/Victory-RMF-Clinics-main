@@ -1766,7 +1766,7 @@ function registrarPago(data) {
     var idxTipoP  = pc.jugador_acompanante - 1;
 
     var parts = fecha.split('-');
-    var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
 
     var startRow = 6;
     var lastRow = pagosSheet.getLastRow();
@@ -1979,7 +1979,7 @@ function marcarComprobanteSubido(data) {
     var fechaDate = new Date();
     if (fechaStr) {
       var fp = fechaStr.split('-');
-      if (fp.length === 3) fechaDate = new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]));
+      if (fp.length === 3) fechaDate = new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]), 12, 0, 0);
     }
 
     var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
@@ -2026,16 +2026,10 @@ function marcarComprobanteSubido(data) {
       if (estadoActual === 'completo') {
         return sendResponse(200, { ok: true, skipped: true });
       }
-      var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
-      historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop });
-
       pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
-      var formulaCop = buildSumFormula_(historialActual, 'cop');
-      var formulaEur = buildSumFormula_(historialActual, 'eur');
-      if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormula(formulaCop);
-      if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormula(formulaEur);
+      if (cop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(cop);
+      if (eur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(eur);
       pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Pendiente de confirmar');
-      pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
       if (comprobanteUrl) {
         var urlExistente = String(pagosSheet.getRange(targetSheetRow, pc.comprobante).getValue() || '').trim();
         var urlFinal = urlExistente ? (urlExistente + '\n' + comprobanteUrl) : comprobanteUrl;
@@ -2044,7 +2038,6 @@ function marcarComprobanteSubido(data) {
       pagosSheet.getRange(targetSheetRow, pc.verificacion_ia).setValue(resultadoIA.status);
       pagosSheet.getRange(targetSheetRow, pc.detalle_ia).setValue(resultadoIA.detalle);
     } else {
-      var historialInicial = buildHistorialString_([{ fecha: fechaFmt, eur: eur, cop: cop }]);
       var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia);
       var newRow = new Array(writeWidth).fill('');
       newRow[pc.jugador_acompanante - 1] = tipoParticipante;
@@ -2055,7 +2048,6 @@ function marcarComprobanteSubido(data) {
       newRow[pc.estado - 1] = 'Pendiente de confirmar';
       newRow[pc.notas - 1] = tipo;
       newRow[pc.comprobante - 1] = comprobanteUrl;
-      newRow[pc.historial_de_abonos - 1] = historialInicial;
       newRow[pc.verificacion_ia - 1] = resultadoIA.status;
       newRow[pc.detalle_ia - 1] = resultadoIA.detalle;
 
@@ -2102,7 +2094,7 @@ function agregarAbonoPago(data) {
     var idxNotas  = pc.notas - 1;
 
     var parts = fecha.split('-');
-    var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
     var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
 
     var startRow = 6;
