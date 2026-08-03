@@ -592,7 +592,7 @@ function notificarNuevoComunicado(e) {
       if (em && em.includes('@') && !seen.has(em)) { seen.add(em); emails.push(em); }
     }
 
-    const link = 'https://victory-rmf-clinics.netlify.app/areapersonal.html?tab=comunicaciones';
+    const link = 'https://victory.com.es/areapersonal.html?tab=comunicaciones';
     const subject = '⚠ Nuevo comunicado';
     const preview = mensaje.length > 180 ? mensaje.substring(0, 180).trim() + '...' : mensaje;
     const htmlBody = buildComunicadoHtml(fecha, titulo, preview, link);
@@ -752,7 +752,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
     const montoTexto = (cop > 0 ? '$' + Math.round(cop).toLocaleString('es-CO') + ' COP' : '')
       + (cop > 0 && eur > 0 ? ' · ' : '')
       + (eur > 0 ? eur.toLocaleString('es-CO') + ' €' : '');
-    const link = 'https://victory-rmf-clinics.netlify.app/areapersonal.html';
+    const link = 'https://victory.com.es/areapersonal.html';
     const colorHeader = esCompleto ? '#166534' : '#854f0b';
     const colorMonto  = esCompleto ? '#166534' : '#854f0b';
     const tituloHeader = esCompleto ? 'Pago confirmado' : 'Abono registrado';
@@ -1271,7 +1271,7 @@ function enviarEmailsComunicado(params) {
       }
     }
 
-    var link = 'https://victory-rmf-clinics.netlify.app/areapersonal.html?tab=comunicaciones';
+    var link = 'https://victory.com.es/areapersonal.html?tab=comunicaciones';
     var subject = '⚠ Nuevo comunicado';
     var preview = mensaje.length > 180 ? mensaje.substring(0, 180).trim() + '...' : mensaje;
     var htmlBody = buildComunicadoHtml(fecha, titulo, preview, link);
@@ -2456,7 +2456,7 @@ function setAdminPassword(data) {
 function forgotAdminPassword(data) {
   try {
     const email = String(data.email || '').toLowerCase().trim();
-    const resetUrl = String(data.reset_url || 'https://victory-rmf-clinics.netlify.app/areapersonal.html');
+    const resetUrl = String(data.reset_url || 'https://victory.com.es/areapersonal.html');
     const adminList = ADMIN_EMAILS_LIST.map(e => e.toLowerCase());
     // Always return ok to prevent email enumeration
     if (!adminList.includes(email)) return sendResponse(200, { ok: true });
@@ -2578,7 +2578,7 @@ function forgotComercialPassword(data) {
     const token = Utilities.getUuid().replace(/-/g, '');
     const expiry = Date.now() + 3600000; // 1 hora
     PropertiesService.getScriptProperties().setProperty('reset_' + token, emailNorm + '|' + expiry);
-    const resetUrl = String(data.reset_url || 'https://victory-rmf-clinics.netlify.app/areapersonal.html');
+    const resetUrl = String(data.reset_url || 'https://victory.com.es/areapersonal.html');
     const link = resetUrl + '?reset=' + token;
     const adminEmail = 'alejandro.cabrera@fundacionrevel.net';
     GmailApp.sendEmail(emailNorm, 'Recupera tu contraseña — Área Comercial RMF Clinic',
