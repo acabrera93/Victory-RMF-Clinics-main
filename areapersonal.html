@@ -200,6 +200,19 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .ptable tr:last-child td{border-bottom:none}
 .ptable tr:hover td{background:rgba(30,91,168,.03)}
 .paso-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:rgba(30,91,168,.1);color:var(--blue)}
+.ia-chip-compacto{
+  position:relative;display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;
+  cursor:pointer;
+}
+.ia-chip-compacto:hover .ia-tip{ display:block; }
+.ia-tip{
+  display:none;position:absolute;top:120%;left:0;
+  background:var(--navy);color:#fff;font-size:11px;padding:8px 10px;
+  border-radius:6px;width:200px;line-height:1.5;z-index:20;
+  text-align:left;font-weight:400;
+}
+.ia-tip.show{ display:block; }
 .paso-done{background:rgba(22,101,52,.1);color:#166534}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8000;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
@@ -4601,6 +4614,40 @@ function iaBadge(status, detalle, eurEsperado, copEsperado) {
   </div>`;
 }
 
+let _iaTipCounter = 0;
+// Versión compacta de iaBadge() para usar en tablas: solo el chip con el
+// ícono/label, y el detalle completo (esperado/detectado) va en un tooltip
+// que se muestra al pasar el cursor (desktop) o al tocar (móvil).
+function iaBadgeCompacto(status, detalle, eurEsperado, copEsperado) {
+  const s = (status || '').toLowerCase();
+  if (!s) return '';
+  const cfg = s === 'coincide'
+    ? { bg: 'rgba(22,101,52,.12)', color: '#166534', icon: '✓', label: 'Coincide' }
+    : s === 'revisar'
+    ? { bg: 'rgba(217,119,6,.12)', color: '#92400e', icon: '⚠', label: 'Revisar' }
+    : { bg: '#f1f5f9', color: 'var(--muted)', icon: '—', label: 'Manual' };
+  const tipId = 'iatip-' + (_iaTipCounter++);
+  const partesEsperado = [];
+  if (eurEsperado) partesEsperado.push(eurEsperado.toLocaleString('es-CO') + ' €');
+  if (copEsperado) partesEsperado.push(copEsperado.toLocaleString('es-CO') + ' COP');
+  const esperadoLine = partesEsperado.length ? `Esperado: ${partesEsperado.join(' / ')}` : '';
+  const detalleLine = detalle ? escapeHtml(detalle) : '';
+  return `<span class="ia-chip-compacto" style="background:${cfg.bg};color:${cfg.color}" onclick="toggleIaTip(event,'${tipId}')">
+    ${cfg.icon} ${cfg.label}
+    <span class="ia-tip" id="${tipId}">${esperadoLine}${esperadoLine && detalleLine ? '<br>' : ''}${detalleLine}</span>
+  </span>`;
+}
+
+function toggleIaTip(event, tipId) {
+  event.stopPropagation();
+  document.querySelectorAll('.ia-tip.show').forEach(el => { if (el.id !== tipId) el.classList.remove('show'); });
+  const el = document.getElementById(tipId);
+  if (el) el.classList.toggle('show');
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('.ia-tip.show').forEach(el => el.classList.remove('show'));
+});
+
 // Extrae moneda y monto del texto generado por evaluarComprobante_() en el
 // backend (formato fijo y controlado por nuestro propio código, seguro de
 // parsear con regex). Devuelve null si no hay número que extraer (ej. IA
@@ -5034,7 +5081,7 @@ function renderAdminPagos(fin) {
     const chip = (esPendienteConfirmar && urlsComprobante.length)
       ? `<a href="${escapeHtml(urlsComprobante[0])}" target="_blank" rel="noopener" style="text-decoration:none;cursor:pointer" title="${tituloComprobante}">${statusChip(pago.estado)}</a>`
       : statusChip(pago.estado);
-    const ia = esPendienteConfirmar ? iaBadge(pago.ia_status, pago.ia_detalle, pago.eur, pago.cop) : '';
+    const ia = esPendienteConfirmar ? iaBadgeCompacto(pago.ia_status, pago.ia_detalle, pago.eur, pago.cop) : '';
     return `<div>${chip}</div>
       ${ia ? `<div>${ia}</div>` : ''}
       <div style="font-size:12px;font-weight:600;color:var(--navy);margin-top:3px">${pago.eur.toLocaleString('es-CO')} €</div>
