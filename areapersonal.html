@@ -4603,6 +4603,56 @@ function extraerMontoIA_(detalle) {
   return { moneda, monto };
 }
 
+// Parsea "dd/mm/yyyy:eur:cop;dd/mm/yyyy:eur:cop;..." (mismo formato que
+// genera el backend) para mostrar el resumen de abonos en el modal.
+function parseHistorialAbonosFrontend_(str) {
+  if (!str) return [];
+  return String(str).split(';').map(s => {
+    const p = s.trim().split(':');
+    if (p.length < 2) return null;
+    return { fecha: p[0], eur: parseFloat(p[1]) || 0, cop: parseFloat(p[2]) || 0 };
+  }).filter(Boolean);
+}
+
+// Monto EUR esperado para un concepto (Reserva/Tiquete/Pago Final) según el
+// tipo de participante — mismas reglas que calcPaymentTotals(), pero para UN
+// solo participante (el modal admin trabaja participante por participante,
+// no por grupo).
+function montoEsperadoEur_(tipo, n) {
+  const esJugador = (n.tipo || '').toLowerCase().includes('jug');
+  if (tipo === 'Reserva') {
+    return (esJugador || (n.habitacion || '') !== '') ? 1000 : 0;
+  }
+  if (tipo === 'Tiquete') {
+    return (n.tiquete_aereo === 'Con tiquete') ? TIQUETE_EUR : 0;
+  }
+  if (tipo === 'Pago Final') {
+    if (esJugador) return 1790;
+    const hab = (n.habitacion || '').toLowerCase();
+    if (hab === '') {
+      const fObj = parseFechaNacFront(n.fecha_nacimiento || '');
+      const edad = fObj ? calcEdadRefFront(fObj) : null;
+      return (edad !== null && edad <= 12) ? 190 : 590;
+    }
+    return hab.includes('doble') ? 1190 : 1510;
+  }
+  return 0;
+}
+
+// Al escribir el Valor EUR de un pago editable, decide automáticamente si el
+// estado debe quedar en "Completo" (el monto alcanza el total esperado, con
+// un margen de ±1 EUR por redondeos, o lo supera) o "Parcial" — así el admin
+// no tiene que elegir el estado a mano antes de guardar.
+function actualizarEstadoAuto_(tid, montoEsperado) {
+  if (!montoEsperado || montoEsperado <= 0) return;
+  const eurEl = document.getElementById(`pago-${tid}-eur`);
+  const estadoEl = document.getElementById(`pago-${tid}-estado`);
+  if (!eurEl || !estadoEl) return;
+  const eur = parseFloat(eurEl.value) || 0;
+  if (eur <= 0) return;
+  estadoEl.value = (eur > montoEsperado || Math.abs(eur - montoEsperado) <= 1) ? 'Completo' : 'Parcial';
+}
+
 function renderAdminDashboard(rows, fin) {
   const valid = rows.filter(r => { const n = normalizeParticipant(r) || {}; return n.nombre || n.email || r['2'] || r['3']; });
   const total = valid.length;
@@ -5574,11 +5624,13 @@ function saveComercialModal() {
 function openPagosModal(idx, nombreOverride) {
   if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
   let nombre, tieneTiquete;
+  let participanteNorm = null;
   if (idx >= 0 && adminData[idx]) {
     pagoCurrentIdx = idx;
     pagoCurrentNombre = null;
     const row = adminData[idx];
     const n = normalizeParticipant(row) || {};
+    participanteNorm = n;
     nombre = n.nombre || row['Nombre'] || nombreOverride || '';
     tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
     pagoCurrentTipo = n.tipo || row['tipo'] || row['Tipo'] || '';
@@ -5649,13 +5701,31 @@ function openPagosModal(idx, nombreOverride) {
 
     const estadoActual = ex ? ex.estado : 'Completo';
     const esPendienteConfirmar = estadoActual.toLowerCase().trim() === 'pendiente de confirmar';
+    const esCompleto = estadoActual.toLowerCase().trim() === 'completo';
+    const historialEntradas = ex ? parseHistorialAbonosFrontend_(ex.historial_abonos) : [];
+    const tieneHistorial = historialEntradas.length > 0;
+    // Barras de solo lectura solo en el estado "en reposo" (Parcial/Completo)
+    // CON historial ya registrado — mientras está Pendiente de confirmar,
+    // siguen editables para poder corregir el monto antes de confirmar.
+    const barrasReadonly = tieneHistorial && !esPendienteConfirmar;
+    const readonlyAttr = barrasReadonly ? 'readonly' : '';
+    const readonlyStyle = barrasReadonly ? 'background:#f1f5f9;color:var(--muted)' : '';
+    // Monto EUR esperado para este concepto según el tipo de participante —
+    // permite auto-seleccionar Completo/Parcial mientras el admin escribe,
+    // sin necesidad de elegir el estado a mano. No aplica en "Pendiente de
+    // confirmar" (ese flujo usa su propio botón "Confirmar pago") ni cuando
+    // el campo está en solo lectura (ya hay historial acumulado).
+    const montoEsperado = participanteNorm ? montoEsperadoEur_(tipo, participanteNorm) : 0;
+    const wireAutoEstado = !barrasReadonly && !esPendienteConfirmar && montoEsperado > 0;
+    // "+ Agregar abono" solo tiene sentido mientras el pago sigue Parcial —
+    // no debe verse ni en Pendiente de confirmar (ahí aparece "Confirmar
+    // pago" en su lugar) ni en Completo (ya no hay nada que agregar).
+    const mostrarAgregarAbono = ex && !esPendienteConfirmar && !esCompleto;
     const statusColor = !ex ? '#92400e' : esPendienteConfirmar ? 'var(--blue)' : '#166534';
     const statusText = !ex ? 'Pendiente' : (esPendienteConfirmar ? '⏳ Pendiente de confirmar' : '✓ Registrado') + ` · ${ex.fecha} · ${ex.eur.toLocaleString('es-CO')}€`;
     const iaLine = (esPendienteConfirmar && ex && ex.ia_status)
       ? `<div style="margin-bottom:10px">${iaBadge(ex.ia_status, ex.ia_detalle, ex.eur, ex.cop)}</div>`
       : '';
-    // Puede haber más de un comprobante (uno por línea en la celda) si el participante
-    // subió varios abonos sucesivos para el mismo concepto — se listan todos.
     const urlsComprobanteEx = (ex && ex.comprobante_url) ? ex.comprobante_url.split('\n').filter(Boolean) : [];
     const comprobanteLink = urlsComprobanteEx.length
       ? urlsComprobanteEx.map((url, i) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:6px;display:inline-block">📎 Ver comprobante${urlsComprobanteEx.length > 1 ? ' ' + (i + 1) : ''} subido por el participante</a><br>`).join('')
@@ -5664,6 +5734,17 @@ function openPagosModal(idx, nombreOverride) {
       ? extraerMontoIA_(ex.ia_detalle) : null;
     const eurMostrado = (iaDetectado && iaDetectado.moneda !== 'COP') ? iaDetectado.monto : (ex ? ex.eur : '');
     const copMostrado = (iaDetectado && iaDetectado.moneda === 'COP') ? iaDetectado.monto : (ex ? ex.cop : '');
+    // Resumen de abonos — solo se muestra si hay historial registrado.
+    const resumenAbonos = tieneHistorial ? `<div style="border:1px solid var(--gborder,var(--border));border-radius:10px;overflow:hidden;margin-bottom:12px">
+        <div style="background:var(--gbg,#f4f7fb);padding:10px 14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">
+          ${historialEntradas.length > 1 ? 'Abonos registrados' : 'Pago registrado'}
+        </div>
+        <div style="padding:6px 14px 10px">
+          ${historialEntradas.map(a => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--navy);padding:4px 0;border-bottom:1px dashed var(--border)">
+            <span>${escapeHtml(a.fecha)}</span><span>${a.eur.toLocaleString('es-CO')} EUR${a.cop ? ' · $' + a.cop.toLocaleString('es-CO') + ' COP' : ''}</span>
+          </div>`).join('')}
+        </div>
+      </div>` : '';
     return `<div style="border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-weight:600;color:var(--navy);font-size:14px">${tipoIcons[tipo] || '💳'} ${tipo}</div>
@@ -5671,8 +5752,9 @@ function openPagosModal(idx, nombreOverride) {
       </div>
       ${iaLine}
       ${comprobanteLink}
+      ${resumenAbonos}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div><div class="clabel">Fecha</div><input type="date" id="pago-${tid}-fecha" value="${fechaToInput(ex ? ex.fecha : '')}" style="${inputStyle}"></div>
+        <div><div class="clabel">Fecha</div><input type="date" id="pago-${tid}-fecha" value="${fechaToInput(ex ? ex.fecha : '')}" style="${inputStyle}" ${barrasReadonly ? 'readonly' : ''}></div>
         <div><div class="clabel">Estado</div><select id="pago-${tid}-estado" style="${selectStyle}">
           <option${estadoActual==='Parcial'?' selected':''}>Parcial</option>
           <option${esPendienteConfirmar?' selected':''}>Pendiente de confirmar</option>
@@ -5680,17 +5762,19 @@ function openPagosModal(idx, nombreOverride) {
         </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div><div class="clabel">Valor EUR</div><input type="number" id="pago-${tid}-eur" value="${eurMostrado}" placeholder="1000" style="${inputStyle}"></div>
-        <div><div class="clabel">Valor COP</div><input type="number" id="pago-${tid}-cop" value="${copMostrado}" placeholder="4350000" style="${inputStyle}"></div>
+        <div><div class="clabel">Valor EUR${barrasReadonly ? ' (total acumulado)' : ''}</div><input type="number" id="pago-${tid}-eur" value="${eurMostrado}" placeholder="1000" style="${inputStyle};${readonlyStyle}" ${readonlyAttr} ${wireAutoEstado ? `oninput="actualizarEstadoAuto_('${tid}', ${montoEsperado})"` : ''}></div>
+        <div><div class="clabel">Valor COP${barrasReadonly ? ' (total acumulado)' : ''}</div><input type="number" id="pago-${tid}-cop" value="${copMostrado}" placeholder="4350000" style="${inputStyle};${readonlyStyle}" ${readonlyAttr}></div>
       </div>
-      ${ex ? `<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:10px;padding:10px;background:var(--off);border-radius:8px;flex-wrap:wrap">
-        <div style="flex:1;min-width:110px"><div class="clabel">+ Abono adicional (EUR)</div><input type="number" id="pago-${tid}-abono-add" placeholder="ej. 500" style="${inputStyle}"></div>
+      ${mostrarAgregarAbono ? `<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:10px;padding:10px;background:var(--off);border-radius:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:100px"><div class="clabel">Fecha del abono</div><input type="date" id="pago-${tid}-abono-add-fecha" value="${today}" style="${inputStyle}"></div>
+        <div style="flex:1;min-width:110px"><div class="clabel">+ Abono (EUR)</div><input type="number" id="pago-${tid}-abono-add" placeholder="ej. 500" style="${inputStyle}"></div>
         <div style="flex:1;min-width:130px"><div class="clabel">+ COP real</div><input type="number" id="pago-${tid}-abono-add-cop" placeholder="del comprobante" style="${inputStyle}"></div>
-        <button type="button" onclick="agregarAbonoModal('${tid}','${tipo}')" style="padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">+ Agregar</button>
+        <button type="button" onclick="agregarAbonoServidor('${tid}','${tipo}')" style="padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">+ Agregar abono</button>
       </div>` : ''}
       <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${paqueteVal!=='Premium'?' selected':''}>Estándar</option><option${paqueteVal==='Premium'?' selected':''}>Premium</option></select></div>
-      ${esPendienteConfirmar ? `<button onclick="document.getElementById('pago-${tid}-estado').value='Completo';registrarPagoDesdePanel('${tipo}')" style="width:100%;margin-bottom:8px;padding:11px;background:#166534;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">✓ Confirmar pago de ${tipo}</button>` : ''}
-      <button onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">${ex ? 'Actualizar' : 'Registrar'} pago de ${tipo}</button>
+      ${esPendienteConfirmar ? `<button onclick="confirmarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:#166534;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">✓ Confirmar pago de ${tipo}</button>` : ''}
+      ${(ex && !esPendienteConfirmar) ? `<button onclick="actualizarEstadoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Actualizar estado/paquete</button>` : ''}
+      ${!ex ? `<button onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Registrar pago de ${tipo}</button>` : ''}
     </div>`;
   }).join('');
 
@@ -5717,21 +5801,114 @@ function activarTiquete() {
 // COP total / EUR total (ver aplicarCongelamiento), mantener aquí el COP real
 // acumulado hace que esa tasa congelada quede como la media ponderada real de
 // todos los abonos.
-function agregarAbonoModal(tid, tipo) {
+function agregarAbonoServidor(tid, tipo) {
+  const fechaEl = document.getElementById(`pago-${tid}-abono-add-fecha`);
   const abonoEl = document.getElementById(`pago-${tid}-abono-add`);
   const abonoCopEl = document.getElementById(`pago-${tid}-abono-add-cop`);
-  const eurEl = document.getElementById(`pago-${tid}-eur`);
-  const copEl = document.getElementById(`pago-${tid}-cop`);
-  if (!abonoEl || !abonoCopEl || !eurEl || !copEl) return;
+  if (!fechaEl || !abonoEl || !abonoCopEl) return;
+  const fecha = fechaEl.value;
   const abonoEur = parseFloat(abonoEl.value) || 0;
   const abonoCop = parseFloat(abonoCopEl.value) || 0;
-  if (abonoEur <= 0 || abonoCop <= 0) { alert('Escribe el monto en EUR y en COP del abono a agregar (ambos son obligatorios).'); return; }
-  const baseEur = parseFloat(eurEl.value) || 0;
-  const baseCop = parseFloat(copEl.value) || 0;
-  eurEl.value = baseEur + abonoEur;
-  copEl.value = baseCop + abonoCop;
-  abonoEl.value = '';
-  if (abonoCopEl) abonoCopEl.value = '';
+  if (!fecha || abonoEur <= 0) { alert('Escribe la fecha y el monto en EUR del abono a agregar.'); return; }
+
+  let nombre = pagoCurrentIdx >= 0 && adminData[pagoCurrentIdx]
+    ? (normalizeParticipant(adminData[pagoCurrentIdx]) || {}).nombre || adminData[pagoCurrentIdx]['Nombre'] || ''
+    : (pagoCurrentNombre || '');
+  if (!nombre) return;
+
+  const statusEl = document.getElementById('pagos-modal-status');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Guardando abono...</span>';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur: abonoEur, cop: abonoCop, tipo_participante: pagoCurrentTipo, token: adminSessionToken }),
+    redirect: 'follow'
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.ok) {
+      statusEl.innerHTML = '<span style="color:#166534">✓ Abono agregado.</span>';
+      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+    } else {
+      statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
+    }
+  })
+  .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
+}
+
+function confirmarPagoDesdePanel(tipo) {
+  let nombre = pagoCurrentIdx >= 0 && adminData[pagoCurrentIdx]
+    ? (normalizeParticipant(adminData[pagoCurrentIdx]) || {}).nombre || adminData[pagoCurrentIdx]['Nombre'] || ''
+    : (pagoCurrentNombre || '');
+  if (!nombre) return;
+  const tid = tipo.replace(' ', '-').toLowerCase();
+
+  const fecha = document.getElementById(`pago-${tid}-fecha`).value;
+  const eur = parseFloat(document.getElementById(`pago-${tid}-eur`).value) || 0;
+  const cop = parseFloat(document.getElementById(`pago-${tid}-cop`).value) || 0;
+  const estadoEl = document.getElementById(`pago-${tid}-estado`);
+  const paquete = document.getElementById(`pago-${tid}-paquete`).value;
+  if (!fecha || eur <= 0) { alert('Ingresa al menos la fecha y el valor en EUR.'); return; }
+  if (estadoEl.value.toLowerCase() === 'pendiente de confirmar') estadoEl.value = 'Completo';
+  const estado = estadoEl.value;
+
+  const statusEl = document.getElementById('pagos-modal-status');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Confirmando...</span>';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur, cop, tipo_participante: pagoCurrentTipo, token: adminSessionToken }),
+    redirect: 'follow'
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (!res.ok) { statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`; return; }
+    return fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, token: adminSessionToken }),
+      redirect: 'follow'
+    }).then(r2 => r2.json()).then(res2 => {
+      if (res2.ok) {
+        statusEl.innerHTML = '<span style="color:#166534">✓ Pago confirmado.</span>';
+        setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+      } else {
+        statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res2.error || 'desconocido'}</span>`;
+      }
+    });
+  })
+  .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
+}
+
+function actualizarEstadoDesdePanel(tipo) {
+  let nombre = pagoCurrentIdx >= 0 && adminData[pagoCurrentIdx]
+    ? (normalizeParticipant(adminData[pagoCurrentIdx]) || {}).nombre || adminData[pagoCurrentIdx]['Nombre'] || ''
+    : (pagoCurrentNombre || '');
+  if (!nombre) return;
+  const tid = tipo.replace(' ', '-').toLowerCase();
+  const estado = document.getElementById(`pago-${tid}-estado`).value;
+  const paquete = document.getElementById(`pago-${tid}-paquete`).value;
+
+  const statusEl = document.getElementById('pagos-modal-status');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<span style="color:var(--blue)">Actualizando...</span>';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, token: adminSessionToken }),
+    redirect: 'follow'
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.ok) {
+      statusEl.innerHTML = '<span style="color:#166534">✓ Actualizado.</span>';
+      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+    } else {
+      statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
+    }
+  })
+  .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
 }
 
 function registrarPagoDesdePanel(tipo) {
