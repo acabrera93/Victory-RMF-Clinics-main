@@ -215,7 +215,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .btn-del:hover{background:#dc2626;color:#fff;border-color:#dc2626}
 .foto-upload-zone{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
 .foto-upload-zone:hover,.foto-upload-zone.drag{border-color:var(--blue);background:rgba(30,91,168,.04)}
-@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:wrap}.step{min-width:calc(50% - 0px)}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}.modal-grid{grid-template-columns:1fr}.mfield.full{grid-column:1}#pagos-modal-body>div>div[style*="justify-content:space-between"]{flex-direction:column!important;align-items:flex-start!important;gap:4px!important}#pagos-modal-body div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
+@media(max-width:600px){nav{padding:14px 16px}.wrap{padding:20px 14px 60px}.steps{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}.calc-row,.pay-grid{grid-template-columns:1fr}.welcome{padding:20px}.stab{font-size:11px;padding:8px 4px}.modal-grid{grid-template-columns:1fr}.mfield.full{grid-column:1}#pagos-modal-body>div>div[style*="justify-content:space-between"]{flex-direction:column!important;align-items:flex-start!important;gap:4px!important}#pagos-modal-body div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}}
 @media (max-width: 600px) {
   .countdown-pill-desktop { display: none !important; }
   .countdown-pill-mobile { display: inline-flex !important; }
@@ -6414,8 +6414,8 @@ function adminHandleFotoUpload(files) {
     scrollbar-width: none;
   }
   .steps::-webkit-scrollbar { display: none; }
-  .step { min-width: 90px; padding: 12px 8px; }
-  .stitle { font-size: 11px; }
+  .step { min-width: 100px; flex-shrink: 0; padding: 10px 6px; }
+  .stitle { font-size: 10px; white-space: nowrap; }
   .sdesc { display: none; }
   .card { padding: 18px 14px; }
   .section-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -6457,9 +6457,6 @@ function adminHandleFotoUpload(files) {
     border-radius: 8px;
   }
   .steps::-webkit-scrollbar { display: none; }
-  .step { min-width: 72px; padding: 10px 6px; }
-  .stitle { font-size: 10px; }
-  .sdesc { display: none; }
 
   .card { padding: 14px 12px; border-radius: 10px; }
   .ctitle { font-size: 12px; }
@@ -6532,9 +6529,6 @@ function adminHandleFotoUpload(files) {
     border-radius: 8px;
   }
   .steps::-webkit-scrollbar { display: none; }
-  .step { min-width: 72px; padding: 10px 6px; }
-  .stitle { font-size: 10px; }
-  .sdesc { display: none; }
   .card { padding: 14px 12px; border-radius: 10px; }
   .ctitle { font-size: 12px; }
   .section-tabs {
