@@ -175,6 +175,7 @@ function doGet(e) {
   const action = params.action || '';
   Logger.log('doGet action=' + action + ' params=' + JSON.stringify(params));
   try {
+    if (action === 'getAnalyticsSummary') return obtenerResumenAnalytics_(e);
     if (action === 'fotos') return listFiles(FOTOS_FOLDER_ID, 'image');
     if (action === 'memorias') return listFiles(MEMORIAS_FOLDER_ID, 'image');
     if (action === 'saber') {
@@ -732,6 +733,7 @@ function doPost(e) {
     if (body) {
       try {
         const parsed = JSON.parse(body);
+        if (parsed.action === 'track') return registrarEventoAnalytics_(parsed);
         if (parsed.action === 'actualizar_paso' && parsed.email && parsed.paso_actual) {
           return actualizarPasoTodos(parsed.email, parsed.paso_actual);
         }
@@ -3355,4 +3357,137 @@ function crearTriggerCumpleanos() {
   Logger.log('Trigger de cumpleaños creado: correrá todos los días a las 8am (Bogotá).');
 }
 
+// ---- Config ----
+var ANALYTICS_SHEET_NAME = "Analytics";
+var ANALYTICS_SPREADSHEET_ID = '1f8NA3zZk-Xr_zG_Ufvhfbfdvl8zu7oDV6RQ4W9XeKgE';
+var ANALYTICS_HEADERS = [
+  "Timestamp", "VisitorID", "SessionID", "Page", "FullURL", "Referrer",
+  "UTM_Source", "UTM_Medium", "UTM_Campaign", "Device", "Browser",
+  "Language", "Timezone", "EventType", "EventData"
+];
+
+function registrarEventoAnalytics_(data) {
+  try {
+    var sheet = obtenerOCrearHojaAnalytics_();
+    sheet.appendRow([
+      data.timestamp || new Date().toISOString(),
+      data.visitorId || "",
+      data.sessionId || "",
+      data.page || "",
+      data.fullUrl || "",
+      data.referrer || "",
+      data.utm_source || "",
+      data.utm_medium || "",
+      data.utm_campaign || "",
+      data.device || "",
+      data.browser || "",
+      data.language || "",
+      data.timezone || "",
+      data.eventType || "",
+      data.eventData || ""
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function obtenerOCrearHojaAnalytics_() {
+  var ss = SpreadsheetApp.openById(ANALYTICS_SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(ANALYTICS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(ANALYTICS_SHEET_NAME);
+    sheet.appendRow(ANALYTICS_HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function obtenerResumenAnalytics_(e) {
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty("ANALYTICS_TOKEN");
+  if (!token || e.parameter.token !== token) {
+    return ContentService.createTextOutput(JSON.stringify({ error: "No autorizado" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var sheet = obtenerOCrearHojaAnalytics_();
+  var values = sheet.getDataRange().getValues();
+  var headers = values[0];
+  var rows = values.slice(1);
+
+  var idx = {};
+  headers.forEach(function (h, i) { idx[h] = i; });
+
+  var daysParam = parseInt(e.parameter.days, 10);
+  var cutoff = null;
+  if (!isNaN(daysParam)) {
+    cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - daysParam);
+  }
+
+  var pageviewsByDay = {};
+  var pagesCount = {};
+  var referrersCount = {};
+  var utmSourceCount = {};
+  var deviceCount = {};
+  var browserCount = {};
+  var eventCount = {};
+  var visitorSet = {};
+  var totalPageviews = 0;
+
+  rows.forEach(function (row) {
+    var ts = new Date(row[idx["Timestamp"]]);
+    if (cutoff && ts < cutoff) return;
+
+    var eventType = row[idx["EventType"]];
+    var visitorId = row[idx["VisitorID"]];
+    visitorSet[visitorId] = true;
+
+    if (eventType === "pageview") {
+      totalPageviews++;
+      var day = Utilities.formatDate(ts, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      pageviewsByDay[day] = (pageviewsByDay[day] || 0) + 1;
+
+      var page = row[idx["Page"]] || "(desconocida)";
+      pagesCount[page] = (pagesCount[page] || 0) + 1;
+
+      var ref = row[idx["Referrer"]] || "(directo)";
+      referrersCount[ref] = (referrersCount[ref] || 0) + 1;
+
+      var utmSource = row[idx["UTM_Source"]];
+      if (utmSource) utmSourceCount[utmSource] = (utmSourceCount[utmSource] || 0) + 1;
+
+      var device = row[idx["Device"]] || "desconocido";
+      deviceCount[device] = (deviceCount[device] || 0) + 1;
+
+      var browser = row[idx["Browser"]] || "desconocido";
+      browserCount[browser] = (browserCount[browser] || 0) + 1;
+    } else if (eventType && eventType !== "time_on_page") {
+      eventCount[eventType] = (eventCount[eventType] || 0) + 1;
+    }
+  });
+
+  var summary = {
+    totalPageviews: totalPageviews,
+    uniqueVisitors: Object.keys(visitorSet).length,
+    pageviewsByDay: pageviewsByDay,
+    topPages: pagesCount,
+    referrers: referrersCount,
+    utmSources: utmSourceCount,
+    devices: deviceCount,
+    browsers: browserCount,
+    customEvents: eventCount
+  };
+
+  return ContentService.createTextOutput(JSON.stringify(summary))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function testCrearHojaAnalytics() {
+  var sheet = obtenerOCrearHojaAnalytics_();
+  Logger.log("Hoja lista: " + sheet.getName() + " — filas: " + sheet.getLastRow());
+}
 

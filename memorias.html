@@ -196,5 +196,100 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowRight') lbNav(1);
 });
 </script>
+
+<script>
+(function () {
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
+  function getOrCreateId(storage, key) {
+    let id = storage.getItem(key);
+    if (!id) {
+      id = "id_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10);
+      storage.setItem(key, id);
+    }
+    return id;
+  }
+  const visitorId = getOrCreateId(localStorage, "victory_visitor_id");
+  const sessionId = getOrCreateId(sessionStorage, "victory_session_id");
+  function getUTMParams() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      utm_source: params.get("utm_source") || "",
+      utm_medium: params.get("utm_medium") || "",
+      utm_campaign: params.get("utm_campaign") || "",
+    };
+  }
+  function getDeviceType() {
+    const ua = navigator.userAgent;
+    if (/tablet|ipad/i.test(ua)) return "tablet";
+    if (/mobile|android|iphone/i.test(ua)) return "mobile";
+    return "desktop";
+  }
+  function getBrowser() {
+    const ua = navigator.userAgent;
+    if (ua.includes("Edg/")) return "Edge";
+    if (ua.includes("Chrome/") && !ua.includes("Edg/")) return "Chrome";
+    if (ua.includes("Safari/") && !ua.includes("Chrome/")) return "Safari";
+    if (ua.includes("Firefox/")) return "Firefox";
+    return "Other";
+  }
+  function sendTrackingData(payload) {
+    try {
+      const body = JSON.stringify(payload);
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: "text/plain;charset=UTF-8" });
+        navigator.sendBeacon(APPS_SCRIPT_URL, blob);
+        return;
+      }
+      fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: body,
+      }).catch(function () {});
+    } catch (err) {
+      console.warn("Tracking error:", err);
+    }
+  }
+  function basePayload() {
+    const utm = getUTMParams();
+    return {
+      action: "track",
+      eventType: "pageview",
+      visitorId: visitorId,
+      sessionId: sessionId,
+      page: window.location.pathname,
+      fullUrl: window.location.href,
+      referrer: document.referrer || "(directo)",
+      utm_source: utm.utm_source,
+      utm_medium: utm.utm_medium,
+      utm_campaign: utm.utm_campaign,
+      device: getDeviceType(),
+      browser: getBrowser(),
+      language: navigator.language || "",
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      timestamp: new Date().toISOString(),
+    };
+  }
+  const pageLoadTime = Date.now();
+  sendTrackingData(basePayload());
+  function sendTimeOnPage() {
+    const seconds = Math.round((Date.now() - pageLoadTime) / 1000);
+    const payload = basePayload();
+    payload.eventType = "time_on_page";
+    payload.eventData = String(seconds);
+    sendTrackingData(payload);
+  }
+  window.addEventListener("pagehide", sendTimeOnPage);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") sendTimeOnPage();
+  });
+  window.victoryTrack = function (eventName, eventData) {
+    const payload = basePayload();
+    payload.eventType = eventName;
+    payload.eventData = eventData ? JSON.stringify(eventData) : "";
+    sendTrackingData(payload);
+  };
+})();
+</script>
 </body>
 </html>
