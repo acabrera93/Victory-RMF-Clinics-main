@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Victory Analytics — Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#0b1f3a; --navy-mid:#122847;
+    --blue:#1e5ba8; --blue-light:#3b7fd4; --blue-bright:#5a9de0;
+    --off:#f4f7fb; --white:#fff; --text:#1a2e46; --muted:#4a6080;
+    --border:rgba(11,31,58,0.1);
+    --green:#166534; --gbg:rgba(21,128,61,0.08); --gborder:rgba(21,128,61,0.2);
+    --red:#dc2626; --rbg:rgba(220,38,38,0.06); --rborder:rgba(220,38,38,0.2);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--text)}
+
+  nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .nav-tag{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:#fff}
+  .nav-tag span{color:var(--blue-bright)}
+
+  .wrap{max-width:1200px;margin:0 auto;padding:32px 20px 80px}
+
+  .welcome{
+    background:var(--navy);border-radius:12px;padding:28px 32px;margin-bottom:24px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .welcome h1{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#fff;letter-spacing:1px;margin-bottom:4px}
+  .welcome h1 span{color:var(--blue-bright)}
+  .welcome p{font-size:13px;color:rgba(255,255,255,.6)}
+
+  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  select{
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;
+    padding:9px 14px;border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;
+  }
+  select option{color:var(--text)}
+  button.refresh-btn{
+    background:var(--blue);color:#fff;border:none;padding:9px 18px;border-radius:8px;
+    font-weight:500;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;
+  }
+  button.refresh-btn:hover{background:var(--blue-light)}
+
+  .metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+  .metric-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px 22px}
+  .mc-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;font-weight:500}
+  .mc-value{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--navy);line-height:1}
+  .mc-blue .mc-value{color:var(--blue)}
+  .mc-green .mc-value{color:var(--green)}
+
+  .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+  @media (max-width:800px){.grid{grid-template-columns:1fr}}
+
+  .panel{background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px}
+  .panel h2{
+    font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;
+    letter-spacing:0.8px;margin-bottom:16px;
+  }
+
+  .bar-list{display:flex;flex-direction:column;gap:10px}
+  .bar-row{display:flex;align-items:center;gap:10px}
+  .bar-row .bar-label{width:42%;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-row .bar-track{flex:1;background:var(--off);border-radius:4px;height:9px;overflow:hidden;border:1px solid var(--border)}
+  .bar-row .bar-fill{height:100%;background:var(--blue);border-radius:4px}
+  .bar-row .bar-count{width:36px;text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  #gate{max-width:380px;margin:100px auto;text-align:center;background:#fff;border:1px solid var(--border);border-radius:12px;padding:40px 32px}
+  #gate h1{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--navy);letter-spacing:1px;margin-bottom:6px}
+  #gate p{font-size:13px;color:var(--muted);margin-bottom:20px}
+  #gate input{
+    width:100%;padding:12px 14px;border-radius:8px;border:1px solid var(--border);
+    font-family:'DM Sans',sans-serif;font-size:14px;margin-bottom:12px;background:var(--off);color:var(--text);
+  }
+  #gate button{
+    width:100%;background:var(--blue);color:#fff;border:none;padding:12px;border-radius:8px;
+    font-weight:500;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;
+  }
+  #gate button:hover{background:var(--blue-light)}
+  .hidden{display:none !important}
+
+  .empty-state{color:var(--muted);font-size:13px;text-align:center;padding:24px 0}
+  .error-banner{
+    background:var(--rbg);border:1px solid var(--rborder);color:var(--red);
+    padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-tag">Victory <span>Analytics</span></div>
+</nav>
+
+<div id="gate">
+  <h1>Victory Analytics</h1>
+  <p>Ingresa tu token de acceso para ver los datos.</p>
+  <input type="password" id="tokenInput" placeholder="Token de acceso">
+  <button onclick="unlockDashboard()">Entrar</button>
+</div>
+
+<div id="dashboard" class="hidden">
+  <div class="wrap">
+
+    <div class="welcome">
+      <div>
+        <h1>Analytics <span>del sitio</span></h1>
+        <p>Victory Sports · RMF Clinic 2026</p>
+      </div>
+      <div class="controls">
+        <select id="rangeSelect" onchange="loadData()">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+          <option value="">Todo el histórico</option>
+        </select>
+        <button class="refresh-btn" onclick="loadData()">↻ Actualizar</button>
+      </div>
+    </div>
+
+    <div id="errorBanner" class="error-banner hidden"></div>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="mc-label">Visitas totales</div>
+        <div class="mc-value" id="kpiPageviews">—</div>
+      </div>
+      <div class="metric-card mc-blue">
+        <div class="mc-label">Visitantes únicos</div>
+        <div class="mc-value" id="kpiVisitors">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="mc-label">Clics en "Inscribirse"</div>
+        <div class="mc-value" id="kpiInscribirse">—</div>
+      </div>
+      <div class="metric-card mc-green">
+        <div class="mc-label">Formularios enviados</div>
+        <div class="mc-value" id="kpiFormularios">—</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;">
+      <h2>Visitas por día</h2>
+      <canvas id="chartDaily" height="70"></canvas>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Páginas más visitadas</h2>
+        <div id="topPagesList" class="bar-list"></div>
+      </div>
+      <div class="panel">
+        <h2>Dispositivos</h2>
+        <canvas id="chartDevices"></canvas>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Fuentes de tráfico (referrer)</h2>
+        <div id="referrersList" class="bar-list"></div>
+      </div>
+      <div class="panel">
+        <h2>Campañas UTM</h2>
+        <div id="utmList" class="bar-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
+
+  let accessToken = "";
+  let dailyChart, devicesChart;
+
+  function unlockDashboard() {
+    const val = document.getElementById('tokenInput').value.trim();
+    if (!val) return;
+    accessToken = val;
+    sessionStorage.setItem('victory_analytics_token', val);
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    loadData();
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = sessionStorage.getItem('victory_analytics_token');
+    if (saved) {
+      accessToken = saved;
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      loadData();
+    }
+  });
+
+  function showError(msg) {
+    const banner = document.getElementById('errorBanner');
+    banner.textContent = msg;
+    banner.classList.remove('hidden');
+  }
+  function hideError() {
+    document.getElementById('errorBanner').classList.add('hidden');
+  }
+
+  async function loadData() {
+    hideError();
+    const days = document.getElementById('rangeSelect').value;
+    const url = new URL(APPS_SCRIPT_URL);
+    url.searchParams.set('action', 'getAnalyticsSummary');
+    url.searchParams.set('token', accessToken);
+    if (days) url.searchParams.set('days', days);
+
+    try {
+      const res = await fetch(url.toString());
+      const data = await res.json();
+
+      if (data.error) {
+        showError('Token inválido o sin autorización. Verifica ANALYTICS_TOKEN en Script Properties.');
+        return;
+      }
+
+      renderKPIs(data);
+      renderDailyChart(data.pageviewsByDay || {});
+      renderBarList('topPagesList', data.topPages || {});
+      renderBarList('referrersList', data.referrers || {});
+      renderBarList('utmList', data.utmSources || {}, 'Sin campaña UTM registrada');
+      renderDevicesChart(data.devices || {});
+    } catch (err) {
+      showError('No se pudo conectar con Apps Script. Verifica la URL del Web App.');
+    }
+  }
+
+  function renderKPIs(data) {
+    document.getElementById('kpiPageviews').textContent = data.totalPageviews ?? 0;
+    document.getElementById('kpiVisitors').textContent = data.uniqueVisitors ?? 0;
+    const events = data.customEvents || {};
+    document.getElementById('kpiInscribirse').textContent = events['click_inscribirse'] ?? 0;
+    document.getElementById('kpiFormularios').textContent = events['formulario_enviado'] ?? 0;
+  }
+
+  function renderBarList(containerId, obj, emptyMsg) {
+    const container = document.getElementById(containerId);
+    const entries = Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    container.innerHTML = '';
+    if (entries.length === 0) {
+      container.innerHTML = `<div class="empty-state">${emptyMsg || 'Sin datos en este rango'}</div>`;
+      return;
+    }
+    const max = entries[0][1];
+    entries.forEach(([label, count]) => {
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML = `
+        <div class="bar-label" title="${label}">${label}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(count / max) * 100}%"></div></div>
+        <div class="bar-count">${count}</div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function renderDailyChart(dailyObj) {
+    const labels = Object.keys(dailyObj).sort();
+    const values = labels.map(d => dailyObj[d]);
+    const ctx = document.getElementById('chartDaily').getContext('2d');
+    if (dailyChart) dailyChart.destroy();
+    dailyChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: '#1e5ba8',
+          backgroundColor: 'rgba(30,91,168,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          pointBackgroundColor: '#1e5ba8',
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#4a6080', font:{family:"'DM Sans'"} }, grid: { color: 'rgba(11,31,58,0.06)' } },
+          y: { ticks: { color: '#4a6080', font:{family:"'DM Sans'"} }, grid: { color: 'rgba(11,31,58,0.06)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  function renderDevicesChart(devicesObj) {
+    const labels = Object.keys(devicesObj);
+    const values = Object.values(devicesObj);
+    const ctx = document.getElementById('chartDevices').getContext('2d');
+    if (devicesChart) devicesChart.destroy();
+    if (labels.length === 0) return;
+    devicesChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: ['#1e5ba8', '#5a9de0', '#3b7fd4', '#0b1f3a'],
+          borderColor: '#fff',
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { color: '#1a2e46', font: { size: 12, family: "'DM Sans'" } } } }
+      }
+    });
+  }
+</script>
+</body>
+</html>
