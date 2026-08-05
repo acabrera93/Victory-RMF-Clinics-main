@@ -3358,13 +3358,19 @@ function crearTriggerCumpleanos() {
 }
 
 // ---- Config ----
-var ANALYTICS_SHEET_NAME = "Analytics";
 var ANALYTICS_SPREADSHEET_ID = '1f8NA3zZk-Xr_zG_Ufvhfbfdvl8zu7oDV6RQ4W9XeKgE';
+var ANALYTICS_SHEET_NAME = "Analytics";
 var ANALYTICS_HEADERS = [
-  "Timestamp", "VisitorID", "SessionID", "Page", "FullURL", "Referrer",
+  "Timestamp", "VisitorID", "SessionID", "FirstSeen", "Page", "FullURL", "Referrer",
   "UTM_Source", "UTM_Medium", "UTM_Campaign", "Device", "Browser",
-  "Language", "Timezone", "EventType", "EventData"
+  "Language", "Timezone", "Country", "City", "EventType", "EventData"
 ];
+
+var FUNNEL_INSCRIPCIONES_SHEET_ID = '1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss';
+var FUNNEL_PASO_COLUMNA = 'Paso Actual';
+var FUNNEL_PASO_PAGO_MINIMO = 4;
+
+var RESUMEN_EMAIL_DESTINO = 'alejandro.cabrera@fundacionrevel.net';
 
 function registrarEventoAnalytics_(data) {
   try {
@@ -3373,6 +3379,7 @@ function registrarEventoAnalytics_(data) {
       data.timestamp || new Date().toISOString(),
       data.visitorId || "",
       data.sessionId || "",
+      data.firstSeen || "",
       data.page || "",
       data.fullUrl || "",
       data.referrer || "",
@@ -3383,6 +3390,8 @@ function registrarEventoAnalytics_(data) {
       data.browser || "",
       data.language || "",
       data.timezone || "",
+      data.country || "",
+      data.city || "",
       data.eventType || "",
       data.eventData || ""
     ]);
@@ -3401,8 +3410,164 @@ function obtenerOCrearHojaAnalytics_() {
     sheet = ss.insertSheet(ANALYTICS_SHEET_NAME);
     sheet.appendRow(ANALYTICS_HEADERS);
     sheet.setFrozenRows(1);
+    return sheet;
   }
+  var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  ANALYTICS_HEADERS.forEach(function (h) {
+    if (headerRow.indexOf(h) === -1) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue(h);
+    }
+  });
   return sheet;
+}
+
+function leerFilasAnalytics_(sheet) {
+  var values = sheet.getDataRange().getValues();
+  var headers = values[0];
+  var idx = {};
+  headers.forEach(function (h, i) { idx[h] = i; });
+  var rows = values.slice(1).map(function (row) {
+    return {
+      timestamp: new Date(row[idx["Timestamp"]]),
+      visitorId: row[idx["VisitorID"]] || "",
+      firstSeen: row[idx["FirstSeen"]] ? new Date(row[idx["FirstSeen"]]) : null,
+      page: row[idx["Page"]] || "(desconocida)",
+      referrer: row[idx["Referrer"]] || "(directo)",
+      utm_source: row[idx["UTM_Source"]] || "",
+      device: row[idx["Device"]] || "desconocido",
+      browser: row[idx["Browser"]] || "desconocido",
+      country: row[idx["Country"]] || "Desconocido",
+      city: row[idx["City"]] || "Desconocida",
+      eventType: row[idx["EventType"]] || "",
+    };
+  });
+  return rows;
+}
+
+function calcularRango_(days) {
+  if (isNaN(days)) return null;
+  var end = new Date();
+  var start = new Date();
+  start.setDate(start.getDate() - days);
+  return { start: start, end: end };
+}
+
+function calcularRangoPrevio_(rango) {
+  var durationMs = rango.end.getTime() - rango.start.getTime();
+  return {
+    start: new Date(rango.start.getTime() - durationMs),
+    end: new Date(rango.start.getTime())
+  };
+}
+
+function calcularResumen_(rows, rango) {
+  var pageviewsByDay = {};
+  var pagesCount = {};
+  var referrersCount = {};
+  var utmSourceCount = {};
+  var deviceCount = {};
+  var browserCount = {};
+  var eventCount = {};
+  var countryCount = {};
+  var cityCount = {};
+  var visitorSet = {};
+  var newVisitorSet = {};
+  var returningVisitorSet = {};
+  var utmStats = {};
+  var totalPageviews = 0;
+
+  rows.forEach(function (row) {
+    if (rango && (row.timestamp < rango.start || row.timestamp > rango.end)) return;
+
+    visitorSet[row.visitorId] = true;
+
+    if (row.firstSeen) {
+      var esNuevo = !rango || row.firstSeen >= rango.start;
+      if (esNuevo) newVisitorSet[row.visitorId] = true;
+      else returningVisitorSet[row.visitorId] = true;
+    }
+
+    var src = row.utm_source || "(sin utm)";
+    if (!utmStats[src]) utmStats[src] = { pageviews: 0, clicks: 0, forms: 0 };
+
+    if (row.eventType === "pageview") {
+      totalPageviews++;
+      var day = Utilities.formatDate(row.timestamp, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      pageviewsByDay[day] = (pageviewsByDay[day] || 0) + 1;
+      pagesCount[row.page] = (pagesCount[row.page] || 0) + 1;
+      referrersCount[row.referrer] = (referrersCount[row.referrer] || 0) + 1;
+      if (row.utm_source) utmSourceCount[row.utm_source] = (utmSourceCount[row.utm_source] || 0) + 1;
+      deviceCount[row.device] = (deviceCount[row.device] || 0) + 1;
+      browserCount[row.browser] = (browserCount[row.browser] || 0) + 1;
+      countryCount[row.country] = (countryCount[row.country] || 0) + 1;
+      cityCount[row.city] = (cityCount[row.city] || 0) + 1;
+      utmStats[src].pageviews++;
+    } else if (row.eventType && row.eventType !== "time_on_page") {
+      eventCount[row.eventType] = (eventCount[row.eventType] || 0) + 1;
+      if (row.eventType === "click_inscribirse") utmStats[src].clicks++;
+      if (row.eventType === "formulario_enviado") utmStats[src].forms++;
+    }
+  });
+
+  var utmConversion = Object.keys(utmStats).map(function (src) {
+    var s = utmStats[src];
+    return {
+      source: src,
+      pageviews: s.pageviews,
+      clicks: s.clicks,
+      forms: s.forms,
+      conversionRate: s.pageviews > 0 ? Math.round((s.forms / s.pageviews) * 1000) / 10 : 0
+    };
+  }).sort(function (a, b) { return b.pageviews - a.pageviews; });
+
+  return {
+    totalPageviews: totalPageviews,
+    uniqueVisitors: Object.keys(visitorSet).length,
+    newVisitors: Object.keys(newVisitorSet).length,
+    returningVisitors: Object.keys(returningVisitorSet).length,
+    pageviewsByDay: pageviewsByDay,
+    topPages: pagesCount,
+    referrers: referrersCount,
+    utmSources: utmSourceCount,
+    devices: deviceCount,
+    browsers: browserCount,
+    countries: countryCount,
+    cities: cityCount,
+    customEvents: eventCount,
+    utmConversion: utmConversion
+  };
+}
+
+function calcularFunnel_(resumen) {
+  var pageviews = resumen.totalPageviews;
+  var clicks = (resumen.customEvents && resumen.customEvents['click_inscribirse']) || 0;
+  var formsStarted = (resumen.customEvents && resumen.customEvents['formulario_iniciado']) || 0;
+  var formsSubmitted = (resumen.customEvents && resumen.customEvents['formulario_enviado']) || 0;
+  var paid = 0;
+
+  try {
+    var insSs = SpreadsheetApp.openById(FUNNEL_INSCRIPCIONES_SHEET_ID);
+    var insSheet = insSs.getSheets()[0];
+    var insValues = insSheet.getDataRange().getValues();
+    var insHeaders = insValues[0];
+    var pasoIdx = insHeaders.indexOf(FUNNEL_PASO_COLUMNA);
+    if (pasoIdx !== -1) {
+      for (var i = 1; i < insValues.length; i++) {
+        var paso = parseInt(insValues[i][pasoIdx], 10);
+        if (!isNaN(paso) && paso >= FUNNEL_PASO_PAGO_MINIMO) paid++;
+      }
+    }
+  } catch (err) {
+    paid = null;
+  }
+
+  return {
+    pageviews: pageviews,
+    clicks: clicks,
+    formsStarted: formsStarted,
+    formsSubmitted: formsSubmitted,
+    paid: paid
+  };
 }
 
 function obtenerResumenAnalytics_(e) {
@@ -3420,76 +3585,67 @@ function obtenerResumenAnalytics_(e) {
   }
 
   var sheet = obtenerOCrearHojaAnalytics_();
-  var values = sheet.getDataRange().getValues();
-  var headers = values[0];
-  var rows = values.slice(1);
-
-  var idx = {};
-  headers.forEach(function (h, i) { idx[h] = i; });
+  var allRows = leerFilasAnalytics_(sheet);
 
   var daysParam = parseInt(e.parameter.days, 10);
-  var cutoff = null;
-  if (!isNaN(daysParam)) {
-    cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - daysParam);
+  var rango = calcularRango_(daysParam);
+
+  var resumen = calcularResumen_(allRows, rango);
+  resumen.funnel = calcularFunnel_(resumen);
+
+  if (rango) {
+    var rangoPrevio = calcularRangoPrevio_(rango);
+    var resumenPrevio = calcularResumen_(allRows, rangoPrevio);
+    resumen.comparacionPeriodoAnterior = {
+      totalPageviews: resumenPrevio.totalPageviews,
+      uniqueVisitors: resumenPrevio.uniqueVisitors,
+      clicks: (resumenPrevio.customEvents && resumenPrevio.customEvents['click_inscribirse']) || 0,
+      forms: (resumenPrevio.customEvents && resumenPrevio.customEvents['formulario_enviado']) || 0
+    };
+  } else {
+    resumen.comparacionPeriodoAnterior = null;
   }
 
-  var pageviewsByDay = {};
-  var pagesCount = {};
-  var referrersCount = {};
-  var utmSourceCount = {};
-  var deviceCount = {};
-  var browserCount = {};
-  var eventCount = {};
-  var visitorSet = {};
-  var totalPageviews = 0;
+  return ContentService.createTextOutput(JSON.stringify(resumen))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
-  rows.forEach(function (row) {
-    var ts = new Date(row[idx["Timestamp"]]);
-    if (cutoff && ts < cutoff) return;
+function enviarResumenSemanal_() {
+  var sheet = obtenerOCrearHojaAnalytics_();
+  var allRows = leerFilasAnalytics_(sheet);
+  var rango = calcularRango_(7);
+  var resumen = calcularResumen_(allRows, rango);
+  resumen.funnel = calcularFunnel_(resumen);
 
-    var eventType = row[idx["EventType"]];
-    var visitorId = row[idx["VisitorID"]];
-    visitorSet[visitorId] = true;
+  var topPagina = Object.keys(resumen.topPages).sort(function (a, b) {
+    return resumen.topPages[b] - resumen.topPages[a];
+  })[0] || "—";
 
-    if (eventType === "pageview") {
-      totalPageviews++;
-      var day = Utilities.formatDate(ts, Session.getScriptTimeZone(), "yyyy-MM-dd");
-      pageviewsByDay[day] = (pageviewsByDay[day] || 0) + 1;
+  var cuerpo =
+    "Resumen de analytics — últimos 7 días\n\n" +
+    "Visitas totales: " + resumen.totalPageviews + "\n" +
+    "Visitantes únicos: " + resumen.uniqueVisitors + " (" + resumen.newVisitors + " nuevos, " + resumen.returningVisitors + " recurrentes)\n" +
+    "Clics en 'Inscribirse': " + resumen.funnel.clicks + "\n" +
+    "Formularios iniciados: " + resumen.funnel.formsStarted + "\n" +
+    "Formularios enviados: " + resumen.funnel.formsSubmitted + "\n" +
+    (resumen.funnel.paid !== null ? "Pagos confirmados (histórico): " + resumen.funnel.paid + "\n" : "") +
+    "Página más visitada: " + topPagina + "\n";
 
-      var page = row[idx["Page"]] || "(desconocida)";
-      pagesCount[page] = (pagesCount[page] || 0) + 1;
+  GmailApp.sendEmail(RESUMEN_EMAIL_DESTINO, "Victory Analytics — Resumen semanal", cuerpo);
+}
 
-      var ref = row[idx["Referrer"]] || "(directo)";
-      referrersCount[ref] = (referrersCount[ref] || 0) + 1;
-
-      var utmSource = row[idx["UTM_Source"]];
-      if (utmSource) utmSourceCount[utmSource] = (utmSourceCount[utmSource] || 0) + 1;
-
-      var device = row[idx["Device"]] || "desconocido";
-      deviceCount[device] = (deviceCount[device] || 0) + 1;
-
-      var browser = row[idx["Browser"]] || "desconocido";
-      browserCount[browser] = (browserCount[browser] || 0) + 1;
-    } else if (eventType && eventType !== "time_on_page") {
-      eventCount[eventType] = (eventCount[eventType] || 0) + 1;
+function configurarTriggerResumenSemanal() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'enviarResumenSemanal_') {
+      ScriptApp.deleteTrigger(t);
     }
   });
-
-  var summary = {
-    totalPageviews: totalPageviews,
-    uniqueVisitors: Object.keys(visitorSet).length,
-    pageviewsByDay: pageviewsByDay,
-    topPages: pagesCount,
-    referrers: referrersCount,
-    utmSources: utmSourceCount,
-    devices: deviceCount,
-    browsers: browserCount,
-    customEvents: eventCount
-  };
-
-  return ContentService.createTextOutput(JSON.stringify(summary))
-    .setMimeType(ContentService.MimeType.JSON);
+  ScriptApp.newTrigger('enviarResumenSemanal_')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.TUESDAY)
+    .atHour(8)
+    .create();
+  Logger.log("Trigger configurado: enviarResumenSemanal_ correrá todos los martes a las 8am.");
 }
 
 function testCrearHojaAnalytics() {

@@ -2041,6 +2041,7 @@ img, video, iframe, table {
 <script>
 (function () {
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
+
   function getOrCreateId(storage, key) {
     let id = storage.getItem(key);
     if (!id) {
@@ -2049,8 +2050,41 @@ img, video, iframe, table {
     }
     return id;
   }
+
   const visitorId = getOrCreateId(localStorage, "victory_visitor_id");
   const sessionId = getOrCreateId(sessionStorage, "victory_session_id");
+
+  let firstSeen = localStorage.getItem("victory_first_seen");
+  if (!firstSeen) {
+    firstSeen = new Date().toISOString();
+    localStorage.setItem("victory_first_seen", firstSeen);
+  }
+
+  function getGeoData() {
+    return new Promise(function (resolve) {
+      const cached = sessionStorage.getItem("victory_geo");
+      if (cached) {
+        try {
+          resolve(JSON.parse(cached));
+          return;
+        } catch (e) {}
+      }
+      fetch("https://ipapi.co/json/")
+        .then(function (r) { return r.json(); })
+        .then(function (geo) {
+          const result = {
+            country: geo.country_name || "",
+            city: geo.city || "",
+          };
+          sessionStorage.setItem("victory_geo", JSON.stringify(result));
+          resolve(result);
+        })
+        .catch(function () {
+          resolve({ country: "", city: "" });
+        });
+    });
+  }
+
   function getUTMParams() {
     const params = new URLSearchParams(window.location.search);
     return {
@@ -2059,12 +2093,14 @@ img, video, iframe, table {
       utm_campaign: params.get("utm_campaign") || "",
     };
   }
+
   function getDeviceType() {
     const ua = navigator.userAgent;
     if (/tablet|ipad/i.test(ua)) return "tablet";
     if (/mobile|android|iphone/i.test(ua)) return "mobile";
     return "desktop";
   }
+
   function getBrowser() {
     const ua = navigator.userAgent;
     if (ua.includes("Edg/")) return "Edge";
@@ -2073,6 +2109,7 @@ img, video, iframe, table {
     if (ua.includes("Firefox/")) return "Firefox";
     return "Other";
   }
+
   function sendTrackingData(payload) {
     try {
       const body = JSON.stringify(payload);
@@ -2091,6 +2128,9 @@ img, video, iframe, table {
       console.warn("Tracking error:", err);
     }
   }
+
+  let cachedGeo = { country: "", city: "" };
+
   function basePayload() {
     const utm = getUTMParams();
     return {
@@ -2098,6 +2138,7 @@ img, video, iframe, table {
       eventType: "pageview",
       visitorId: visitorId,
       sessionId: sessionId,
+      firstSeen: firstSeen,
       page: window.location.pathname,
       fullUrl: window.location.href,
       referrer: document.referrer || "(directo)",
@@ -2108,11 +2149,18 @@ img, video, iframe, table {
       browser: getBrowser(),
       language: navigator.language || "",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      country: cachedGeo.country,
+      city: cachedGeo.city,
       timestamp: new Date().toISOString(),
     };
   }
+
   const pageLoadTime = Date.now();
-  sendTrackingData(basePayload());
+  getGeoData().then(function (geo) {
+    cachedGeo = geo;
+    sendTrackingData(basePayload());
+  });
+
   function sendTimeOnPage() {
     const seconds = Math.round((Date.now() - pageLoadTime) / 1000);
     const payload = basePayload();
@@ -2124,12 +2172,14 @@ img, video, iframe, table {
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") sendTimeOnPage();
   });
+
   window.victoryTrack = function (eventName, eventData) {
     const payload = basePayload();
     payload.eventType = eventName;
     payload.eventData = eventData ? JSON.stringify(eventData) : "";
     sendTrackingData(payload);
   };
+
   document.querySelectorAll('a[href="inscripcion.html"]').forEach(function (link, index) {
     link.addEventListener('click', function () {
       var contenedor = link.closest('nav, .mobile-drawer, .hero-actions, section');
