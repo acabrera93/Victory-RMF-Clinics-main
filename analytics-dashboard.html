@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root{
     --navy:#0b1f3a; --navy-mid:#122847;
@@ -49,12 +49,23 @@
   .metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px}
   .metric-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px 22px}
   .mc-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;font-weight:500}
+  .mc-value-row{display:flex;align-items:baseline;gap:8px}
   .mc-value{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--navy);line-height:1}
   .mc-blue .mc-value{color:var(--blue)}
   .mc-green .mc-value{color:var(--green)}
+  .mc-delta{font-size:12px;font-weight:600;padding:2px 7px;border-radius:12px}
+  .mc-delta.up{color:var(--green);background:var(--gbg)}
+  .mc-delta.down{color:var(--red);background:var(--rbg)}
+  .mc-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+  .section-title{
+    font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;
+    letter-spacing:0.8px;margin:28px 0 12px;
+  }
 
   .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
-  @media (max-width:800px){.grid{grid-template-columns:1fr}}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+  @media (max-width:800px){.grid, .grid-3{grid-template-columns:1fr}}
 
   .panel{background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px}
   .panel h2{
@@ -68,6 +79,32 @@
   .bar-row .bar-track{flex:1;background:var(--off);border-radius:4px;height:9px;overflow:hidden;border:1px solid var(--border)}
   .bar-row .bar-fill{height:100%;background:var(--blue);border-radius:4px}
   .bar-row .bar-count{width:36px;text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  .funnel{display:flex;flex-direction:column;gap:2px}
+  .funnel-step{
+    display:flex;align-items:center;gap:16px;padding:14px 18px;
+    background:var(--off);border-radius:8px;
+  }
+  .funnel-bar{
+    height:28px;background:linear-gradient(90deg,var(--blue),var(--blue-bright));
+    border-radius:6px;flex-shrink:0;
+  }
+  .funnel-label{font-size:13px;color:var(--text);width:170px;flex-shrink:0}
+  .funnel-value{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--navy);width:60px;text-align:right}
+  .funnel-rate{font-size:12px;color:var(--muted);width:70px;text-align:right;flex-shrink:0}
+
+  table.utm-table{width:100%;border-collapse:collapse;font-size:13px}
+  table.utm-table th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border);font-weight:500;
+  }
+  table.utm-table td{padding:10px;border-bottom:1px solid var(--border)}
+  table.utm-table tr:last-child td{border-bottom:none}
+  .rate-pill{
+    display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;
+    background:var(--gbg);color:var(--green);
+  }
+  .rate-pill.low{background:var(--rbg);color:var(--red)}
 
   #gate{max-width:380px;margin:100px auto;text-align:center;background:#fff;border:1px solid var(--border);border-radius:12px;padding:40px 32px}
   #gate h1{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--navy);letter-spacing:1px;margin-bottom:6px}
@@ -129,20 +166,38 @@
     <div class="metric-grid">
       <div class="metric-card">
         <div class="mc-label">Visitas totales</div>
-        <div class="mc-value" id="kpiPageviews">—</div>
+        <div class="mc-value-row">
+          <div class="mc-value" id="kpiPageviews">—</div>
+          <span class="mc-delta hidden" id="deltaPageviews"></span>
+        </div>
       </div>
       <div class="metric-card mc-blue">
         <div class="mc-label">Visitantes únicos</div>
-        <div class="mc-value" id="kpiVisitors">—</div>
+        <div class="mc-value-row">
+          <div class="mc-value" id="kpiVisitors">—</div>
+          <span class="mc-delta hidden" id="deltaVisitors"></span>
+        </div>
+        <div class="mc-sub" id="kpiNewReturning">—</div>
       </div>
       <div class="metric-card">
         <div class="mc-label">Clics en "Inscribirse"</div>
-        <div class="mc-value" id="kpiInscribirse">—</div>
+        <div class="mc-value-row">
+          <div class="mc-value" id="kpiInscribirse">—</div>
+          <span class="mc-delta hidden" id="deltaInscribirse"></span>
+        </div>
       </div>
       <div class="metric-card mc-green">
         <div class="mc-label">Formularios enviados</div>
-        <div class="mc-value" id="kpiFormularios">—</div>
+        <div class="mc-value-row">
+          <div class="mc-value" id="kpiFormularios">—</div>
+          <span class="mc-delta hidden" id="deltaFormularios"></span>
+        </div>
       </div>
+    </div>
+
+    <div class="section-title">Embudo de conversión</div>
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="funnel" id="funnelContainer"></div>
     </div>
 
     <div class="panel" style="margin-bottom:16px;">
@@ -167,9 +222,19 @@
         <div id="referrersList" class="bar-list"></div>
       </div>
       <div class="panel">
-        <h2>Campañas UTM</h2>
-        <div id="utmList" class="bar-list"></div>
+        <h2>Países</h2>
+        <div id="countriesList" class="bar-list"></div>
       </div>
+    </div>
+
+    <div class="section-title">Conversión por campaña (UTM)</div>
+    <div class="panel" style="margin-bottom:16px;">
+      <table class="utm-table" id="utmTable">
+        <thead>
+          <tr><th>Fuente</th><th>Visitas</th><th>Clics</th><th>Formularios</th><th>Conversión</th></tr>
+        </thead>
+        <tbody id="utmTableBody"></tbody>
+      </table>
     </div>
 
   </div>
@@ -221,6 +286,7 @@
       loadData();
       return;
     }
+
     const saved = sessionStorage.getItem('victory_analytics_token');
     const savedTime = parseInt(sessionStorage.getItem('victory_analytics_token_time'), 10) || 0;
     const expired = !savedTime || (Date.now() - savedTime) > SESSION_DURATION_MS;
@@ -256,24 +322,46 @@
     url.searchParams.set('token', accessToken);
     if (days) url.searchParams.set('days', days);
 
+    let data;
     try {
       const res = await fetch(url.toString());
-      const data = await res.json();
-
+      data = await res.json();
       if (data.error) {
         showError('Token inválido o sin autorización. Verifica ANALYTICS_TOKEN en Script Properties.');
         return;
       }
-
       renderKPIs(data);
+    } catch (err) {
+      showError('No se pudo conectar con Apps Script. Verifica la URL del Web App.');
+      return;
+    }
+
+    try {
+      renderFunnel(data.funnel || {});
       renderDailyChart(data.pageviewsByDay || {});
       renderBarList('topPagesList', data.topPages || {});
       renderBarList('referrersList', data.referrers || {});
-      renderBarList('utmList', data.utmSources || {}, 'Sin campaña UTM registrada');
+      renderBarList('countriesList', data.countries || {}, 'Sin datos de país');
       renderDevicesChart(data.devices || {});
+      renderUtmTable(data.utmConversion || []);
     } catch (err) {
-      showError('No se pudo conectar con Apps Script. Verifica la URL del Web App.');
+      showError('Los datos cargaron pero hubo un error al dibujar las gráficas: ' + err.message);
     }
+  }
+
+  function pctChange(current, previous) {
+    if (!previous) return null;
+    return Math.round(((current - previous) / previous) * 100);
+  }
+
+  function renderDelta(elId, current, previous) {
+    const el = document.getElementById(elId);
+    const change = pctChange(current, previous);
+    if (change === null) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.classList.remove('up', 'down');
+    el.classList.add(change >= 0 ? 'up' : 'down');
+    el.textContent = (change >= 0 ? '↑ ' : '↓ ') + Math.abs(change) + '%';
   }
 
   function renderKPIs(data) {
@@ -282,6 +370,69 @@
     const events = data.customEvents || {};
     document.getElementById('kpiInscribirse').textContent = events['click_inscribirse'] ?? 0;
     document.getElementById('kpiFormularios').textContent = events['formulario_enviado'] ?? 0;
+    document.getElementById('kpiNewReturning').textContent =
+      (data.newVisitors ?? 0) + ' nuevos · ' + (data.returningVisitors ?? 0) + ' recurrentes';
+
+    const prev = data.comparacionPeriodoAnterior;
+    if (prev) {
+      renderDelta('deltaPageviews', data.totalPageviews, prev.totalPageviews);
+      renderDelta('deltaVisitors', data.uniqueVisitors, prev.uniqueVisitors);
+      renderDelta('deltaInscribirse', events['click_inscribirse'] ?? 0, prev.clicks);
+      renderDelta('deltaFormularios', events['formulario_enviado'] ?? 0, prev.forms);
+    } else {
+      ['deltaPageviews','deltaVisitors','deltaInscribirse','deltaFormularios'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+    }
+  }
+
+  function renderFunnel(funnel) {
+    const container = document.getElementById('funnelContainer');
+    const steps = [
+      { label: 'Visitas', value: funnel.pageviews || 0 },
+      { label: 'Clic en "Inscribirse"', value: funnel.clicks || 0 },
+      { label: 'Formulario iniciado', value: funnel.formsStarted || 0 },
+      { label: 'Formulario enviado', value: funnel.formsSubmitted || 0 },
+    ];
+    if (funnel.paid !== null && funnel.paid !== undefined) {
+      steps.push({ label: 'Pago confirmado', value: funnel.paid });
+    }
+
+    const max = steps[0].value || 1;
+    container.innerHTML = '';
+    steps.forEach((step, i) => {
+      const rate = i === 0 ? 100 : Math.round((step.value / max) * 100);
+      const row = document.createElement('div');
+      row.className = 'funnel-step';
+      row.innerHTML = `
+        <div class="funnel-label">${step.label}</div>
+        <div class="funnel-bar" style="width:${Math.max(rate, 2)}%"></div>
+        <div class="funnel-value">${step.value}</div>
+        <div class="funnel-rate">${rate}%</div>
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  function renderUtmTable(utmConversion) {
+    const tbody = document.getElementById('utmTableBody');
+    tbody.innerHTML = '';
+    if (!utmConversion.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Sin datos de campañas UTM en este rango</td></tr>';
+      return;
+    }
+    utmConversion.forEach(row => {
+      const tr = document.createElement('tr');
+      const rateLow = row.conversionRate < 2;
+      tr.innerHTML = `
+        <td>${row.source}</td>
+        <td>${row.pageviews}</td>
+        <td>${row.clicks}</td>
+        <td>${row.forms}</td>
+        <td><span class="rate-pill ${rateLow ? 'low' : ''}">${row.conversionRate}%</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
   function renderBarList(containerId, obj, emptyMsg) {
