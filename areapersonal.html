@@ -7419,6 +7419,15 @@ img, video, iframe, table { max-width: 100%; }
 (function () {
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
 
+  const DNT_KEY = "victory_exclude_tracking";
+  const dntParam = new URLSearchParams(window.location.search).get("dnt");
+  if (dntParam === "1") localStorage.setItem(DNT_KEY, "1");
+  if (dntParam === "0") localStorage.removeItem(DNT_KEY);
+  if (localStorage.getItem(DNT_KEY) === "1") {
+    window.victoryTrack = function () {};
+    return;
+  }
+
   function getOrCreateId(storage, key) {
     let id = storage.getItem(key);
     if (!id) {
@@ -7439,11 +7448,15 @@ img, video, iframe, table { max-width: 100%; }
 
   function getGeoData() {
     return new Promise(function (resolve) {
-      const cached = sessionStorage.getItem("victory_geo");
-      if (cached) {
+      const GEO_TTL_MS = 24 * 3600000; // 24 horas
+      const cachedRaw = localStorage.getItem("victory_geo");
+      if (cachedRaw) {
         try {
-          resolve(JSON.parse(cached));
-          return;
+          const cached = JSON.parse(cachedRaw);
+          if (cached.cachedAt && (Date.now() - cached.cachedAt) < GEO_TTL_MS) {
+            resolve({ country: cached.country || "", city: cached.city || "" });
+            return;
+          }
         } catch (e) {}
       }
       fetch("https://ipapi.co/json/")
@@ -7452,11 +7465,13 @@ img, video, iframe, table { max-width: 100%; }
           const result = {
             country: geo.country_name || "",
             city: geo.city || "",
+            cachedAt: Date.now(),
           };
-          sessionStorage.setItem("victory_geo", JSON.stringify(result));
-          resolve(result);
+          localStorage.setItem("victory_geo", JSON.stringify(result));
+          resolve({ country: result.country, city: result.city });
         })
         .catch(function () {
+          localStorage.setItem("victory_geo", JSON.stringify({ country: "", city: "", cachedAt: Date.now() }));
           resolve({ country: "", city: "" });
         });
     });
