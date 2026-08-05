@@ -3406,9 +3406,15 @@ function obtenerOCrearHojaAnalytics_() {
 }
 
 function obtenerResumenAnalytics_(e) {
+  var providedToken = e.parameter.token || '';
   var props = PropertiesService.getScriptProperties();
-  var token = props.getProperty("ANALYTICS_TOKEN");
-  if (!token || e.parameter.token !== token) {
+  var storedToken = props.getProperty("ANALYTICS_TOKEN");
+  var autorizado = !!storedToken && providedToken === storedToken;
+  if (!autorizado) {
+    var payload = verificarSesionToken(providedToken);
+    autorizado = !!payload && ['superadmin', 'editor', 'viewer'].indexOf(payload.rol) >= 0;
+  }
+  if (!autorizado) {
     return ContentService.createTextOutput(JSON.stringify({ error: "No autorizado" }))
       .setMimeType(ContentService.MimeType.JSON);
   }

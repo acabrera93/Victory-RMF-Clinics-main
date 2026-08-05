@@ -99,8 +99,10 @@
 <div id="gate">
   <h1>Victory Analytics</h1>
   <p>Ingresa tu token de acceso para ver los datos.</p>
-  <input type="password" id="tokenInput" placeholder="Token de acceso">
-  <button onclick="unlockDashboard()">Entrar</button>
+  <form id="gateForm">
+    <input type="password" id="tokenInput" placeholder="Token de acceso">
+    <button type="submit">Entrar</button>
+  </form>
 </div>
 
 <div id="dashboard" class="hidden">
@@ -175,6 +177,8 @@
 
 <script>
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
+  const SESSION_DURATION_MS = 60 * 60 * 1000; // 1 hora
+  let sessionTimeout = null;
 
   let accessToken = "";
   let dailyChart, devicesChart;
@@ -184,19 +188,55 @@
     if (!val) return;
     accessToken = val;
     sessionStorage.setItem('victory_analytics_token', val);
+    sessionStorage.setItem('victory_analytics_token_time', String(Date.now()));
     document.getElementById('gate').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
     loadData();
+    scheduleSessionExpiry();
+  }
+
+  function lockDashboard() {
+    accessToken = '';
+    sessionStorage.removeItem('victory_analytics_token');
+    sessionStorage.removeItem('victory_analytics_token_time');
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('gate').classList.remove('hidden');
+    document.getElementById('tokenInput').value = '';
+    if (sessionTimeout) { clearTimeout(sessionTimeout); sessionTimeout = null; }
+  }
+
+  function scheduleSessionExpiry() {
+    if (sessionTimeout) clearTimeout(sessionTimeout);
+    const loginTime = parseInt(sessionStorage.getItem('victory_analytics_token_time'), 10) || Date.now();
+    const remaining = SESSION_DURATION_MS - (Date.now() - loginTime);
+    sessionTimeout = setTimeout(lockDashboard, Math.max(remaining, 0));
   }
 
   window.addEventListener('DOMContentLoaded', () => {
+    const urlToken = new URLSearchParams(window.location.search).get('token');
+    if (urlToken) {
+      accessToken = urlToken;
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      loadData();
+      return;
+    }
     const saved = sessionStorage.getItem('victory_analytics_token');
-    if (saved) {
+    const savedTime = parseInt(sessionStorage.getItem('victory_analytics_token_time'), 10) || 0;
+    const expired = !savedTime || (Date.now() - savedTime) > SESSION_DURATION_MS;
+    if (saved && !expired) {
       accessToken = saved;
       document.getElementById('gate').classList.add('hidden');
       document.getElementById('dashboard').classList.remove('hidden');
       loadData();
+      scheduleSessionExpiry();
+    } else if (saved && expired) {
+      sessionStorage.removeItem('victory_analytics_token');
+      sessionStorage.removeItem('victory_analytics_token_time');
     }
+
+    const gateForm = document.getElementById('gateForm');
+    if (gateForm) gateForm.addEventListener('submit', function (e) { e.preventDefault(); unlockDashboard(); });
   });
 
   function showError(msg) {

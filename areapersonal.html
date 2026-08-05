@@ -1300,6 +1300,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <button class="asnav-btn" data-asec="comisiones" onclick="adminSection('comisiones')">Comisiones</button>
         <button class="asnav-btn" data-asec="comunicados" onclick="adminSection('comunicados')">Comunicados</button>
         <button class="asnav-btn" data-asec="galeria" onclick="adminSection('galeria')">Galería</button>
+        <button class="asnav-btn" data-asec="analytics" onclick="adminSection('analytics')">Analytics</button>
         <button class="asnav-btn" id="stab-acceso" data-asec="acceso" onclick="adminSection('acceso')" style="display:none;margin-left:auto;border-color:var(--navy);color:var(--navy)">🔐 Acceso</button>
       </div>
     </div>
@@ -1674,6 +1675,13 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div id="admin-fotos-grid" class="fotos-grid">
           <p style="color:var(--muted);font-size:13px">Cargando fotos...</p>
         </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div id="admin-sec-analytics" style="display:none">
+      <div class="card" style="padding:0;overflow:hidden">
+        <iframe id="analytics-iframe" style="width:100%;height:80vh;border:none;display:block" title="Victory Analytics"></iframe>
       </div>
     </div>
 
@@ -4396,6 +4404,10 @@ function adminSection(section) {
   if (section === 'acceso') loadAdminAcceso();
   if (section === 'categorias') loadAdminCategorias();
   if (section === 'galeria') loadAdminFotos();
+  if (section === 'analytics') {
+    const iframe = document.getElementById('analytics-iframe');
+    if (iframe && !iframe.src) iframe.src = 'analytics-dashboard.html?token=' + encodeURIComponent(adminSessionToken);
+  }
   // Pagos y Dashboard siempre re-fetch al entrar (ediciones directas en Sheet deben reflejarse)
   // Otras secciones: cooldown de 30s
   if (section === 'pagos' || section === 'dashboard') {
