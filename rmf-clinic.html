@@ -116,6 +116,37 @@
     background: rgba(255,255,255,0.06);
     border-color: rgba(255,255,255,0.1);
   }
+  .nav-dropdown { position: relative; }
+  .nav-dropdown-toggle { display: inline-flex; align-items: center; gap: 4px; }
+  .nav-dropdown-toggle::after { content: '▾'; font-size: 10px; opacity: 0.7; }
+  .nav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+    background: rgba(11,31,58,0.98);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 6px;
+    min-width: 280px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+    z-index: 1000;
+  }
+  .nav-dropdown:hover .nav-dropdown-menu,
+  .nav-dropdown.open .nav-dropdown-menu { display: block; }
+  .nav-dropdown-item {
+    display: block;
+    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .nav-dropdown-item:hover { color: #fff; background: rgba(255,255,255,0.08); }
   .nav-divider {
     width: 1px;
     height: 18px;
@@ -953,6 +984,13 @@
       </a>
     </div>
     <div class="nav-links" id="nav-links">
+      <div class="nav-dropdown">
+        <a href="#programas" class="nav-link nav-dropdown-toggle" data-es="Programas" data-en="Programs">Programas</a>
+        <div class="nav-dropdown-menu">
+          <a href="#programas" class="nav-dropdown-item" data-es="Real Madrid Foundation Clinic" data-en="Real Madrid Foundation Clinic">Real Madrid Foundation Clinic</a>
+          <a href="#world-challenge" class="nav-dropdown-item" data-es="Real Madrid Foundation World Challenge" data-en="Real Madrid Foundation World Challenge">Real Madrid Foundation World Challenge</a>
+        </div>
+      </div>
       <a href="memorias.html" class="nav-link" data-es="Memorias" data-en="Memories">Memorias</a>
       <a href="#faq" class="nav-link" data-es="Preguntas frecuentes" data-en="FAQ">Preguntas frecuentes</a>
       <a href="areapersonal.html" class="nav-link" data-es="Área Personal" data-en="Personal Area">Área Personal</a>
@@ -979,6 +1017,16 @@
     </div>
     <div class="nav-drawer-sep"></div>
     <div class="nav-drawer-links">
+      <div class="nav-drawer-dropdown">
+        <div class="nav-drawer-dropdown-toggle" onclick="this.parentElement.classList.toggle('open')">
+          <span data-es="Programas" data-en="Programs">Programas</span>
+          <span class="nav-drawer-dropdown-arrow">▾</span>
+        </div>
+        <div class="nav-drawer-submenu">
+          <a href="#programas" class="nav-drawer-link" data-es="Real Madrid Foundation Clinic" data-en="Real Madrid Foundation Clinic">Real Madrid Foundation Clinic</a>
+          <a href="#world-challenge" class="nav-drawer-link" data-es="Real Madrid Foundation World Challenge" data-en="Real Madrid Foundation World Challenge">Real Madrid Foundation World Challenge</a>
+        </div>
+      </div>
       <a href="memorias.html" class="nav-drawer-link" data-es="Memorias" data-en="Memories">Memorias</a>
       <a href="#faq" class="nav-drawer-link" data-es="Preguntas frecuentes" data-en="FAQ">Preguntas frecuentes</a>
       <a href="areapersonal.html" class="nav-drawer-link" data-es="Área Personal" data-en="Personal Area">Área Personal</a>
@@ -1394,6 +1442,184 @@
         Recibir información →
       </a>
     </div>
+  </div>
+</section>
+
+<!-- REAL MADRID FOUNDATION WORLD CHALLENGE -->
+<section id="world-challenge" style="background:var(--off-white); padding:56px 0; overflow:hidden;">
+  <div class="container">
+    <p class="section-label" style="justify-content:center;" data-es="Nuevo Programa · 19 al 27 de marzo 2027" data-en="New Program · March 19–27, 2027">Nuevo Programa · 19 al 27 de marzo 2027</p>
+    <h2 class="section-title" style="text-align:center;" data-es="REAL MADRID FOUNDATION WORLD CHALLENGE" data-en="REAL MADRID FOUNDATION WORLD CHALLENGE">REAL MADRID FOUNDATION WORLD CHALLENGE</h2>
+
+    <!-- Intro + Pueden participar -->
+    <div style="display:grid; grid-template-columns:1.1fr 1fr; gap:28px; align-items:center; margin-top:36px;" class="family-grid">
+      <div>
+        <p style="font-size:16px; color:#4a6080; line-height:1.7;" data-es="El World Challenge de la Fundación Real Madrid, del 19 al 27 de marzo de 2027, reúne a equipos de los Clinics y Educational Football Program de la Fundación Real Madrid de todo el mundo. Combinando competencia, valores y juego limpio, será una experiencia increíble." data-en="The Real Madrid Foundation's World Challenge, from March 19 to 27, 2027, brings together teams from the Real Madrid Foundation's Clinics and Educational Football Program from around the world. Combining competition, values and fair play, it will be an incredible experience.">
+          El World Challenge de la Fundación Real Madrid, del 19 al 27 de marzo de 2027, reúne a equipos de los Clinics y Educational Football Program de la Fundación Real Madrid de todo el mundo. Combinando competencia, valores y juego limpio, será una experiencia increíble.
+        </p>
+        <p style="font-size:16px; color:var(--navy); font-style:italic; margin-top:16px; line-height:1.7;" data-es="El World Challenge no es solo fútbol, sino una experiencia para toda la vida." data-en="The World Challenge isn't just football — it's an experience for life.">
+          El World Challenge no es solo fútbol, sino una experiencia para toda la vida.
+        </p>
+        <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:24px;">
+          <a href="#inscripcion" class="btn-primary on-light" style="color:white; text-decoration:none;" data-es="Recibir información →" data-en="Get free info →">Recibir información →</a>
+          <a href="inscripcion.html" class="btn-secondary on-light" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
+        </div>
+      </div>
+      <div style="background:var(--navy); border-radius:14px; padding:32px 34px; position:relative; overflow:hidden;">
+        <div style="font-size:15px; color:var(--blue-bright); font-weight:500; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;" data-es="Pueden participar" data-en="Who can participate">Pueden participar</div>
+        <div style="font-size:16px; color:rgba(255,255,255,0.9); line-height:2.1;">
+          <span data-es="Edades: entre los 8 y 14 años" data-en="Ages: between 8 and 14 years old">Edades: entre los 8 y 14 años</span><br>
+          <span style="color:rgba(255,255,255,0.55); margin-top:6px; display:inline-block;" data-es="Categorías:" data-en="Categories:">Categorías:</span><br>
+          <span data-es="• U14: 2013 – 2014" data-en="• U14: 2013 – 2014">• U14: 2013 – 2014</span><br>
+          <span data-es="• U12: 2015 – 2016" data-en="• U12: 2015 – 2016">• U12: 2015 – 2016</span><br>
+          <span data-es="• U10: 2017 – 2018" data-en="• U10: 2017 – 2018">• U10: 2017 – 2018</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historia -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:center; margin-top:48px;" class="family-grid">
+      <div>
+        <p class="section-label" data-es="Historia del World Challenge" data-en="World Challenge History">Historia del World Challenge</p>
+        <p style="font-size:16px; color:#4a6080; line-height:1.7;" data-es="El año pasado, más de 62 equipos de 23 países y más de 900 jugadores participaron en el World Challenge de la Fundación Real Madrid, creando recuerdos para toda la vida en Madrid." data-en="Last year, more than 62 teams from 23 countries and over 900 players took part in the Real Madrid Foundation's World Challenge, creating memories for a lifetime in Madrid.">
+          El año pasado, más de 62 equipos de 23 países y más de 900 jugadores participaron en el World Challenge de la Fundación Real Madrid, creando recuerdos para toda la vida en Madrid.
+        </p>
+        <p style="font-size:16px; color:#4a6080; line-height:1.7; margin-top:14px;" data-es="Prepárate para saltar al campo en las instalaciones excepcionales de la Ciudad Deportiva del Real Madrid junto a jugadores de todo el mundo." data-en="Get ready to step onto the pitch at Real Madrid's exceptional Sports City facilities alongside players from all over the world.">
+          Prepárate para saltar al campo en las instalaciones excepcionales de la Ciudad Deportiva del Real Madrid junto a jugadores de todo el mundo.
+        </p>
+      </div>
+      <div style="border-radius:10px; overflow:hidden;">
+        <img src="https://lh3.googleusercontent.com/d/1c_AAAIXelLi1RO-f5xD8lkJV0TPsNTL6" alt="Historia World Challenge" style="width:100%; height:100%; min-height:260px; object-fit:cover; display:block;">
+      </div>
+    </div>
+
+    <!-- Agenda -->
+    <div style="margin-top:48px;">
+      <p class="section-label" data-es="Agenda deportistas · World Challenge" data-en="Athletes schedule · World Challenge">Agenda deportistas · World Challenge</p>
+      <h3 class="section-title" style="font-size:26px;" data-es="8 DÍAS DE COMPETENCIA EN MADRID · 19-27 MARZO 2027" data-en="8 DAYS OF COMPETITION IN MADRID · MARCH 19-27, 2027">8 DÍAS DE COMPETENCIA EN MADRID · 19-27 MARZO 2027</h3>
+
+      <div class="faq-item" onclick="this.classList.toggle('open')" style="border-bottom:1px solid rgba(11,31,58,0.1);">
+        <div class="faq-question" style="font-size:18px;"><span data-es="Ver agenda día a día (World Challenge)" data-en="View day-by-day schedule (World Challenge)">Ver agenda día a día (World Challenge)</span> <span class="faq-arrow">+</span></div>
+        <div class="faq-answer" style="padding-bottom:16px; max-width:none;">
+          <div class="agenda-timeline">
+            <div class="agenda-row">
+              <div class="agenda-line"></div>
+              <div class="agenda-stop">
+                <div class="agenda-dot">✈️</div>
+                <div class="agenda-date" data-es="VIE 19 MARZO 2027" data-en="FRI MAR 19, 2027">VIE 19 MARZO 2027</div>
+                <div class="agenda-name" data-es="Salida a Madrid" data-en="Departure to Madrid">Salida a Madrid</div>
+                <div class="agenda-desc" data-es="Viaje hacia Madrid. Inicio de la aventura del World Challenge." data-en="Journey to Madrid. The World Challenge adventure begins.">Viaje hacia Madrid. Inicio de la aventura del World Challenge.</div>
+              </div>
+              <div class="agenda-stop">
+                <div class="agenda-dot">🏨</div>
+                <div class="agenda-date" data-es="SÁB 20 MARZO 2027" data-en="SAT MAR 20, 2027">SÁB 20 MARZO 2027</div>
+                <div class="agenda-name" data-es="Recepción + Check-in" data-en="Arrival + Check-in">Recepción + Check-in</div>
+                <div class="agenda-desc" data-es="7:00 Recepción en el Aeropuerto Madrid-Barajas. 8:00 Check-in en el hotel." data-en="7:00 AM Arrival at Madrid-Barajas Airport. 8:00 AM Hotel check-in.">7:00 Recepción en el Aeropuerto Madrid-Barajas. 8:00 Check-in en el hotel.</div>
+              </div>
+              <div class="agenda-stop">
+                <div class="agenda-dot">🎤</div>
+                <div class="agenda-date" data-es="DOM 21 MARZO 2027" data-en="SUN MAR 21, 2027">DOM 21 MARZO 2027</div>
+                <div class="agenda-name" data-es="Conferencia + Tour Bernabéu" data-en="Conference + Bernabéu Tour">Conferencia + Tour Bernabéu</div>
+                <div class="agenda-desc" data-es='9:30 Conferencia "Building a Champion" y entrenamiento. 16:00 Tour Bernabéu y Real Madrid Adidas Store.' data-en='9:30 AM "Building a Champion" talk and training. 4:00 PM Bernabéu Tour and the Real Madrid Adidas Store.'>9:30 Conferencia "Building a Champion" y entrenamiento. 16:00 Tour Bernabéu y Real Madrid Adidas Store.</div>
+              </div>
+            </div>
+            <div class="agenda-row">
+              <div class="agenda-line alt"></div>
+              <div class="agenda-stop">
+                <div class="agenda-dot featured">🏆</div>
+                <div class="agenda-date" data-es="LUN 22 MARZO 2027" data-en="MON MAR 22, 2027">LUN 22 MARZO 2027</div>
+                <div class="agenda-name" data-es="Inauguración World Challenge" data-en="World Challenge Opening">Inauguración World Challenge</div>
+                <div class="agenda-desc" data-es="11:00 Ceremonia de inauguración del World Challenge." data-en="11:00 AM World Challenge opening ceremony.">11:00 Ceremonia de inauguración del World Challenge.</div>
+              </div>
+              <div class="agenda-stop">
+                <div class="agenda-dot featured">⚽</div>
+                <div class="agenda-date" data-es="MAR 23 MARZO 2027" data-en="TUE MAR 23, 2027">MAR 23 MARZO 2027</div>
+                <div class="agenda-name" data-es="Partido de grupos" data-en="Group stage match">Partido de grupos</div>
+                <div class="agenda-desc" data-es="Partido de grupos del World Challenge." data-en="World Challenge group stage match.">Partido de grupos del World Challenge.</div>
+              </div>
+              <div class="agenda-stop">
+                <div class="agenda-dot featured">⚽</div>
+                <div class="agenda-date" data-es="MIÉ 24 MARZO 2027" data-en="WED MAR 24, 2027">MIÉ 24 MARZO 2027</div>
+                <div class="agenda-name" data-es="Partido de grupos" data-en="Group stage match">Partido de grupos</div>
+                <div class="agenda-desc" data-es="Partido de grupos del World Challenge." data-en="World Challenge group stage match.">Partido de grupos del World Challenge.</div>
+              </div>
+            </div>
+            <div class="agenda-row">
+              <div class="agenda-line"></div>
+              <div class="agenda-stop">
+                <div class="agenda-dot">🥅</div>
+                <div class="agenda-date" data-es="JUE 25 MARZO 2027" data-en="THU MAR 25, 2027">JUE 25 MARZO 2027</div>
+                <div class="agenda-name" data-es="Eliminatorias" data-en="Knockout stage">Eliminatorias</div>
+                <div class="agenda-desc" data-es="Fase eliminatoria del World Challenge." data-en="World Challenge knockout stage.">Fase eliminatoria del World Challenge.</div>
+              </div>
+              <div class="agenda-stop">
+                <div class="agenda-dot">🏅</div>
+                <div class="agenda-date" data-es="VIE 26 MARZO 2027" data-en="FRI MAR 26, 2027">VIE 26 MARZO 2027</div>
+                <div class="agenda-name" data-es="Finales + Parque de atracciones" data-en="Finals + Theme park">Finales + Parque de atracciones</div>
+                <div class="agenda-desc" data-es="Finales del World Challenge. 13:00 Parque de atracciones." data-en="World Challenge finals. 1:00 PM Theme park.">Finales del World Challenge. 13:00 Parque de atracciones.</div>
+              </div>
+              <div class="agenda-stop">
+                <div class="agenda-dot">🏟️</div>
+                <div class="agenda-date" data-es="SÁB 27 MARZO 2027" data-en="SAT MAR 27, 2027">SÁB 27 MARZO 2027</div>
+                <div class="agenda-name" data-es="Ceremonia de Clausura + Check Out" data-en="Closing Ceremony + Check Out">Ceremonia de Clausura + Check Out</div>
+                <div class="agenda-desc" data-es="Ceremonia de Clausura Real Madrid Foundation y Check Out." data-en="Real Madrid Foundation Closing Ceremony and Check Out.">Ceremonia de Clausura Real Madrid Foundation y Check Out.</div>
+              </div>
+            </div>
+            <p class="agenda-note" data-es="Cada día: 19:00 regreso al hotel · 20:00 cena · 21:00 hora de descanso. * Partido en el Santiago Bernabéu sujeto al calendario oficial de LaLiga." data-en="Every day: 7:00 PM return to hotel · 8:00 PM dinner · 9:00 PM rest time. * Santiago Bernabéu match subject to the official LaLiga schedule.">Cada día: 19:00 regreso al hotel · 20:00 cena · 21:00 hora de descanso. * Partido en el Santiago Bernabéu sujeto al calendario oficial de LaLiga.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Incluye (jugadores) -->
+    <div style="margin-top:48px;">
+      <p class="section-label" data-es="World Challenge — Incluye" data-en="World Challenge — Includes">World Challenge — Incluye</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:stretch;" class="family-grid">
+        <div style="background:var(--navy); border-radius:14px; padding:36px 40px; position:relative; overflow:hidden;">
+          <div style="font-size:16px; color:rgba(255,255,255,0.9); line-height:2.3;">
+            <span data-es="✅ 7 noches en Campus Deportivo European Football Institute" data-en="✅ 7 nights at the European Football Institute Sports Campus">✅ 7 noches en Campus Deportivo European Football Institute</span><br>
+            <span data-es="✅ Seguro médico de viaje" data-en="✅ Travel medical insurance">✅ Seguro médico de viaje</span><br>
+            <span data-es="✅ Kit deportivo (2 uniformes, 2 camisetas y chaqueta)" data-en="✅ Sports kit (2 uniforms, 2 t-shirts and a jacket)">✅ Kit deportivo (2 uniformes, 2 camisetas y chaqueta)</span><br>
+            <span data-es="✅ 1 persona de Staff cada 10 niños" data-en="✅ 1 staff member for every 10 kids">✅ 1 persona de Staff cada 10 niños</span><br>
+            <span data-es="✅ Transporte" data-en="✅ Transportation">✅ Transporte</span><br>
+            <span data-es="✅ Excursiones y parque de atracciones" data-en="✅ Excursions and theme park">✅ Excursiones y parque de atracciones</span><br>
+            <span data-es="✅ Alimentación (desayuno, almuerzo, snack y cena)" data-en="✅ Meals (breakfast, lunch, snack and dinner)">✅ Alimentación (desayuno, almuerzo, snack y cena)</span><br>
+            <span data-es="✅ Diploma oficial del Real Madrid Foundation World Challenge" data-en="✅ Official Real Madrid Foundation World Challenge diploma">✅ Diploma oficial del Real Madrid Foundation World Challenge</span><br>
+            <span data-es="✅ Real Madrid Foundation World Challenge" data-en="✅ Real Madrid Foundation World Challenge">✅ Real Madrid Foundation World Challenge</span>
+          </div>
+        </div>
+        <div style="border-radius:10px; overflow:hidden; min-height:100%;">
+          <img src="https://lh3.googleusercontent.com/d/1PITPVIIwXetO2L2xf1_qXWFoUwrnUYil" alt="Real Madrid Foundation World Challenge" style="width:100%; height:100%; min-height:280px; object-fit:cover; display:block;">
+        </div>
+      </div>
+    </div>
+
+    <!-- Family Experience (World Challenge) -->
+    <div style="margin-top:40px;">
+      <p class="section-label" data-es="Family Experience · World Challenge" data-en="Family Experience · World Challenge">Family Experience · World Challenge</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:stretch;" class="family-grid">
+        <div style="background:var(--navy); border-radius:14px; padding:36px 40px; position:relative; overflow:hidden;">
+          <div style="font-size:16px; color:rgba(255,255,255,0.9); line-height:2.3;">
+            <span data-es="✅ 7 noches en Hotel EuroStars (desayuno incluido)" data-en="✅ 7 nights at Hotel EuroStars (breakfast included)">✅ 7 noches en Hotel EuroStars (desayuno incluido)</span><br>
+            <span data-es="✅ Seguro médico de viaje" data-en="✅ Travel medical insurance">✅ Seguro médico de viaje</span><br>
+            <span data-es="✅ Transportes a actividades" data-en="✅ Transportation to activities">✅ Transportes a actividades</span><br>
+            <span data-es="✅ Escarapela de identificación" data-en="✅ ID badge">✅ Escarapela de identificación</span><br>
+            <span data-es="✅ Madrid City Tour y Parque Warner" data-en="✅ Madrid City Tour and Warner Park">✅ Madrid City Tour y Parque Warner</span><br>
+            <span data-es="✅ Tour estadio Santiago Bernabéu" data-en="✅ Santiago Bernabéu Stadium Tour">✅ Tour estadio Santiago Bernabéu</span><br>
+            <span data-es="✅ Real Madrid Foundation World Challenge" data-en="✅ Real Madrid Foundation World Challenge">✅ Real Madrid Foundation World Challenge</span>
+          </div>
+        </div>
+        <div style="border-radius:10px; overflow:hidden; min-height:100%;">
+          <img src="https://lh3.googleusercontent.com/d/1nktkrrcF4M01miESlj2w4BhIdYBAUFFt" alt="Family Experience World Challenge" style="width:100%; height:100%; min-height:280px; object-fit:cover; display:block;">
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:36px;">
+        <a href="#inscripcion" class="btn-primary on-light" style="color:white; text-decoration:none;" data-es="Recibir información →" data-en="Get information →">
+          Recibir información →
+        </a>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1982,6 +2208,29 @@ function showStatus(type, msg, onClick) {
   transition: background 0.2s;
 }
 .nav-drawer-link:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.nav-drawer-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(255,255,255,0.75);
+  font-size: 15px;
+  font-weight: 400;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.nav-drawer-dropdown-toggle:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.nav-drawer-dropdown-arrow { transition: transform 0.2s; font-size: 12px; }
+.nav-drawer-dropdown.open .nav-drawer-dropdown-arrow { transform: rotate(180deg); }
+.nav-drawer-submenu {
+  display: none;
+  flex-direction: column;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255,255,255,0.1);
+  margin: 2px 0 4px 12px;
+}
+.nav-drawer-dropdown.open .nav-drawer-submenu { display: flex; }
 .nav-drawer-cta {
   display: block;
   text-align: center;
