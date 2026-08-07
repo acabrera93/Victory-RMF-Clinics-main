@@ -177,6 +177,28 @@ const BUDGET_SHEET_ID = "1nMPrqnDUVwaoG42B84T8rCBvE7hKLo5nFLbrYWb58XQ"; // Sheet
 const SHEET_ID_WORLD_CHALLENGE = "1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg"; // Sheet Inscripciones World Challenge 2027
 const BUDGET_SHEET_ID_WORLD_CHALLENGE = "1vqmm9em3DKNZdhlZ7hfjlFJfGiL83bTell0izCCHvPY"; // Sheet presupuesto World Challenge 2027
 
+// Recargo que cobra Bold por pago con tarjeta. El comprobante/monto de un pago
+// con tarjeta trae este recargo incluido, pero no es parte del programa (es la
+// comisión del procesador) — no cuenta para el saldo del cliente. Se separa en
+// getAbonosValidados_() y se usa como referencia en evaluarComprobante_().
+// Debe coincidir con el 0.035 usado en areapersonal.html.
+var RECARGO_TARJETA_PCT = 0.035;
+
+// Lee la celda "Metodo de pago" de una fila de Pagos y devuelve el % de
+// recargo de tarjeta a aplicar, o null si la fila no es un pago con tarjeta.
+// Normalmente la celda solo dice "tarjeta" → usa el recargo vigente
+// (RECARGO_TARJETA_PCT). Para casos puntuales donde el recargo real cobrado
+// fue distinto (ej. pagos antiguos hechos cuando Bold cobraba 3% en vez del
+// 3.5% actual), se puede escribir "tarjeta 3%" en esa misma celda para esa
+// fila específica, sin afectar el recargo estándar de las demás filas.
+function recargoTarjetaDeCelda_(valorCelda) {
+  var s = String(valorCelda || '').trim().toLowerCase();
+  if (s.indexOf('tarjeta') !== 0) return null; // no es un pago con tarjeta
+  var m = s.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  if (m) return parseFloat(m[1].replace(',', '.')) / 100;
+  return RECARGO_TARJETA_PCT;
+}
+
 function esWorldChallenge_(programa) {
   // Acepta tanto el texto libre ("Real Madrid Foundation World Challenge")
   // como el program_key interno ("world_challenge") — normaliza guiones
@@ -259,7 +281,14 @@ function getAbonosValidados_(nombre, budgetSheetId) {
   }
   const resultado = {
     reserva: 0, tiquete: 0, final: 0,
-    reserva_fecha: '', tiquete_fecha: '', final_fecha: ''
+    reserva_fecha: '', tiquete_fecha: '', final_fecha: '',
+    // *_comision = parte de lo pagado que es el recargo del 3.5% de Bold (pago
+    // con tarjeta) — no cuenta para el saldo del programa (ver reserva/tiquete/
+    // final arriba, que ya vienen SIN esa comisión). *_bruto = lo realmente
+    // pagado incluyendo la comisión, para mostrarle al cliente y al admin el
+    // total real que salió de su bolsillo. reserva = reserva_bruto - reserva_comision.
+    reserva_comision: 0, tiquete_comision: 0, final_comision: 0,
+    reserva_bruto: 0, tiquete_bruto: 0, final_bruto: 0
   };
   try {
     const nombreNorm = normNombreGS(nombre);
@@ -269,7 +298,10 @@ function getAbonosValidados_(nombre, budgetSheetId) {
     if (!pagosSheet) return resultado;
     const lastRow = pagosSheet.getLastRow();
     if (lastRow < 6) return resultado;
-    const data = pagosSheet.getRange('A6:K' + lastRow).getValues();
+    const pc = getPagosColMap_(pagosSheet);
+    const metodoCol = pc.metodo_de_pago || 0; // columna opcional — 0 si la hoja aún no la tiene
+    const lastCol = Math.max(11, metodoCol);
+    const data = pagosSheet.getRange(6, 1, lastRow - 5, lastCol).getValues();
     const num = function(v) {
       if (typeof v === 'number') return v;
       var s = String(v == null ? '' : v).trim().replace(/[€$\s]/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.');
@@ -287,12 +319,27 @@ function getAbonosValidados_(nombre, budgetSheetId) {
       if (!currentNombre || normNombreGS(currentNombre) !== nombreNorm) continue;
       const estado = String(r[5] || '').toLowerCase().trim();
       if (estado !== 'completo' && estado !== 'parcial') continue; // solo validados
-      const eurAmt = num(r[4]);
-      if (eurAmt <= 0) continue;
+      const eurBruto = num(r[4]);
+      if (eurBruto <= 0) continue;
       const conceptoRaw = String(r[7] || '').toLowerCase().trim();
       const concepto = conceptoRaw === 'pago final' ? 'final' : conceptoRaw;
       if (concepto !== 'reserva' && concepto !== 'tiquete' && concepto !== 'final') continue;
-      resultado[concepto] += eurAmt;
+      // Valor EUR en la hoja = lo REALMENTE pagado (bruto). Si fue con tarjeta,
+      // ese bruto trae el recargo de Bold incluido — se separa aquí para que
+      // "concepto" (reserva/tiquete/final) quede SIEMPRE en base, sin comisión,
+      // que es lo que cuenta contra el saldo del programa. El % de recargo
+      // normalmente es el vigente (RECARGO_TARJETA_PCT), salvo que la celda
+      // tenga un % puntual distinto (ver recargoTarjetaDeCelda_).
+      const metodoRowRaw = metodoCol ? String(r[metodoCol - 1] || '') : '';
+      const recargoRow = recargoTarjetaDeCelda_(metodoRowRaw);
+      let eurBase = eurBruto, eurComision = 0;
+      if (recargoRow !== null) {
+        eurBase = eurBruto / (1 + recargoRow);
+        eurComision = eurBruto - eurBase;
+      }
+      resultado[concepto] += eurBase;
+      resultado[concepto + '_comision'] += eurComision;
+      resultado[concepto + '_bruto'] += eurBruto;
       const fechaCelda = r[2];
       const fechaComparable = (fechaCelda instanceof Date) ? fechaCelda : new Date(String(fechaCelda));
       if (!isNaN(fechaComparable.getTime()) && (!fechaMasReciente[concepto] || fechaComparable > fechaMasReciente[concepto])) {
@@ -366,6 +413,15 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
       participant['abono_reserva_fecha'] = abonos.reserva_fecha;
       participant['abono_tiquete_fecha'] = abonos.tiquete_fecha;
       participant['abono_final_fecha'] = abonos.final_fecha;
+      // Comisión de tarjeta (3.5% Bold) y bruto real pagado — abono_* de arriba
+      // ya viene SIN esta comisión (es lo que cuenta para el saldo); estos campos
+      // son solo para mostrarle al cliente/admin el desglose de lo pagado.
+      participant['abono_reserva_comision'] = String(abonos.reserva_comision);
+      participant['abono_tiquete_comision'] = String(abonos.tiquete_comision);
+      participant['abono_final_comision'] = String(abonos.final_comision);
+      participant['abono_reserva_bruto'] = String(abonos.reserva_bruto);
+      participant['abono_tiquete_bruto'] = String(abonos.tiquete_bruto);
+      participant['abono_final_bruto'] = String(abonos.final_bruto);
       out.push(participant);
     }
   } catch (err) {
@@ -2075,12 +2131,6 @@ function verificarComprobanteIA_(fileId, eurEsperado, copEsperado, metodoPago) {
     return { status: 'manual', detalle: 'Error técnico al verificar' };
   }
 }
-
-// Recargo que cobra Bold por pago con tarjeta. El comprobante de un pago con
-// tarjeta muestra el monto CON este recargo incluido, pero ese extra no forma
-// parte del programa (es la comisión del procesador) — no debe contarse para
-// el saldo del cliente. Debe coincidir con el 0.035 usado en areapersonal.html.
-var RECARGO_TARJETA_PCT = 0.035;
 
 // Compara lo leído por la IA contra el monto esperado. Para transferencia debe
 // calzar casi exacto (0.3% de tolerancia, redondeos). Para tarjeta, el

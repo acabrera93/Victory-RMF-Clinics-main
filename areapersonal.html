@@ -2127,6 +2127,16 @@ function normalizeParticipant(raw) {
     abono_reserva_fecha: rowVal(raw, 'abono_reserva_fecha') || '',
     abono_tiquete_fecha: rowVal(raw, 'abono_tiquete_fecha') || '',
     abono_final_fecha: rowVal(raw, 'abono_final_fecha') || '',
+    // Comisión de tarjeta (3.5% Bold) y bruto realmente pagado — abono_* de
+    // arriba ya viene SIN esta comisión (cuenta para el saldo); estos campos
+    // son solo para mostrar el desglose al cliente/admin. Ver getAbonosValidados_
+    // en el backend, que hace la separación.
+    abono_reserva_comision: parseFloat(rowVal(raw, 'abono_reserva_comision')) || 0,
+    abono_tiquete_comision: parseFloat(rowVal(raw, 'abono_tiquete_comision')) || 0,
+    abono_final_comision: parseFloat(rowVal(raw, 'abono_final_comision')) || 0,
+    abono_reserva_bruto: parseFloat(rowVal(raw, 'abono_reserva_bruto')) || 0,
+    abono_tiquete_bruto: parseFloat(rowVal(raw, 'abono_tiquete_bruto')) || 0,
+    abono_final_bruto: parseFloat(rowVal(raw, 'abono_final_bruto')) || 0,
   };
 }
 
@@ -2226,6 +2236,12 @@ function calcPaymentTotals() {
   const abonoReserva = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva || 0), 0);
   const abonoTiquete = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete || 0), 0);
   const abonoFinal = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final || 0), 0);
+  // Comisión de tarjeta (3.5% Bold) ya excluida de abono* arriba — se suma
+  // aparte solo para mostrarle al cliente el desglose (base + comisión = lo
+  // realmente pagado), sin que afecte el saldo pendiente.
+  const comisionReserva = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva_comision || 0), 0);
+  const comisionTiquete = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete_comision || 0), 0);
+  const comisionFinal = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final_comision || 0), 0);
   // Detalle de cada abono individual (monto + fecha) — si más de un participante del
   // grupo pagó por separado el mismo concepto, se listan todos en vez de mostrar
   // arbitrariamente la fecha del primero.
@@ -2237,13 +2253,17 @@ function calcPaymentTotals() {
   const abonosTiqueteDetalle = detalleAbonos('abono_tiquete', 'abono_tiquete_fecha');
   const abonosFinalDetalle = detalleAbonos('abono_final', 'abono_final_fecha');
 
-  return { reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal, abonosReservaDetalle, abonosTiqueteDetalle, abonosFinalDetalle };
+  return {
+    reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal,
+    comisionReserva, comisionTiquete, comisionFinal,
+    abonosReservaDetalle, abonosTiqueteDetalle, abonosFinalDetalle
+  };
 }
 
 function applyPaymentTotals(t) {
   // Reserva: input + título del card, usando lo restante si hay abono
   const e1 = document.getElementById('eur1');
-  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonosReservaDetalle);
+  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonosReservaDetalle, t.comisionReserva || 0);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.reserva = restanteReserva;
   if (e1) { e1.value = restanteReserva; calc1(); }
@@ -2259,7 +2279,7 @@ function applyPaymentTotals(t) {
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
   const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
-  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle);
+  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle, t.comisionTiquete || 0);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
@@ -2268,7 +2288,7 @@ function applyPaymentTotals(t) {
 
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
-  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonosFinalDetalle);
+  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonosFinalDetalle, t.comisionFinal || 0);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.final = restanteFinal;
   if (e2) { e2.value = restanteFinal; calc2(); }
@@ -2995,11 +3015,15 @@ function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
   if (elTrT) elTrT.textContent = fmt(base);
 }
 
-function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, detalleAbonos) {
+function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, detalleAbonos, comision) {
   const aviso = document.getElementById(idAviso);
   const input = document.getElementById(idInput);
   if (!aviso || !input) return 0;
   if (abono <= 0) { aviso.style.display = 'none'; return total; }
+  // `abono` ya viene SIN la comisión de tarjeta (ver calcPaymentTotals) — el
+  // saldo pendiente se calcula siempre sobre el monto base, nunca se reduce
+  // por la comisión pagada. `comision` (si > 0) solo se usa para mostrarle al
+  // participante que lo que realmente salió de su bolsillo fue abono+comisión.
   const restante = Math.max(0, total - abono);
   if (restante <= 0) {
     aviso.style.display = 'none';
@@ -3017,14 +3041,23 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
         </div>`).join('')}
       </div>`
     : '';
+  const comisionNum = comision || 0;
+  const totalPagado = abono + comisionNum;
+  const desgloseComision = comisionNum > 0
+    ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--gborder);font-size:12px;color:var(--green);opacity:0.85">
+        <div style="display:flex;justify-content:space-between;gap:10px"><span>Monto del programa</span><span>${abono.toLocaleString('es-CO')} EUR</span></div>
+        <div style="display:flex;justify-content:space-between;gap:10px;margin-top:3px"><span>Comisión pago con tarjeta (3,5%)</span><span>${comisionNum.toLocaleString('es-CO')} EUR</span></div>
+      </div>`
+    : '';
   aviso.innerHTML = `
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px">
       <div style="background:var(--gbg);padding:14px 16px;border-bottom:1px dashed var(--gborder)">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);margin-bottom:5px">✅ Abono recibido</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div style="font-size:20px;font-weight:700;color:var(--green)">${abono.toLocaleString('es-CO')} EUR</div>
+          <div style="font-size:20px;font-weight:700;color:var(--green)">${totalPagado.toLocaleString('es-CO')} EUR</div>
           ${fechaUnica ? `<div style="font-size:12px;color:var(--green);opacity:0.8">${escapeHtml(fechaUnica)}</div>` : ''}
         </div>
+        ${desgloseComision}
         ${listaDetalle}
       </div>
       <div style="background:rgba(217,119,6,.07);padding:14px 16px">
@@ -6211,23 +6244,42 @@ function openPagosModal(idx, nombreOverride) {
     const comprobanteLink = urlsComprobanteEx.length
       ? urlsComprobanteEx.map((url, i) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:6px;display:inline-block">📎 Ver comprobante${urlsComprobanteEx.length > 1 ? ' ' + (i + 1) : ''} subido por el participante</a><br>`).join('')
       : '';
-    // Pago con tarjeta: el comprobante que lee la IA suele traer el 3,5% de
-    // recargo de Bold incluido. Ese recargo no es parte del programa — nunca
-    // se usa el monto detectado por la IA para precargar estos campos en un
-    // pago con tarjeta, siempre el monto ya guardado (ex.eur/ex.cop), que es
-    // el base sin recargo. El monto real cobrado se muestra aparte, en
-    // montoRealTarjetaLine, solo para referencia/contabilidad interna.
-    const esPagoTarjeta = ex && ex.metodo_pago === 'tarjeta';
-    const iaDetectado = (ex && !esPagoTarjeta && (ex.ia_status === 'coincide' || ex.ia_status === 'revisar'))
+    // Valor EUR/COP en la hoja (ex.eur/ex.cop) = lo REALMENTE pagado (bruto,
+    // incl. el 3,5% de recargo de Bold si fue con tarjeta) — así se registra
+    // siempre, tanto en el flujo automático como cuando el admin confirma un
+    // monto detectado por la IA (que también lee el bruto del comprobante).
+    // El saldo del cliente se calcula aparte con el monto BASE, que el backend
+    // (getAbonosValidados_) separa automáticamente cuando la fila tiene
+    // Método de pago = tarjeta — no hace falta restar nada aquí.
+    const iaDetectado = (ex && (ex.ia_status === 'coincide' || ex.ia_status === 'revisar'))
       ? extraerMontoIA_(ex.ia_detalle) : null;
     const eurMostrado = (iaDetectado && iaDetectado.moneda !== 'COP') ? iaDetectado.monto : (ex ? ex.eur : '');
     const copMostrado = (iaDetectado && iaDetectado.moneda === 'COP') ? iaDetectado.monto : (ex ? ex.cop : '');
-    const montoRealTarjetaLine = esPagoTarjeta
-      ? `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(217,119,6,.08);border-radius:8px;font-size:11px;color:#92400e">
-          💳 Pagado con tarjeta — monto real cobrado (incl. 3,5% Bold): <strong>${Math.round((ex.cop||0) * (1 + 0.035)).toLocaleString('es-CO')} COP</strong>
-          ${ex.eur ? ` / <strong>${(Math.round(ex.eur * (1 + 0.035) * 100) / 100).toLocaleString('es-CO')} EUR</strong>` : ''}
-          — solo para contabilidad interna, el recargo no cuenta para el saldo del cliente.
-        </div>`
+    // Normalmente la celda "Metodo de pago" solo dice "tarjeta" (recargo
+    // estándar 3,5%). Para casos puntuales con un recargo real distinto (ej.
+    // pagos antiguos con el 3% que cobraba Bold antes), se puede escribir
+    // "tarjeta 3%" en esa fila — ver recargoTarjetaDeCelda_ en el backend,
+    // que aplica la misma lógica para calcular el saldo real del cliente.
+    const metodoPagoStr = (ex && ex.metodo_pago) ? String(ex.metodo_pago).trim().toLowerCase() : '';
+    const esPagoTarjeta = metodoPagoStr.indexOf('tarjeta') === 0;
+    const recargoPct = (() => {
+      const m = metodoPagoStr.match(/(\d+(?:[.,]\d+)?)\s*%/);
+      return m ? parseFloat(m[1].replace(',', '.')) / 100 : 0.035;
+    })();
+    const montoRealTarjetaLine = (esPagoTarjeta && ex.eur > 0)
+      ? (() => {
+          const base = Math.round((ex.eur / (1 + recargoPct)) * 100) / 100;
+          const comision = Math.round((ex.eur - base) * 100) / 100;
+          const baseCop = ex.cop > 0 ? Math.round(ex.cop / (1 + recargoPct)) : 0;
+          const comisionCop = ex.cop > 0 ? (ex.cop - baseCop) : 0;
+          const recargoLabel = (recargoPct * 100).toLocaleString('es-CO', { maximumFractionDigits: 1 });
+          return `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(217,119,6,.08);border-radius:8px;font-size:11px;color:#92400e">
+            💳 Pagado con tarjeta — total pagado: <strong>${ex.eur.toLocaleString('es-CO')} EUR${ex.cop ? ' / ' + ex.cop.toLocaleString('es-CO') + ' COP' : ''}</strong>
+            = monto del programa <strong>${base.toLocaleString('es-CO')} EUR${baseCop ? ' / ' + baseCop.toLocaleString('es-CO') + ' COP' : ''}</strong>
+            + comisión Bold ${recargoLabel}% <strong>${comision.toLocaleString('es-CO')} EUR${comisionCop ? ' / ' + comisionCop.toLocaleString('es-CO') + ' COP' : ''}</strong>
+            — la comisión no cuenta para el saldo del cliente, solo para contabilidad interna.
+          </div>`;
+        })()
       : '';
     // Resumen de abonos — solo se muestra si hay historial registrado.
     const resumenAbonos = tieneHistorial ? `<div style="border:1px solid var(--gborder,var(--border));border-radius:10px;overflow:hidden;margin-bottom:12px">
