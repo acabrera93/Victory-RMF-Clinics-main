@@ -1687,6 +1687,13 @@
           <div class="form-sub" data-es="Cupos Limitados — Real Madrid Foundation Clinic 2026" data-en="Limited Spots — Real Madrid Foundation Clinic 2026">Cupos Limitados — Real Madrid Foundation Clinic 2026</div>
 
           <div class="form-group">
+            <select class="form-select" id="f-programa" required>
+              <option value="Real Madrid Foundation Clinic" data-es="Real Madrid Foundation Clinic" data-en="Real Madrid Foundation Clinic">Real Madrid Foundation Clinic</option>
+              <option value="Real Madrid Foundation World Challenge" data-es="Real Madrid Foundation World Challenge" data-en="Real Madrid Foundation World Challenge">Real Madrid Foundation World Challenge</option>
+            </select>
+            <div class="field-error-msg" id="err-f-programa">Por favor selecciona un programa.</div>
+          </div>
+          <div class="form-group">
             <input class="form-input" id="f-nombre" type="text" placeholder="Tu nombre y apellido *" data-placeholder-es="Tu nombre y apellido *" data-placeholder-en="Your full name *" required>
             <div class="field-error-msg" id="err-f-nombre">Por favor completa tu nombre.</div>
           </div>
@@ -1771,6 +1778,8 @@ const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/3gcs8kbhhs9pwlnblt16l5oqybbk
 
 // URL pública del PDF de Real Madrid en español (LatAm + España)
 const PDF_RMF = 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing';
+// URL pública del PDF de Real Madrid Foundation World Challenge
+const PDF_WORLD_CHALLENGE = 'https://drive.google.com/file/d/15f9qoSFgoeXOkEWdpQ4pGWZO874uB6uw/view?usp=sharing';
 // URL pública del PDF de Japan Golf
 const PDF_JAPAN = 'https://drive.google.com/file/d/TU_ID_PDF_JAPAN/view';
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1799,9 +1808,11 @@ detectarPaisVisitante_();
 // Devuelve la URL real del PDF, o null si el visitante está fuera de
 // España/LatAm y el PDF en inglés aún no existe.
 function getPdfLink(programa) {
-  if (programa.toLowerCase().includes('japan golf')) return PDF_JAPAN;
+  const p = programa.toLowerCase();
+  if (p.includes('japan golf')) return PDF_JAPAN;
   const esPaisHispano = visitorCountry && PAISES_PDF_ESPANOL.includes(visitorCountry);
-  return esPaisHispano ? PDF_RMF : null;
+  if (!esPaisHispano) return null;
+  return p.includes('world challenge') ? PDF_WORLD_CHALLENGE : PDF_RMF;
 }
 
 function getMensajeWhatsApp(data) {
@@ -1851,7 +1862,7 @@ function markFieldError(id) {
 async function handleSubmit(e) {
   e.preventDefault();
 
-  const programa   = 'Real Madrid Foundation Clinic';
+  const programa   = document.getElementById('f-programa')?.value || 'Real Madrid Foundation Clinic';
   const nombre     = document.getElementById('f-nombre')?.value?.trim();
   const jugador    = document.getElementById('f-jugador')?.value?.trim();
   const edad       = document.getElementById('f-edad')?.value;

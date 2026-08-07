@@ -124,7 +124,25 @@ img, video, iframe, table {
     </div>
   </div>
 
+  <!-- SELECTOR DE PROGRAMA -->
+  <div class="ctitle">1. Elige el programa</div>
+  <div class="type-grid" id="programa-grid">
+    <div class="type-card selected" id="card-programa-clinic" onclick="selectPrograma('Real Madrid Foundation Clinic')">
+      <div class="type-icon">⚽</div>
+      <div class="type-title">Real Madrid Foundation Clinic</div>
+      <div class="type-desc">Programa deportivo en la Ciudad Deportiva del Real Madrid. 2–10 Octubre 2026 · Madrid, España.</div>
+      <div class="type-badge">2026</div>
+    </div>
+    <div class="type-card" id="card-programa-world-challenge" onclick="selectPrograma('Real Madrid Foundation World Challenge')">
+      <div class="type-icon">🏆</div>
+      <div class="type-title">Real Madrid Foundation World Challenge</div>
+      <div class="type-desc">Torneo internacional en la Ciudad Deportiva del Real Madrid. 19–27 Marzo 2027 · Madrid, España.</div>
+      <div class="type-badge">2027</div>
+    </div>
+  </div>
+
   <!-- SELECTOR -->
+  <div class="ctitle" style="margin-top:24px">2. Tipo de participante</div>
   <div class="type-grid" id="type-grid">
     <div class="type-card" id="card-jugador" onclick="selectType('jugador')">
       <div class="type-icon">⚽</div>
@@ -353,8 +371,27 @@ function postMakeWebhook(baseUrl, payload) {
 }
 
 let selectedType = null;
+let selectedPrograma = 'Real Madrid Foundation Clinic';
 let tiqJugador = null;
 let tiqAcompanante = null;
+
+function selectPrograma(programa) {
+  selectedPrograma = programa;
+  document.getElementById('card-programa-clinic').classList.toggle('selected', programa === 'Real Madrid Foundation Clinic');
+  document.getElementById('card-programa-world-challenge').classList.toggle('selected', programa === 'Real Madrid Foundation World Challenge');
+}
+
+// Preselecciona el programa si llega por link desde el correo de "Mas
+// Información" (ej. inscripcion.html?programa=Real%20Madrid%20Foundation%20World%20Challenge)
+// — evita que la persona tenga que volver a elegir un programa que ya eligió antes.
+(function preseleccionarProgramaDesdeURL() {
+  const programaURL = new URLSearchParams(window.location.search).get('programa') || '';
+  if (programaURL.toLowerCase().includes('world challenge')) {
+    selectPrograma('Real Madrid Foundation World Challenge');
+  } else if (programaURL.toLowerCase().includes('clinic')) {
+    selectPrograma('Real Madrid Foundation Clinic');
+  }
+})();
 
 function selectType(tipo) {
   selectedType = tipo;
@@ -447,7 +484,7 @@ async function submitForm(tipo) {
     acudiente: document.getElementById('j-acudiente').value.trim(),
     relacion: document.getElementById('j-relacion').value,
     tiquete_aereo: tiqJugador === 'si' ? 'Con tiquete' : 'Sin tiquete',
-    programa: 'RMF Clinic 2026', habitacion: '', jugador_acompana: '',
+    programa: selectedPrograma, habitacion: '', jugador_acompana: '',
     paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web'
   } : {
     action: 'preinscripcion',
@@ -462,7 +499,7 @@ async function submitForm(tipo) {
     ciudad: document.getElementById('a-ciudad').value.trim(),
     salud_alergias: '', acudiente: '', relacion: '',
     tiquete_aereo: tiqAcompanante === 'si' ? 'Con tiquete' : 'Sin tiquete',
-    programa: 'RMF Clinic 2026',
+    programa: selectedPrograma,
     habitacion: document.getElementById('a-habitacion').value === 'solo_actividades' ? '' : document.getElementById('a-habitacion').value,
     jugador_acompana: document.getElementById('a-jugador').value.trim(),
     nombre_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-nombre').value.trim() : '',
