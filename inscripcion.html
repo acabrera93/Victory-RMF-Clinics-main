@@ -277,6 +277,7 @@ img, video, iframe, table {
           <option value="individual">Individual</option>
           <option value="doble">Doble (con otro acompañante)</option>
           <option value="solo_actividades">Solo actividades (sin alojamiento)</option>
+          <option value="solo_world_challenge" id="opt-solo-wc" hidden>Solo World Challenge (sin alojamiento ni actividades turísticas)</option>
         </select>
       </div>
       <div style="grid-column:1/-1">
@@ -379,6 +380,8 @@ function selectPrograma(programa) {
   selectedPrograma = programa;
   document.getElementById('card-programa-clinic').classList.toggle('selected', programa === 'Real Madrid Foundation Clinic');
   document.getElementById('card-programa-world-challenge').classList.toggle('selected', programa === 'Real Madrid Foundation World Challenge');
+  const optSoloWC = document.getElementById('opt-solo-wc');
+  if (optSoloWC) optSoloWC.hidden = programa !== 'Real Madrid Foundation World Challenge';
 }
 
 // Preselecciona el programa si llega por link desde el correo de "Mas
@@ -420,7 +423,7 @@ function onHabitacion() {
     document.getElementById('p2-nombre').classList.remove('error');
     document.getElementById('p2-pasaporte').classList.remove('error');
   }
-  document.getElementById('solo-act-note').style.display = val === 'solo_actividades' ? 'block' : 'none';
+  document.getElementById('solo-act-note').style.display = (val === 'solo_actividades' || val === 'solo_world_challenge') ? 'block' : 'none';
 }
 
 function selTiq(tipo, val) {

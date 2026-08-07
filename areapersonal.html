@@ -680,8 +680,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <div class="card">
       <div class="ctitle">Calculadora EUR → COP</div>
-      <p style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
-      <p style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
+      <p id="reserva-tasa-info" style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
+      <p id="reserva-tasa-nota" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
       <div id="aviso-abono-reserva" class="info-box" style="display:none"></div>
       <div class="calc-row">
         <div>
@@ -770,11 +770,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <div class="panel section-anchor" id="panel-tiq">
     <div class="card">
       <div style="background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:20px;margin-bottom:20px">
-        <p style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>993 EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.</p>
+        <p id="tiquete-info-parrafo" style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>993 EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">✈️</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Vuelo grupo</div><div style="font-size:10px;color:var(--muted)">BOG–MAD–BOG</div></div>
-          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">📅</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Fecha límite</div><div style="font-size:10px;color:var(--muted)">1 de junio 2026</div></div>
-          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo</div><div style="font-size:10px;color:var(--muted)">993 EUR / persona</div></div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">📅</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Fecha límite</div><div id="tiquete-fecha-limite" style="font-size:10px;color:var(--muted)">1 de junio 2026</div></div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">💶</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Costo</div><div id="tiquete-costo-valor" style="font-size:10px;color:var(--muted)">993 EUR / persona</div></div>
         </div>
       </div>
       <div class="ctitle">Pago del tiquete aéreo</div>
@@ -832,7 +832,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div style="text-align:center;padding:20px 0 24px">
         <div style="font-size:48px;margin-bottom:10px">📅</div>
         <div id="panel3-subtitle" style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--navy);letter-spacing:1px;margin-bottom:6px">SEGUNDO PAGO — 1.790 EUR</div>
-        <div style="font-size:14px;color:var(--muted)">Fecha límite: <strong>30 de julio 2026</strong></div>
+        <div style="font-size:14px;color:var(--muted)">Fecha límite: <strong id="panel3-fecha-limite">30 de julio 2026</strong></div>
       </div>
       <div id="breakdown-final" class="breakdown-box" style="display:none"></div>
       <div id="aviso-abono-final" class="info-box" style="display:none"></div>
@@ -1317,6 +1317,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <button class="asnav-btn" data-asec="galeria" onclick="adminSection('galeria')">Galería</button>
         <button class="asnav-btn" data-asec="analytics" onclick="adminSection('analytics')">Analytics</button>
         <button class="asnav-btn" id="stab-acceso" data-asec="acceso" onclick="adminSection('acceso')" style="display:none;margin-left:auto;border-color:var(--navy);color:var(--navy)">🔐 Acceso</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button id="admin-prog-clinic" class="programa-switch-btn active" style="font-size:12px;padding:6px 12px" onclick="cambiarProgramaAdmin('clinic')">🏟️ Clinic</button>
+        <button id="admin-prog-wc" class="programa-switch-btn" style="font-size:12px;padding:6px 12px" onclick="cambiarProgramaAdmin('world_challenge')">🏆 World Challenge</button>
       </div>
     </div>
 
@@ -1922,6 +1926,7 @@ let misPagosValidados = {}; // { reserva: {estado,eur,cop}, final: {...} } — s
 let tipo = 'jugador';
 let conTiq = false;
 let soloAct = false;
+let sinPagoFinal = false; // World Challenge: grupo cuyo Pago Final es 0 (Solo Actividades/Solo World Challenge) — oculta el paso "Pago final" del stepper
 let esStaffView = false;
 let esComercialOnly = false;
 let grupoPaso = 1;
@@ -1930,6 +1935,8 @@ let programKeyActivo = 'clinic'; // 'clinic' | 'world_challenge' — programa ac
 let adminLoaded = false;
 let adminLastLoaded = 0;
 let adminData = [];
+let adminProgramaActivo = 'clinic'; // 'clinic' | 'world_challenge' — qué programa está viendo el admin
+let pagoCurrentProgramKey = 'clinic'; // programa del participante cuyo modal de pagos está abierto
 let adminSessionToken = sessionStorage.getItem('admin_token') || '';
 let comercialSessionToken = sessionStorage.getItem('comercial_token') || '';
 let adminCurrentRow = null;
@@ -2187,50 +2194,38 @@ function updatePermisoDoc(u) {
 }
 
 // ── CÁLCULO DE TOTALES POR GRUPO ──────────────────────────────────────────────
+// Filtra al programa ACTIVO (programKeyActivo) — un mismo email con
+// inscripción en Clinic Y World Challenge tiene dos grupos independientes;
+// antes esta función usaba allParticipants sin filtrar y mezclaba ambos.
 function calcPaymentTotals() {
-  const total = allParticipants.length || 1;
+  const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
+  const esWC = programKeyActivo === 'world_challenge';
+  const total = participantesPrograma.length || 1;
 
-  // Reserva: 1.000€ por participante excepto acompañantes con "Solo actividades"
-  const reservaCount = allParticipants.filter(p => {
-    const n = normalizeParticipant(p) || p;
-    return (n.tipo||'').toLowerCase().includes('jug') || (n.habitacion||'') !== '';
-  }).length;
-  const reserva = 1000 * reservaCount;
+  let reserva = 0, final = 0;
+  for (const raw of participantesPrograma) {
+    const n = normalizeParticipant(raw) || raw;
+    const m = montoReservaFinalParticipante_(n, esWC);
+    reserva += m.reserva;
+    final += m.final;
+  }
+  if (participantesPrograma.length === 0) final = esWC ? PRECIOS_WC.jugador.final : 1790; // fallback
 
-  // Tiquete: 993 EUR (precio fijo) por participante con tiquete, convertido a COP con la TRM fija del 1 de junio de 2026
-  const tiqCount = allParticipants.filter(p => {
+  const tasaRT = tasaReservaTiquete_();
+  const tiqueteEurUnit = tiqueteUnitEur_();
+  const tiqCount = participantesPrograma.filter(p => {
     const n = normalizeParticipant(p) || p;
     return n.tiquete_aereo === 'Con tiquete';
   }).length;
-  const tiquete = Math.round(TIQUETE_EUR * TRM_RESERVA) * tiqCount;
+  const tiquete = Math.round(tiqueteEurUnit * tasaRT) * tiqCount;
 
-  // Pago final: jugador=1.790, acomp solo actividades (>12a=590, ≤12a=190), acomp doble=1.190, acomp sencilla=1.510
-  let final = 0;
-  for (const raw of allParticipants) {
-    const n = normalizeParticipant(raw) || raw;
-    if ((n.tipo || '').toLowerCase().includes('jug')) {
-      final += 1790;
-    } else {
-      const hab = (n.habitacion || '').toLowerCase();
-      if (hab === '') {
-        const fnRaw = n.fecha_nacimiento || raw['Fecha Nacimiento'] || raw['fecha nacimiento'] || raw['fecha_nacimiento'] || '';
-        const fObj = parseFechaNacFront(fnRaw);
-        const edad = fObj ? calcEdadRefFront(fObj) : null;
-        final += (edad !== null && edad <= 12) ? 190 : 590;
-      } else {
-        final += hab.includes('doble') ? 1190 : 1510;
-      }
-    }
-  }
-  if (allParticipants.length === 0) final = 1790; // fallback
-
-  const abonoReserva = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva || 0), 0);
-  const abonoTiquete = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete || 0), 0);
-  const abonoFinal = allParticipants.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final || 0), 0);
+  const abonoReserva = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva || 0), 0);
+  const abonoTiquete = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete || 0), 0);
+  const abonoFinal = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final || 0), 0);
   // Detalle de cada abono individual (monto + fecha) — si más de un participante del
   // grupo pagó por separado el mismo concepto, se listan todos en vez de mostrar
   // arbitrariamente la fecha del primero.
-  const detalleAbonos = (campoMonto, campoFecha) => allParticipants
+  const detalleAbonos = (campoMonto, campoFecha) => participantesPrograma
     .map(raw => normalizeParticipant(raw) || raw)
     .filter(p => (p[campoMonto] || 0) > 0)
     .map(p => ({ monto: p[campoMonto], fecha: p[campoFecha] || '' }));
@@ -2261,7 +2256,7 @@ function applyPaymentTotals(t) {
 
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
-  const totalTiqueteEur = TIQUETE_EUR * (t.tiqCount || 1);
+  const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
   const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
@@ -2298,13 +2293,17 @@ function buildBreakdown(t) {
     return `<div class="bkrow"><span>${escapeHtml(label)}</span><span class="bk-amt">${amt.toLocaleString('es-CO')} ${currency || 'EUR'}</span></div>`;
   }
 
+  const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
+  const esWC = programKeyActivo === 'world_challenge';
+
   // Reserva
   const br = document.getElementById('breakdown-reserva');
   if (br) {
     if (t.total > 1) {
-      br.innerHTML = allParticipants.map(raw => {
+      br.innerHTML = participantesPrograma.map(raw => {
         const p = normalizeParticipant(raw) || raw;
-        return bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', 1000);
+        const m = montoReservaFinalParticipante_(p, esWC);
+        return bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', m.reserva);
       }).join('') + totalRow('Total reserva', t.reserva);
       br.style.display = 'block';
     } else { br.style.display = 'none'; }
@@ -2313,9 +2312,11 @@ function buildBreakdown(t) {
   // Tiquete
   const bt = document.getElementById('breakdown-tiquete');
   if (bt) {
-    const tiqPax = allParticipants.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
+    const tasaRT = tasaReservaTiquete_();
+    const tiqueteEurUnit = tiqueteUnitEur_();
+    const tiqPax = participantesPrograma.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
     if (tiqPax.length > 1) {
-      bt.innerHTML = tiqPax.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', Math.round(TIQUETE_EUR * TRM_RESERVA), 'COP')).join('') + totalRow('Total tiquete', t.tiquete, 'COP');
+      bt.innerHTML = tiqPax.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', Math.round(tiqueteEurUnit * tasaRT), 'COP')).join('') + totalRow('Total tiquete', t.tiquete, 'COP');
       bt.style.display = 'block';
     } else { bt.style.display = 'none'; }
   }
@@ -2324,22 +2325,10 @@ function buildBreakdown(t) {
   const bf = document.getElementById('breakdown-final');
   if (bf) {
     if (t.total > 1) {
-      bf.innerHTML = allParticipants.map(raw => {
+      bf.innerHTML = participantesPrograma.map(raw => {
         const p = normalizeParticipant(raw) || raw;
-        const esJug = (p.tipo || '').toLowerCase().includes('jug');
-        const hab = (p.habitacion || '').toLowerCase();
-        let amt;
-        if (esJug) {
-          amt = 1790;
-        } else if (hab === '') {
-          const fObjB = parseFechaNacFront(p.fecha_nacimiento || '');
-          const edadB = fObjB ? calcEdadRefFront(fObjB) : null;
-          amt = (edadB !== null && edadB <= 12) ? 190 : 590;
-        } else {
-          amt = hab.includes('doble') ? 1190 : 1510;
-        }
-        const sub = esJug ? 'Jugador' : hab.includes('doble') ? 'Acompañante · hab. doble' : hab === '' ? 'Acompañante · Solo actividades' : 'Acompañante · hab. sencilla';
-        return bkRow(p.nombre || 'Participante', sub, amt);
+        const m = montoReservaFinalParticipante_(p, esWC);
+        return bkRow(p.nombre || 'Participante', m.sub, m.final);
       }).join('') + totalRow('Total pago final', t.final);
       bf.style.display = 'block';
     } else { bf.style.display = 'none'; }
@@ -2486,6 +2475,13 @@ function activarPrograma(key) {
     const n = normalizeParticipant(p) || p;
     return !(n.tipo||'').toLowerCase().includes('jug') && (n.habitacion||'') === '';
   });
+  // World Challenge: si TODO el grupo tiene un tipo de pago único (Solo
+  // Actividades / Solo World Challenge — todo se paga en la reserva, sin
+  // segundo pago), oculta el paso "Pago final" del stepper (ver STEP_DEFS).
+  sinPagoFinal = key === 'world_challenge' && programParticipants.every(p => {
+    const n = normalizeParticipant(p) || p;
+    return montoReservaFinalParticipante_(n, true).final === 0;
+  });
 
   if (programParticipants.length > 1) {
     buildParticipantTabs(programParticipants);
@@ -2497,6 +2493,7 @@ function activarPrograma(key) {
   const primerJug = programParticipants.find(p => p.tipo === 'Jugador') || programParticipants[0];
   loadParticipant(primerJug);
   cargarMisPagosValidados();
+  actualizarFechasLimitePorPrograma_();
 
   document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
   document.getElementById('tc-text').innerHTML = getTyC();
@@ -2692,7 +2689,7 @@ const STEP_DEFS = [
   {title:'Términos y Condiciones', desc:'Lee y acepta los T&C', panel:'panel-tc', skipForStaff:true},
   {title:'Pago de reserva', desc:'Fecha límite: 1 de junio 2026', panel:'panel2', skipIfSoloAct:true, skipForStaff:true},
   {title:'Pago tiquete',    desc:'Fecha límite: 1 de junio 2026', panel:'panel-tiq', tiqOnly:true, skipForStaff:true},
-  {title:'Pago final',      desc:'Fecha límite: 30 de julio 2026', panel:'panel3', skipForStaff:true},
+  {title:'Pago final',      desc:'Fecha límite: 30 de julio 2026', panel:'panel3', skipForStaff:true, skipIfSinPagoFinal:true},
   {title:'Documentación',   desc:'Pasaporte vigente', panel:'panel4'},
   {title:'¡Bienvenido!',      desc:'¡Nos vemos en Madrid!', panel:'panel-done'},
 ];
@@ -2726,7 +2723,7 @@ function buildSteps() {
   const row = document.getElementById('steps-row');
   row.innerHTML = '';
   const bienvenidaBloqueada = grupoPaso < 7;
-  const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct) && (!s.skipForStaff || !esStaffView));
+  const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct) && (!s.skipIfSinPagoFinal || !sinPagoFinal) && (!s.skipForStaff || !esStaffView));
   visible.forEach((s, i) => {
     const bloqueado = s.panel === 'panel-done' && bienvenidaBloqueada;
     const d = document.createElement('div');
@@ -2767,6 +2764,103 @@ const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + 1% margen
 let tasa = TASA_FALLBACK;
 const TRM_RESERVA = 4288; // TRM oficial del 1 de junio de 2026 (fecha límite de pago de reserva) — tasa fija, no cambia
 const TIQUETE_EUR = 993; // Valor fijo del tiquete aéreo por persona, convertido a COP con la TRM_RESERVA (misma fecha límite)
+
+// ── PRECIOS WORLD CHALLENGE ────────────────────────────────────────────────
+// A diferencia del Clinic (Reserva/Tiquete a tasa fija TRM_RESERVA, solo el
+// Pago Final a tasa del día), World Challenge usa la tasa del día vigente
+// para LOS TRES pagos — ver tasaReservaTiquete_() y tiqueteUnitEur_(), que
+// centralizan esta rama para que calc1/calcTiq/congelamiento y
+// calcPaymentTotals/buildBreakdown queden siempre consistentes entre sí.
+const TIQUETE_EUR_WC = 1005; // tiquete aéreo World Challenge — mismo valor para Jugador y Acompañante
+// Valores oficiales según los T&C de World Challenge 2027 (PDFs por tipo de
+// paquete) — son los totales "Sin Tiquete"; el tiquete aéreo se cobra APARTE
+// en su propio panel (1.005€, ver TIQUETE_EUR_WC), no está incluido aquí.
+const PRECIOS_WC = {
+  jugador:           { reserva: 1150, final: 1740 }, // total sin tiquete: 2.890€ — reserva fija (no % del total; el tiquete se cobra aparte, ver TIQUETE_EUR_WC)
+  acomp_doble:       { reserva: 1150, final: 1040 }, // total sin tiquete: 2.190€ — reserva fija (no % del total)
+  acomp_sencilla:    { reserva: 1150, final: 1360 }, // total sin tiquete: 2.510€ — reserva fija (no % del total)
+  // Solo Actividades y Solo World Challenge: pago único en la reserva, SIN
+  // segundo pago de "Pago Final" (a diferencia del Clinic, donde este tipo de
+  // acompañante paga todo al final en vez de en la reserva).
+  acomp_actividades: { reserva: 590,  final: 0 }, // total sin tiquete: 590€
+  acomp_solo_wc:     { reserva: 185,  final: 0 }  // total sin tiquete: 185€ — solo torneo, sin alojamiento ni actividades turísticas
+};
+
+function tasaReservaTiquete_() {
+  return programKeyActivo === 'world_challenge' ? tasa : TRM_RESERVA;
+}
+function tiqueteUnitEur_() {
+  return programKeyActivo === 'world_challenge' ? TIQUETE_EUR_WC : TIQUETE_EUR;
+}
+
+// Monto de Reserva y Pago Final para UN participante, según su tipo/habitación
+// y el programa activo. Única fuente de verdad compartida por
+// calcPaymentTotals() y buildBreakdown() — evita que ambos queden
+// desincronizados si se ajusta un precio más adelante.
+function montoReservaFinalParticipante_(p, esWC) {
+  const esJug = (p.tipo || '').toLowerCase().includes('jug');
+  const hab = (p.habitacion || '').toLowerCase();
+  if (esWC) {
+    if (esJug) return { reserva: PRECIOS_WC.jugador.reserva, final: PRECIOS_WC.jugador.final, sub: 'Jugador' };
+    if (hab === 'solo_world_challenge') return { reserva: PRECIOS_WC.acomp_solo_wc.reserva, final: PRECIOS_WC.acomp_solo_wc.final, sub: 'Acompañante · Solo World Challenge' };
+    if (hab === '' || hab === 'solo_actividades') return { reserva: PRECIOS_WC.acomp_actividades.reserva, final: PRECIOS_WC.acomp_actividades.final, sub: 'Acompañante · Solo actividades' };
+    if (hab.includes('doble')) return { reserva: PRECIOS_WC.acomp_doble.reserva, final: PRECIOS_WC.acomp_doble.final, sub: 'Acompañante · hab. doble' };
+    return { reserva: PRECIOS_WC.acomp_sencilla.reserva, final: PRECIOS_WC.acomp_sencilla.final, sub: 'Acompañante · hab. sencilla' };
+  }
+  // Clinic (comportamiento original, sin cambios)
+  if (esJug) return { reserva: 1000, final: 1790, sub: 'Jugador' };
+  if (hab === '') {
+    const fObj = parseFechaNacFront(p.fecha_nacimiento || '');
+    const edad = fObj ? calcEdadRefFront(fObj) : null;
+    return { reserva: 0, final: (edad !== null && edad <= 12) ? 190 : 590, sub: 'Acompañante · Solo actividades' };
+  }
+  if (hab.includes('doble')) return { reserva: 1000, final: 1190, sub: 'Acompañante · hab. doble' };
+  return { reserva: 1000, final: 1510, sub: 'Acompañante · hab. sencilla' };
+}
+
+// Fechas límite de pago y texto de mecánica de tasa — World Challenge usa
+// tasa del día (no una TRM fija) en los tres pagos, así que el texto
+// explicativo también cambia, no solo la fecha. Se llama desde
+// activarPrograma() cada vez que se carga o cambia de programa.
+const FECHAS_LIMITE_WC = { reserva: '5 de octubre 2026', tiquete: '5 de octubre 2026', final: '11 de diciembre 2026' };
+const FECHAS_LIMITE_CLINIC = { reserva: '1 de junio 2026', tiquete: '1 de junio 2026', final: '30 de julio 2026' };
+
+function actualizarFechasLimitePorPrograma_() {
+  const esWC = programKeyActivo === 'world_challenge';
+  const fechas = esWC ? FECHAS_LIMITE_WC : FECHAS_LIMITE_CLINIC;
+
+  const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
+  if (idxReserva > -1) STEP_DEFS[idxReserva].desc = 'Fecha límite: ' + fechas.reserva;
+  const idxTiq = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
+  if (idxTiq > -1) STEP_DEFS[idxTiq].desc = 'Fecha límite: ' + fechas.tiquete;
+  const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
+  if (idxFinal > -1) STEP_DEFS[idxFinal].desc = 'Fecha límite: ' + fechas.final;
+
+  const elReservaInfo = document.getElementById('reserva-tasa-info');
+  if (elReservaInfo) {
+    elReservaInfo.innerHTML = esWC
+      ? `El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, a la <strong>tasa del día</strong> en que realices el pago — fecha límite: <strong>${fechas.reserva}</strong>.`
+      : `El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.`;
+  }
+  const elReservaNota = document.getElementById('reserva-tasa-nota');
+  if (elReservaNota) {
+    elReservaNota.textContent = esWC ? 'Tasa del día — se actualiza con la tasa de mercado vigente.' : 'Tasa fija — no varía con la TRM del día.';
+  }
+
+  const elTiqInfo = document.getElementById('tiquete-info-parrafo');
+  if (elTiqInfo) {
+    elTiqInfo.innerHTML = esWC
+      ? `El tiquete aéreo se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${TIQUETE_EUR_WC} EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> en que realices el pago.`
+      : `El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${TIQUETE_EUR} EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.`;
+  }
+  const elTiqFecha = document.getElementById('tiquete-fecha-limite');
+  if (elTiqFecha) elTiqFecha.textContent = fechas.tiquete;
+  const elTiqCosto = document.getElementById('tiquete-costo-valor');
+  if (elTiqCosto) elTiqCosto.textContent = (esWC ? TIQUETE_EUR_WC : TIQUETE_EUR) + ' EUR / persona';
+
+  const elFinalFecha = document.getElementById('panel3-fecha-limite');
+  if (elFinalFecha) elFinalFecha.textContent = fechas.final;
+}
 
 function updateTasaFecha() {
   const el = document.getElementById('tasa-fecha');
@@ -2876,11 +2970,13 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
 
 function calc1() {
   if (pagoYaCongelado('reserva')) return; // ya se envió comprobante — el monto queda congelado
-  // Tasa fija de la reserva: TRM del 1 de junio de 2026, fecha límite de pago de
-  // reserva — no depende de la tasa en vivo (a diferencia del pago final).
+  // Clinic: tasa fija (TRM del 1 de junio de 2026, fecha límite de pago de
+  // reserva) — no depende de la tasa en vivo. World Challenge: tasa del día
+  // (ver tasaReservaTiquete_()).
   const e = parseFloat(document.getElementById('eur1').value) || 0;
-  const base = e * TRM_RESERVA;
-  document.getElementById('tasa1').value = fmtT(TRM_RESERVA);
+  const tasaUsar = tasaReservaTiquete_();
+  const base = e * tasaUsar;
+  document.getElementById('tasa1').value = fmtT(tasaUsar);
   document.getElementById('cop1').textContent = fmt(base);
   updatePayAmounts('p1tc-total','p1tc-fee','p1tr-total', base);
 }
@@ -2958,7 +3054,7 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
     const validado = misPagosValidados[tipoPago];
     const estadoValidado = validado ? String(validado.estado || '').toLowerCase() : '';
     if (validado && (estadoValidado === 'completo' || estadoValidado === 'parcial') && validado.eur > 0) {
-      const tasaReal = validado.cop > 0 ? Math.round(validado.cop / validado.eur) : (tipoPago === 'reserva' ? TRM_RESERVA : tasa);
+      const tasaReal = validado.cop > 0 ? Math.round(validado.cop / validado.eur) : (tipoPago === 'reserva' ? tasaReservaTiquete_() : tasa);
       const copReal = validado.cop > 0 ? validado.cop : validado.eur * tasaReal;
       datos = { eur: String(validado.eur), tasa: fmtT(tasaReal), cop: fmt(copReal) };
       try { localStorage.setItem(congelarPagoKey(tipoPago), JSON.stringify(datos)); } catch(e) {}
@@ -2972,7 +3068,7 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
     // una vez con la tasa vigente para que monto, tasa y COP queden coherentes
     // entre sí (en vez de dejar tasa/COP en blanco mientras el monto sí se ve),
     // y congelar ese resultado desde ahora.
-    const tasaUsar = tipoPago === 'reserva' ? TRM_RESERVA : tasa;
+    const tasaUsar = tipoPago === 'reserva' ? tasaReservaTiquete_() : tasa;
     const eur = eurEl ? (parseFloat(eurEl.value) || 0) : 0;
     const base = eur * tasaUsar;
     datos = { eur: eurEl ? eurEl.value : '', tasa: fmtT(tasaUsar), cop: fmt(base) };
@@ -2990,11 +3086,13 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
   }
 }
 function calcTiq() {
-  // Tasa fija del tiquete: TRM del 1 de junio de 2026, misma fecha límite que la reserva
+  // Clinic: tasa fija (misma TRM del 1 de junio que la reserva). World
+  // Challenge: tasa del día (ver tasaReservaTiquete_()).
   const e = parseFloat(document.getElementById('eur-tiq').value) || 0;
-  const base = e * TRM_RESERVA;
+  const tasaUsar = tasaReservaTiquete_();
+  const base = e * tasaUsar;
   const tasaTiq = document.getElementById('tasa-tiq');
-  if (tasaTiq) tasaTiq.value = fmtT(TRM_RESERVA);
+  if (tasaTiq) tasaTiq.value = fmtT(tasaUsar);
   document.getElementById('cop-tiq').textContent = fmt(base);
   updatePayAmounts('ptiqtc-total','ptiqtc-fee','ptiqtr-total', base);
 }
@@ -3005,7 +3103,12 @@ setInterval(fetchTasa, 30 * 60 * 1000); // Refrescar cada 30 minutos
 // ── T&C ──────────────────────────────────────────────────────────────────────
 function getTyC() {
   const tipoCurrent = (tipo || 'jugador').toLowerCase();
-  const conAloj = programa !== 'solo_actividades';
+  if (programKeyActivo === 'world_challenge') return getTyCWorldChallenge_(tipoCurrent);
+  // Bug histórico: comparaba `programa` (texto libre, ej. "Real Madrid
+  // Foundation Clinic") contra 'solo_actividades', que en realidad es un
+  // valor posible de `habitacion` — nunca coincidían, así que esta rama
+  // jamás se activaba. Corregido a comparar el campo correcto.
+  const conAloj = habitacion !== 'solo_actividades';
 
   const cancelacion = `
 <h3>4. Políticas de cancelación</h3>
@@ -3091,6 +3194,152 @@ ${cancelacion}
 <p>El participante autoriza a Victory Sports Spain SL y Fundación Revel a usar fotografías y videos tomados durante el programa en redes sociales y materiales promocionales.</p>
 <h3>7. Jurisdicción legal</h3>
 <p>Este contrato se rige bajo las leyes colombianas. Cualquier disputa se resolverá en los tribunales de Bogotá.</p>`;
+}
+
+// ── T&C — WORLD CHALLENGE ──────────────────────────────────────────────────
+// Transcrito de los T&C oficiales en PDF (8 variantes: Jugador, Acomp.
+// Doble/Sencilla/Solo Actividades/Solo World Challenge, cada uno con/sin
+// tiquete). Los montos y fechas se leen de PRECIOS_WC/TIQUETE_EUR_WC/
+// FECHAS_LIMITE_WC — únicas fuentes de verdad, ya usadas por
+// calcPaymentTotals() — para que el texto nunca se desincronice de lo que
+// realmente se cobra.
+function getTyCWorldChallenge_(tipoCurrent) {
+  const esJug = tipoCurrent.includes('jug');
+  const habNorm = (habitacion || '').toLowerCase();
+  const esDoble = habNorm.includes('doble');
+  const esSoloWC = !esJug && habNorm === 'solo_world_challenge';
+  // Mismo criterio que montoReservaFinalParticipante_(): solo '' (compatibilidad)
+  // o 'solo_actividades' cuentan como Solo Actividades — 'individual' y
+  // cualquier otro valor no reconocido caen en Sencilla (rama "else" abajo),
+  // igual que ya hace el cálculo de precios.
+  const esSoloAct = !esJug && (habNorm === '' || habNorm === 'solo_actividades');
+  const pagoUnico = esSoloAct || esSoloWC;
+  const fReserva = FECHAS_LIMITE_WC.reserva, fFinal = FECHAS_LIMITE_WC.final;
+
+  let servicios;
+  if (esJug) {
+    servicios = `
+<ul>
+  ${conTiq ? '<li><strong>Tiquete aéreo:</strong> ida y vuelta en la ruta Bogotá – Madrid – Bogotá</li>' : ''}
+  <li><strong>Alojamiento:</strong> 7 noches y 8 días en el Campus Deportivo European Football Institute by StepHouse — pensión completa (desayuno, almuerzo, snack y cena). Lavandería incluida.</li>
+  <li>Participación en el Real Madrid Foundation World Challenge</li>
+  <li>Tour al Estadio Santiago Bernabéu y tienda oficial Adidas</li>
+  <li>Recorrido histórico por la ciudad de Madrid</li>
+  <li>Excursión Parque de Diversiones de Madrid</li>
+  <li>Conferencia <em>Building a Champion</em></li>
+  <li><strong>Transporte:</strong> todos los traslados durante el programa, incluyendo recogida y regreso al Aeropuerto Madrid-Barajas</li>
+  <li><strong>Kit deportivo:</strong> dos camisetas, gorra, chaqueta y escarapela identificativa</li>
+  <li><strong>Seguro médico</strong> durante todo el programa</li>
+  <li><strong>Atención personalizada:</strong> staff dedicado para garantizar la experiencia de los participantes</li>
+</ul>`;
+  } else if (pagoUnico) {
+    servicios = `
+<ul>
+  <li>${esSoloWC ? 'Entrada y participación en el torneo Real Madrid Foundation World Challenge' : 'Asistencia y participación en el Real Madrid Foundation World Challenge'}</li>
+  <li>Seguro médico de viaje durante el evento</li>
+</ul>`;
+  } else {
+    servicios = `
+<ul>
+  ${conTiq ? '<li><strong>Tiquete aéreo:</strong> ida y vuelta en la ruta Bogotá – Madrid – Bogotá</li>' : ''}
+  <li><strong>Transporte</strong> Aeropuerto – Hotel y actividades</li>
+  <li><strong>Alojamiento</strong> en Hotel Eurostars (desayuno incluido) — habitación ${esDoble ? 'doble' : 'sencilla'}</li>
+  <li>Tour Estadio Santiago Bernabéu y Adidas Store</li>
+  <li>City Tour Madrid histórico</li>
+  <li>Excursión Parque de Diversiones de Madrid</li>
+  <li>Seguro médico de viaje para todos los participantes durante el programa</li>
+</ul>`;
+  }
+
+  const datosBancarios = `<li><strong>Datos bancarios:</strong> Bancolombia · Beneficiario: Fundación Revel · Cuenta 05962673128 · NIT 900636583-7</li>`;
+  let precioSeccion;
+  if (esJug) {
+    const p = PRECIOS_WC.jugador;
+    precioSeccion = `
+<ul>
+  <li>Costo total por participante: <strong>${p.reserva + p.final} EUR</strong>${conTiq ? ` (programa) + <strong>${TIQUETE_EUR_WC} EUR</strong> (tiquete aéreo) = <strong>${p.reserva + p.final + TIQUETE_EUR_WC} EUR</strong>` : ` (el tiquete aéreo no está incluido; valor referencial: ${TIQUETE_EUR_WC} EUR)`}</li>
+  <li>Reserva: <strong>${p.reserva} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>
+  ${conTiq ? `<li>Tiquete aéreo: <strong>${TIQUETE_EUR_WC} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
+  <li>Pago final: <strong>${p.final} EUR</strong> — fecha límite <strong>${fFinal}</strong></li>
+  <li>El pago se realizará en pesos colombianos (COP) según la tasa oficial del día de la transferencia bancaria</li>
+  ${datosBancarios}
+</ul>`;
+  } else if (pagoUnico) {
+    const base = esSoloWC ? PRECIOS_WC.acomp_solo_wc.reserva : PRECIOS_WC.acomp_actividades.reserva;
+    const total = base + (conTiq ? TIQUETE_EUR_WC : 0);
+    precioSeccion = `
+<ul>
+  <li>${conTiq ? 'Con Tiquete Aéreo' : 'Sin Tiquete Aéreo'}: <strong>${total} EUR</strong> — pago único al momento de la inscripción</li>
+  <li>El pago se efectuará en COP o euros por transferencia</li>
+  ${datosBancarios}
+</ul>`;
+  } else {
+    const p = esDoble ? PRECIOS_WC.acomp_doble : PRECIOS_WC.acomp_sencilla;
+    const total = p.reserva + p.final + (conTiq ? TIQUETE_EUR_WC : 0);
+    precioSeccion = `
+<ul>
+  <li>Total del programa: <strong>${total} EUR</strong></li>
+  <li>Reserva: <strong>${p.reserva} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>
+  ${conTiq ? `<li>Tiquete aéreo: <strong>${TIQUETE_EUR_WC} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
+  <li>Pago final: <strong>${p.final} EUR</strong> — fecha límite <strong>${fFinal}</strong></li>
+  <li>El pago se efectuará en COP o euros por transferencia</li>
+  ${datosBancarios}
+</ul>`;
+  }
+
+  const documentacion = `
+<ul>
+  <li>Pasaporte con validez de mínimo 6 meses hasta la finalización del viaje</li>
+  <li>Cédula de ciudadanía para mayores de edad y registro civil para menores de edad</li>
+  <li>Permiso de salida del país para menores de edad${esJug ? ', debidamente autenticado ante notario' : ''}</li>
+  ${esJug ? '<li>Registro Civil de nacimiento</li>' : ''}
+</ul>`;
+
+  let cancelacion;
+  if (pagoUnico) {
+    cancelacion = `
+<ul>
+  <li>El programa se paga en un solo pago (100% del valor total) al momento de la inscripción, sujeto a esta política de cancelación</li>
+  <li><strong>3 meses o más antes del inicio del programa:</strong> penalidad del 30% del valor pagado (reembolso del 70%)</li>
+  <li><strong>2 meses de anticipación:</strong> penalidad del 60% (reembolso del 40%)</li>
+  <li><strong>1 mes o menos de anticipación:</strong> penalidad del 100% (no hay lugar a reembolso)</li>
+  <li>Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del 100% del valor pagado</li>
+</ul>`;
+  } else {
+    const reservaMonto = esJug ? PRECIOS_WC.jugador.reserva : (esDoble ? PRECIOS_WC.acomp_doble.reserva : PRECIOS_WC.acomp_sencilla.reserva);
+    cancelacion = `
+<ul>
+  <li>El primer pago (reserva de <strong>${reservaMonto} EUR</strong>) <strong>no es reembolsable</strong> bajo ninguna circunstancia</li>
+  <li><strong>3 meses o más antes del inicio del programa:</strong> penalidad del 30% del valor pagado (reembolso del 70%)</li>
+  <li><strong>2 meses de anticipación:</strong> penalidad del 60% (reembolso del 40%)</li>
+  <li><strong>1 mes o menos de anticipación:</strong> penalidad del 100% (no hay lugar a reembolso)</li>
+  ${esJug ? '<li>Tiquete aéreo: reembolsable según las políticas propias de la aerolínea, de forma independiente a esta política</li>' : ''}
+  <li>Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del valor pagado</li>
+  ${esJug ? '<li>Devoluciones por condiciones médicas debidamente certificadas: reembolso del 100% del programa, menos el valor del tiquete aéreo (si aplica)</li>' : ''}
+</ul>`;
+  }
+
+  return `
+<h3>1. Servicios incluidos</h3>
+${servicios}
+<h3>2. Precio del programa y forma de pago</h3>
+${precioSeccion}
+<h3>3. Documentación requerida</h3>
+${documentacion}
+<h3>4. Políticas de cancelación</h3>
+${cancelacion}
+<h3>5. Cláusula de responsabilidad</h3>
+<p>Victory Sports Spain, Fundación Revel y sus operadores garantizan la calidad de los servicios descritos y quedan exentos de responsabilidad en casos de fuerza mayor, como desastres naturales, pandemias, huelgas o cualquier circunstancia imprevisible e inevitable.</p>
+<h3>6. Cesión de derechos de imagen</h3>
+<p>El padre, madre o representante legal del menor autoriza a Victory Sports Spain SL y a la Fundación Revel a tomar fotografías y videos del menor durante el viaje. Estas imágenes podrán ser utilizadas en redes sociales, páginas web y materiales promocionales, siempre respetando la dignidad del menor.</p>
+${esJug ? `<h3>7. Cláusula de comportamiento</h3>
+<p>Todos los participantes deben respetar las normas y reglamentos del programa, mantener un comportamiento adecuado en todas las actividades y alojamientos, y cumplir con las indicaciones del staff de Victory Sports. Cualquier incumplimiento podrá resultar en la expulsión inmediata del programa sin derecho a reembolso.</p>
+<h3>8. Política de cambios y fuerza mayor</h3>
+<p>En caso de cambios en el itinerario por razones fuera del control de los organizadores, Victory Sports Spain y Fundación Revel se comprometen a ofrecer alternativas de igual o mayor calidad, pero no serán responsables por gastos adicionales incurridos por los participantes.</p>
+<h3>9. Jurisdicción legal</h3>
+<p>Este contrato se rige bajo las leyes colombianas. Cualquier disputa que surja del mismo será resuelta en los tribunales de Bogotá.</p>
+<h3>10. Declaración de aceptación</h3>
+<p>Al realizar el primer pago, el participante o su representante legal declara haber leído, comprendido y aceptado estos términos y condiciones en su totalidad.</p>` : ''}`;
 }
 
 // ── TIQUETE OPTIN (query string opcional) ─────────────────────────────────────
@@ -3433,7 +3682,8 @@ function enviarComprobante(tipoPago) {
       if (esPagoCompleto) {
         const pasoMap = { reserva: 4, tiquete: 5, final: 6 };
         let paso = pasoMap[tipoPago];
-        if (tipoPago === 'reserva' && !conTiq) paso = 5; // sin tiquete: salta directo a paso 5
+        if (tipoPago === 'reserva' && !conTiq) paso = sinPagoFinal ? 6 : 5; // sin tiquete: salta directo al siguiente paso pendiente
+        if (tipoPago === 'tiquete' && sinPagoFinal) paso = 6; // World Challenge pago único: sin pago final, salta a documentos
         actualizarPaso(paso);
         if (tipoPago === 'reserva' || tipoPago === 'final') congelarPago(tipoPago);
         setTimeout(() => {
@@ -4527,19 +4777,30 @@ function ocultarErrorAdmin() {
   if (banner) banner.style.display = 'none';
 }
 
+// Cambia qué programa ve el admin (Clinic / World Challenge) y refresca todo
+// el panel — los datos de un programa nunca se mezclan con los del otro.
+function cambiarProgramaAdmin(key) {
+  if (adminProgramaActivo === key) return;
+  adminProgramaActivo = key;
+  document.getElementById('admin-prog-clinic')?.classList.toggle('active', key === 'clinic');
+  document.getElementById('admin-prog-wc')?.classList.toggle('active', key === 'world_challenge');
+  loadAdmin(true);
+}
+
 function loadAdmin(force, intento) {
   intento = intento || 1;
   if (adminLoaded && !force) return;
   document.getElementById('kpi-participantes').textContent = '…';
   ocultarErrorAdmin();
   const t = Date.now();
+  const progQS = '&programa=' + encodeURIComponent(adminProgramaActivo);
   let errorParticipantes = null, errorFinanciero = null, errorAcceso = null;
   let sesionExpirada = false;
   Promise.all([
-    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' })
+    fetch(APPS_SCRIPT_URL + '?action=admin_participantes&token=' + encodeURIComponent(adminSessionToken) + progQS + '&_t=' + t, { redirect: 'follow' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .catch(e => { errorParticipantes = e.message || String(e); return []; }),
-    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' })
+    fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + progQS + '&_t=' + t, { redirect: 'follow' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .catch(e => { errorFinanciero = e.message || String(e); return null; }),
     fetch(APPS_SCRIPT_URL + '?action=admin_acceso&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' })
@@ -4612,7 +4873,7 @@ function syncPaqueteModal(val) {
 function refreshAdminPagos(btn) {
   if (btn) { btn.disabled = true; btn.textContent = '↻ Cargando…'; }
   const t = Date.now();
-  fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&_t=' + t, { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&programa=' + encodeURIComponent(adminProgramaActivo) + '&_t=' + t, { redirect: 'follow' })
     .then(r => r.json())
     .then(fin => {
       if (fin && !fin.error) {
@@ -4768,23 +5029,13 @@ function parseHistorialAbonosFrontend_(str) {
 // solo participante (el modal admin trabaja participante por participante,
 // no por grupo).
 function montoEsperadoEur_(tipo, n) {
-  const esJugador = (n.tipo || '').toLowerCase().includes('jug');
-  if (tipo === 'Reserva') {
-    return (esJugador || (n.habitacion || '') !== '') ? 1000 : 0;
-  }
+  const esWC = (n.program_key || adminProgramaActivo) === 'world_challenge';
+  if (tipo === 'Reserva') return montoReservaFinalParticipante_(n, esWC).reserva;
   if (tipo === 'Tiquete') {
-    return (n.tiquete_aereo === 'Con tiquete') ? TIQUETE_EUR : 0;
+    if (n.tiquete_aereo !== 'Con tiquete') return 0;
+    return esWC ? TIQUETE_EUR_WC : TIQUETE_EUR;
   }
-  if (tipo === 'Pago Final') {
-    if (esJugador) return 1790;
-    const hab = (n.habitacion || '').toLowerCase();
-    if (hab === '') {
-      const fObj = parseFechaNacFront(n.fecha_nacimiento || '');
-      const edad = fObj ? calcEdadRefFront(fObj) : null;
-      return (edad !== null && edad <= 12) ? 190 : 590;
-    }
-    return hab.includes('doble') ? 1190 : 1510;
-  }
+  if (tipo === 'Pago Final') return montoReservaFinalParticipante_(n, esWC).final;
   return 0;
 }
 
@@ -5648,7 +5899,7 @@ function saveNewParticipant() {
   if (!nombre) { alert('El nombre es obligatorio.'); return; }
   if (!email || !email.includes('@')) { alert('Introduce un email válido.'); return; }
 
-  const payload = { action: 'agregar_participante', tipo, paso_actual: '1', fuente: 'Panel Admin', token: adminSessionToken };
+  const payload = { action: 'agregar_participante', tipo, paso_actual: '1', fuente: 'Panel Admin', programa: adminProgramaActivo, token: adminSessionToken };
   fields.forEach(f => { const el = document.getElementById('ap-' + f.key); if (el) payload[f.key] = el.value; });
 
   const statusEl = document.getElementById('add-participant-status');
@@ -5794,6 +6045,7 @@ function openPagosModal(idx, nombreOverride) {
   }
   if (!nombre) return;
   pagoCurrentTieneTiquete = tieneTiquete;
+  pagoCurrentProgramKey = (participanteNorm && participanteNorm.program_key) || adminProgramaActivo;
 
   const pagos = adminFinData && adminFinData.pagos_lista
     ? adminFinData.pagos_lista.filter(p => normNombre(p.nombre) === normNombre(nombre))
@@ -5971,7 +6223,7 @@ function agregarAbonoServidor(tid, tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur: abonoEur, cop: abonoCop, tipo_participante: pagoCurrentTipo, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur: abonoEur, cop: abonoCop, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6008,7 +6260,7 @@ function confirmarPagoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur, cop, tipo_participante: pagoCurrentTipo, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur, cop, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6016,7 +6268,7 @@ function confirmarPagoDesdePanel(tipo) {
     if (!res.ok) { statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`; return; }
     return fetch(APPS_SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, token: adminSessionToken }),
+      body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, programa: pagoCurrentProgramKey, token: adminSessionToken }),
       redirect: 'follow'
     }).then(r2 => r2.json()).then(res2 => {
       if (res2.ok) {
@@ -6045,7 +6297,7 @@ function actualizarEstadoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6061,10 +6313,11 @@ function actualizarEstadoDesdePanel(tipo) {
 }
 
 function registrarPagoDesdePanel(tipo) {
-  let nombre, email = '';
+  let nombre, email = '', participanteActual = null;
   if (pagoCurrentIdx >= 0 && adminData[pagoCurrentIdx]) {
     const row = adminData[pagoCurrentIdx];
     const n = normalizeParticipant(row) || {};
+    participanteActual = n;
     nombre = n.nombre || row['Nombre'] || '';
     email = n.email || '';
   } else {
@@ -6093,7 +6346,7 @@ function registrarPagoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, tipo_participante: pagoCurrentTipo, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6121,11 +6374,14 @@ function registrarPagoDesdePanel(tipo) {
       // Pago marcado como Completo → avanzar paso_actual del participante (igual que cuando él mismo sube su comprobante)
       const pasoMap = { 'Reserva': 4, 'Tiquete': 5, 'Pago Final': 6 };
       let nuevoPaso = pasoMap[tipo];
-      if (tipo === 'Reserva' && !pagoCurrentTieneTiquete) nuevoPaso = 5; // sin tiquete: salta directo a paso 5
+      // World Challenge, pago único (Solo Actividades/Solo World Challenge): no hay Pago Final — salta directo a Documentación
+      const sinFinalActual = participanteActual ? montoReservaFinalParticipante_(participanteActual, pagoCurrentProgramKey === 'world_challenge').final === 0 : false;
+      if (tipo === 'Reserva' && !pagoCurrentTieneTiquete) nuevoPaso = sinFinalActual ? 6 : 5; // sin tiquete: salta directo al siguiente paso pendiente
+      if (tipo === 'Tiquete' && sinFinalActual) nuevoPaso = 6; // sin pago final: salta a Documentación
       if (estado === 'Completo' && email && nuevoPaso) {
         fetch(APPS_SCRIPT_URL, {
           method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'actualizar_paso', email, paso_actual: String(nuevoPaso) })
+          body: JSON.stringify({ action: 'actualizar_paso', email, paso_actual: String(nuevoPaso), programa: pagoCurrentProgramKey })
         }).then(() => {
           (adminData || []).forEach(r => {
             const n = normalizeParticipant(r) || {};
@@ -6151,7 +6407,7 @@ function saveEditModal() {
   const statusEl = document.getElementById('edit-modal-status');
   statusEl.style.display = 'block';
   statusEl.innerHTML = '<span style="color:var(--blue)">Guardando...</span>';
-  const payload = { action: 'actualizar_participante', _row: adminCurrentRow._row, token: adminSessionToken };
+  const payload = { action: 'actualizar_participante', _row: adminCurrentRow._row, programa: adminCurrentRow._program_key || adminProgramaActivo, token: adminSessionToken };
   // Pass all original keys so backend can match column headers
   Object.keys(adminCurrentRow).forEach(k => { if (k !== '_idx') payload[k] = adminCurrentRow[k]; });
   // Override with edited values using normalized key names
