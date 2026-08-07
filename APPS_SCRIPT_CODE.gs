@@ -178,7 +178,10 @@ const SHEET_ID_WORLD_CHALLENGE = "1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg";
 const BUDGET_SHEET_ID_WORLD_CHALLENGE = "1vqmm9em3DKNZdhlZ7hfjlFJfGiL83bTell0izCCHvPY"; // Sheet presupuesto World Challenge 2027
 
 function esWorldChallenge_(programa) {
-  return String(programa || '').toLowerCase().indexOf('world challenge') >= 0;
+  // Acepta tanto el texto libre ("Real Madrid Foundation World Challenge")
+  // como el program_key interno ("world_challenge") — normaliza guiones
+  // bajos a espacios para que ambos formatos calcen con la misma búsqueda.
+  return String(programa || '').toLowerCase().replace(/_/g, ' ').indexOf('world challenge') >= 0;
 }
 
 // Devuelve { sheetId, budgetSheetId, programKey } para el programa dado.
@@ -1299,7 +1302,8 @@ function sendResponse(statusCode, data) {
 function getAdminParticipantes(params) {
   try {
     if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const fuente = resolverSheets_(params.programa);
+    const sheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     if (data.length < 2) return sendResponse(200, []);
     const headers = data[0];
@@ -1307,7 +1311,7 @@ function getAdminParticipantes(params) {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (row.every(function(c) { return c === '' || c === null; })) continue;
-      const obj = { _row: i + 1 };
+      const obj = { _row: i + 1, _program_key: fuente.programKey };
       for (let j = 0; j < headers.length; j++) {
         const h = String(headers[j]);
         let val = row[j];
@@ -1616,7 +1620,7 @@ function getSheetCI(ss, name) {
 function getAdminFinanciero(params) {
   try {
     if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
-    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const ss = SpreadsheetApp.openById(resolverSheets_(params.programa).budgetSheetId);
 
     const str = function(v) { return String(v == null ? '' : v).trim(); };
     const num = function(v) {
@@ -2979,7 +2983,7 @@ function calcEdadRef(fechaObj) {
 function getAdminCategorias(params) {
   try {
     if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
-    var sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    var sheet = SpreadsheetApp.openById(resolverSheets_(params.programa).sheetId).getSheets()[0];
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
 
