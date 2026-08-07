@@ -688,7 +688,7 @@ function actualizarPasoTodos(email, pasoActual, programa) {
         // aviso interno, solo la primera vez que se cruza este umbral.
         if (pasoActual_num === 7 && pasoActualSheet < 7) {
           const nombreParticipante = String(data[i][nombreCol] || '').trim();
-          if (nombreParticipante) enviarCorreoProcesoCompletado_(emailNorm, nombreParticipante);
+          if (nombreParticipante) enviarCorreoProcesoCompletado_(emailNorm, nombreParticipante, programa);
         }
       }
     }
@@ -699,8 +699,17 @@ function actualizarPasoTodos(email, pasoActual, programa) {
   }
 }
 
-function buildProcesoCompletadoHtml_(nombreCompleto) {
+function buildProcesoCompletadoHtml_(nombreCompleto, programa) {
   const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
+  const esWC = esWorldChallenge_(programa);
+  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+  const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+  const parrafoIntro = esWC
+    ? 'Ahora solo queda contar los días para vivir esta experiencia única en la Ciudad Deportiva del Real Madrid. Nuestro equipo ya tiene todo tu registro listo para el Real Madrid Foundation World Challenge 2027.'
+    : 'Ahora solo queda contar los días para vivir esta experiencia única en la Ciudad Deportiva del Real Madrid. Nuestro equipo ya tiene todo tu registro listo para el Real Madrid Foundation Clinic 2026.';
+  const parrafoComunicados = esWC
+    ? 'Puedes volver a tu área personal cuando quieras para ver los detalles de tu viaje, el álbum de fotos (disponible durante y después del programa), y cualquier comunicado que enviemos antes de marzo.'
+    : 'Puedes volver a tu área personal cuando quieras para ver los detalles de tu viaje, el álbum de fotos (disponible durante y después del programa), y cualquier comunicado que enviemos antes de octubre.';
   return `
 <div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
   <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
@@ -716,14 +725,14 @@ function buildProcesoCompletadoHtml_(nombreCompleto) {
     </div>
     <div style="padding:34px 34px 10px;color:#1a2c4a;">
       <p style="font-size:18px;font-weight:500;color:#0b1f3a;margin:0 0 18px;">Ya completaste cada paso del proceso — pagos, documentos, todo en orden.</p>
-      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Ahora solo queda contar los días para vivir esta experiencia única en la Ciudad Deportiva del Real Madrid. Nuestro equipo ya tiene todo tu registro listo para el Real Madrid Foundation Clinic 2026.</p>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">${parrafoIntro}</p>
       <div style="background:#f4f7fb;border-radius:10px;padding:18px 20px;margin:22px 0;">
         <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Términos y condiciones aceptados</div>
         <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Pago de reserva confirmado</div>
         <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Pago final confirmado</div>
         <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Documentación validada</div>
       </div>
-      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Puedes volver a tu área personal cuando quieras para ver los detalles de tu viaje, el álbum de fotos (disponible durante y después del programa), y cualquier comunicado que enviemos antes de octubre.</p>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">${parrafoComunicados}</p>
       <div style="text-align:center;margin:28px 0 8px;">
         <a href="https://victory.com.es/areapersonal.html?goto=done" style="display:inline-block;background:#1e5ba8;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 30px;border-radius:8px;">Ver mi Bienvenida →</a>
       </div>
@@ -732,7 +741,7 @@ function buildProcesoCompletadoHtml_(nombreCompleto) {
     <div style="padding:10px 34px 30px;color:#1a2c4a;">
       <p style="margin:2px 0;font-size:14px;font-weight:700;color:#0b1f3a;margin-top:14px;">Con emoción por lo que viene,</p>
       <p style="margin:2px 0;font-size:14px;">Equipo Victory Sports · Fundación Revel</p>
-      <p style="margin:2px 0;font-size:14px;">Real Madrid Foundation Clinic 2026</p>
+      <p style="margin:2px 0;font-size:14px;">${nombrePrograma}</p>
     </div>
     <div style="background:#f4f7fb;padding:20px 30px;text-align:center;font-size:12px;color:#8a93a6;">
       ¿Dudas? Escríbenos por WhatsApp o a <a href="mailto:alejandro.cabrera@fundacionrevel.net" style="color:#1e5ba8;text-decoration:none;">alejandro.cabrera@fundacionrevel.net</a>
@@ -741,15 +750,17 @@ function buildProcesoCompletadoHtml_(nombreCompleto) {
 </div>`;
 }
 
-function enviarCorreoProcesoCompletado_(email, nombreCompleto) {
+function enviarCorreoProcesoCompletado_(email, nombreCompleto, programa) {
   try {
     if (!email || !nombreCompleto) return;
+    const esWC = esWorldChallenge_(programa);
+    const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
     const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
     const asunto = '\u{2705} ¡Todo listo, ' + primerNombre + '!';
-    const htmlBody = buildProcesoCompletadoHtml_(nombreCompleto);
+    const htmlBody = buildProcesoCompletadoHtml_(nombreCompleto, programa);
     GmailApp.sendEmail(email, asunto, 'Has completado tu proceso de inscripción. Ingresa a tu área personal para ver los detalles: https://victory.com.es/areapersonal.html?goto=done', {
       htmlBody: htmlBody,
-      name: 'Real Madrid Foundation Clinic'
+      name: nombreProgramaCorto
     });
     try {
       GmailApp.sendEmail(
@@ -758,7 +769,7 @@ function enviarCorreoProcesoCompletado_(email, nombreCompleto) {
         nombreCompleto + ' completó el 100% de su proceso (pagos + documentación).\n\n' +
         'Correo del acudiente: ' + email + '\n' +
         'Ya se le envió automáticamente el correo de bienvenida.',
-        { name: 'Real Madrid Foundation Clinic' }
+        { name: nombreProgramaCorto }
       );
     } catch (notifErr) {
       Logger.log('Aviso interno proceso completado error: ' + notifErr);
@@ -1677,7 +1688,7 @@ function getAdminFinanciero(params) {
       };
       var lastPagRow = pagosSheet.getLastRow();
       var pagData = [];
-      var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia);
+      var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia, pc.metodo_de_pago || 0);
       if (lastPagRow >= 6) {
         pagData = pagosSheet.getRange(6, 1, lastPagRow - 5, readWidth).getValues();
         var tiposValidos3 = { 'reserva': true, 'tiquete': true, 'pago final': true };
@@ -1705,7 +1716,8 @@ function getAdminFinanciero(params) {
             estado: str(r[pc.estado - 1]), paquete: str(r[pc.paquete - 1]), notas: str(r[pc.notas - 1]),
             comprobante_url: str(r[pc.comprobante - 1]),
             historial_abonos: str(r[pc.historial_de_abonos - 1]),
-            ia_status: str(r[pc.verificacion_ia - 1]), ia_detalle: str(r[pc.detalle_ia - 1])
+            ia_status: str(r[pc.verificacion_ia - 1]), ia_detalle: str(r[pc.detalle_ia - 1]),
+            metodo_pago: pc.metodo_de_pago ? str(r[pc.metodo_de_pago - 1]) : ''
           });
         }
       }
@@ -2064,8 +2076,18 @@ function verificarComprobanteIA_(fileId, eurEsperado, copEsperado, metodoPago) {
   }
 }
 
-// Compara lo leído por la IA contra el monto esperado, con tolerancia según método de pago:
-// 0.3% para transferencia (debe calzar casi exacto), 1% para tarjeta (redondeo del procesador Bold).
+// Recargo que cobra Bold por pago con tarjeta. El comprobante de un pago con
+// tarjeta muestra el monto CON este recargo incluido, pero ese extra no forma
+// parte del programa (es la comisión del procesador) — no debe contarse para
+// el saldo del cliente. Debe coincidir con el 0.035 usado en areapersonal.html.
+var RECARGO_TARJETA_PCT = 0.035;
+
+// Compara lo leído por la IA contra el monto esperado. Para transferencia debe
+// calzar casi exacto (0.3% de tolerancia, redondeos). Para tarjeta, el
+// comprobante puede mostrar el monto base O el monto con el 3.5% de recargo
+// de Bold incluido — se acepta cualquiera de los dos (con 1% de tolerancia
+// para el redondeo del procesador), y el detalle indica cuál coincidió para
+// que el admin sepa que el recargo, si aparece, no cuenta para el saldo.
 function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
   const monto = parseFloat(parsed.monto);
   const moneda = String(parsed.moneda || '').toUpperCase();
@@ -2074,8 +2096,6 @@ function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
   if (!monto || isNaN(monto) || confianza === 'baja') {
     return { status: 'manual', detalle: 'Imagen ilegible o monto no detectado' };
   }
-
-  const porcentajeTolerancia = (metodoPago === 'tarjeta') ? 0.01 : 0.003;
 
   let esperado = 0, monedaLabel = '';
   if (moneda === 'COP' && copEsperado > 0) {
@@ -2086,13 +2106,30 @@ function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
     return { status: 'revisar', detalle: 'Moneda detectada (' + moneda + ') no coincide con lo esperado' };
   }
 
-  const tolerancia = Math.max(esperado * porcentajeTolerancia, monedaLabel === 'COP' ? 1000 : 1);
-  const diff = Math.abs(monto - esperado);
-
-  if (diff <= tolerancia) {
+  const toleranciaBase = Math.max(esperado * 0.003, monedaLabel === 'COP' ? 1000 : 1);
+  const diffBase = Math.abs(monto - esperado);
+  if (diffBase <= toleranciaBase) {
     return { status: 'coincide', detalle: 'Coincide · ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') };
   }
-  return { status: 'revisar', detalle: 'Detectó ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') + ', se esperaba ' + esperado.toLocaleString('es-CO') };
+
+  if (metodoPago === 'tarjeta') {
+    const esperadoConRecargo = esperado * (1 + RECARGO_TARJETA_PCT);
+    const toleranciaTarjeta = Math.max(esperadoConRecargo * 0.01, monedaLabel === 'COP' ? 1000 : 1);
+    const diffTarjeta = Math.abs(monto - esperadoConRecargo);
+    if (diffTarjeta <= toleranciaTarjeta) {
+      return {
+        status: 'coincide',
+        detalle: 'Coincide con recargo tarjeta · ' + monedaLabel + ' ' + monto.toLocaleString('es-CO')
+          + ' (' + monedaLabel + ' ' + Math.round(esperado).toLocaleString('es-CO') + ' + 3.5% Bold — el recargo no cuenta para el saldo)'
+      };
+    }
+  }
+
+  return {
+    status: 'revisar',
+    detalle: 'Detectó ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') + ', se esperaba ' + esperado.toLocaleString('es-CO')
+      + (metodoPago === 'tarjeta' ? ' (o ' + Math.round(esperado * (1 + RECARGO_TARJETA_PCT)).toLocaleString('es-CO') + ' con recargo tarjeta)' : '')
+  };
 }
 
 function marcarComprobanteSubido(data) {
@@ -2167,8 +2204,11 @@ function marcarComprobanteSubido(data) {
       }
       pagosSheet.getRange(targetSheetRow, pc.verificacion_ia).setValue(resultadoIA.status);
       pagosSheet.getRange(targetSheetRow, pc.detalle_ia).setValue(resultadoIA.detalle);
+      // Columna opcional: si no existe todavía en la hoja Pagos (fila 5, header
+      // "Metodo de pago"), pc.metodo_de_pago queda undefined y esto no hace nada.
+      if (pc.metodo_de_pago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
     } else {
-      var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia);
+      var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia, pc.metodo_de_pago || 0);
       var newRow = new Array(writeWidth).fill('');
       newRow[pc.jugador_acompanante - 1] = tipoParticipante;
       newRow[pc.nombre_familia - 1] = nombre;
@@ -2180,6 +2220,7 @@ function marcarComprobanteSubido(data) {
       newRow[pc.comprobante - 1] = comprobanteUrl;
       newRow[pc.verificacion_ia - 1] = resultadoIA.status;
       newRow[pc.detalle_ia - 1] = resultadoIA.detalle;
+      if (pc.metodo_de_pago) newRow[pc.metodo_de_pago - 1] = metodoPago;
 
       var filaInsertada = -1;
       if (blockPagoFinalRow > 0) {
