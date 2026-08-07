@@ -300,7 +300,8 @@ function getAbonosValidados_(nombre, budgetSheetId) {
     if (lastRow < 6) return resultado;
     const pc = getPagosColMap_(pagosSheet);
     const metodoCol = pc.metodo_de_pago || 0; // columna opcional — 0 si la hoja aún no la tiene
-    const lastCol = Math.max(11, metodoCol);
+    const historialCol = pc.historial_de_abonos || 0;
+    const lastCol = Math.max(11, metodoCol, historialCol);
     const data = pagosSheet.getRange(6, 1, lastRow - 5, lastCol).getValues();
     const num = function(v) {
       if (typeof v === 'number') return v;
@@ -331,15 +332,29 @@ function getAbonosValidados_(nombre, budgetSheetId) {
       // normalmente es el vigente (RECARGO_TARJETA_PCT), salvo que la celda
       // tenga un % puntual distinto (ver recargoTarjetaDeCelda_).
       const metodoRowRaw = metodoCol ? String(r[metodoCol - 1] || '') : '';
-      const recargoRow = recargoTarjetaDeCelda_(metodoRowRaw);
-      let eurBase = eurBruto, eurComision = 0;
-      if (recargoRow !== null) {
-        eurBase = eurBruto / (1 + recargoRow);
-        eurComision = eurBruto - eurBase;
-      }
-      resultado[concepto] += eurBase;
-      resultado[concepto + '_comision'] += eurComision;
-      resultado[concepto + '_bruto'] += eurBruto;
+      // Si el concepto se pagó en varios abonos (ej. primero transferencia,
+      // luego un segundo abono con tarjeta), cada entrada del historial puede
+      // tener su propio método — se calcula base/comisión ENTRADA POR ENTRADA,
+      // no sobre el total sumado de la fila, para no aplicarle el recargo a
+      // dinero que nunca pasó por tarjeta. Una entrada sin método propio (o
+      // sin historial en absoluto — pago único, o registrado antes de que
+      // existiera esta columna) usa el método de la fila como respaldo.
+      const historialRaw = historialCol ? String(r[historialCol - 1] || '') : '';
+      const entradasFila = parseHistorialAbonos_(historialRaw);
+      const abonos = entradasFila.length > 0
+        ? entradasFila.map(function(en) { return { eur: en.eur, metodo: en.metodo || metodoRowRaw }; })
+        : [{ eur: eurBruto, metodo: metodoRowRaw }];
+      abonos.forEach(function(abono) {
+        const recargoAbono = recargoTarjetaDeCelda_(abono.metodo);
+        let eurBase = abono.eur, eurComision = 0;
+        if (recargoAbono !== null) {
+          eurBase = abono.eur / (1 + recargoAbono);
+          eurComision = abono.eur - eurBase;
+        }
+        resultado[concepto] += eurBase;
+        resultado[concepto + '_comision'] += eurComision;
+        resultado[concepto + '_bruto'] += abono.eur;
+      });
       const fechaCelda = r[2];
       const fechaComparable = (fechaCelda instanceof Date) ? fechaCelda : new Date(String(fechaCelda));
       if (!isNaN(fechaComparable.getTime()) && (!fechaMasReciente[concepto] || fechaComparable > fechaMasReciente[concepto])) {
@@ -1913,21 +1928,27 @@ function getPagosColMap_(pagosSheet) {
 }
 
 // ── Historial de abonos (columna "Historial de abonos") ───────────────────
-// Formato: "dd/mm/yyyy:eur:cop;dd/mm/yyyy:eur:cop;..." — cada abono es una
-// entrada independiente. Las columnas Valor COP / Valor EUR se reconstruyen
-// como fórmulas de suma (=1000+300) a partir de este historial, para que el
-// propio Sheet quede auditable en vez de mostrar solo un total plano.
+// Formato: "dd/mm/yyyy:eur:cop:metodo;dd/mm/yyyy:eur:cop:metodo;..." — cada
+// abono es una entrada independiente, con su propio método de pago (4to
+// campo, opcional — entradas viejas sin él quedan con metodo=''). Esto
+// permite que un mismo concepto (ej. Pago Final) se pague en varios abonos
+// con métodos distintos (primero transferencia, después tarjeta) y que
+// getAbonosValidados_() calcule la comisión SOLO sobre la parte que
+// realmente se pagó con tarjeta, no sobre el total de la fila. Las columnas
+// Valor COP / Valor EUR se reconstruyen como fórmulas de suma (=1000+300) a
+// partir de este historial, para que el propio Sheet quede auditable en vez
+// de mostrar solo un total plano.
 function parseHistorialAbonos_(str) {
   if (!str) return [];
   return String(str).split(';').map(function(s) {
     var parts = s.trim().split(':');
     if (parts.length < 2) return null;
-    return { fecha: parts[0], eur: parseFloat(parts[1]) || 0, cop: parseFloat(parts[2]) || 0 };
+    return { fecha: parts[0], eur: parseFloat(parts[1]) || 0, cop: parseFloat(parts[2]) || 0, metodo: parts[3] || '' };
   }).filter(Boolean);
 }
 
 function buildHistorialString_(entradas) {
-  return entradas.map(function(e) { return e.fecha + ':' + e.eur + ':' + (e.cop || 0); }).join(';');
+  return entradas.map(function(e) { return e.fecha + ':' + e.eur + ':' + (e.cop || 0) + ':' + (e.metodo || ''); }).join(';');
 }
 
 function buildSumFormula_(entradas, campo) {
@@ -1951,6 +1972,7 @@ function registrarPago(data) {
     var cop     = parseFloat(data.cop)  || 0;
     var estado  = String(data.estado  || 'Parcial').trim();
     var paquete = String(data.paquete || 'Estándar').trim();
+    var metodoPago = String(data.metodo_pago || '').trim().toLowerCase();
 
     if (!nombre || !tipo || !fecha || eur <= 0)
       return sendResponse(400, { ok: false, error: 'nombre, tipo, fecha y eur son requeridos' });
@@ -1998,7 +2020,7 @@ function registrarPago(data) {
       }
     }
 
-    var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas);
+    var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.metodo_de_pago || 0);
     var newRow = new Array(writeWidth).fill('');
     newRow[pc.jugador_acompanante - 1] = tipoParticipante;
     newRow[pc.nombre_familia - 1] = nombre;
@@ -2008,6 +2030,7 @@ function registrarPago(data) {
     newRow[pc.estado - 1] = estado;
     newRow[pc.paquete - 1] = paquete;
     newRow[pc.notas - 1] = tipo;
+    if (pc.metodo_de_pago && metodoPago) newRow[pc.metodo_de_pago - 1] = metodoPago;
     var finalRow = -1;
 
     if (targetSheetRow > 0) {
@@ -2034,7 +2057,7 @@ function registrarPago(data) {
     // concepto (o para sobrescribir por completo), así que inicializa el
     // historial con esta única entrada.
     pagosSheet.getRange(finalRow, pc.historial_de_abonos).setValue(
-      buildHistorialString_([{ fecha: formatFechaDDMMYYYY_(fechaDate), eur: eur, cop: cop }])
+      buildHistorialString_([{ fecha: formatFechaDDMMYYYY_(fechaDate), eur: eur, cop: cop, metodo: metodoPago }])
     );
 
     // Sync paquete across all rows of this participant if paquete changed
@@ -2132,12 +2155,14 @@ function verificarComprobanteIA_(fileId, eurEsperado, copEsperado, metodoPago) {
   }
 }
 
-// Compara lo leído por la IA contra el monto esperado. Para transferencia debe
-// calzar casi exacto (0.3% de tolerancia, redondeos). Para tarjeta, el
-// comprobante puede mostrar el monto base O el monto con el 3.5% de recargo
-// de Bold incluido — se acepta cualquiera de los dos (con 1% de tolerancia
-// para el redondeo del procesador), y el detalle indica cuál coincidió para
-// que el admin sepa que el recargo, si aparece, no cuenta para el saldo.
+// Compara lo leído por la IA contra el monto esperado. `eurEsperado`/
+// `copEsperado` ya vienen en bruto (con el recargo de tarjeta incluido si
+// metodoPago === 'tarjeta' — ver marcarComprobantePendiente() en el
+// frontend), así que el comprobante SIEMPRE debe calzar contra ese esperado
+// directamente: para transferencia con tolerancia ajustada (0.3%, solo
+// redondeos); para tarjeta con más margen (1%), porque Bold puede redondear
+// distinto al convertir. El detalle deja claro cuándo el monto incluye el
+// recargo, para que el admin sepa que esa parte no cuenta para el saldo.
 function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
   const monto = parseFloat(parsed.monto);
   const moneda = String(parsed.moneda || '').toUpperCase();
@@ -2156,29 +2181,23 @@ function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
     return { status: 'revisar', detalle: 'Moneda detectada (' + moneda + ') no coincide con lo esperado' };
   }
 
-  const toleranciaBase = Math.max(esperado * 0.003, monedaLabel === 'COP' ? 1000 : 1);
-  const diffBase = Math.abs(monto - esperado);
-  if (diffBase <= toleranciaBase) {
-    return { status: 'coincide', detalle: 'Coincide · ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') };
-  }
+  const esTarjeta = metodoPago === 'tarjeta';
+  const porcentajeTolerancia = esTarjeta ? 0.01 : 0.003;
+  const tolerancia = Math.max(esperado * porcentajeTolerancia, monedaLabel === 'COP' ? 1000 : 1);
+  const diff = Math.abs(monto - esperado);
 
-  if (metodoPago === 'tarjeta') {
-    const esperadoConRecargo = esperado * (1 + RECARGO_TARJETA_PCT);
-    const toleranciaTarjeta = Math.max(esperadoConRecargo * 0.01, monedaLabel === 'COP' ? 1000 : 1);
-    const diffTarjeta = Math.abs(monto - esperadoConRecargo);
-    if (diffTarjeta <= toleranciaTarjeta) {
-      return {
-        status: 'coincide',
-        detalle: 'Coincide con recargo tarjeta · ' + monedaLabel + ' ' + monto.toLocaleString('es-CO')
-          + ' (' + monedaLabel + ' ' + Math.round(esperado).toLocaleString('es-CO') + ' + 3.5% Bold — el recargo no cuenta para el saldo)'
-      };
-    }
+  if (diff <= tolerancia) {
+    return {
+      status: 'coincide',
+      detalle: 'Coincide · ' + monedaLabel + ' ' + monto.toLocaleString('es-CO')
+        + (esTarjeta ? ' (incluye 3.5% de recargo Bold — no cuenta para el saldo)' : '')
+    };
   }
 
   return {
     status: 'revisar',
     detalle: 'Detectó ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') + ', se esperaba ' + esperado.toLocaleString('es-CO')
-      + (metodoPago === 'tarjeta' ? ' (o ' + Math.round(esperado * (1 + RECARGO_TARJETA_PCT)).toLocaleString('es-CO') + ' con recargo tarjeta)' : '')
+      + (esTarjeta ? ' (con recargo de tarjeta incluido)' : '')
   };
 }
 
@@ -2304,6 +2323,7 @@ function agregarAbonoPago(data) {
     var fecha = String(data.fecha || '').trim();
     var eur = parseFloat(data.eur) || 0;
     var cop = parseFloat(data.cop) || 0;
+    var metodoPago = String(data.metodo_pago || '').trim().toLowerCase();
     if (!nombre || !tipo || !fecha || eur <= 0)
       return sendResponse(400, { ok: false, error: 'nombre, tipo, fecha y eur son requeridos' });
 
@@ -2348,7 +2368,7 @@ function agregarAbonoPago(data) {
     }
 
     var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
-    historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop });
+    historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
 
     pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
     var formulaCop = buildSumFormula_(historialActual, 'cop');
@@ -2357,6 +2377,7 @@ function agregarAbonoPago(data) {
     if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormula(formulaEur);
     pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Parcial');
     pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
+    if (pc.metodo_de_pago && metodoPago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
 
     actualizarResumenPagos(pagosSheet);
     return sendResponse(200, { ok: true });
