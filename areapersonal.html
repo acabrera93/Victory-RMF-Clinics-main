@@ -965,16 +965,16 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" height="36" style="opacity:0.75;" alt="Revel">
       </div>
 
-      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic;">Madrid, octubre 2026</p>
+      <p id="carta-fecha-mes" style="font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic;">Madrid, octubre 2026</p>
       <p style="font-size:16px;color:var(--navy);margin-bottom:4px;">Hola <strong id="carta-nombre">—</strong>,</p>
 
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--navy);letter-spacing:0.5px;margin:16px 0 18px;padding:16px 20px;background:rgba(30,91,168,.04);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;">
+      <div id="carta-titulo" style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--navy);letter-spacing:0.5px;margin:16px 0 18px;padding:16px 20px;background:rgba(30,91,168,.04);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;">
         ¡Bienvenido al Real Madrid Foundation Clinic 2026!
       </div>
 
-      <p style="font-size:14px;color:var(--text);line-height:1.9;margin-bottom:14px;">Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, del <strong>2 al 10 de octubre 2026</strong>.</p>
+      <p id="carta-parrafo-fechas" style="font-size:14px;color:var(--text);line-height:1.9;margin-bottom:14px;">Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, del <strong>2 al 10 de octubre 2026</strong>.</p>
 
-      <p style="font-size:14px;color:var(--text);line-height:1.9;margin-bottom:14px;">Bienvenido a formar parte de uno de los programas formativos más importantes del mundo, en el que representarás a tu país enfrentándote a academias internacionales y viviendo el fútbol desde dentro, tal como lo hacen los futuros profesionales del Real Madrid CF.</p>
+      <p id="carta-parrafo-descripcion" style="font-size:14px;color:var(--text);line-height:1.9;margin-bottom:14px;">Bienvenido a formar parte de uno de los programas formativos más importantes del mundo, en el que representarás a tu país enfrentándote a academias internacionales y viviendo el fútbol desde dentro, tal como lo hacen los futuros profesionales del Real Madrid CF.</p>
 
       <p style="font-size:14px;color:var(--text);line-height:1.9;margin-bottom:14px;">Durante esta semana no solo competirás, sino que también entrenarás y participarás en actividades diseñadas para potenciar tu crecimiento deportivo y personal. Y aunque el fútbol es el corazón del programa, esta experiencia va mucho más allá del balón: aquí fortalecerás valores como el <strong>esfuerzo, la disciplina, el respeto, el trabajo en equipo y la superación personal</strong>.</p>
 
@@ -983,7 +983,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <p style="font-size:14px;color:var(--text);line-height:1.9;margin-bottom:24px;">En los próximos días recibirás información importante sobre documentos, logística y pasos a seguir para que llegues a Madrid completamente preparado.</p>
 
       <div style="background:linear-gradient(135deg,rgba(11,31,58,.04),rgba(30,91,168,.06));border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:18px 20px;text-align:center;margin-bottom:24px;">
-        <p style="font-size:14px;font-weight:500;color:var(--navy);margin-bottom:6px;">¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation Clinic powered by Fundación Revel!</p>
+        <p id="carta-cierre" style="font-size:14px;font-weight:500;color:var(--navy);margin-bottom:6px;">¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation Clinic powered by Fundación Revel!</p>
         <p style="font-size:15px;color:var(--blue);font-weight:600;margin:0;">¡Nos vemos en Madrid! 🇪🇸</p>
       </div>
 
@@ -2860,6 +2860,29 @@ function actualizarFechasLimitePorPrograma_() {
 
   const elFinalFecha = document.getElementById('panel3-fecha-limite');
   if (elFinalFecha) elFinalFecha.textContent = fechas.final;
+
+  // Carta de bienvenida (panel-done) — título, fecha y párrafos con el
+  // nombre/fechas del programa activo.
+  const elCartaFechaMes = document.getElementById('carta-fecha-mes');
+  if (elCartaFechaMes) elCartaFechaMes.textContent = esWC ? 'Madrid, marzo 2027' : 'Madrid, octubre 2026';
+  const elCartaTitulo = document.getElementById('carta-titulo');
+  if (elCartaTitulo) elCartaTitulo.textContent = esWC ? '¡Bienvenido al Real Madrid Foundation World Challenge 2027!' : '¡Bienvenido al Real Madrid Foundation Clinic 2026!';
+  const elCartaFechas = document.getElementById('carta-parrafo-fechas');
+  if (elCartaFechas) {
+    elCartaFechas.innerHTML = esWC
+      ? 'Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, del <strong>19 al 27 de marzo 2027</strong>.'
+      : 'Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, del <strong>2 al 10 de octubre 2026</strong>.';
+  }
+  const elCartaDesc = document.getElementById('carta-parrafo-descripcion');
+  if (elCartaDesc) {
+    elCartaDesc.textContent = esWC
+      ? 'Bienvenido a formar parte de uno de los torneos más importantes del mundo, en el que representarás a tu país compitiendo contra equipos internacionales y viviendo el fútbol desde dentro, tal como lo hacen los futuros profesionales del Real Madrid CF.'
+      : 'Bienvenido a formar parte de uno de los programas formativos más importantes del mundo, en el que representarás a tu país enfrentándote a academias internacionales y viviendo el fútbol desde dentro, tal como lo hacen los futuros profesionales del Real Madrid CF.';
+  }
+  const elCartaCierre = document.getElementById('carta-cierre');
+  if (elCartaCierre) elCartaCierre.textContent = esWC
+    ? '¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation World Challenge powered by Fundación Revel!'
+    : '¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation Clinic powered by Fundación Revel!';
 }
 
 function updateTasaFecha() {
