@@ -568,7 +568,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <div class="welcome">
     <div>
       <h1>¡Bienvenido/a, <span id="dn">Participante</span>!</h1>
-      <p>Real Madrid Foundation Clinic · 2–10 Octubre 2026 · Madrid, España</p>
+      <p id="welcome-subtitle">Real Madrid Foundation Clinic · 2–10 Octubre 2026 · Madrid, España</p>
       <div id="countdown-pill" class="countdown-pill-desktop" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border-radius:20px;padding:6px 14px;margin-top:8px;">
         <span style="font-size:14px;">📅</span>
         <span class="countdown-text" style="font-size:13px;color:#fff;font-weight:500;">Calculando...</span>
@@ -588,6 +588,21 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
     </div>
   </div>
+
+  <!-- BOTONES CAMBIAR DE PROGRAMA (solo si el email tiene inscripción en ambos) -->
+  <div id="programa-switcher" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+    <button id="btn-prog-clinic" class="programa-switch-btn" onclick="cambiarPrograma('clinic')">🏟️ Real Madrid Foundation Clinic</button>
+    <button id="btn-prog-wc" class="programa-switch-btn" onclick="cambiarPrograma('world_challenge')">🏆 Real Madrid Foundation World Challenge</button>
+  </div>
+  <style>
+    .programa-switch-btn {
+      font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 20px;
+      border: 1.5px solid rgba(11,31,58,0.15); background: #fff; color: var(--navy, #0b1f3a);
+      cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif;
+    }
+    .programa-switch-btn.active { background: var(--navy, #0b1f3a); color: #fff; border-color: var(--navy, #0b1f3a); }
+    .programa-switch-btn:not(.active):hover { border-color: rgba(11,31,58,0.4); }
+  </style>
 
   <!-- BIENVENIDA DESCRIPTIVA -->
   <div id="welcome-guide" style="background:linear-gradient(135deg,#0b1f3a 0%,#1a3a6e 100%);border-radius:10px;padding:16px 20px;margin-bottom:18px;position:relative;">
@@ -1911,6 +1926,7 @@ let esStaffView = false;
 let esComercialOnly = false;
 let grupoPaso = 1;
 let programa = '';
+let programKeyActivo = 'clinic'; // 'clinic' | 'world_challenge' — programa activo en pantalla
 let adminLoaded = false;
 let adminLastLoaded = 0;
 let adminData = [];
@@ -2056,6 +2072,12 @@ function normalizeParticipant(raw) {
     tipo: esJugador ? 'Jugador' : esStaff ? 'Staff' : 'Acompañante',
     tiquete_aereo: conTicket ? 'Con tiquete' : (tiqRaw || 'Sin tiquete'),
     programa: rowVal(raw, 'programa', 'Programa', 'program', 'evento', 'Evento'),
+    // '_program_key' viene marcado por el backend (buscarParticipantes) según de
+    // qué sheet salió la fila — es la fuente de verdad. Si no viene (ej. otros
+    // endpoints que aún no la setean), se infiere del texto libre de 'programa'.
+    program_key: rowVal(raw, 'program_key') || (
+      /world\s*challenge/i.test(rowVal(raw, 'programa', 'Programa', 'program', 'evento', 'Evento')) ? 'world_challenge' : 'clinic'
+    ),
     habitacion: rowVal(raw, 'habitacion', 'habitación', 'Habitacion', 'Habitación', 'room', 'tipo_habitacion'),
     acudiente: rowVal(
       raw,
@@ -2368,43 +2390,18 @@ async function doLogin() {
 
     // Participante normal (con o sin rol comercial) — flujo existente
     allParticipants = rawParticipants.map(p => normalizeParticipant(p) || p);
-    grupoPaso = Math.max(...allParticipants.map(p => parseInt(p.paso_actual) || 1));
-    conTiq = allParticipants.some(p => p.tiquete_aereo === 'Con tiquete');
-    soloAct = allParticipants.length > 0 && allParticipants.every(p => {
-      const n = normalizeParticipant(p) || p;
-      return !(n.tipo||'').toLowerCase().includes('jug') && (n.habitacion||'') === '';
-    });
 
     document.getElementById('login-gate').style.display = 'none';
     document.getElementById('main-content').style.display = 'block';
 
-    if (allParticipants.length > 1) {
-      buildParticipantTabs(allParticipants);
-    } else {
-      document.getElementById('ptabs-container').style.display = 'none';
-      document.getElementById('ptabs').innerHTML = '';
-    }
-
-    const primerJug = allParticipants.find(p => p.tipo === 'Jugador') || allParticipants[0];
-    loadParticipant(primerJug);
-    cargarMisPagosValidados();
-
-    document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
-    document.getElementById('tc-text').innerHTML = getTyC();
-    const tiqOptin = document.getElementById('tiq-optin');
-    if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
-    const tc = document.getElementById('tc-chk');
-    if (tc) { tc.checked = grupoPaso > 2; onTC(); }
-    applyPaymentTotals(calcPaymentTotals());
-    // Update TC button text for soloAct
-    const btnContinuar = document.getElementById('btn-continuar-tc');
-    if (btnContinuar && soloAct) {
-      btnContinuar.textContent = conTiq ? 'Continuar al pago del tiquete →' : 'Continuar al pago final →';
-    }
-    // Staff: saltar al paso de documentación directamente
-    esStaffView = allParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
-    if (esStaffView) { showStaffView(); return; }
-    applyPasoActual(grupoPaso);
+    // Si el correo tiene inscripción en más de un programa (ej. Clinic Y World
+    // Challenge), mostrar los botones para cambiar entre sus áreas personales.
+    // Cada programa se inscribe/paga por separado — ver activarPrograma().
+    const programasPresentes = [...new Set(allParticipants.map(p => p.program_key || 'clinic'))];
+    setupProgramaSwitcher(programasPresentes);
+    const programaInicial = programasPresentes.includes('clinic') ? 'clinic' : programasPresentes[0];
+    const esStaffInicial = activarPrograma(programaInicial);
+    if (esStaffInicial) return; // showStaffView() ya se mostró dentro de activarPrograma()
     // Admin emails siempre van al flujo gateado, aunque también estén en la hoja de participantes
     if (ADMIN_EMAILS.includes(participantEmail)) {
       showAdminOnly();
@@ -2451,6 +2448,74 @@ async function doLogin() {
   }
 }
 
+// Muestra los botones de cambio de programa solo si el email tiene
+// inscripción en más de uno. Con un solo programa, quedan ocultos y el
+// comportamiento es idéntico al de antes de existir World Challenge.
+function setupProgramaSwitcher(programKeys) {
+  const wrap = document.getElementById('programa-switcher');
+  if (!wrap) return;
+  wrap.style.display = programKeys.length > 1 ? 'flex' : 'none';
+}
+
+// Se llama al hacer click en uno de los botones del switcher.
+function cambiarPrograma(key) {
+  activarPrograma(key);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Filtra allParticipants al programa `key` y (re)ejecuta toda la carga que
+// antes vivía inline en doLogin(): tabs de participantes vinculados, cálculo
+// de paso/tiquete/solo-actividades del GRUPO (no del email completo — un
+// mismo correo con inscripción en Clinic y en World Challenge tiene dos
+// grupos independientes, cada uno con su propio proceso y pagos), totales de
+// pago y paso actual. Se llama una vez al login y de nuevo en cada cambio de
+// programa. Devuelve true si el programa activo es de Staff (mismo atajo que
+// tenía doLogin: showStaffView() y no continuar con el resto del flujo).
+function activarPrograma(key) {
+  const btnClinic = document.getElementById('btn-prog-clinic');
+  const btnWc = document.getElementById('btn-prog-wc');
+  if (btnClinic) btnClinic.classList.toggle('active', key === 'clinic');
+  if (btnWc) btnWc.classList.toggle('active', key === 'world_challenge');
+
+  const programParticipants = allParticipants.filter(p => (p.program_key || 'clinic') === key);
+  if (!programParticipants.length) return false;
+
+  grupoPaso = Math.max(...programParticipants.map(p => parseInt(p.paso_actual) || 1));
+  conTiq = programParticipants.some(p => p.tiquete_aereo === 'Con tiquete');
+  soloAct = programParticipants.every(p => {
+    const n = normalizeParticipant(p) || p;
+    return !(n.tipo||'').toLowerCase().includes('jug') && (n.habitacion||'') === '';
+  });
+
+  if (programParticipants.length > 1) {
+    buildParticipantTabs(programParticipants);
+  } else {
+    document.getElementById('ptabs-container').style.display = 'none';
+    document.getElementById('ptabs').innerHTML = '';
+  }
+
+  const primerJug = programParticipants.find(p => p.tipo === 'Jugador') || programParticipants[0];
+  loadParticipant(primerJug);
+  cargarMisPagosValidados();
+
+  document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
+  document.getElementById('tc-text').innerHTML = getTyC();
+  const tiqOptin = document.getElementById('tiq-optin');
+  if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
+  const tc = document.getElementById('tc-chk');
+  if (tc) { tc.checked = grupoPaso > 2; onTC(); }
+  applyPaymentTotals(calcPaymentTotals());
+  const btnContinuar = document.getElementById('btn-continuar-tc');
+  if (btnContinuar && soloAct) {
+    btnContinuar.textContent = conTiq ? 'Continuar al pago del tiquete →' : 'Continuar al pago final →';
+  }
+  // Staff: saltar al paso de documentación directamente
+  esStaffView = programParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
+  if (esStaffView) { showStaffView(); return true; }
+  applyPasoActual(grupoPaso);
+  return false;
+}
+
 function buildParticipantTabs(participants) {
   const container = document.getElementById('ptabs-container');
   const tabsEl = document.getElementById('ptabs');
@@ -2483,8 +2548,13 @@ let _countdownInterval = null;
 function iniciarCountdownViaje() {
   const els = document.querySelectorAll('.countdown-text');
   if (!els.length) return;
-  const inicioViaje = new Date('2026-10-02T09:00:00+02:00').getTime();
-  const finViaje = new Date('2026-10-10T23:59:59+02:00').getTime();
+  const fechasPorPrograma = {
+    clinic:          { inicio: '2026-10-02T09:00:00+02:00', fin: '2026-10-10T23:59:59+02:00' },
+    world_challenge: { inicio: '2027-03-19T09:00:00+01:00', fin: '2027-03-27T23:59:59+01:00' }
+  };
+  const fechas = fechasPorPrograma[programKeyActivo] || fechasPorPrograma.clinic;
+  const inicioViaje = new Date(fechas.inicio).getTime();
+  const finViaje = new Date(fechas.fin).getTime();
 
   function tick() {
     const ahora = Date.now();
@@ -2525,7 +2595,14 @@ function loadParticipant(p) {
   participantEmail = participant.email || '';
   tipo = (participant.tipo || 'Jugador').toLowerCase();
   programa = participant.programa || '';
+  programKeyActivo = participant.program_key || 'clinic';
   habitacion = participant.habitacion || '';
+  const subtitleEl = document.getElementById('welcome-subtitle');
+  if (subtitleEl) {
+    subtitleEl.textContent = programKeyActivo === 'world_challenge'
+      ? 'Real Madrid Foundation World Challenge · 19–27 Marzo 2027 · Madrid, España'
+      : 'Real Madrid Foundation Clinic · 2–10 Octubre 2026 · Madrid, España';
+  }
 
   // Cargar el texto de T&C de inmediato, independiente del estado del checkbox
   // y antes de cualquier otra actualización de UI que pueda fallar más abajo.
@@ -2555,6 +2632,7 @@ function loadParticipant(p) {
     const esJug = tipo.includes('jug');
     const vinculados = allParticipants
       .filter(c => c.nombre !== participant.nombre &&
+        (c.program_key || 'clinic') === programKeyActivo &&
         (esJug ? !(c.tipo || '').toLowerCase().includes('jug') : (c.tipo || '').toLowerCase().includes('jug'))
       );
     if (vinculados.length > 0) {
@@ -2841,7 +2919,7 @@ function pagoYaCongelado(tipoPago) {
 // reemplace la estimación mostrada mientras estaba "Pendiente de confirmar".
 function cargarMisPagosValidados() {
   if (!nombre) return;
-  fetch(APPS_SCRIPT_URL + '?action=mis_pagos&nombre=' + encodeURIComponent(nombre) + '&_t=' + Date.now(), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=mis_pagos&nombre=' + encodeURIComponent(nombre) + '&programa=' + encodeURIComponent(programKeyActivo) + '&_t=' + Date.now(), { redirect: 'follow' })
     .then(r => r.json())
     .then(data => {
       misPagosValidados = (data && typeof data === 'object') ? data : {};
@@ -3409,7 +3487,7 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, cop, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, cop, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago, programa: programKeyActivo }),
     keepalive: true
   }).catch(() => {});
 }
@@ -3480,7 +3558,7 @@ function actualizarPaso(nuevoPaso) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'actualizar_paso', email: participantEmail, paso_actual: String(nuevoPaso) }),
+    body: JSON.stringify({ action: 'actualizar_paso', email: participantEmail, paso_actual: String(nuevoPaso), programa: programKeyActivo }),
     keepalive: true
   }).catch(() => {});
 }

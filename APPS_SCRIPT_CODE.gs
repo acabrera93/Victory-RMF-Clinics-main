@@ -169,6 +169,29 @@ const SABER_FOLDER_ID = "REEMPLAZAR_CON_ID_CARPETA_SABER"; // Carpeta "RMF_Clini
 const MEMORIAS_FOLDER_ID = "1Przikh__b-4CEhcR738XmhQLNdFgBoce"; // Carpeta galería memorias (ediciones anteriores)
 const BUDGET_SHEET_ID = "1nMPrqnDUVwaoG42B84T8rCBvE7hKLo5nFLbrYWb58XQ"; // Sheet presupuesto/finanzas
 
+// ───── PROGRAMA: REAL MADRID FOUNDATION WORLD CHALLENGE ───────────────────────
+// Segundo programa (además del Clinic de octubre) con sus propios sheets de
+// inscripción y presupuesto. Las funciones de login/pagos/participantes buscan
+// en ambos pares de sheets según corresponda — ver esWorldChallenge_() y
+// resolverSheets_().
+const SHEET_ID_WORLD_CHALLENGE = "1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg"; // Sheet Inscripciones World Challenge 2027
+const BUDGET_SHEET_ID_WORLD_CHALLENGE = "1vqmm9em3DKNZdhlZ7hfjlFJfGiL83bTell0izCCHvPY"; // Sheet presupuesto World Challenge 2027
+
+function esWorldChallenge_(programa) {
+  return String(programa || '').toLowerCase().indexOf('world challenge') >= 0;
+}
+
+// Devuelve { sheetId, budgetSheetId, programKey } para el programa dado.
+// programa puede ser el string completo ("Real Madrid Foundation World Challenge")
+// o ya la programKey ('world_challenge'/'clinic') — ambos casos funcionan porque
+// esWorldChallenge_ solo busca la subcadena 'world challenge'.
+function resolverSheets_(programa) {
+  if (esWorldChallenge_(programa)) {
+    return { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge' };
+  }
+  return { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' };
+}
+
 // ───── GET HANDLER (fotos, saber, comunicaciones) ──────────────────────────────
 function doGet(e) {
   const params = e.parameter || {};
@@ -187,7 +210,7 @@ function doGet(e) {
     if (action === 'marcar_comunicados_vistos') return marcarComunicadosVistos(params.email || '', params.count || '0');
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
-    if (action === 'mis_pagos') return getMisPagos(params.nombre || '');
+    if (action === 'mis_pagos') return getMisPagos(params.nombre || '', params.programa || '');
     if (action === 'tasa_wise') return getTasaWise_();
     if (action === 'admin_participantes') return getAdminParticipantes(params);
     if (action === 'admin_financiero') return getAdminFinanciero(params);
@@ -223,7 +246,7 @@ function doGet(e) {
   }
 }
 
-function getAbonosValidados_(nombre) {
+function getAbonosValidados_(nombre, budgetSheetId) {
   function normNombreGS(s) {
     return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
@@ -238,7 +261,7 @@ function getAbonosValidados_(nombre) {
   try {
     const nombreNorm = normNombreGS(nombre);
     if (!nombreNorm) return resultado;
-    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const ss = SpreadsheetApp.openById(budgetSheetId || BUDGET_SHEET_ID);
     const pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return resultado;
     const lastRow = pagosSheet.getLastRow();
@@ -280,17 +303,15 @@ function getAbonosValidados_(nombre) {
   return resultado;
 }
 
-function buscarParticipantes(email) {
+// Busca participantes por email en la hoja principal (índice [0]) de UN sheet
+// de inscripción, y adjunta sus abonos validados desde su sheet de presupuesto
+// correspondiente. Se llama una vez por programa desde buscarParticipantes().
+function buscarParticipantesEnHoja_(emailNorm, fuente) {
+  const out = [];
   try {
-    const emailNorm = email.toString().toLowerCase().trim();
-    if (!emailNorm) return ContentService.createTextOutput(JSON.stringify([]))
-      .setMimeType(ContentService.MimeType.JSON);
-
-    // Usar siempre la primera hoja (hoja principal de participantes)
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const sheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
     const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return ContentService.createTextOutput(JSON.stringify([]))
-      .setMimeType(ContentService.MimeType.JSON);
+    if (data.length < 2) return out;
 
     const headers = data[0];
 
@@ -305,9 +326,7 @@ function buscarParticipantes(email) {
     }
     // Fallback a columna D (índice 3) si no se encontró por cabecera
     if (emailCol < 0) emailCol = 3;
-    Logger.log('buscarParticipantes: emailCol=' + emailCol + ' buscando: ' + emailNorm);
 
-    const participants = [];
     for (let i = 1; i < data.length; i++) {
       if (!data[i][emailCol]) continue;
       if (data[i][emailCol].toString().toLowerCase().trim() !== emailNorm) continue;
@@ -330,16 +349,44 @@ function buscarParticipantes(email) {
         const pv = data[i][20];
         if (pv != null && pv !== '') participant['paso_actual'] = String(pv);
       }
-      // Adjuntar abonos validados (Completo/Parcial) por concepto
+      // Marca de qué programa/sheet viene esta fila — el frontend la usa para
+      // rutear al área personal correcta y para saber a qué presupuesto
+      // apuntar en las llamadas de pago (registrar_pago, etc.)
+      participant['_program_key'] = fuente.programKey;
+      // Adjuntar abonos validados (Completo/Parcial) por concepto, desde el
+      // sheet de presupuesto del MISMO programa que este participante.
       const nombreParaAbonos = participant['Nombre completo'] || participant['nombre'] || participant['Nombre'] || '';
-      const abonos = getAbonosValidados_(nombreParaAbonos);
+      const abonos = getAbonosValidados_(nombreParaAbonos, fuente.budgetSheetId);
       participant['abono_reserva'] = String(abonos.reserva);
       participant['abono_tiquete'] = String(abonos.tiquete);
       participant['abono_final'] = String(abonos.final);
       participant['abono_reserva_fecha'] = abonos.reserva_fecha;
       participant['abono_tiquete_fecha'] = abonos.tiquete_fecha;
       participant['abono_final_fecha'] = abonos.final_fecha;
-      participants.push(participant);
+      out.push(participant);
+    }
+  } catch (err) {
+    Logger.log('buscarParticipantesEnHoja_ error (' + fuente.programKey + '): ' + err);
+  }
+  return out;
+}
+
+function buscarParticipantes(email) {
+  try {
+    const emailNorm = email.toString().toLowerCase().trim();
+    if (!emailNorm) return ContentService.createTextOutput(JSON.stringify([]))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    // Busca en los dos programas — Clinic y World Challenge — y combina los
+    // resultados. Cada fila queda marcada con _program_key para que el área
+    // personal sepa a cuál pertenece.
+    const fuentes = [
+      { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' },
+      { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge' }
+    ];
+    let participants = [];
+    for (let f = 0; f < fuentes.length; f++) {
+      participants = participants.concat(buscarParticipantesEnHoja_(emailNorm, fuentes[f]));
     }
 
     Logger.log('buscarParticipantes: encontrados=' + participants.length);
@@ -384,12 +431,12 @@ function getTasaWise_() {
 // que el área personal muestre "lo que efectivamente pagó" solo cuando el
 // admin ya validó el pago (estado Completo o Parcial) — mientras esté
 // "Pendiente de confirmar", el frontend sigue mostrando su propio cálculo.
-function getMisPagos(nombre) {
+function getMisPagos(nombre, programa) {
   try {
     const nombreNorm = String(nombre || '').toLowerCase().trim();
     if (!nombreNorm) return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
 
-    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    const ss = SpreadsheetApp.openById(resolverSheets_(programa).budgetSheetId);
     const pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
 
@@ -610,9 +657,9 @@ function notificarNuevoComunicado(e) {
 }
 
 // ───── ACTUALIZAR PASO (todas las filas del mismo email) ───────────────────────
-function actualizarPasoTodos(email, pasoActual) {
+function actualizarPasoTodos(email, pasoActual, programa) {
   try {
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     const headers = data[0] || [];
     let emailCol = -1, pasoCol = -1, nombreCol = -1;
@@ -735,7 +782,7 @@ function doPost(e) {
         const parsed = JSON.parse(body);
         if (parsed.action === 'track') return registrarEventoAnalytics_(parsed);
         if (parsed.action === 'actualizar_paso' && parsed.email && parsed.paso_actual) {
-          return actualizarPasoTodos(parsed.email, parsed.paso_actual);
+          return actualizarPasoTodos(parsed.email, parsed.paso_actual, parsed.programa);
         }
         if (parsed.action === 'notificar_click_bold') return notificarClickBold(parsed);
         if (parsed.action === 'marcar_comprobante_pendiente') return marcarComprobanteSubido(parsed);
@@ -1421,7 +1468,7 @@ function eliminarComunicado(data) {
 function actualizarParticipante(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const sheet = SpreadsheetApp.openById(resolverSheets_(data.programa).sheetId).getSheets()[0];
     const rowNum = parseInt(data._row);
     if (!rowNum || rowNum < 2) return sendResponse(400, { ok: false, error: 'Fila invalida: ' + data._row });
     // Mapeo posicional SOLO para campos donde la cabecera del Sheet no coincide
@@ -1836,7 +1883,7 @@ function registrarPago(data) {
     if (!nombre || !tipo || !fecha || eur <= 0)
       return sendResponse(400, { ok: false, error: 'nombre, tipo, fecha y eur son requeridos' });
 
-    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var ss = SpreadsheetApp.openById(resolverSheets_(data.programa).budgetSheetId);
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
     var pc = getPagosColMap_(pagosSheet);
@@ -2061,7 +2108,7 @@ function marcarComprobanteSubido(data) {
       if (fp.length === 3) fechaDate = new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]), 12, 0, 0);
     }
 
-    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var ss = SpreadsheetApp.openById(resolverSheets_(data.programa).budgetSheetId);
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
     var pc = getPagosColMap_(pagosSheet);
@@ -2165,7 +2212,7 @@ function agregarAbonoPago(data) {
     if (!nombre || !tipo || !fecha || eur <= 0)
       return sendResponse(400, { ok: false, error: 'nombre, tipo, fecha y eur son requeridos' });
 
-    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var ss = SpreadsheetApp.openById(resolverSheets_(data.programa).budgetSheetId);
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
     var pc = getPagosColMap_(pagosSheet);
@@ -2233,7 +2280,7 @@ function actualizarEstadoPago(data) {
     var paquete = String(data.paquete || '').trim();
     if (!nombre || !tipo || !estado) return sendResponse(400, { ok: false, error: 'nombre, tipo y estado son requeridos' });
 
-    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var ss = SpreadsheetApp.openById(resolverSheets_(data.programa).budgetSheetId);
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
     var pc = getPagosColMap_(pagosSheet);
@@ -2545,7 +2592,7 @@ function corregirPasoBugTiquete() {
 function agregarParticipante(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const sheet = SpreadsheetApp.openById(resolverSheets_(data.programa).sheetId).getSheets()[0];
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
     const normFieldKey = function(s) {
@@ -3127,17 +3174,21 @@ function getLeadsSheet_() {
 }
 
 // ── Trigger onChange: dispara con cada fila nueva agregada a Inscripciones ──
-function onChangeInscripciones(e) {
+// Función compartida por ambos programas — sourceSheetId indica de qué sheet
+// de inscripción leer, propKey es la clave de PropertiesService donde se
+// guarda "hasta qué fila ya se sincronizó" (una por programa, para no mezclar
+// el avance de Clinic con el de World Challenge).
+function sincronizarLeadsDesdeInscripciones_(e, sourceSheetId, propKey) {
   try {
     if (e && e.changeType &&
         ['INSERT_ROW', 'EDIT', 'INSERT_GRID', 'OTHER'].indexOf(e.changeType) === -1) return;
 
-    const mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const mainSheet = SpreadsheetApp.openById(sourceSheetId).getSheets()[0];
     const lastRow = mainSheet.getLastRow();
     if (lastRow < 2) return;
 
     const props = PropertiesService.getScriptProperties();
-    let lastSynced = parseInt(props.getProperty('leads_last_synced_row')) || 1;
+    let lastSynced = parseInt(props.getProperty(propKey)) || 1;
     if (lastRow <= lastSynced) return;
 
     const headers = mainSheet.getRange(1, 1, 1, mainSheet.getLastColumn()).getValues()[0];
@@ -3187,16 +3238,24 @@ function onChangeInscripciones(e) {
 
     if (rowsToAppend.length > 0) {
       leadsSheet.getRange(leadsSheet.getLastRow() + 1, 1, rowsToAppend.length, leadsHeaders.length).setValues(rowsToAppend);
-      Logger.log('Sincronizadas ' + rowsToAppend.length + ' fila(s) de Jugadores a Leads.');
+      Logger.log('Sincronizadas ' + rowsToAppend.length + ' fila(s) de Jugadores a Leads desde ' + sourceSheetId + '.');
     }
 
-    props.setProperty('leads_last_synced_row', String(lastRow));
+    props.setProperty(propKey, String(lastRow));
   } catch (err) {
-    Logger.log('onChangeInscripciones error: ' + err);
+    Logger.log('sincronizarLeadsDesdeInscripciones_ error (' + sourceSheetId + '): ' + err);
   }
 }
 
-// ── Ejecutar UNA VEZ desde el editor para instalar el trigger ──────────────
+function onChangeInscripciones(e) {
+  sincronizarLeadsDesdeInscripciones_(e, SHEET_ID, 'leads_last_synced_row');
+}
+
+function onChangeInscripcionesWorldChallenge(e) {
+  sincronizarLeadsDesdeInscripciones_(e, SHEET_ID_WORLD_CHALLENGE, 'leads_last_synced_row_wc');
+}
+
+// ── Ejecutar UNA VEZ desde el editor para instalar el trigger (Clinic) ─────
 function crearTriggerSyncLeads() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'onChangeInscripciones') ScriptApp.deleteTrigger(t);
@@ -3208,7 +3267,22 @@ function crearTriggerSyncLeads() {
 
   const mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
   PropertiesService.getScriptProperties().setProperty('leads_last_synced_row', String(mainSheet.getLastRow()));
-  Logger.log('Trigger de sincronización a Leads creado correctamente.');
+  Logger.log('Trigger de sincronización a Leads (Clinic) creado correctamente.');
+}
+
+// ── Ejecutar UNA VEZ desde el editor para instalar el trigger (World Challenge) ─
+function crearTriggerSyncLeadsWorldChallenge() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'onChangeInscripcionesWorldChallenge') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('onChangeInscripcionesWorldChallenge')
+    .forSpreadsheet(SHEET_ID_WORLD_CHALLENGE)
+    .onChange()
+    .create();
+
+  const mainSheet = SpreadsheetApp.openById(SHEET_ID_WORLD_CHALLENGE).getSheets()[0];
+  PropertiesService.getScriptProperties().setProperty('leads_last_synced_row_wc', String(mainSheet.getLastRow()));
+  Logger.log('Trigger de sincronización a Leads (World Challenge) creado correctamente.');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
