@@ -891,7 +891,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="dicon">🛂</div>
         <div style="flex:1">
           <div class="dtitle">Copia del pasaporte vigente</div>
-          <div class="ddesc">Mínimo 6 meses de validez desde el 10 de octubre 2026. Página principal con foto.</div>
+          <div class="ddesc" id="doc-pasaporte-desc">Mínimo 6 meses de validez desde el 10 de octubre 2026. Página principal con foto.</div>
           <div class="dstatus" id="ds1">⏳ Pendiente</div>
           <div class="upload" onclick="document.getElementById('di1').click()">
             <div style="font-size:22px">📎</div>
@@ -1139,7 +1139,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
             <span style="font-size:18px;flex-shrink:0;">🛂</span>
             <div>
               <div style="font-size:13px;font-weight:600;color:var(--navy);">Pasaporte vigente</div>
-              <div style="font-size:12px;color:var(--muted);margin-top:2px;">Debe tener validez mínima de <strong>6 meses</strong> después del 10 de octubre de 2026. Sin excepciones.</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="doc-pasaporte-desc-2">Debe tener validez mínima de <strong>6 meses</strong> después del 10 de octubre de 2026. Sin excepciones.</div>
             </div>
           </div>
           <div style="display:flex;gap:12px;padding:12px 16px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);">
@@ -1186,10 +1186,14 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           </div>
 
           <!-- Itinerario de vuelos -->
-          <div style="background:#0b1f3a;border-radius:10px;padding:18px 20px;margin-top:4px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-bright);margin-bottom:14px;">🗓️ Itinerario de vuelos confirmado</div>
+          <div style="background:#0b1f3a;border-radius:10px;padding:18px 20px;margin-top:4px;" id="itinerario-vuelo-block">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-bright);margin-bottom:14px;" id="itinerario-vuelo-titulo">🗓️ Itinerario de vuelos confirmado</div>
 
-            <div style="display:flex;flex-direction:column;gap:12px;">
+            <div id="itinerario-vuelo-pendiente" style="display:none;background:rgba(255,255,255,0.06);border:1px solid rgba(90,157,224,0.25);border-radius:8px;padding:14px 16px;font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;">
+              El itinerario de vuelo grupal está en proceso de confirmación con la aerolínea. Te avisaremos por correo y aquí mismo, en tu área personal, apenas esté listo.
+            </div>
+
+            <div id="itinerario-vuelo-confirmado" style="display:flex;flex-direction:column;gap:12px;">
               <!-- Vuelo ida -->
               <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(90,157,224,0.25);border-radius:8px;padding:14px 16px;">
                 <div style="font-size:11px;font-weight:600;color:var(--blue-bright);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✈️ Vuelo ida · 2 de octubre 2026</div>
@@ -1248,7 +1252,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <span style="font-size:18px;flex-shrink:0;">📄</span>
           <div>
             <div style="font-size:13px;font-weight:600;color:#92400e;">Confirmación de vuelo independiente</div>
-            <div style="font-size:12px;color:#78350f;margin-top:2px;">Debes coordinar con Victory tu itinerario de vuelo. El vuelo sale el <strong>2 de octubre</strong> y la llegada a Madrid es el <strong>3 de octubre de 2026</strong>. La salida de regreso es el <strong>10 de octubre</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.</div>
+            <div style="font-size:12px;color:#78350f;margin-top:2px;" id="doc-vuelo-independiente-desc">Debes coordinar con Victory tu itinerario de vuelo. El vuelo sale el <strong>2 de octubre</strong> y la llegada a Madrid es el <strong>3 de octubre de 2026</strong>. La salida de regreso es el <strong>10 de octubre</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.</div>
           </div>
         </div>
       </div>
@@ -2249,10 +2253,8 @@ function applyPaymentTotals(t) {
     const h = pc1.querySelector('.ctitle');
     if (h) h.childNodes[0].textContent = `Pago de reserva — ${t.reserva.toLocaleString('es-CO')} EUR `;
   }
-  if ((t.abonoReserva || 0) >= t.reserva && t.reserva > 0) {
-    const idxR = STEP_DEFS.findIndex(s => s.panel === 'panel2');
-    if (idxR > -1) STEP_DEFS[idxR].done = true;
-  }
+  const idxR = STEP_DEFS.findIndex(s => s.panel === 'panel2');
+  if (idxR > -1) STEP_DEFS[idxR].done = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva;
 
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
@@ -2261,10 +2263,8 @@ function applyPaymentTotals(t) {
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
-  if ((t.abonoTiquete || 0) >= totalTiqueteEur && totalTiqueteEur > 0) {
-    const idxT = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
-    if (idxT > -1) STEP_DEFS[idxT].done = true;
-  }
+  const idxT = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
+  if (idxT > -1) STEP_DEFS[idxT].done = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur;
 
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
@@ -2275,10 +2275,8 @@ function applyPaymentTotals(t) {
   if (pagoYaCongelado('final')) aplicarCongelamiento('final');
   const sub3 = document.getElementById('panel3-subtitle');
   if (sub3) sub3.textContent = `SEGUNDO PAGO — ${t.final.toLocaleString('es-CO')} EUR`;
-  if ((t.abonoFinal || 0) >= t.final && t.final > 0) {
-    const idxF = STEP_DEFS.findIndex(s => s.panel === 'panel3');
-    if (idxF > -1) STEP_DEFS[idxF].done = true;
-  }
+  const idxF = STEP_DEFS.findIndex(s => s.panel === 'panel3');
+  if (idxF > -1) STEP_DEFS[idxF].done = t.final > 0 && (t.abonoFinal || 0) >= t.final;
 
   buildSteps();
   buildBreakdown(t);
@@ -2658,19 +2656,38 @@ function actualizarPagosCompletados() {
   });
 }
 
-function applyPasoActual(paso) {
+function applyPasoActual(paso, opts) {
+  opts = opts || {};
   // Marcar pasos completados según número de paso
   STEP_DEFS[0].done = true; // Inscripción siempre done
   STEP_DEFS[1].done = paso >= 2; // T&C
-  // paso 3/4/5 solo significan "llegó a esa pantalla" (aún sin pagar) — el pago
-  // real recién se confirma cuando el paso avanza AL SIGUIENTE (ver enviarComprobante),
-  // así que el check verde debe esperar a ese siguiente valor, no al de llegada.
+  // Los pasos de pago (reserva/tiquete/final) se marcan "done" según el saldo
+  // REAL pendiente (abono vs. total del grupo AHORA), no solo según el `paso`
+  // guardado en la hoja. Si se agrega un participante nuevo después de que el
+  // grupo ya había completado un pago, el `paso` guardado se queda en un valor
+  // alto (nunca retrocede) pero el total a pagar sube — sin este recálculo el
+  // check verde y el aviso de "pago completado" se quedaban pegados aunque
+  // apareciera saldo pendiente nuevo. `opts.optimistic` es la única excepción:
+  // se usa justo tras el envío del propio comprobante (ver enviarComprobante),
+  // donde el monto recién enviado aún no llegó a la hoja para reflejarse en
+  // calcPaymentTotals(), así que ahí sí confiamos en el avance de `paso`.
+  const t = calcPaymentTotals();
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
-  if (idxReserva > -1) STEP_DEFS[idxReserva].done = (paso >= 4) || STEP_DEFS[idxReserva].done;
+  if (idxReserva > -1) {
+    const cubierto = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva;
+    STEP_DEFS[idxReserva].done = cubierto || (opts.optimistic && paso >= 4);
+  }
   const idxTiq = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
-  if (idxTiq > -1) STEP_DEFS[idxTiq].done = (paso >= 5) || STEP_DEFS[idxTiq].done;
+  if (idxTiq > -1) {
+    const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
+    const cubierto = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur;
+    STEP_DEFS[idxTiq].done = cubierto || (opts.optimistic && paso >= 5);
+  }
   const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
-  if (idxFinal > -1) STEP_DEFS[idxFinal].done = (paso >= 6) || STEP_DEFS[idxFinal].done;
+  if (idxFinal > -1) {
+    const cubierto = t.final > 0 && (t.abonoFinal || 0) >= t.final;
+    STEP_DEFS[idxFinal].done = cubierto || (opts.optimistic && paso >= 6);
+  }
   const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
   if (idxDocs > -1) STEP_DEFS[idxDocs].done = paso >= 7;
 
@@ -2883,6 +2900,34 @@ function actualizarFechasLimitePorPrograma_() {
   if (elCartaCierre) elCartaCierre.textContent = esWC
     ? '¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation World Challenge powered by Fundación Revel!'
     : '¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation Clinic powered by Fundación Revel!';
+
+  // Panel de documentación — validez del pasaporte según fecha de fin del programa.
+  const finPrograma = esWC ? '27 de marzo de 2027' : '10 de octubre de 2026';
+  const finProgramaCorto = esWC ? '27 de marzo 2027' : '10 de octubre 2026';
+  const elPasaporte1 = document.getElementById('doc-pasaporte-desc');
+  if (elPasaporte1) elPasaporte1.textContent = `Mínimo 6 meses de validez desde el ${finProgramaCorto}. Página principal con foto.`;
+  const elPasaporte2 = document.getElementById('doc-pasaporte-desc-2');
+  if (elPasaporte2) elPasaporte2.innerHTML = `Debe tener validez mínima de <strong>6 meses</strong> después del ${finPrograma}. Sin excepciones.`;
+
+  // Itinerario de vuelo grupal: el Clinic ya tiene vuelo confirmado con la
+  // aerolínea; World Challenge todavía no, así que se muestra un aviso de
+  // "por confirmar" en su lugar.
+  const elItinTitulo = document.getElementById('itinerario-vuelo-titulo');
+  if (elItinTitulo) elItinTitulo.textContent = esWC ? '🗓️ Itinerario de vuelos' : '🗓️ Itinerario de vuelos confirmado';
+  const elItinPendiente = document.getElementById('itinerario-vuelo-pendiente');
+  const elItinConfirmado = document.getElementById('itinerario-vuelo-confirmado');
+  if (elItinPendiente && elItinConfirmado) {
+    elItinPendiente.style.display = esWC ? 'block' : 'none';
+    elItinConfirmado.style.display = esWC ? 'none' : 'flex';
+  }
+
+  // Vuelo independiente (participantes que gestionan su propio tiquete).
+  const elVueloIndep = document.getElementById('doc-vuelo-independiente-desc');
+  if (elVueloIndep) {
+    elVueloIndep.innerHTML = esWC
+      ? 'Debes coordinar con Victory tu itinerario de vuelo. El programa inicia el <strong>19 de marzo</strong> y finaliza el <strong>27 de marzo de 2027</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.'
+      : 'Debes coordinar con Victory tu itinerario de vuelo. El vuelo sale el <strong>2 de octubre</strong> y la llegada a Madrid es el <strong>3 de octubre de 2026</strong>. La salida de regreso es el <strong>10 de octubre</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.';
+  }
 }
 
 function updateTasaFecha() {
@@ -3015,9 +3060,12 @@ function calc2() {
 
 // ── CONGELAR MONTO/TASA TRAS ENVIAR COMPROBANTE ───────────────────────────────
 // Una vez el participante envía el comprobante de reserva o pago final, el
-// monto y la tasa mostrados quedan fijos: no deben recalcularse aunque cambie
-// el total del grupo (ej. se agrega un acompañante) ni la tasa en vivo (pago
-// final). El tiquete queda fuera a propósito — sigue recalculándose igual.
+// monto y la tasa mostrados quedan fijos mientras el saldo siga cubierto — no
+// se recalculan solo porque cambie la tasa en vivo (pago final). Pero si luego
+// aparece saldo pendiente REAL (ej. se agrega un acompañante nuevo y el total
+// del grupo sube por encima de lo ya abonado), pagoYaCongelado() descongela
+// para permitir pagar la diferencia. El tiquete queda fuera a propósito —
+// sigue recalculándose igual.
 const PAGOS_CONGELABLES = {
   reserva: { eur: 'eur1', tasa: 'tasa1', cop: 'cop1', tcTotal: 'p1tc-total', tcFee: 'p1tc-fee', trTotal: 'p1tr-total', paso: 4 },
   final:   { eur: 'eur2', tasa: 'tasa2', cop: 'cop2', tcTotal: 'p2tc-total', tcFee: 'p2tc-fee', trTotal: 'p2tr-total', paso: 6 }
@@ -3029,7 +3077,16 @@ function congelarPagoKey(tipoPago) {
 
 function pagoYaCongelado(tipoPago) {
   const cfg = PAGOS_CONGELABLES[tipoPago];
-  return !!cfg && grupoPaso >= cfg.paso;
+  if (!cfg || grupoPaso < cfg.paso) return false;
+  // Si tras congelar apareció saldo pendiente REAL (ej. se agregó un
+  // participante nuevo después de que este pago ya estaba completo), el monto
+  // congelado quedó desactualizado — hay que descongelar para permitir pagar
+  // la diferencia y mostrar el monto/tasa/COP correctos.
+  const t = calcPaymentTotals();
+  const total = tipoPago === 'reserva' ? t.reserva : t.final;
+  const abono = tipoPago === 'reserva' ? (t.abonoReserva || 0) : (t.abonoFinal || 0);
+  if (total > 0 && abono < total) return false;
+  return true;
 }
 
 // Consulta (sin token, igual que la búsqueda de participante) el estado real
@@ -3710,7 +3767,7 @@ function enviarComprobante(tipoPago) {
         actualizarPaso(paso);
         if (tipoPago === 'reserva' || tipoPago === 'final') congelarPago(tipoPago);
         setTimeout(() => {
-          applyPasoActual(paso);
+          applyPasoActual(paso, { optimistic: true }); // el comprobante recién enviado aún no está en la hoja
           scrollToStepsBar();
         }, 1500);
       }
@@ -6154,10 +6211,24 @@ function openPagosModal(idx, nombreOverride) {
     const comprobanteLink = urlsComprobanteEx.length
       ? urlsComprobanteEx.map((url, i) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:6px;display:inline-block">📎 Ver comprobante${urlsComprobanteEx.length > 1 ? ' ' + (i + 1) : ''} subido por el participante</a><br>`).join('')
       : '';
-    const iaDetectado = (ex && (ex.ia_status === 'coincide' || ex.ia_status === 'revisar'))
+    // Pago con tarjeta: el comprobante que lee la IA suele traer el 3,5% de
+    // recargo de Bold incluido. Ese recargo no es parte del programa — nunca
+    // se usa el monto detectado por la IA para precargar estos campos en un
+    // pago con tarjeta, siempre el monto ya guardado (ex.eur/ex.cop), que es
+    // el base sin recargo. El monto real cobrado se muestra aparte, en
+    // montoRealTarjetaLine, solo para referencia/contabilidad interna.
+    const esPagoTarjeta = ex && ex.metodo_pago === 'tarjeta';
+    const iaDetectado = (ex && !esPagoTarjeta && (ex.ia_status === 'coincide' || ex.ia_status === 'revisar'))
       ? extraerMontoIA_(ex.ia_detalle) : null;
     const eurMostrado = (iaDetectado && iaDetectado.moneda !== 'COP') ? iaDetectado.monto : (ex ? ex.eur : '');
     const copMostrado = (iaDetectado && iaDetectado.moneda === 'COP') ? iaDetectado.monto : (ex ? ex.cop : '');
+    const montoRealTarjetaLine = esPagoTarjeta
+      ? `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(217,119,6,.08);border-radius:8px;font-size:11px;color:#92400e">
+          💳 Pagado con tarjeta — monto real cobrado (incl. 3,5% Bold): <strong>${Math.round((ex.cop||0) * (1 + 0.035)).toLocaleString('es-CO')} COP</strong>
+          ${ex.eur ? ` / <strong>${(Math.round(ex.eur * (1 + 0.035) * 100) / 100).toLocaleString('es-CO')} EUR</strong>` : ''}
+          — solo para contabilidad interna, el recargo no cuenta para el saldo del cliente.
+        </div>`
+      : '';
     // Resumen de abonos — solo se muestra si hay historial registrado.
     const resumenAbonos = tieneHistorial ? `<div style="border:1px solid var(--gborder,var(--border));border-radius:10px;overflow:hidden;margin-bottom:12px">
         <div style="background:var(--gbg,#f4f7fb);padding:10px 14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">
@@ -6175,6 +6246,7 @@ function openPagosModal(idx, nombreOverride) {
         <div style="font-size:12px;color:${statusColor};font-weight:500">${statusText}</div>
       </div>
       ${iaLine}
+      ${montoRealTarjetaLine}
       ${comprobanteLink}
       ${resumenAbonos}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
