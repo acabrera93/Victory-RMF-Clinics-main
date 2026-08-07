@@ -3003,9 +3003,13 @@ async function fetchTasa() {
 function fmt(n)  { return '$ ' + Math.round(n).toLocaleString('es-CO'); }
 function fmtT(n) { return '$ ' + Math.round(n).toLocaleString('es-CO') + ' / EUR'; }
 
+// Recargo que cobra Bold por pago con tarjeta — debe coincidir con
+// RECARGO_TARJETA_PCT en el backend (APPS_SCRIPT_CODE.gs).
+const RECARGO_TARJETA_PCT = 0.035;
+
 function updateCalcs() { calc1(); calc2(); calcTiq(); }
 function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
-  const fee = base * 0.035;
+  const fee = base * RECARGO_TARJETA_PCT;
   const total = base + fee;
   const elTcT = document.getElementById(tcTotalId);
   const elTcF = document.getElementById(tcFeeId);
@@ -3846,11 +3850,22 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
   const comprobanteUrl = (urlsNuevas && urlsNuevas.length) ? urlsNuevas.join('\n') : (comprobanteUrls[tipoPago] || '');
   const fileId = comprobanteFileIds[tipoPago] || '';
   const metodoPago = metodoPagoSel[tipoPago] || 'transferencia';
+  // eur/cop de arriba son el monto BASE del programa (eur2/cop2 nunca incluyen
+  // el recargo de tarjeta). Lo que hay que guardar en la hoja — y lo que
+  // realmente se transfiere por Bold — es el monto CON el recargo incluido:
+  // el Sheet debe reflejar siempre el total real pagado, para la contabilidad
+  // final. El backend (getAbonosValidados_) es quien separa base/comisión al
+  // calcular el saldo del participante — aquí solo se guarda el bruto.
+  let eurFinal = eur, copFinal = cop;
+  if (metodoPago === 'tarjeta') {
+    eurFinal = Math.round(eur * (1 + RECARGO_TARJETA_PCT) * 100) / 100;
+    copFinal = Math.round(cop * (1 + RECARGO_TARJETA_PCT));
+  }
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur, cop, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago, programa: programKeyActivo }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago, programa: programKeyActivo }),
     keepalive: true
   }).catch(() => {});
 }
@@ -5126,14 +5141,17 @@ function extraerMontoIA_(detalle) {
   return { moneda, monto };
 }
 
-// Parsea "dd/mm/yyyy:eur:cop;dd/mm/yyyy:eur:cop;..." (mismo formato que
-// genera el backend) para mostrar el resumen de abonos en el modal.
+// Parsea "dd/mm/yyyy:eur:cop:metodo;dd/mm/yyyy:eur:cop:metodo;..." (mismo
+// formato que genera el backend) para mostrar el resumen de abonos en el
+// modal. `metodo` es el 4to campo, opcional (entradas viejas no lo traen) —
+// permite que cada abono tenga su propio método (ej. primero transferencia,
+// luego un segundo abono con tarjeta para el mismo concepto).
 function parseHistorialAbonosFrontend_(str) {
   if (!str) return [];
   return String(str).split(';').map(s => {
     const p = s.trim().split(':');
     if (p.length < 2) return null;
-    return { fecha: p[0], eur: parseFloat(p[1]) || 0, cop: parseFloat(p[2]) || 0 };
+    return { fecha: p[0], eur: parseFloat(p[1]) || 0, cop: parseFloat(p[2]) || 0, metodo: p[3] || '' };
   }).filter(Boolean);
 }
 
@@ -6207,7 +6225,10 @@ function openPagosModal(idx, nombreOverride) {
             <div><div class="clabel">Valor EUR</div><input type="number" id="pago-tiquete-eur" placeholder="993" style="${inputStyle}"></div>
             <div><div class="clabel">Valor COP</div><input type="number" id="pago-tiquete-cop" placeholder="4257984" style="${inputStyle}"></div>
           </div>
-          <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-tiquete-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${currentPaquete!=='Premium'?' selected':''}>Estándar</option><option${currentPaquete==='Premium'?' selected':''}>Premium</option></select></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div><div class="clabel">Método de pago</div><select id="pago-tiquete-metodo" style="${selectStyle}"><option value="transferencia" selected>Transferencia</option><option value="tarjeta">Tarjeta (recargo 3,5%)</option></select></div>
+            <div><div class="clabel">Paquete</div><select id="pago-tiquete-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${currentPaquete!=='Premium'?' selected':''}>Estándar</option><option${currentPaquete==='Premium'?' selected':''}>Premium</option></select></div>
+          </div>
           <button onclick="registrarPagoDesdePanel('Tiquete')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Registrar pago de Tiquete</button>
         </div>
       </div>`;
@@ -6255,28 +6276,50 @@ function openPagosModal(idx, nombreOverride) {
       ? extraerMontoIA_(ex.ia_detalle) : null;
     const eurMostrado = (iaDetectado && iaDetectado.moneda !== 'COP') ? iaDetectado.monto : (ex ? ex.eur : '');
     const copMostrado = (iaDetectado && iaDetectado.moneda === 'COP') ? iaDetectado.monto : (ex ? ex.cop : '');
-    // Normalmente la celda "Metodo de pago" solo dice "tarjeta" (recargo
-    // estándar 3,5%). Para casos puntuales con un recargo real distinto (ej.
-    // pagos antiguos con el 3% que cobraba Bold antes), se puede escribir
-    // "tarjeta 3%" en esa fila — ver recargoTarjetaDeCelda_ en el backend,
-    // que aplica la misma lógica para calcular el saldo real del cliente.
+    // Normalmente la celda "Metodo de pago" (de la fila, o de cada abono
+    // dentro del historial) solo dice "tarjeta" (recargo estándar 3,5%).
+    // Para casos puntuales con un recargo real distinto (ej. pagos antiguos
+    // con el 3% que cobraba Bold antes) se puede escribir "tarjeta 3%" —
+    // ver recargoTarjetaDeCelda_ en el backend, que aplica la misma lógica.
     const metodoPagoStr = (ex && ex.metodo_pago) ? String(ex.metodo_pago).trim().toLowerCase() : '';
     const esPagoTarjeta = metodoPagoStr.indexOf('tarjeta') === 0;
-    const recargoPct = (() => {
-      const m = metodoPagoStr.match(/(\d+(?:[.,]\d+)?)\s*%/);
-      return m ? parseFloat(m[1].replace(',', '.')) / 100 : 0.035;
-    })();
-    const montoRealTarjetaLine = (esPagoTarjeta && ex.eur > 0)
+    const recargoDeMetodo = (m) => {
+      const match = String(m || '').toLowerCase().match(/(\d+(?:[.,]\d+)?)\s*%/);
+      return match ? parseFloat(match[1].replace(',', '.')) / 100 : RECARGO_TARJETA_PCT;
+    };
+    // Si hay historial con varios abonos, cada uno puede tener su propio
+    // método (ej. primero transferencia, después un segundo abono con
+    // tarjeta) — el desglose se calcula ENTRADA POR ENTRADA, igual que
+    // getAbonosValidados_() en el backend, en vez de aplicar un solo recargo
+    // sobre el total de la fila.
+    const entradasParaComision = tieneHistorial
+      ? historialEntradas
+      : (ex && ex.eur > 0 ? [{ eur: ex.eur, cop: ex.cop, metodo: metodoPagoStr }] : []);
+    let totalBase = 0, totalComision = 0, totalBruto = 0, totalBrutoCop = 0, totalBaseCop = 0, totalComisionCop = 0, hayTarjeta = false;
+    entradasParaComision.forEach(en => {
+      const metodoEn = (en.metodo || metodoPagoStr || '').toLowerCase();
+      const esTC = metodoEn.indexOf('tarjeta') === 0;
+      const recargo = esTC ? recargoDeMetodo(metodoEn) : 0;
+      const base = esTC ? en.eur / (1 + recargo) : en.eur;
+      const baseCop = en.cop > 0 ? (esTC ? en.cop / (1 + recargo) : en.cop) : 0;
+      if (esTC) hayTarjeta = true;
+      totalBase += base;
+      totalComision += en.eur - base;
+      totalBruto += en.eur;
+      totalBrutoCop += en.cop || 0;
+      totalBaseCop += baseCop;
+      totalComisionCop += (en.cop || 0) - baseCop;
+    });
+    const montoRealTarjetaLine = hayTarjeta
       ? (() => {
-          const base = Math.round((ex.eur / (1 + recargoPct)) * 100) / 100;
-          const comision = Math.round((ex.eur - base) * 100) / 100;
-          const baseCop = ex.cop > 0 ? Math.round(ex.cop / (1 + recargoPct)) : 0;
-          const comisionCop = ex.cop > 0 ? (ex.cop - baseCop) : 0;
-          const recargoLabel = (recargoPct * 100).toLocaleString('es-CO', { maximumFractionDigits: 1 });
+          const base = Math.round(totalBase * 100) / 100;
+          const comision = Math.round(totalComision * 100) / 100;
+          const baseCop = Math.round(totalBaseCop);
+          const comisionCop = Math.round(totalComisionCop);
           return `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(217,119,6,.08);border-radius:8px;font-size:11px;color:#92400e">
-            💳 Pagado con tarjeta — total pagado: <strong>${ex.eur.toLocaleString('es-CO')} EUR${ex.cop ? ' / ' + ex.cop.toLocaleString('es-CO') + ' COP' : ''}</strong>
+            💳 Incluye pago(s) con tarjeta — total pagado: <strong>${totalBruto.toLocaleString('es-CO')} EUR${totalBrutoCop ? ' / ' + totalBrutoCop.toLocaleString('es-CO') + ' COP' : ''}</strong>
             = monto del programa <strong>${base.toLocaleString('es-CO')} EUR${baseCop ? ' / ' + baseCop.toLocaleString('es-CO') + ' COP' : ''}</strong>
-            + comisión Bold ${recargoLabel}% <strong>${comision.toLocaleString('es-CO')} EUR${comisionCop ? ' / ' + comisionCop.toLocaleString('es-CO') + ' COP' : ''}</strong>
+            + comisión Bold <strong>${comision.toLocaleString('es-CO')} EUR${comisionCop ? ' / ' + comisionCop.toLocaleString('es-CO') + ' COP' : ''}</strong>
             — la comisión no cuenta para el saldo del cliente, solo para contabilidad interna.
           </div>`;
         })()
@@ -6288,7 +6331,7 @@ function openPagosModal(idx, nombreOverride) {
         </div>
         <div style="padding:6px 14px 10px">
           ${historialEntradas.map(a => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--navy);padding:4px 0;border-bottom:1px dashed var(--border)">
-            <span>${escapeHtml(a.fecha)}</span><span>${a.eur.toLocaleString('es-CO')} EUR${a.cop ? ' · $' + a.cop.toLocaleString('es-CO') + ' COP' : ''}</span>
+            <span>${escapeHtml(a.fecha)}${a.metodo ? ` <span style="color:var(--muted)">· ${a.metodo.toLowerCase().indexOf('tarjeta')===0 ? '💳 tarjeta' : '🏦 transferencia'}</span>` : ''}</span><span>${a.eur.toLocaleString('es-CO')} EUR${a.cop ? ' · $' + a.cop.toLocaleString('es-CO') + ' COP' : ''}</span>
           </div>`).join('')}
         </div>
       </div>` : '';
@@ -6319,7 +6362,13 @@ function openPagosModal(idx, nombreOverride) {
         <div style="flex:1;min-width:130px"><div class="clabel">+ COP real</div><input type="number" id="pago-${tid}-abono-add-cop" placeholder="del comprobante" style="${inputStyle}"></div>
         <button type="button" onclick="agregarAbonoServidor('${tid}','${tipo}')" style="padding:9px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap">+ Agregar abono</button>
       </div>` : ''}
-      <div style="margin-bottom:12px"><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${paqueteVal!=='Premium'?' selected':''}>Estándar</option><option${paqueteVal==='Premium'?' selected':''}>Premium</option></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div><div class="clabel">Método de pago</div><select id="pago-${tid}-metodo" style="${selectStyle}">
+          <option value="transferencia"${!esPagoTarjeta?' selected':''}>Transferencia</option>
+          <option value="tarjeta"${esPagoTarjeta?' selected':''}>Tarjeta (recargo 3,5%)</option>
+        </select></div>
+        <div><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${paqueteVal!=='Premium'?' selected':''}>Estándar</option><option${paqueteVal==='Premium'?' selected':''}>Premium</option></select></div>
+      </div>
       ${esPendienteConfirmar ? `<button onclick="confirmarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:#166534;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">✓ Confirmar pago de ${tipo}</button>` : ''}
       ${(ex && !esPendienteConfirmar) ? `<button onclick="actualizarEstadoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Actualizar estado/paquete</button>` : ''}
       ${!ex ? `<button onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Registrar pago de ${tipo}</button>` : ''}
@@ -6363,6 +6412,8 @@ function agregarAbonoServidor(tid, tipo) {
     ? (normalizeParticipant(adminData[pagoCurrentIdx]) || {}).nombre || adminData[pagoCurrentIdx]['Nombre'] || ''
     : (pagoCurrentNombre || '');
   if (!nombre) return;
+  const metodoEl = document.getElementById(`pago-${tid}-metodo`);
+  const metodoPago = metodoEl ? metodoEl.value : 'transferencia';
 
   const statusEl = document.getElementById('pagos-modal-status');
   statusEl.style.display = 'block';
@@ -6370,7 +6421,7 @@ function agregarAbonoServidor(tid, tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur: abonoEur, cop: abonoCop, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur: abonoEur, cop: abonoCop, metodo_pago: metodoPago, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6397,6 +6448,8 @@ function confirmarPagoDesdePanel(tipo) {
   const cop = parseFloat(document.getElementById(`pago-${tid}-cop`).value) || 0;
   const estadoEl = document.getElementById(`pago-${tid}-estado`);
   const paquete = document.getElementById(`pago-${tid}-paquete`).value;
+  const metodoEl = document.getElementById(`pago-${tid}-metodo`);
+  const metodoPago = metodoEl ? metodoEl.value : 'transferencia';
   if (!fecha || eur <= 0) { alert('Ingresa al menos la fecha y el valor en EUR.'); return; }
   if (estadoEl.value.toLowerCase() === 'pendiente de confirmar') estadoEl.value = 'Completo';
   const estado = estadoEl.value;
@@ -6407,7 +6460,7 @@ function confirmarPagoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur, cop, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur, cop, metodo_pago: metodoPago, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6484,6 +6537,8 @@ function registrarPagoDesdePanel(tipo) {
   const cop = parseFloat(document.getElementById(`pago-${tid}-cop`).value) || 0;
   const estado = document.getElementById(`pago-${tid}-estado`).value;
   const paquete = document.getElementById(`pago-${tid}-paquete`).value;
+  const metodoEl = document.getElementById(`pago-${tid}-metodo`);
+  const metodoPago = metodoEl ? metodoEl.value : 'transferencia';
 
   if (!fecha || !eur) { alert('Ingresa al menos la fecha y el valor en EUR.'); return; }
 
@@ -6493,7 +6548,7 @@ function registrarPagoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, metodo_pago: metodoPago, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6507,7 +6562,7 @@ function registrarPagoDesdePanel(tipo) {
           normNombre(p.nombre) === normNombre(nombre) &&
           (p.notas||'').toLowerCase() === tipo.toLowerCase()
         );
-        const np = { nombre, fecha: fmtFecha, cop, eur, estado, paquete, notas: tipo };
+        const np = { nombre, fecha: fmtFecha, cop, eur, estado, paquete, notas: tipo, metodo_pago: metodoPago };
         if (i >= 0) adminFinData.pagos_lista[i] = np;
         else adminFinData.pagos_lista.push(np);
         // Sync paquete in cache across all rows of this participant
