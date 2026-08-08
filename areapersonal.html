@@ -5286,6 +5286,19 @@ function montoEsperadoEur_(tipo, n) {
   return 0;
 }
 
+// TRM que debía aplicarse a este concepto para este participante — la misma
+// que se le muestra en su área personal al momento de pagar (fija TRM_RESERVA
+// para Reserva/Tiquete del Clinic; tasa de mercado del día para Pago Final y
+// para los tres conceptos en World Challenge). Se usa para reconstruir el
+// campo EUR o COP que no llegó en el comprobante, cuando este se recibió en
+// una sola moneda y por un monto distinto al esperado (ver eurMostrado/
+// copMostrado en openPagosModal).
+function trmEsperadaConcepto_(tipo, n) {
+  const esWC = ((n && n.program_key) || adminProgramaActivo) === 'world_challenge';
+  if (tipo === 'Pago Final') return tasa;
+  return esWC ? tasa : TRM_RESERVA;
+}
+
 // Al escribir el Valor EUR de un pago editable, decide automáticamente si el
 // estado debe quedar en "Completo" (el monto alcanza el total esperado, con
 // un margen de ±1 EUR por redondeos, o lo supera) o "Parcial" — así el admin
@@ -6405,8 +6418,23 @@ function openPagosModal(idx, nombreOverride) {
     // Método de pago = tarjeta — no hace falta restar nada aquí.
     const iaDetectado = (ex && (ex.ia_status === 'coincide' || ex.ia_status === 'revisar'))
       ? extraerMontoIA_(ex.ia_detalle) : null;
-    const eurMostrado = (iaDetectado && iaDetectado.moneda !== 'COP') ? iaDetectado.monto : (ex ? ex.eur : '');
-    const copMostrado = (iaDetectado && iaDetectado.moneda === 'COP') ? iaDetectado.monto : (ex ? ex.cop : '');
+    // El comprobante solo trae UNA moneda — el otro campo no debe quedarse
+    // con el monto esperado viejo (que puede no calzar, ej. un abono parcial
+    // menor al esperado): se reconstruye con la TRM que debía aplicar a este
+    // pago, para que EUR y COP mostrados sean coherentes entre sí y con lo
+    // que realmente se recibió.
+    const trmConcepto = trmEsperadaConcepto_(tipo, participanteNorm);
+    let eurMostrado, copMostrado;
+    if (iaDetectado && iaDetectado.moneda === 'COP') {
+      copMostrado = iaDetectado.monto;
+      eurMostrado = trmConcepto > 0 ? Math.round((iaDetectado.monto / trmConcepto) * 100) / 100 : (ex ? ex.eur : '');
+    } else if (iaDetectado) {
+      eurMostrado = iaDetectado.monto;
+      copMostrado = trmConcepto > 0 ? Math.round(iaDetectado.monto * trmConcepto) : (ex ? ex.cop : '');
+    } else {
+      eurMostrado = ex ? ex.eur : '';
+      copMostrado = ex ? ex.cop : '';
+    }
     // Normalmente la celda "Metodo de pago" (de la fila, o de cada abono
     // dentro del historial) solo dice "tarjeta" (recargo estándar 3,5%).
     // Para casos puntuales con un recargo real distinto (ej. pagos antiguos

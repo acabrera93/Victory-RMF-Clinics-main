@@ -100,11 +100,7 @@
     flex-shrink: 1;
     min-width: 0;
     margin-left: auto;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
   }
-  .nav-links::-webkit-scrollbar { display: none; }
   .nav-link {
     color: rgba(255,255,255,0.65);
     font-size: 13px;
@@ -2087,13 +2083,7 @@ function showStatus(type, msg, onClick) {
   .nav-drawer-logos .nav-logo-link img { display: block !important; height: 20px !important; }
   /* Subtítulos: en móvil pueden romper línea */
   .section-sub { white-space: normal !important; }
-  .nav-links {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    gap: 2px;
-  }
-  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links { gap: 2px; }
   .nav-link { font-size: 11px; padding: 6px 10px; }
   .nav-cta { font-size: 11px; padding: 7px 12px; margin-left: 4px; }
   body { padding-top: 56px; }
