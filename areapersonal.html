@@ -1888,12 +1888,19 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
     <p id="bold-modal-nota" style="font-size:12px;color:var(--muted);font-style:italic;margin:0 0 18px">Ingresa exactamente este monto al abrir Bold.</p>
 
+    <div id="bold-modal-cuenta" style="display:none;text-align:left;background:var(--off);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px">
+      <div class="brow" style="padding:6px 0;font-size:14px"><span class="bkey">Banco</span><span class="bval">Bancolombia</span></div>
+      <div class="brow" style="padding:6px 0;font-size:14px"><span class="bkey">Beneficiario</span><span class="bval">Fundación Revel</span></div>
+      <div class="brow" style="padding:6px 0;font-size:14px"><span class="bkey">Cuenta corriente</span><span class="bval">05962673128</span></div>
+      <div class="brow" style="padding:6px 0;font-size:14px"><span class="bkey">NIT</span><span class="bval">900636583</span></div>
+    </div>
+
     <div style="background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;text-align:left;margin-bottom:18px">
       📎 <strong>Importante:</strong> después de pagar, sube tu comprobante bancario en el espacio de "Subir comprobante de pago" más abajo.
     </div>
 
     <a id="bold-modal-cta-bold" href="https://checkout.bold.co/payment/LNK_F89DQNN7ZX" target="_blank" onclick="closeBoldModal()" style="display:none;width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;box-sizing:border-box;text-align:center">💳 Pagar con Bold →</a>
-    <button id="bold-modal-cta-cerrar" onclick="verDetallesBancarios()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Ver detalles bancarios →</button>
+    <button id="bold-modal-cta-cerrar" onclick="irASubirComprobante()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">📎 Subir comprobante →</button>
   </div>
 </div>
 
@@ -3603,14 +3610,16 @@ function onTC() {
 }
 
 // Recuerda qué panel (reserva/tiquete/final) abrió el modal de monto, para que
-// el botón "Ver detalles bancarios" sepa a qué sección de la página volver.
+// el botón "Subir comprobante" sepa a qué sección de la página llevar al participante.
 let boldModalPanelActual = null;
 
-// Lleva al participante hasta los datos de la cuenta bancaria de Fundación Revel
-// del panel donde seleccionó "transferencia" (en vez de solo cerrar el modal).
-function verDetallesBancarios() {
+// Lleva al participante directo al bloque de "Subir comprobante de pago" del
+// panel donde seleccionó "transferencia" — los datos de la cuenta bancaria ya
+// se muestran dentro del propio modal, así que no hace falta pasar primero
+// por esa sección de la página antes de subir el archivo.
+function irASubirComprobante() {
   closeBoldModal();
-  const idsPorPanel = { reserva: 'd1tr', tiquete: 'dtiqtr', final: 'd2tr' };
+  const idsPorPanel = { reserva: 'upload-block-reserva', tiquete: 'upload-block-tiquete', final: 'upload-block-final' };
   const id = idsPorPanel[boldModalPanelActual];
   const el = id ? document.getElementById(id) : null;
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3661,6 +3670,8 @@ function avisoComprobante(panel, tipo) {
   const ctaCerrarEl = document.getElementById('bold-modal-cta-cerrar');
   if (ctaBoldEl) ctaBoldEl.style.display = esTarjeta ? 'block' : 'none';
   if (ctaCerrarEl) ctaCerrarEl.style.display = esTarjeta ? 'none' : 'block';
+  const cuentaEl = document.getElementById('bold-modal-cuenta');
+  if (cuentaEl) cuentaEl.style.display = esTarjeta ? 'none' : 'block';
 
   const montoEl = document.getElementById('bold-monto-valor');
   if (montoEl) montoEl.textContent = montoTxt + ' COP';
