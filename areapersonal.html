@@ -4045,13 +4045,24 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
     cop: Math.round(d.eur * tasaBase * (1 + recargo))
   }));
 
+  // Antes usaba mode:'no-cors' — con eso, si el backend lanzaba una excepción
+  // al escribir en Pagos, el navegador nunca podía leer la respuesta y el
+  // error quedaba completamente invisible (el comprobante parecía "enviado"
+  // pero nunca llegaba a la hoja ni al panel de revisión). Otras llamadas a
+  // este mismo Apps Script (agregarAbonoServidor, registrarPagoDesdePanel,
+  // etc.) ya funcionan sin no-cors, así que se quita aquí también para que
+  // un fallo del servidor quede registrado en la consola en vez de perderse.
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
-    mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
     body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, comprobante_count: comprobanteCount, metodo_pago: metodoPago, programa: programKeyActivo }),
-    keepalive: true
-  }).catch(() => {});
+    redirect: 'follow'
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (!res || !res.ok) console.error('marcarComprobantePendiente: el servidor no confirmó el registro en Pagos.', res);
+    })
+    .catch(err => console.error('marcarComprobantePendiente: error de red/servidor.', err));
 }
 
 // ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
