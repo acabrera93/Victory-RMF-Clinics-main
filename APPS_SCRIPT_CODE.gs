@@ -2479,6 +2479,23 @@ function agregarAbonoPago(data) {
     }
 
     var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
+    if (historialActual.length === 0) {
+      // Fila con dinero ya en Valor EUR pero sin historial desglosado (ej.
+      // un monto que el admin escribió directo en la celda) — se reconstruye
+      // una primera entrada con lo que ya había, para no perderlo al sumar
+      // el abono nuevo (si no, sumaEur/sumaCop de abajo solo contarían la
+      // entrada nueva y se perdería lo que ya estaba registrado).
+      var eurPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
+      if (eurPrevio > 0) {
+        var copPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
+        var fechaPrevia = pagosSheet.getRange(targetSheetRow, pc.fecha_pago).getValue();
+        var metodoPrevio = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '') : '';
+        historialActual.push({
+          fecha: fechaPrevia instanceof Date ? formatFechaDDMMYYYY_(fechaPrevia) : String(fechaPrevia || fechaFmt),
+          eur: eurPrevio, cop: copPrevio, metodo: metodoPrevio
+        });
+      }
+    }
     historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
 
     pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
