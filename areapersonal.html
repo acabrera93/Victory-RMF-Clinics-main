@@ -6101,7 +6101,7 @@ function saveComercialModal() {
   if (!nombre) { alert('El nombre del comercial es obligatorio.'); return; }
   const sec = document.getElementById('cm-seccion').value || 'jugadores';
   const payload = { action: 'guardar_comercial', comercial: nombre, seccion: sec,
-    _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0, token: adminSessionToken };
+    _row: comercialCurrentRow ? (comercialCurrentRow._row || 0) : 0, token: adminSessionToken, programa: adminProgramaActivo };
   if (sec === 'acompanantes') {
     payload.com_doble = parseFloat(document.getElementById('cm-com-doble').value) || 0;
     payload.com_sencilla = parseFloat(document.getElementById('cm-com-sencilla').value) || 0;

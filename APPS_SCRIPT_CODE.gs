@@ -217,6 +217,17 @@ function resolverSheets_(programa) {
   return { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' };
 }
 
+// Todas las hojas de presupuesto (una por programa) — usado por el área
+// comercial, que busca/gestiona comisiones de un comercial a través de
+// ambos programas a la vez (un comercial puede vender Clinic y World
+// Challenge con la misma cuenta).
+function getBudgetSheetIds_() {
+  return [
+    { budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' },
+    { budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge' }
+  ];
+}
+
 // ───── GET HANDLER (fotos, saber, comunicaciones) ──────────────────────────────
 function doGet(e) {
   const params = e.parameter || {};
@@ -1603,7 +1614,7 @@ function actualizarParticipante(data) {
 function guardarComercial(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var ss = SpreadsheetApp.openById(resolverSheets_(data.programa).budgetSheetId);
     var comSheet = getSheetCI(ss, 'Comisiones');
     if (!comSheet) return sendResponse(404, { ok: false, error: 'Hoja Comisiones no encontrada' });
 
@@ -2258,14 +2269,43 @@ function marcarComprobanteSubido(data) {
     var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
 
     if (targetSheetRow > 0) {
-      var estadoActual = String(pagosSheet.getRange(targetSheetRow, pc.estado).getValue() || '').trim().toLowerCase();
-      if (estadoActual === 'completo') {
-        return sendResponse(200, { ok: true, skipped: true });
+      // Antes: si la fila ya estaba "Completo" el envío se ignoraba por
+      // completo (return skipped:true) — pensado para no dejar que un reenvío
+      // tardío/duplicado pisara un pago ya confirmado por el admin. Pero si
+      // después se agrega un participante al grupo y aparece saldo nuevo, el
+      // participante SÍ puede volver a deber y su comprobante del abono
+      // adicional se perdía en silencio: la app decía "enviado" pero nunca
+      // llegaba a Pagos para revisión. Ahora el envío SIEMPRE se registra,
+      // como un abono nuevo AGREGADO al historial (nunca sobrescribe lo ya
+      // confirmado) y el estado vuelve a "Pendiente de confirmar" para que el
+      // admin lo revise — igual de seguro ante duplicados (el admin ve las
+      // entradas y decide), pero ya no pierde pagos reales.
+      var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
+      if (historialActual.length === 0) {
+        // Fila con monto ya confirmado pero sin historial desglosado (pago
+        // único, o registrado antes de que existiera esta columna) — se
+        // reconstruye una primera entrada con lo que ya había, para no
+        // perderlo al pasar al modo aditivo.
+        var eurPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
+        if (eurPrevio > 0) {
+          var copPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
+          var fechaPrevia = pagosSheet.getRange(targetSheetRow, pc.fecha_pago).getValue();
+          var metodoPrevio = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '') : '';
+          historialActual.push({
+            fecha: fechaPrevia instanceof Date ? formatFechaDDMMYYYY_(fechaPrevia) : String(fechaPrevia || fechaFmt),
+            eur: eurPrevio, cop: copPrevio, metodo: metodoPrevio
+          });
+        }
       }
+      historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
+
       pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
-      if (cop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(cop);
-      if (eur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(eur);
+      var formulaEur = buildSumFormula_(historialActual, 'eur');
+      var formulaCop = buildSumFormula_(historialActual, 'cop');
+      if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormula(formulaEur);
+      if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormula(formulaCop);
       pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Pendiente de confirmar');
+      pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
       if (comprobanteUrl) {
         var urlExistente = String(pagosSheet.getRange(targetSheetRow, pc.comprobante).getValue() || '').trim();
         var urlFinal = urlExistente ? (urlExistente + '\n' + comprobanteUrl) : comprobanteUrl;
@@ -2919,24 +2959,18 @@ function setComercialPassword(data) {
   try {
     const emailNorm = String(data.email || '').toLowerCase().trim();
     if (!emailNorm) return sendResponse(400, { ok: false, error: 'email requerido' });
-    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
-    const comSheet = getSheetCI(ss, 'Comisiones');
-    if (!comSheet) return sendResponse(404, { ok: false, error: 'Hoja Comisiones no encontrada' });
-    const lastRow = comSheet.getLastRow();
-    if (lastRow < 6) return sendResponse(404, { ok: false, error: 'Sin datos' });
-    const hiData = comSheet.getRange('H6:J' + lastRow).getValues();
-    let rowOffset = -1, stored = '';
-    for (let i = 0; i < hiData.length; i++) {
-      if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) { rowOffset = i; stored = String(hiData[i][2] || ''); break; }
-    }
-    if (rowOffset < 0) return sendResponse(404, { ok: false, error: 'Comercial no encontrado' });
+    const encontrados = buscarComercialEnTodosLosProgramas_(emailNorm);
+    if (!encontrados.length) return sendResponse(404, { ok: false, error: 'Comercial no encontrado' });
 
-    // Autorización: primera vez (sin contraseña aún), usando la contraseña
-    // compartida por defecto (debe cambiarla), token de reset válido para este
-    // email, o sesión comercial ya autenticada + contraseña actual correcta.
+    // Autorización: primera vez (sin contraseña aún en ningún programa),
+    // usando la contraseña compartida por defecto en cualquiera de los
+    // programas (debe cambiarla), token de reset válido para este email, o
+    // sesión comercial ya autenticada + contraseña actual correcta en
+    // cualquiera de los programas donde exista esta cuenta.
     const defaultPwd = getDefaultPassword();
-    const usingDefault = !!defaultPwd && passwordMatches_(defaultPwd, stored);
-    let autorizado = !stored || usingDefault;
+    const sinContrasena = encontrados.every(function(e) { return !e.storedPwd; });
+    const usandoDefault = encontrados.some(function(e) { return !!defaultPwd && passwordMatches_(defaultPwd, e.storedPwd); });
+    let autorizado = sinContrasena || usandoDefault;
     if (!autorizado && data.reset_token) {
       const raw = PropertiesService.getScriptProperties().getProperty('reset_' + data.reset_token);
       if (raw) {
@@ -2946,13 +2980,15 @@ function setComercialPassword(data) {
     }
     if (!autorizado) {
       const payload = verificarSesionToken(data.token || '');
-      if (payload && payload.rol === 'comercial' && payload.email === emailNorm && passwordMatches_(data.current_password, stored)) autorizado = true;
+      if (payload && payload.rol === 'comercial' && payload.email === emailNorm &&
+          encontrados.some(function(e) { return passwordMatches_(data.current_password, e.storedPwd); })) autorizado = true;
     }
     if (!autorizado) return sendResponse(403, { ok: false, error: 'No autorizado' });
 
     const newPwd = String(data.new_password || '').trim();
     if (newPwd.length < 6) return sendResponse(400, { ok: false, error: 'Mínimo 6 caracteres' });
-    comSheet.getRange(6 + rowOffset, 10).setValue(hashPassword_(newPwd)); // Columna J
+    const newHash = hashPassword_(newPwd);
+    encontrados.forEach(function(e) { e.comSheet.getRange(6 + e.rowOffset, 10).setValue(newHash); }); // Columna J, en cada programa
     if (data.reset_token) {
       try { PropertiesService.getScriptProperties().deleteProperty('reset_' + data.reset_token); } catch(_) {}
     }
@@ -2967,22 +3003,17 @@ function checkComercialPassword(data) {
     const emailNorm = String(data.email || '').toLowerCase().trim();
     const pwd = String(data.password || '');
     if (!emailNorm || !pwd) return sendResponse(400, { ok: false, error: 'Email y contraseña requeridos' });
-    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
-    const comSheet = getSheetCI(ss, 'Comisiones');
-    if (!comSheet) return sendResponse(404, { ok: false, error: 'No encontrado' });
-    const lastRow = comSheet.getLastRow();
-    if (lastRow < 6) return sendResponse(404, { ok: false, error: 'No encontrado' });
-    const hiData = comSheet.getRange('H6:J' + lastRow).getValues();
-    for (let i = 0; i < hiData.length; i++) {
-      if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) {
-        const stored = String(hiData[i][2] || '');
-        if (!passwordMatches_(pwd, stored)) return sendResponse(200, { ok: false });
-        const defaultPwd = getDefaultPassword();
-        const mustChange = !!defaultPwd && passwordMatches_(defaultPwd, stored);
-        return sendResponse(200, { ok: true, must_change: mustChange, token: generarSesionToken(emailNorm, 'comercial') });
-      }
-    }
-    return sendResponse(404, { ok: false, error: 'Comercial no encontrado' });
+    const encontrados = buscarComercialEnTodosLosProgramas_(emailNorm);
+    if (!encontrados.length) return sendResponse(404, { ok: false, error: 'Comercial no encontrado' });
+
+    // Basta con que la contraseña coincida en cualquiera de los programas
+    // donde exista esta cuenta (la contraseña se mantiene sincronizada entre
+    // ambas hojas al cambiarla — ver setComercialPassword).
+    const coincide = encontrados.find(function(e) { return passwordMatches_(pwd, e.storedPwd); });
+    if (!coincide) return sendResponse(200, { ok: false });
+    const defaultPwd = getDefaultPassword();
+    const mustChange = !!defaultPwd && passwordMatches_(defaultPwd, coincide.storedPwd);
+    return sendResponse(200, { ok: true, must_change: mustChange, token: generarSesionToken(emailNorm, 'comercial') });
   } catch(err) {
     return sendResponse(500, { ok: false, error: err.toString() });
   }
@@ -2992,38 +3023,29 @@ function forgotComercialPassword(data) {
   try {
     const emailNorm = String(data.email || '').toLowerCase().trim();
     if (!emailNorm || emailNorm.indexOf('@') < 0) return sendResponse(400, { ok: false, error: 'Email requerido' });
-    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
-    const comSheet = getSheetCI(ss, 'Comisiones');
-    if (!comSheet) return sendResponse(404, { ok: false, error: 'No encontrado' });
-    const lastRow = comSheet.getLastRow();
-    if (lastRow < 6) return sendResponse(404, { ok: false, error: 'No encontrado' });
-    const hiData = comSheet.getRange('H6:I' + lastRow).getValues();
-    let found = false;
-    for (let i = 0; i < hiData.length; i++) {
-      if (String(hiData[i][1] || '').toLowerCase().trim() === emailNorm) { found = true; break; }
-    }
+    const encontrados = buscarComercialEnTodosLosProgramas_(emailNorm);
     // Devolver ok:true aunque no se encuentre (no revelar si el email existe o no)
-    if (!found) return sendResponse(200, { ok: true });
+    if (!encontrados.length) return sendResponse(200, { ok: true });
     const token = Utilities.getUuid().replace(/-/g, '');
     const expiry = Date.now() + 3600000; // 1 hora
     PropertiesService.getScriptProperties().setProperty('reset_' + token, emailNorm + '|' + expiry);
     const resetUrl = String(data.reset_url || 'https://victory.com.es/areapersonal.html');
     const link = resetUrl + '?reset=' + token;
     const adminEmail = 'alejandro.cabrera@fundacionrevel.net';
-    GmailApp.sendEmail(emailNorm, 'Recupera tu contraseña — Área Comercial RMF Clinic',
+    GmailApp.sendEmail(emailNorm, 'Recupera tu contraseña — Área Comercial Victory',
       'Para restablecer tu contraseña accede a: ' + link, {
         htmlBody: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">'
           + '<div style="background:#1e5ba8;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
-          + '<h2 style="color:#fff;margin:0;font-size:18px">Real Madrid Foundation Clinic 2026</h2></div>'
+          + '<h2 style="color:#fff;margin:0;font-size:18px">Victory Sports · Área Comercial</h2></div>'
           + '<div style="background:#f8fafc;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
           + '<p style="color:#334155;margin-top:0">Hola,</p>'
           + '<p style="color:#334155">Recibimos una solicitud para restablecer la contraseña de tu área comercial.</p>'
           + '<p style="text-align:center;margin:24px 0">'
           + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:13px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px">Restablecer contraseña →</a></p>'
           + '<p style="color:#94a3b8;font-size:12px">Este enlace expira en <strong>1 hora</strong>. Si no lo solicitaste, ignora este correo.</p>'
-          + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Real Madrid Foundation Clinic 2026</p>'
+          + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Victory Sports</p>'
           + '</div></div>',
-        replyTo: adminEmail, name: 'Real Madrid Foundation Clinic'
+        replyTo: adminEmail, name: 'Victory Sports'
       });
     return sendResponse(200, { ok: true });
   } catch(err) {
@@ -3163,82 +3185,111 @@ function getAdminCategorias(params) {
 }
 
 // ───── ÁREA COMERCIAL ──────────────────────────────────────────────────────────
+const COMERCIAL_STR_ = function(v) { return String(v == null ? '' : v).trim(); };
+const COMERCIAL_NUM_ = function(v) {
+  if (typeof v === 'number') return v;
+  var s = COMERCIAL_STR_(v).replace(/[€$\s]/g, '').replace(/\.(?=\d{3})/g, '').replace(',', '.');
+  return parseFloat(s) || 0;
+};
+
+// Busca el email de un comercial en la hoja Comisiones de UN programa.
+// Devuelve null si no está, o { nombre, storedPwd, comSheet, rowOffset, programKey }.
+function buscarComercialEnPresupuesto_(emailNorm, budgetSheetId, programKey) {
+  const ss = SpreadsheetApp.openById(budgetSheetId);
+  const comSheet = getSheetCI(ss, 'Comisiones');
+  if (!comSheet) return null;
+  const lastRow = comSheet.getLastRow();
+  if (lastRow < 6) return null;
+  const hiData = comSheet.getRange('H6:J' + lastRow).getValues();
+  for (let i = 0; i < hiData.length; i++) {
+    if (COMERCIAL_STR_(hiData[i][1]).toLowerCase() === emailNorm) {
+      return {
+        nombre: COMERCIAL_STR_(hiData[i][0]),
+        storedPwd: COMERCIAL_STR_(hiData[i][2]),
+        comSheet: comSheet,
+        rowOffset: i,
+        programKey: programKey
+      };
+    }
+  }
+  return null;
+}
+
+// Un comercial puede vender ambos programas con la misma cuenta — busca en
+// las dos hojas de presupuesto y devuelve todas las coincidencias encontradas.
+function buscarComercialEnTodosLosProgramas_(emailNorm) {
+  const resultados = [];
+  getBudgetSheetIds_().forEach(function(fuente) {
+    const encontrado = buscarComercialEnPresupuesto_(emailNorm, fuente.budgetSheetId, fuente.programKey);
+    if (encontrado) resultados.push(encontrado);
+  });
+  return resultados;
+}
+
+// Lee las filas de comisión (A:F) de un comercial dentro de una hoja Comisiones ya localizada.
+function leerComisionesDeHoja_(comSheet, nombre) {
+  const lastRow = comSheet.getLastRow();
+  const comData = comSheet.getRange('A6:F' + lastRow).getValues();
+  const nombreLower = nombre.toLowerCase();
+  const jugadores = [];
+  const acompanantes = [];
+  let seccion = 'jugadores';
+
+  for (let i = 0; i < comData.length; i++) {
+    const r = comData[i];
+    const colA = COMERCIAL_STR_(r[0]);
+    const colALow = colA.toLowerCase();
+    if (!colA) continue;
+    if (colALow.indexOf('acomp') >= 0) { seccion = 'acompanantes'; continue; }
+    if (colALow.indexOf('total') >= 0) continue;
+    if (colALow === 'comercial') continue;
+    if (colALow !== nombreLower) continue;
+
+    if (seccion === 'jugadores') {
+      jugadores.push({
+        comision_jugador: COMERCIAL_NUM_(r[1]),
+        jugadores: COMERCIAL_NUM_(r[2]),
+        total: COMERCIAL_NUM_(r[3]),
+        estado: COMERCIAL_STR_(r[4]),
+        notas: COMERCIAL_STR_(r[5])
+      });
+    } else {
+      acompanantes.push({
+        com_doble:    COMERCIAL_NUM_(r[1]),
+        com_sencilla: COMERCIAL_NUM_(r[2]),
+        acomp_doble:  COMERCIAL_NUM_(r[3]),
+        acomp_sencilla: COMERCIAL_NUM_(r[4]),
+        total: COMERCIAL_NUM_(r[5])
+      });
+    }
+  }
+  return { jugadores: jugadores, acompanantes: acompanantes };
+}
+
 function getComercialData(email) {
   try {
     const emailNorm = email.toString().toLowerCase().trim();
     if (!emailNorm) return ContentService.createTextOutput(JSON.stringify({ found: false }))
       .setMimeType(ContentService.MimeType.JSON);
 
-    const ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
-    const comSheet = getSheetCI(ss, 'Comisiones');
-    if (!comSheet) return ContentService.createTextOutput(JSON.stringify({ found: false }))
+    const encontrados = buscarComercialEnTodosLosProgramas_(emailNorm);
+    if (!encontrados.length) return ContentService.createTextOutput(JSON.stringify({ found: false }))
       .setMimeType(ContentService.MimeType.JSON);
 
-    const lastRow = comSheet.getLastRow();
-    if (lastRow < 6) return ContentService.createTextOutput(JSON.stringify({ found: false }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-    const str = function(v) { return String(v == null ? '' : v).trim(); };
-    const num = function(v) {
-      if (typeof v === 'number') return v;
-      var s = str(v).replace(/[€$\s]/g, '').replace(/\.(?=\d{3})/g, '').replace(',', '.');
-      return parseFloat(s) || 0;
-    };
-
-    // Find comercial name by email in H:J (H=nombre, I=email, J=password)
-    const hiData = comSheet.getRange('H6:J' + lastRow).getValues();
-    let nombre = null;
-    let storedPwd = '';
-    for (let i = 0; i < hiData.length; i++) {
-      if (str(hiData[i][1]).toLowerCase() === emailNorm) {
-        nombre = str(hiData[i][0]);
-        storedPwd = str(hiData[i][2]);
-        break;
-      }
-    }
-    if (!nombre) return ContentService.createTextOutput(JSON.stringify({ found: false }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-    // Read commission data from A:F, filtered by this comercial's name
-    const comData = comSheet.getRange('A6:F' + lastRow).getValues();
-    const nombreLower = nombre.toLowerCase();
-    const jugadores = [];
-    const acompanantes = [];
-    let seccion = 'jugadores';
-
-    for (let i = 0; i < comData.length; i++) {
-      const r = comData[i];
-      const colA = str(r[0]);
-      const colALow = colA.toLowerCase();
-      if (!colA) continue;
-      if (colALow.indexOf('acomp') >= 0) { seccion = 'acompanantes'; continue; }
-      if (colALow.indexOf('total') >= 0) continue;
-      if (colALow === 'comercial') continue;
-      if (colALow !== nombreLower) continue;
-
-      if (seccion === 'jugadores') {
-        jugadores.push({
-          comision_jugador: num(r[1]),
-          jugadores: num(r[2]),
-          total: num(r[3]),
-          estado: str(r[4]),
-          notas: str(r[5])
-        });
-      } else {
-        acompanantes.push({
-          com_doble:    num(r[1]),
-          com_sencilla: num(r[2]),
-          acomp_doble:  num(r[3]),
-          acomp_sencilla: num(r[4]),
-          total: num(r[5])
-        });
-      }
-    }
+    const nombre = encontrados[0].nombre;
+    const hasPassword = encontrados.some(function(e) { return !!e.storedPwd; });
+    let jugadores = [];
+    let acompanantes = [];
+    encontrados.forEach(function(e) {
+      const datos = leerComisionesDeHoja_(e.comSheet, e.nombre);
+      jugadores = jugadores.concat(datos.jugadores);
+      acompanantes = acompanantes.concat(datos.acompanantes);
+    });
 
     return ContentService.createTextOutput(JSON.stringify({
       found: true,
       nombre: nombre,
-      has_password: !!storedPwd,
+      has_password: hasPassword,
       jugadores: jugadores,
       acompanantes: acompanantes
     })).setMimeType(ContentService.MimeType.JSON);
