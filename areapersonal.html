@@ -682,7 +682,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="ctitle">Calculadora EUR → COP</div>
       <p id="reserva-tasa-info" style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
       <p id="reserva-tasa-nota" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
-      <div id="aviso-abono-reserva" class="info-box" style="display:none"></div>
       <div class="calc-row">
         <div>
           <div class="clabel">Monto en euros (€)</div>
@@ -709,6 +708,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <div class="card pay-lock" id="pay-card1">
       <div class="ctitle">Pago de reserva — 1.000 EUR</div>
+      <div id="aviso-abono-reserva" class="info-box" style="display:none"></div>
       <div id="breakdown-reserva" class="breakdown-box" style="display:none"></div>
       <p id="pay-card1-hint" style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
       <div id="pago-exitoso-reserva" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago de reserva completado exitosamente</div>
@@ -778,8 +778,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         </div>
       </div>
       <div class="ctitle">Pago del tiquete aéreo</div>
-      <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
       <div id="aviso-abono-tiquete" class="info-box" style="display:none"></div>
+      <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Valor del tiquete (EUR)</div><input class="cinput ro" id="eur-tiq" type="number" value="993" min="1" oninput="calcTiq()" readonly></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
@@ -834,8 +834,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div id="panel3-subtitle" style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--navy);letter-spacing:1px;margin-bottom:6px">SEGUNDO PAGO — 1.790 EUR</div>
         <div style="font-size:14px;color:var(--muted)">Fecha límite: <strong id="panel3-fecha-limite">30 de julio 2026</strong></div>
       </div>
-      <div id="breakdown-final" class="breakdown-box" style="display:none"></div>
       <div id="aviso-abono-final" class="info-box" style="display:none"></div>
+      <div id="breakdown-final" class="breakdown-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Monto en euros (€)</div><input class="cinput ro" id="eur2" type="number" value="1790" min="1" oninput="calc2()" readonly></div>
         <div><div class="clabel">Tasa media del mercado</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
@@ -3113,10 +3113,7 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
   // por la comisión pagada. `comision` (si > 0) solo se usa para mostrarle al
   // participante que lo que realmente salió de su bolsillo fue abono+comisión.
   const restante = Math.max(0, total - abono);
-  if (restante <= 0) {
-    aviso.style.display = 'none';
-    return 0; // cubierto por completo — el banner de "pago completado" existente se encarga del resto
-  }
+  const cubierto = restante <= 0;
   aviso.style.display = 'block';
   const detalles = Array.isArray(detalleAbonos) ? detalleAbonos : [];
   // Un solo abono: la fecha se muestra junto al total, como antes. Dos o más
@@ -3137,9 +3134,14 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
         <div style="display:flex;justify-content:space-between;gap:10px;margin-top:3px"><span>Comisión pago con tarjeta (3,5%)</span><span>${comisionNum.toLocaleString('es-CO')} EUR</span></div>
       </div>`
     : '';
+  const saldoBox = cubierto ? '' : `
+      <div style="background:rgba(217,119,6,.07);padding:14px 16px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#92400e;margin-bottom:5px">⏳ Saldo pendiente de ${escapeHtml(labelConcepto)}</div>
+        <div style="font-size:20px;font-weight:700;color:#92400e">${restante.toLocaleString('es-CO')} EUR</div>
+      </div>`;
   aviso.innerHTML = `
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px">
-      <div style="background:var(--gbg);padding:14px 16px;border-bottom:1px dashed var(--gborder)">
+      <div style="background:var(--gbg);padding:14px 16px${cubierto ? '' : ';border-bottom:1px dashed var(--gborder)'}">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);margin-bottom:5px">✅ Abono recibido</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
           <div style="font-size:20px;font-weight:700;color:var(--green)">${totalPagado.toLocaleString('es-CO')} EUR</div>
@@ -3148,10 +3150,7 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
         ${listaDetalle}
         ${desgloseComision}
       </div>
-      <div style="background:rgba(217,119,6,.07);padding:14px 16px">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#92400e;margin-bottom:5px">⏳ Saldo pendiente de ${escapeHtml(labelConcepto)}</div>
-        <div style="font-size:20px;font-weight:700;color:#92400e">${restante.toLocaleString('es-CO')} EUR</div>
-      </div>
+      ${saldoBox}
     </div>
   `;
   return restante;
@@ -3747,7 +3746,8 @@ function uploadDocumento(inp, tipoDocumento) {
       tipo_documento: tipoDocumento,
       base64: base64Data,
       fileName: file.name,
-      nombre: nombre
+      nombre: nombre,
+      programa: programKeyActivo
     };
 
     fetch(APPS_SCRIPT_URL, {
@@ -3842,7 +3842,7 @@ function subirUnComprobante(file, tipoPago) {
     const reader = new FileReader();
     reader.onload = () => {
       const base64Data = reader.result.split(',')[1];
-      const payload = { email: participantEmail, tipo_pago: tipoPago, base64: base64Data, fileName: file.name, nombre };
+      const payload = { email: participantEmail, tipo_pago: tipoPago, base64: base64Data, fileName: file.name, nombre, programa: programKeyActivo };
       fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
@@ -4594,7 +4594,7 @@ document.addEventListener('keydown', e => {
 
 function loadComunicaciones() {
   comunLoaded = true;
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail || ''), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail || '') + '&programa=' + encodeURIComponent(programKeyActivo), { redirect: 'follow' })
     .then(r => r.json())
     .then(data => {
       const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
@@ -4611,7 +4611,7 @@ function loadComunicaciones() {
         </div>`
       ).join('');
       if (participantEmail) {
-        fetch(APPS_SCRIPT_URL + '?action=marcar_comunicados_vistos&email=' + encodeURIComponent(participantEmail) + '&count=' + msgs.length, { redirect: 'follow' }).catch(() => {});
+        fetch(APPS_SCRIPT_URL + '?action=marcar_comunicados_vistos&email=' + encodeURIComponent(participantEmail) + '&count=' + msgs.length + '&programa=' + encodeURIComponent(programKeyActivo), { redirect: 'follow' }).catch(() => {});
       }
       clearComunBadge();
     })
@@ -4623,7 +4623,7 @@ function loadComunicaciones() {
 
 function checkNuevosComunicados() {
   if (!participantEmail) return;
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail) + '&programa=' + encodeURIComponent(programKeyActivo), { redirect: 'follow' })
     .then(r => r.json())
     .then(data => {
       const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
@@ -6929,7 +6929,7 @@ function renderAdminCategorias(cats) {
 function loadAdminComunicados() {
   const el = document.getElementById('admin-comun-list');
   el.innerHTML = '<p style="color:var(--muted)">Cargando...</p>';
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&_t=' + Date.now(), { redirect:'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&programa=' + encodeURIComponent(adminProgramaActivo) + '&_t=' + Date.now(), { redirect:'follow' })
     .then(r => r.json())
     .then(data => {
       const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
@@ -7108,7 +7108,7 @@ function adminPublicarComunicado() {
   statusEl.innerHTML = '<span style="color:var(--blue)">Publicando...</span>';
   const today = new Date();
   const fecha = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
-  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'publicar_comunicado',titulo,mensaje,fecha,destinatario,token:adminSessionToken}), redirect:'follow' })
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'publicar_comunicado',titulo,mensaje,fecha,destinatario,token:adminSessionToken,programa:adminProgramaActivo}), redirect:'follow' })
     .then(r => r.json())
     .then(res => {
       if (res.ok) {
@@ -7136,7 +7136,7 @@ function adminDeleteComunicado(btn, encodedTitulo, encodedFecha) {
   const fecha = decodeURIComponent(encodedFecha);
   btn.disabled = true;
   btn.textContent = '...';
-  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_comunicado',titulo,fecha,token:adminSessionToken}), redirect:'follow' })
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_comunicado',titulo,fecha,token:adminSessionToken,programa:adminProgramaActivo}), redirect:'follow' })
     .then(r => r.json())
     .then(res => {
       if (res.ok) { btn.closest('.comun-admin-item').remove(); comunLoaded = false; }

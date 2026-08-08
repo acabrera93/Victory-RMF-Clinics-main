@@ -15,7 +15,8 @@
 // 11. Copia la URL de implementación y úsala abajo
 
 // ───── CONFIG ──────────────────────────────────────────────────────────────────
-const PARENT_FOLDER_ID = "1E_7wpNt-KgEKyVL9Za2h3J-ne0IXYRUh"; // ID de carpeta "RMF_Clinic_2026_Uploads"
+const PARENT_FOLDER_ID = "1E_7wpNt-KgEKyVL9Za2h3J-ne0IXYRUh"; // ID de carpeta "Document_Uploads" (Clinic)
+const PARENT_FOLDER_ID_WORLD_CHALLENGE = "1S-45lTj8G7f-mVV-SWSZjwRks8gcyZKN"; // ID de carpeta "Document_Uploads_WCH_2027"
 const SHEET_ID = "1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss"; // Tu Google Sheet actual
 
 const ADMIN_EMAILS_LIST = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
@@ -217,6 +218,11 @@ function resolverSheets_(programa) {
   return { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' };
 }
 
+// Carpeta de Drive donde se guardan documentos/comprobantes subidos, según programa.
+function resolverParentFolderId_(programa) {
+  return esWorldChallenge_(programa) ? PARENT_FOLDER_ID_WORLD_CHALLENGE : PARENT_FOLDER_ID;
+}
+
 // Todas las hojas de presupuesto (una por programa) — usado por el área
 // comercial, que busca/gestiona comisiones de un comercial a través de
 // ambos programas a la vez (un comercial puede vender Clinic y World
@@ -242,8 +248,8 @@ function doGet(e) {
         return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);
       return listFiles(SABER_FOLDER_ID, 'all');
     }
-    if (action === 'comunicaciones') return getComunicaciones(params.email || '');
-    if (action === 'marcar_comunicados_vistos') return marcarComunicadosVistos(params.email || '', params.count || '0');
+    if (action === 'comunicaciones') return getComunicaciones(params.email || '', params.programa || '');
+    if (action === 'marcar_comunicados_vistos') return marcarComunicadosVistos(params.email || '', params.count || '0', params.programa || '');
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
     if (action === 'mis_pagos') return getMisPagos(params.nombre || '', params.programa || '');
@@ -647,10 +653,11 @@ function listFiles(folderId, filter) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function getComunicaciones(email) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Comunicaciones');
+function getComunicaciones(email, programa) {
+  const fuente = resolverSheets_(programa);
+  const sheet = SpreadsheetApp.openById(fuente.sheetId).getSheetByName('Comunicaciones');
   const emailNorm = String(email || '').toLowerCase().trim();
-  const seen = emailNorm ? (parseInt(PropertiesService.getScriptProperties().getProperty('comun_seen_' + emailNorm)) || 0) : 0;
+  const seen = emailNorm ? (parseInt(PropertiesService.getScriptProperties().getProperty('comun_seen_' + fuente.programKey + '_' + emailNorm)) || 0) : 0;
   if (!sheet) return ContentService.createTextOutput(JSON.stringify({ mensajes: [], seen: seen }))
     .setMimeType(ContentService.MimeType.JSON);
   const data = sheet.getDataRange().getValues();
@@ -666,11 +673,12 @@ function getComunicaciones(email) {
 // Guarda cuántos comunicados ha visto ya un participante (por email), para que
 // el aviso de "nuevo mensaje" al iniciar sesión sobreviva a cambios de
 // navegador/dispositivo o modo incógnito (a diferencia de localStorage).
-function marcarComunicadosVistos(email, count) {
+function marcarComunicadosVistos(email, count, programa) {
   try {
     const emailNorm = String(email || '').toLowerCase().trim();
     if (emailNorm) {
-      PropertiesService.getScriptProperties().setProperty('comun_seen_' + emailNorm, String(parseInt(count) || 0));
+      const programKey = resolverSheets_(programa).programKey;
+      PropertiesService.getScriptProperties().setProperty('comun_seen_' + programKey + '_' + emailNorm, String(parseInt(count) || 0));
     }
   } catch (err) {
     Logger.log('marcarComunicadosVistos error: ' + err);
@@ -694,15 +702,31 @@ function crearTriggerComunicados() {
   Logger.log('Trigger creado correctamente.');
 }
 
+// ── Ejecutar UNA VEZ desde el editor para instalar el trigger (World Challenge) ─
+function crearTriggerComunicadosWorldChallenge() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'notificarNuevoComunicadoWorldChallenge') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('notificarNuevoComunicadoWorldChallenge')
+    .forSpreadsheet(SHEET_ID_WORLD_CHALLENGE)
+    .onEdit()
+    .create();
+  Logger.log('Trigger creado correctamente (World Challenge).');
+}
+
 // ───── NOTIFICAR NUEVO COMUNICADO ─────────────────────────────────────────────
-function notificarNuevoComunicado(e) {
+// Función compartida por ambos programas — sourceSheetId es el sheet de
+// Inscripciones/Comunicaciones a leer, propKey separa el hash de
+// deduplicación de cada programa (para que publicar en uno no bloquee el
+// mismo título+mensaje publicado luego en el otro).
+function notificarNuevoComunicadoDesde_(e, sourceSheetId, propKey) {
   try {
     // Solo actuar si el edit fue en la columna C (Mensaje) de la hoja Comunicaciones
     if (!e || !e.range) return;
     if (e.range.getSheet().getName() !== 'Comunicaciones') return;
     if (e.range.getColumn() !== 3) return; // columna C = índice 3
 
-    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const ss = SpreadsheetApp.openById(sourceSheetId);
     const sheet = ss.getSheetByName('Comunicaciones');
     if (!sheet) return;
 
@@ -721,8 +745,10 @@ function notificarNuevoComunicado(e) {
     // Control de deduplicación por contenido — evita reenviar el mismo comunicado
     const props = PropertiesService.getScriptProperties();
     const currentHash = titulo + '|||' + mensaje;
-    const lastHash = props.getProperty('comun_last_hash') || '';
+    const lastHash = props.getProperty(propKey) || '';
     if (currentHash === lastHash) return;
+
+    const nombreProgramaCorto = sourceSheetId === SHEET_ID_WORLD_CHALLENGE ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
 
     // Obtener emails únicos de participantes desde la hoja principal
     const mainSheet = ss.getSheets()[0];
@@ -747,17 +773,25 @@ function notificarNuevoComunicado(e) {
     const link = 'https://victory.com.es/areapersonal.html?tab=comunicaciones';
     const subject = '⚠ Nuevo comunicado';
     const preview = mensaje.length > 180 ? mensaje.substring(0, 180).trim() + '...' : mensaje;
-    const htmlBody = buildComunicadoHtml(fecha, titulo, preview, link);
+    const htmlBody = buildComunicadoHtml(fecha, titulo, preview, link, sourceSheetId === SHEET_ID_WORLD_CHALLENGE ? 'world_challenge' : 'clinic');
     const adminEmail = 'alejandro.cabrera@fundacionrevel.net';
     emails.forEach(function(em) {
-      try { GmailApp.sendEmail(em, subject, 'Tienes un nuevo comunicado: ' + link, { htmlBody: htmlBody, replyTo: adminEmail, name: 'Real Madrid Foundation Clinic' }); }
+      try { GmailApp.sendEmail(em, subject, 'Tienes un nuevo comunicado: ' + link, { htmlBody: htmlBody, replyTo: adminEmail, name: nombreProgramaCorto }); }
       catch(err) { Logger.log('Error enviando a ' + em + ': ' + err); }
     });
-    GmailApp.sendEmail(adminEmail, '[Admin] Comunicado enviado — ' + titulo, '', { htmlBody: htmlBody, name: 'Real Madrid Foundation Clinic' });
-    props.setProperty('comun_last_hash', currentHash);
+    GmailApp.sendEmail(adminEmail, '[Admin] Comunicado enviado — ' + titulo, '', { htmlBody: htmlBody, name: nombreProgramaCorto });
+    props.setProperty(propKey, currentHash);
   } catch(err) {
-    Logger.log('notificarNuevoComunicado error: ' + err);
+    Logger.log('notificarNuevoComunicadoDesde_ error (' + sourceSheetId + '): ' + err);
   }
+}
+
+function notificarNuevoComunicado(e) {
+  notificarNuevoComunicadoDesde_(e, SHEET_ID, 'comun_last_hash');
+}
+
+function notificarNuevoComunicadoWorldChallenge(e) {
+  notificarNuevoComunicadoDesde_(e, SHEET_ID_WORLD_CHALLENGE, 'comun_last_hash_wc');
 }
 
 // ───── ACTUALIZAR PASO (todas las filas del mismo email) ───────────────────────
@@ -934,10 +968,10 @@ function doPost(e) {
 // Confirma que el email corresponda a un participante real de la hoja principal
 // antes de crear/compartir carpetas de Drive o escribir en Documentos — evita que
 // cualquiera suba archivos a la carpeta de otra persona con solo saber su email.
-function emailEsParticipante_(email) {
+function emailEsParticipante_(email, programa) {
   const emailNorm = String(email || '').toLowerCase().trim();
   if (!emailNorm) return false;
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
   const data = sheet.getDataRange().getValues();
   const headers = data[0] || [];
   let emailCol = -1;
@@ -955,10 +989,10 @@ function emailEsParticipante_(email) {
 // Busca el email de un participante por nombre exacto en la hoja principal
 // (misma lógica de columnas que emailEsParticipante_, pero devuelve el email
 // en vez de un booleano). Usada para notificar confirmación de pago.
-function buscarEmailPorNombre_(nombre) {
+function buscarEmailPorNombre_(nombre, programa) {
   const nombreNorm = String(nombre || '').toLowerCase().trim();
   if (!nombreNorm) return '';
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
   const data = sheet.getDataRange().getValues();
   const headers = data[0] || [];
   let emailCol = -1, nombreCol = -1;
@@ -982,13 +1016,16 @@ function buscarEmailPorNombre_(nombre) {
 // no siempre es fijo y no queremos arriesgarnos a mostrar un número incorrecto).
 // Se llama en CADA registro desde registrarPago(), incluyendo abonos repetidos
 // al mismo concepto — cada uno deja su propio correo como comprobante.
-function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
+function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa) {
   try {
-    const email = buscarEmailPorNombre_(nombre);
+    const email = buscarEmailPorNombre_(nombre, programa);
     if (!email) {
       Logger.log('notificarPagoConfirmado: no se encontró email para ' + nombre);
       return;
     }
+    const esWC = esWorldChallenge_(programa);
+    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+    const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
     const esCompleto = String(estado || '').toLowerCase().trim() === 'completo';
     const tipoLabels = { 'reserva': 'la Reserva', 'tiquete': 'el Tiquete Aéreo', 'pago final': 'el Pago Final' };
     const tipoLabel = tipoLabels[String(tipo || '').toLowerCase().trim()] || tipo;
@@ -1003,7 +1040,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
     const cuerpoTexto = esCompleto
       ? 'Confirmamos que tu pago correspondiente a <strong>' + tipoLabel + '</strong> ha sido registrado correctamente.'
       : 'Registramos un abono a cuenta de <strong>' + tipoLabel + '</strong>. Este pago queda guardado en tu historial de pagos.';
-    const subject = (esCompleto ? '✅ Pago confirmado — ' : '💰 Abono registrado — ') + tipoLabel + ' · RMF Clinic 2026';
+    const subject = (esCompleto ? '✅ Pago confirmado — ' : '💰 Abono registrado — ') + tipoLabel + ' · ' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026');
     const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto">'
       + '<div style="background:' + colorHeader + ';padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
       + '<table cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto"><tr>'
@@ -1011,7 +1048,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
       + '<td style="vertical-align:middle;padding:0 14px"><div style="width:1px;height:36px;background:rgba(255,255,255,0.45)"></div></td>'
       + '<td style="vertical-align:middle;padding:0"><img src="https://drive.google.com/uc?export=view&id=1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundacion Revel" height="40" style="display:block;height:40px;width:auto"></td>'
       + '</tr></table>'
-      + '<h2 style="color:#fff;margin:0 0 4px;font-size:18px">Real Madrid Foundation Clinic 2026</h2>'
+      + '<h2 style="color:#fff;margin:0 0 4px;font-size:18px">' + nombrePrograma + '</h2>'
       + '<p style="color:rgba(255,255,255,.85);margin:0;font-size:13px;font-weight:600">' + tituloHeader + '</p></div>'
       + '<div style="background:#f8fafc;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
       + '<p style="color:#334155;margin-top:0">Hola ' + nombre + ',</p>'
@@ -1021,11 +1058,11 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
       + '<p style="font-size:18px;color:' + colorMonto + ';font-weight:600;margin:0">' + montoTexto + '</p></div>'
       + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Ver mi área personal →</a>'
       + '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Si tienes dudas, escríbenos por WhatsApp o al correo alejandro.cabrera@fundacionrevel.net.</p>'
-      + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Real Madrid Foundation Clinic 2026</p></div></div>';
+      + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · ' + nombrePrograma + '</p></div></div>';
     GmailApp.sendEmail(email, subject, (esCompleto ? 'Tu pago' : 'Tu abono') + ' de ' + tipoLabel + ' ha sido registrado: ' + link, {
       htmlBody: htmlBody,
       replyTo: 'alejandro.cabrera@fundacionrevel.net',
-      name: 'Real Madrid Foundation Clinic'
+      name: nombreProgramaCorto
     });
     // Copia al admin de lo enviado al participante, para que quede constancia
     // sin tener que ir a revisar el Sheet — falla en try/catch propio para no
@@ -1033,7 +1070,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado) {
     try {
       GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net', '[Admin] Copia — ' + subject, '', {
         htmlBody: '<p style="font-family:Arial,sans-serif;font-size:13px;color:#64748b;margin:0 0 12px">Copia del correo enviado a <strong>' + nombre + '</strong> (' + email + ').</p>' + htmlBody,
-        name: 'Real Madrid Foundation Clinic'
+        name: nombreProgramaCorto
       });
     } catch (errAdmin) {
       Logger.log('notificarPagoConfirmado (copia admin) error: ' + errAdmin);
@@ -1049,11 +1086,12 @@ function handleMultipartUpload(e) {
   const email = (params.email || '').toLowerCase().trim();
   const tipo_documento = params.tipo_documento || 'otro';
   const tipo_pago = params.tipo_pago || '';
+  const programa = params.programa || '';
 
   if (!email) {
     return sendResponse(400, { ok: false, error: 'Email requerido' });
   }
-  if (!emailEsParticipante_(email)) {
+  if (!emailEsParticipante_(email, programa)) {
     return sendResponse(403, { ok: false, error: 'Email no encontrado entre los participantes registrados' });
   }
 
@@ -1071,7 +1109,7 @@ function handleMultipartUpload(e) {
 
   try {
     // Crear estructura de carpetas
-    const parentFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
+    const parentFolder = DriveApp.getFolderById(resolverParentFolderId_(programa));
     const emailFolderName = 'Participante_' + email.replace('@', '_').replace(/\./g, '_');
     let emailFolder = null;
     const emailFolders = parentFolder.getFoldersByName(emailFolderName);
@@ -1113,8 +1151,8 @@ function handleMultipartUpload(e) {
     const fileId = file.getId();
 
     // Actualizar Sheets
-    updateSheetWithUpload(email, tipo_documento, tipo_pago, fileName, fileUrl, fileId);
-    notificarDocumentoSubido(email, tipo_documento, tipo_pago, fileName, fileUrl);
+    updateSheetWithUpload(email, tipo_documento, tipo_pago, fileName, fileUrl, fileId, programa);
+    notificarDocumentoSubido(email, tipo_documento, tipo_pago, fileName, fileUrl, programa);
 
     return sendResponse(200, {
       ok: true,
@@ -1138,11 +1176,12 @@ function handleJsonUpload(e) {
     const tipo_pago = data.tipo_pago || '';
     const base64Data = data.base64 || '';
     const fileName = data.fileName || 'documento';
+    const programa = data.programa || '';
 
     if (!email || !base64Data) {
       return sendResponse(400, { ok: false, error: 'Email y base64 requeridos' });
     }
-    if (!emailEsParticipante_(email)) {
+    if (!emailEsParticipante_(email, programa)) {
       return sendResponse(403, { ok: false, error: 'Email no encontrado entre los participantes registrados' });
     }
 
@@ -1150,7 +1189,7 @@ function handleJsonUpload(e) {
     const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), getMimeType(fileName), fileName);
 
     // Crear estructura de carpetas
-    const parentFolder = DriveApp.getFolderById(PARENT_FOLDER_ID);
+    const parentFolder = DriveApp.getFolderById(resolverParentFolderId_(programa));
     const emailFolderName = 'Participante_' + email.replace('@', '_').replace(/\./g, '_');
     let emailFolder = null;
     const emailFolders = parentFolder.getFoldersByName(emailFolderName);
@@ -1185,8 +1224,8 @@ function handleJsonUpload(e) {
     const fileId = file.getId();
 
     // Actualizar Sheets
-    updateSheetWithUpload(email, tipo_documento, tipo_pago, finalFileName, fileUrl, fileId);
-    notificarDocumentoSubido(email, tipo_documento, tipo_pago, finalFileName, fileUrl);
+    updateSheetWithUpload(email, tipo_documento, tipo_pago, finalFileName, fileUrl, fileId, programa);
+    notificarDocumentoSubido(email, tipo_documento, tipo_pago, finalFileName, fileUrl, programa);
 
     return sendResponse(200, {
       ok: true,
@@ -1202,14 +1241,15 @@ function handleJsonUpload(e) {
 }
 
 // ───── NOTIFICAR SUBIDA DE DOCUMENTO ───────────────────────────────────────────
-function notificarDocumentoSubido(email, tipoDoc, tipoPago, fileName, fileUrl) {
+function notificarDocumentoSubido(email, tipoDoc, tipoPago, fileName, fileUrl, programa) {
   try {
     var notifyEmail = 'alejandro.cabrera@fundacionrevel.net';
+    var nombreProgramaCorto = esWorldChallenge_(programa) ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
 
     // Buscar nombre del participante en la hoja principal
     var nombre = '';
     try {
-      var mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+      var mainSheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
       var mainData = mainSheet.getDataRange().getValues();
       var headers = mainData[0] || [];
       var emailCol = -1, nombreCol = -1;
@@ -1240,16 +1280,16 @@ function notificarDocumentoSubido(email, tipoDoc, tipoPago, fileName, fileUrl) {
       'Archivo: ' + fileName + '\n' +
       'Enlace: ' + fileUrl;
 
-    GmailApp.sendEmail(notifyEmail, subject, body, { name: 'Real Madrid Foundation Clinic' });
+    GmailApp.sendEmail(notifyEmail, subject, body, { name: nombreProgramaCorto });
   } catch (err) {
     Logger.log('notificarDocumentoSubido error: ' + err);
   }
 }
 
 // ───── ACTUALIZAR SHEETS ───────────────────────────────────────────────────────
-function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, fileId) {
+function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, fileId, programa) {
   try {
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Documentos');
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheetByName('Documentos');
     if (!sheet) return; // Si no existe la hoja, no falla
 
     const data = sheet.getDataRange().getValues();
@@ -1292,7 +1332,7 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
       // comprobantes de pago: recalcular y escribir el contador "X/Y" en Inscripciones.
       if (!tipoPago) {
         const rowValues = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
-        const requeridos = getDocumentosRequeridos(email);
+        const requeridos = getDocumentosRequeridos(email, programa);
         const colsRequeridas = requeridos === 3
           ? ['doc_pasaporte', 'doc_permiso', 'doc_registro_civil']
           : ['doc_pasaporte'];
@@ -1301,7 +1341,7 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
           const idx = headers.indexOf(cn);
           if (idx >= 0 && rowValues[idx] !== '' && rowValues[idx] !== null) subidos++;
         });
-        actualizarContadorDocumentos(email, subidos, requeridos);
+        actualizarContadorDocumentos(email, subidos, requeridos, programa);
       }
     } else {
       Logger.log('updateSheetWithUpload: email no encontrado en la hoja Documentos: ' + email);
@@ -1318,11 +1358,11 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
 // fórmula que calcEdadRef/parseFechaNacimiento, ya usadas en getAdminCategorias).
 // En cualquier otro caso (sin tiquete, o mayor de edad) solo se requiere 1
 // (pasaporte).
-function getDocumentosRequeridos(email) {
+function getDocumentosRequeridos(email, programa) {
   try {
     const emailNorm = String(email || '').toLowerCase().trim();
     if (!emailNorm) return 1;
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     const headers = data[0] || [];
     let emailCol = -1, tiqueteCol = -1, fechaCol = -1;
@@ -1355,10 +1395,10 @@ function getDocumentosRequeridos(email) {
 // Escribe en la columna "Documentos" (Inscripciones) el texto "X/Y": X = cuántos
 // de los documentos requeridos ya fueron subidos, Y = total requerido (ver
 // getDocumentosRequeridos). Busca ambas columnas por nombre de cabecera.
-function actualizarContadorDocumentos(email, subidos, requeridos) {
+function actualizarContadorDocumentos(email, subidos, requeridos, programa) {
   try {
     const emailNorm = String(email || '').toLowerCase().trim();
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     const headers = data[0] || [];
     let emailCol = -1, docsCol = -1;
@@ -1448,11 +1488,23 @@ function getAdminParticipantes(params) {
   }
 }
 
+// Devuelve la hoja "Comunicaciones" del programa dado, creándola con sus
+// cabeceras si aún no existe (World Challenge parte de un sheet nuevo y puede
+// no tenerla todavía).
+function getComunicacionesSheet_(programa, create) {
+  const ss = SpreadsheetApp.openById(resolverSheets_(programa).sheetId);
+  let sheet = ss.getSheetByName('Comunicaciones');
+  if (!sheet && create) {
+    sheet = ss.insertSheet('Comunicaciones');
+    sheet.getRange(1, 1, 1, 4).setValues([['Fecha', 'Título', 'Mensaje', 'Destinatario']]);
+  }
+  return sheet;
+}
+
 function publicarComunicado(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Comunicaciones');
-    if (!sheet) return sendResponse(404, { ok: false, error: 'Hoja Comunicaciones no encontrada' });
+    const sheet = getComunicacionesSheet_(data.programa, true);
     const fecha = data.fecha || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
     const titulo = String(data.titulo || '').trim();
     const mensaje = String(data.mensaje || '').trim();
@@ -1460,8 +1512,8 @@ function publicarComunicado(data) {
     if (!titulo || !mensaje) return sendResponse(400, { ok: false, error: 'Titulo y mensaje requeridos' });
     // Save to sheet (col D = destinatario)
     sheet.appendRow([fecha, titulo, mensaje, destinatario]);
-    // Send emails directly with filter
-    var sent = enviarEmailsComunicado({ fecha: fecha, titulo: titulo, mensaje: mensaje, destinatario: destinatario });
+    // Send emails directly with filter — solo a participantes de ESTE programa
+    var sent = enviarEmailsComunicado({ fecha: fecha, titulo: titulo, mensaje: mensaje, destinatario: destinatario, programa: data.programa });
     return sendResponse(200, { ok: true, enviados: sent });
   } catch (err) {
     Logger.log('publicarComunicado error: ' + err);
@@ -1475,8 +1527,10 @@ function enviarEmailsComunicado(params) {
     var titulo = params.titulo || '';
     var mensaje = params.mensaje || '';
     var destinatario = params.destinatario || 'todos';
+    var programa = params.programa || '';
+    var nombreProgramaCorto = esWorldChallenge_(programa) ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
 
-    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var ss = SpreadsheetApp.openById(resolverSheets_(programa).sheetId);
     var mainSheet = ss.getSheets()[0];
     var mainData = mainSheet.getDataRange().getValues();
     var headers = mainData[0] || [];
@@ -1518,17 +1572,17 @@ function enviarEmailsComunicado(params) {
     var link = 'https://victory.com.es/areapersonal.html?tab=comunicaciones';
     var subject = '⚠ Nuevo comunicado';
     var preview = mensaje.length > 180 ? mensaje.substring(0, 180).trim() + '...' : mensaje;
-    var htmlBody = buildComunicadoHtml(fecha, titulo, preview, link);
+    var htmlBody = buildComunicadoHtml(fecha, titulo, preview, link, programa);
     var adminEmail = 'alejandro.cabrera@fundacionrevel.net';
 
     emails.forEach(function(em) {
-      try { GmailApp.sendEmail(em, subject, 'Tienes un nuevo comunicado: ' + link, { htmlBody: htmlBody, replyTo: adminEmail, name: 'Real Madrid Foundation Clinic' }); }
+      try { GmailApp.sendEmail(em, subject, 'Tienes un nuevo comunicado: ' + link, { htmlBody: htmlBody, replyTo: adminEmail, name: nombreProgramaCorto }); }
       catch(e2) { Logger.log('Error enviando a ' + em + ': ' + e2); }
     });
 
     // Admin confirmation
     try {
-      GmailApp.sendEmail(adminEmail, '[Admin] Comunicado enviado (' + emails.length + ' dest.) — ' + titulo, '', { htmlBody: htmlBody, name: 'Real Madrid Foundation Clinic' });
+      GmailApp.sendEmail(adminEmail, '[Admin] Comunicado enviado (' + emails.length + ' dest.) — ' + titulo, '', { htmlBody: htmlBody, name: nombreProgramaCorto });
     } catch(e3) { Logger.log('Error enviando admin: ' + e3); }
 
     return emails.length;
@@ -1538,7 +1592,8 @@ function enviarEmailsComunicado(params) {
   }
 }
 
-function buildComunicadoHtml(fecha, titulo, preview, link) {
+function buildComunicadoHtml(fecha, titulo, preview, link, programa) {
+  const nombrePrograma = esWorldChallenge_(programa) ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
   return '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">'
     + '<div style="background:#1e5ba8;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
     + '<table cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto"><tr>'
@@ -1546,7 +1601,7 @@ function buildComunicadoHtml(fecha, titulo, preview, link) {
     + '<td style="vertical-align:middle;padding:0 14px"><div style="width:1px;height:36px;background:rgba(255,255,255,0.45)"></div></td>'
     + '<td style="vertical-align:middle;padding:0"><img src="https://drive.google.com/uc?export=view&id=1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundacion Revel" height="40" style="display:block;height:40px;width:auto"></td>'
     + '</tr></table>'
-    + '<h2 style="color:#fff;margin:0;font-size:18px">Real Madrid Foundation Clinic 2026</h2></div>'
+    + '<h2 style="color:#fff;margin:0;font-size:18px">' + nombrePrograma + '</h2></div>'
     + '<div style="background:#f8fafc;padding:24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
     + '<p style="color:#334155;margin-top:0">Tienes un nuevo comunicado del equipo Revel:</p>'
     + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:16px 0">'
@@ -1554,13 +1609,13 @@ function buildComunicadoHtml(fecha, titulo, preview, link) {
     + '<h3 style="color:#1e3a5f;margin:0 0 12px;font-size:16px">' + titulo + '</h3>'
     + '<p style="color:#334155;margin:0;line-height:1.6;white-space:pre-wrap">' + preview + '</p></div>'
     + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin-top:4px">Ver mensaje completo en tu área personal →</a>'
-    + '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Equipo Revel · Real Madrid Foundation Clinic 2026</p></div></div>';
+    + '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Equipo Revel · ' + nombrePrograma + '</p></div></div>';
 }
 
 function eliminarComunicado(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Comunicaciones');
+    const sheet = getComunicacionesSheet_(data.programa, false);
     if (!sheet) return sendResponse(404, { ok: false, error: 'Hoja no encontrada' });
     const sheetData = sheet.getDataRange().getValues();
     const titulo = String(data.titulo || '').trim();
@@ -2123,7 +2178,7 @@ function registrarPago(data) {
     }
 
     if (estado.toLowerCase().trim() === 'completo' || estado.toLowerCase().trim() === 'parcial') {
-      notificarPagoConfirmado(nombre, tipo, eur, cop, estado);
+      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa);
     }
 
     actualizarResumenPagos(pagosSheet);
@@ -2557,7 +2612,7 @@ function actualizarEstadoPago(data) {
     var eur = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
     var cop = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
     if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
-      notificarPagoConfirmado(nombre, tipo, eur, cop, estado);
+      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa);
     }
 
     actualizarResumenPagos(pagosSheet);
