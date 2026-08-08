@@ -940,6 +940,7 @@ function doPost(e) {
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
         if (parsed.action === 'registrar_pago') return registrarPago(parsed);
         if (parsed.action === 'agregar_abono_pago') return agregarAbonoPago(parsed);
+        if (parsed.action === 'confirmar_pago_pendiente') return confirmarPagoPendiente(parsed);
         if (parsed.action === 'actualizar_estado_pago') return actualizarEstadoPago(parsed);
         if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes(parsed);
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
@@ -1016,7 +1017,7 @@ function buscarEmailPorNombre_(nombre, programa) {
 // no siempre es fijo y no queremos arriesgarnos a mostrar un número incorrecto).
 // Se llama en CADA registro desde registrarPago(), incluyendo abonos repetidos
 // al mismo concepto — cada uno deja su propio correo como comprobante.
-function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa) {
+function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metodoPago, esperadoEur) {
   try {
     const email = buscarEmailPorNombre_(nombre, programa);
     if (!email) {
@@ -1032,6 +1033,18 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa) {
     const montoTexto = (cop > 0 ? '$' + Math.round(cop).toLocaleString('es-CO') + ' COP' : '')
       + (cop > 0 && eur > 0 ? ' · ' : '')
       + (eur > 0 ? eur.toLocaleString('es-CO') + ' €' : '');
+    // Saldo pendiente: `esperadoEur` es el total BASE (sin recargo) que le
+    // corresponde a este participante para este concepto — lo calcula el
+    // frontend (montoEsperadoEur_) porque ahí vive toda la tabla de precios
+    // por tipo/habitación/programa. `eur` en cambio es el monto BRUTO (con
+    // recargo de tarjeta incluido si aplica) — hay que quitarle el recargo
+    // antes de restar, para no dejar un saldo pendiente artificialmente alto.
+    const metodo = String(metodoPago || '').toLowerCase();
+    const recargo = metodo.indexOf('tarjeta') === 0 ? RECARGO_TARJETA_PCT : 0;
+    const baseEur = recargo ? Math.round((eur / (1 + recargo)) * 100) / 100 : eur;
+    const restanteEur = (typeof esperadoEur === 'number' && esperadoEur > 0)
+      ? Math.max(0, Math.round((esperadoEur - baseEur) * 100) / 100)
+      : null;
     const link = 'https://victory.com.es/areapersonal.html';
     const colorHeader = esCompleto ? '#166534' : '#854f0b';
     const colorMonto  = esCompleto ? '#166534' : '#854f0b';
@@ -1041,6 +1054,12 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa) {
       ? 'Confirmamos que tu pago correspondiente a <strong>' + tipoLabel + '</strong> ha sido registrado correctamente.'
       : 'Registramos un abono a cuenta de <strong>' + tipoLabel + '</strong>. Este pago queda guardado en tu historial de pagos.';
     const subject = (esCompleto ? '✅ Pago confirmado — ' : '💰 Abono registrado — ') + tipoLabel + ' · ' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026');
+    const saldoBox = restanteEur === null ? '' : (
+      '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
+      + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">Saldo pendiente de ' + tipoLabel + '</p>'
+      + '<p style="font-size:18px;color:' + (restanteEur > 0 ? '#92400e' : '#166534') + ';font-weight:600;margin:0">'
+      + (restanteEur > 0 ? restanteEur.toLocaleString('es-CO') + ' €' : '0 € — sin saldo pendiente') + '</p></div>'
+    );
     const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto">'
       + '<div style="background:' + colorHeader + ';padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
       + '<table cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto"><tr>'
@@ -1056,6 +1075,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa) {
       + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
       + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">' + montoLabel + '</p>'
       + '<p style="font-size:18px;color:' + colorMonto + ';font-weight:600;margin:0">' + montoTexto + '</p></div>'
+      + saldoBox
       + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Ver mi área personal →</a>'
       + '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Si tienes dudas, escríbenos por WhatsApp o al correo alejandro.cabrera@fundacionrevel.net.</p>'
       + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · ' + nombrePrograma + '</p></div></div>';
@@ -2178,7 +2198,7 @@ function registrarPago(data) {
     }
 
     if (estado.toLowerCase().trim() === 'completo' || estado.toLowerCase().trim() === 'parcial') {
-      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa);
+      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa, metodoPago, parseFloat(data.esperado_eur));
     }
 
     actualizarResumenPagos(pagosSheet);
@@ -2592,6 +2612,91 @@ function agregarAbonoPago(data) {
   }
 }
 
+// Confirma un pago que quedó "Pendiente de confirmar" tras la subida de un
+// comprobante (ver aplicarPagoAFilaParticipante_). A diferencia de
+// agregarAbonoPago (que SIEMPRE agrega una entrada nueva al historial, para
+// abonos genuinamente adicionales), esta acción CORRIGE la última entrada
+// del historial — la que quedó pendiente — con los valores finales que el
+// admin dejó en el modal, ya sea el mismo monto recibido o una corrección
+// manual (ej. el comprobante detectado por la IA no coincidía con lo
+// esperado). Antes, el botón "Confirmar pago" reutilizaba agregarAbonoPago y
+// ADICIONABA una segunda entrada encima de la primera, duplicando el monto
+// tanto en la hoja como en el correo de confirmación.
+function confirmarPagoPendiente(data) {
+  try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
+    var nombre = String(data.nombre || '').trim();
+    var tipo = String(data.tipo || '').trim();
+    var fecha = String(data.fecha || '').trim();
+    var eur = parseFloat(data.eur) || 0;
+    var cop = parseFloat(data.cop) || 0;
+    var estado = String(data.estado || '').trim();
+    var paquete = String(data.paquete || '').trim();
+    var metodoPago = String(data.metodo_pago || '').trim().toLowerCase();
+    var esperadoEur = parseFloat(data.esperado_eur);
+    if (!nombre || !tipo || !fecha || eur <= 0 || !estado)
+      return sendResponse(400, { ok: false, error: 'nombre, tipo, fecha, eur y estado son requeridos' });
+
+    var ss = SpreadsheetApp.openById(resolverSheets_(data.programa).budgetSheetId);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
+    var pc = getPagosColMap_(pagosSheet);
+    var idxNombre = pc.nombre_familia - 1;
+    var idxNotas  = pc.notas - 1;
+
+    var parts = fecha.split('-');
+    var fechaDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+    var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
+
+    var startRow = 6;
+    var lastRow = pagosSheet.getLastRow();
+    var numRows = lastRow - startRow + 1;
+    var readWidth = Math.max(pc.nombre_familia, pc.notas);
+    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
+    var nombreLower = nombre.toLowerCase();
+    var tipoLower = tipo.toLowerCase();
+    var inBlock = false;
+    var targetSheetRow = -1;
+    for (var i = 0; i < allData.length; i++) {
+      var cellB = String(allData[i][idxNombre] || '').trim();
+      var cellH = String(allData[i][idxNotas] || '').trim();
+      if (cellB) {
+        if (cellB.toLowerCase() === nombreLower) inBlock = true;
+        else if (inBlock) break;
+      }
+      if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+    }
+    if (targetSheetRow < 0) return sendResponse(404, { ok: false, error: 'No se encontró el pago a confirmar' });
+
+    var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
+    if (historialActual.length > 0) {
+      historialActual[historialActual.length - 1] = { fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago };
+    } else {
+      historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
+    }
+
+    pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
+    var sumaEur = sumHistorial_(historialActual, 'eur');
+    var sumaCop = sumHistorial_(historialActual, 'cop');
+    if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
+    if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
+    pagosSheet.getRange(targetSheetRow, pc.estado).setValue(estado);
+    pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
+    if (paquete) pagosSheet.getRange(targetSheetRow, pc.paquete).setValue(paquete);
+    if (pc.metodo_de_pago && metodoPago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
+
+    if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
+      notificarPagoConfirmado(nombre, tipo, sumaEur, sumaCop, estado, data.programa, metodoPago, esperadoEur);
+    }
+
+    actualizarResumenPagos(pagosSheet);
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('confirmarPagoPendiente error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
 function actualizarEstadoPago(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
@@ -2633,8 +2738,10 @@ function actualizarEstadoPago(data) {
 
     var eur = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
     var cop = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
+    var metodoPagoActual = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '').toLowerCase() : '';
+    var esperadoEur = parseFloat(data.esperado_eur);
     if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
-      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa);
+      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa, metodoPagoActual, esperadoEur);
     }
 
     actualizarResumenPagos(pagosSheet);
