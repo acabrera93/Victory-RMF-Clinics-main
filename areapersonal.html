@@ -6321,6 +6321,20 @@ function openPagosModal(idx, nombreOverride) {
     const ex = pagosByTipo[tipo.toLowerCase()] || null;
     const tid = tipo.replace(' ', '-').toLowerCase();
     const paqueteVal = ex ? ex.paquete : currentPaquete;
+    const montoEsperadoPrevio = participanteNorm ? montoEsperadoEur_(tipo, participanteNorm) : 0;
+
+    // Reserva (u otro concepto que no sea Tiquete) que este participante no
+    // debe pagar — ej. acompañante "solo actividades" con reserva en 0 — no
+    // se muestra en absoluto, igual que ya pasaba con el Tiquete cuando no
+    // está incluido. El Tiquete es distinto porque sí se puede "activar" a
+    // mano (botón de abajo); Reserva/Pago Final no, así que si no debe nada
+    // y no tiene ningún pago previo, la sección se oculta directamente.
+    // Solo se oculta cuando SÍ sabemos con certeza que no debe nada
+    // (participanteNorm disponible) — si el modal se abrió sin poder
+    // resolver el participante (ej. por nombre suelto, sin fila en
+    // adminData), no hay forma de calcular el monto esperado, así que por
+    // seguridad se sigue mostrando la sección en vez de ocultarla a ciegas.
+    if (tipo !== 'Tiquete' && participanteNorm && montoEsperadoPrevio <= 0 && !ex) return '';
 
     if (tipo === 'Tiquete' && !tieneTiquete && !ex) {
       return `<div style="border:1px dashed var(--border);border-radius:10px;padding:18px;margin-bottom:12px">
@@ -6366,7 +6380,7 @@ function openPagosModal(idx, nombreOverride) {
     // sin necesidad de elegir el estado a mano. No aplica en "Pendiente de
     // confirmar" (ese flujo usa su propio botón "Confirmar pago") ni cuando
     // el campo está en solo lectura (ya hay historial acumulado).
-    const montoEsperado = participanteNorm ? montoEsperadoEur_(tipo, participanteNorm) : 0;
+    const montoEsperado = montoEsperadoPrevio;
     const wireAutoEstado = !barrasReadonly && !esPendienteConfirmar && montoEsperado > 0;
     // "+ Agregar abono" solo tiene sentido mientras el pago sigue Parcial —
     // no debe verse ni en Pendiente de confirmar (ahí aparece "Confirmar
