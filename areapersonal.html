@@ -1436,7 +1436,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div class="ctitle" style="margin-bottom:0">Pagos por participante</div>
-          <input id="pagos-search" type="text" placeholder="Buscar participante..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
+          <input id="pagos-search" type="text" placeholder="Buscar por nombre o correo..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
           <button id="btn-pagos-revisar" onclick="toggleSoloRevisarPagos()" style="padding:7px 14px;border:1px solid rgba(220,38,38,.4);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:#dc2626;font-weight:500">⚠ Solo por revisar</button>
           <button id="btn-pagos-actualizar" onclick="refreshAdminPagos(this)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">↻ Actualizar</button>
         </div>
@@ -5702,9 +5702,10 @@ function renderAdminPagos(fin) {
       ? `<span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${escapeHtml(tipoPart)}</span>`
       : '<span style="color:var(--muted);font-size:12px">—</span>';
     const acudienteKey = (adRow.acudiente || '').toLowerCase();
+    const emailKey = (adRow.email || '').toLowerCase();
     const esPendienteConfirmar = p => p && (p.estado || '').toLowerCase().trim() === 'pendiente de confirmar';
     const tieneRevisar = esPendienteConfirmar(reserva) || esPendienteConfirmar(tiquete) || esPendienteConfirmar(pagoFinal);
-    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-revisar="${tieneRevisar ? '1' : '0'}">
+    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-revisar="${tieneRevisar ? '1' : '0'}">
       <td>${tipoBadge}</td>
       <td style="font-weight:500">${escapeHtml(nombre)}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
@@ -5725,7 +5726,7 @@ let soloRevisarPagos = false;
 function filtrarTablaPagos(q) {
   const term = (q || '').toLowerCase().trim();
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
-    const pasaTexto = !term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term);
+    const pasaTexto = !term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term);
     const pasaRevisar = !soloRevisarPagos || tr.dataset.revisar === '1';
     tr.style.display = (pasaTexto && pasaRevisar) ? '' : 'none';
   });
