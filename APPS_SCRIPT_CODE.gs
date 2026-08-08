@@ -299,7 +299,14 @@ function getAbonosValidados_(nombre, budgetSheetId) {
     // pagado incluyendo la comisión, para mostrarle al cliente y al admin el
     // total real que salió de su bolsillo. reserva = reserva_bruto - reserva_comision.
     reserva_comision: 0, tiquete_comision: 0, final_comision: 0,
-    reserva_bruto: 0, tiquete_bruto: 0, final_bruto: 0
+    reserva_bruto: 0, tiquete_bruto: 0, final_bruto: 0,
+    // *_estado = el estado (Completo/Parcial/Pendiente de confirmar/...) de la
+    // fila PROPIA de este participante para ese concepto — a diferencia de
+    // reserva/tiquete/final arriba (que suman TODOS los abonos validados del
+    // grupo), esto es SOLO de esta persona. Se usa para exigir que cada
+    // participante del grupo esté individualmente en Completo antes de dar
+    // por pagado el concepto — no basta con que la suma del grupo alcance.
+    reserva_estado: '', tiquete_estado: '', final_estado: ''
   };
   try {
     const nombreNorm = normNombreGS(nombre);
@@ -330,12 +337,15 @@ function getAbonosValidados_(nombre, budgetSheetId) {
       }
       if (!currentNombre || normNombreGS(currentNombre) !== nombreNorm) continue;
       const estado = String(r[5] || '').toLowerCase().trim();
-      if (estado !== 'completo' && estado !== 'parcial') continue; // solo validados
-      const eurBruto = num(r[4]);
-      if (eurBruto <= 0) continue;
       const conceptoRaw = String(r[7] || '').toLowerCase().trim();
       const concepto = conceptoRaw === 'pago final' ? 'final' : conceptoRaw;
       if (concepto !== 'reserva' && concepto !== 'tiquete' && concepto !== 'final') continue;
+      // Guardar el estado de ESTA fila siempre, sin importar el filtro de abono
+      // de abajo — así se sabe si esta persona en particular ya quedó Completo.
+      resultado[concepto + '_estado'] = estado;
+      if (estado !== 'completo' && estado !== 'parcial') continue; // solo suma abonos validados
+      const eurBruto = num(r[4]);
+      if (eurBruto <= 0) continue;
       // Valor EUR en la hoja = lo REALMENTE pagado (bruto). Si fue con tarjeta,
       // ese bruto trae el recargo de Bold incluido — se separa aquí para que
       // "concepto" (reserva/tiquete/final) quede SIEMPRE en base, sin comisión,
@@ -359,8 +369,12 @@ function getAbonosValidados_(nombre, budgetSheetId) {
         const recargoAbono = recargoTarjetaDeCelda_(abono.metodo);
         let eurBase = abono.eur, eurComision = 0;
         if (recargoAbono !== null) {
-          eurBase = abono.eur / (1 + recargoAbono);
-          eurComision = abono.eur - eurBase;
+          // Redondeado a 2 decimales — dividir por (1+recargo) produce
+          // decimales largos (ej. 389.417475728155) que luego, si se vuelven
+          // a escribir en el Sheet, pueden causar #ERROR por el separador
+          // decimal del locale en español (ver sumHistorial_).
+          eurBase = Math.round((abono.eur / (1 + recargoAbono)) * 100) / 100;
+          eurComision = Math.round((abono.eur - eurBase) * 100) / 100;
         }
         resultado[concepto] += eurBase;
         resultado[concepto + '_comision'] += eurComision;
@@ -448,6 +462,11 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
       participant['abono_reserva_bruto'] = String(abonos.reserva_bruto);
       participant['abono_tiquete_bruto'] = String(abonos.tiquete_bruto);
       participant['abono_final_bruto'] = String(abonos.final_bruto);
+      // Estado de la fila PROPIA de este participante (no del grupo) — usado
+      // para exigir que cada quien esté individualmente Completo.
+      participant['abono_reserva_estado'] = abonos.reserva_estado;
+      participant['abono_tiquete_estado'] = abonos.tiquete_estado;
+      participant['abono_final_estado'] = abonos.final_estado;
       out.push(participant);
     }
   } catch (err) {
@@ -1787,7 +1806,13 @@ function getAdminFinanciero(params) {
           }
           if (!currentNombre) continue;
           var eurAmt = num(r[pc.valor_eur - 1]);
-          if (eurAmt <= 0) continue;
+          var copAmt = num(r[pc.valor_cop - 1]);
+          // Antes solo exigía eurAmt > 0 — si por cualquier motivo el EUR de
+          // una fila queda en 0 mientras el COP sí tiene un monto real (ej.
+          // un envío con el campo EUR vacío), la fila desaparecía del panel
+          // sin dejar rastro para revisión. Ahora basta con que CUALQUIERA de
+          // los dos tenga monto para que el admin la vea y pueda corregirla.
+          if (eurAmt <= 0 && copAmt <= 0) continue;
           var tipoG = str(r[pc.notas - 1]).toLowerCase();
           if (tipoG && !tiposValidos3[tipoG]) continue;
           var fechaVal = r[pc.fecha_pago - 1];
@@ -1962,10 +1987,18 @@ function buildHistorialString_(entradas) {
   return entradas.map(function(e) { return e.fecha + ':' + e.eur + ':' + (e.cop || 0) + ':' + (e.metodo || ''); }).join(';');
 }
 
-function buildSumFormula_(entradas, campo) {
-  var valores = entradas.map(function(e) { return e[campo] || 0; }).filter(function(v) { return v > 0; });
-  if (!valores.length) return '';
-  return '=' + valores.join('+');
+// Antes esto generaba una fórmula de texto ("=690.29+389.42...") con
+// setFormula() para que el Sheet quedara auditable. Pero con montos que
+// vienen de dividir por el recargo de tarjeta (ej. 389.417475728155, muchos
+// decimales), esa fórmula usa punto decimal y el Sheet en español (que
+// espera coma) la interpreta como #ERROR — así fue como el pago de Andrea
+// terminó en 0 EUR. Ahora se suma el valor en Apps Script (que no depende de
+// locale) y se escribe el número ya calculado con setValue() — la
+// auditabilidad de "quién pagó qué" sigue disponible en la columna Historial
+// de abonos, que guarda cada entrada por separado como texto.
+function sumHistorial_(entradas, campo) {
+  var suma = entradas.reduce(function(s, e) { return s + (e[campo] || 0); }, 0);
+  return campo === 'cop' ? Math.round(suma) : Math.round(suma * 100) / 100;
 }
 
 function formatFechaDDMMYYYY_(dateObj) {
@@ -2212,6 +2245,130 @@ function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
   };
 }
 
+// Aplica un abono (eur/cop/metodo ya definidos) a la fila de UN participante
+// para un concepto dado — agregándolo al historial existente (nunca
+// sobrescribe lo ya confirmado) y reabriendo el estado a "Pendiente de
+// confirmar" para revisión. Antes marcarComprobanteSubido() tenía esta misma
+// lógica inline para UN solo nombre; se extrajo aquí porque ahora un mismo
+// comprobante puede repartirse entre varios participantes del mismo grupo
+// (ver `distribucion` en marcarComprobanteSubido) — el pago que ve el
+// cliente es un saldo combinado, pero cada participante tiene su propia fila
+// independiente en Pagos, así que cada porción debe aplicarse a la fila de
+// SU propio dueño, no a la de quien subió el comprobante.
+function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo, tipoParticipanteHint, fechaDate, fechaFmt, eur, cop, metodoPago, comprobanteUrl, resultadoIA) {
+  var idxNombre = pc.nombre_familia - 1;
+  var idxNotas  = pc.notas - 1;
+  var idxTipoP  = pc.jugador_acompanante - 1;
+
+  var startRow = 6;
+  var lastRow = pagosSheet.getLastRow();
+  var numRows = lastRow - startRow + 1;
+  var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.notas);
+  var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
+
+  var nombreLower = nombreParticipante.toLowerCase();
+  var tipoLower = tipo.toLowerCase();
+  var inBlock = false;
+  var targetSheetRow = -1;
+  var blockPagoFinalRow = -1;
+  var tipoParticipante = String(tipoParticipanteHint || '').trim();
+
+  for (var i = 0; i < allData.length; i++) {
+    var cellB = String(allData[i][idxNombre] || '').trim();
+    var cellH = String(allData[i][idxNotas] || '').trim();
+    if (cellB) {
+      if (cellB.toLowerCase() === nombreLower) {
+        inBlock = true;
+        if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
+      } else if (inBlock) { break; }
+    }
+    if (inBlock) {
+      if (cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+      if (cellH.toLowerCase() === 'pago final') blockPagoFinalRow = startRow + i;
+    }
+  }
+
+  if (targetSheetRow > 0) {
+    // Antes: si la fila ya estaba "Completo" el envío se ignoraba por
+    // completo (return skipped:true) — pensado para no dejar que un reenvío
+    // tardío/duplicado pisara un pago ya confirmado por el admin. Pero si
+    // después se agrega un participante al grupo y aparece saldo nuevo, el
+    // participante SÍ puede volver a deber y su comprobante del abono
+    // adicional se perdía en silencio: la app decía "enviado" pero nunca
+    // llegaba a Pagos para revisión. Ahora el envío SIEMPRE se registra,
+    // como un abono nuevo AGREGADO al historial (nunca sobrescribe lo ya
+    // confirmado) y el estado vuelve a "Pendiente de confirmar" para que el
+    // admin lo revise — igual de seguro ante duplicados (el admin ve las
+    // entradas y decide), pero ya no pierde pagos reales.
+    var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
+    if (historialActual.length === 0) {
+      // Fila con monto ya confirmado pero sin historial desglosado (pago
+      // único, o registrado antes de que existiera esta columna) — se
+      // reconstruye una primera entrada con lo que ya había, para no
+      // perderlo al pasar al modo aditivo.
+      var eurPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
+      if (eurPrevio > 0) {
+        var copPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
+        var fechaPrevia = pagosSheet.getRange(targetSheetRow, pc.fecha_pago).getValue();
+        var metodoPrevio = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '') : '';
+        historialActual.push({
+          fecha: fechaPrevia instanceof Date ? formatFechaDDMMYYYY_(fechaPrevia) : String(fechaPrevia || fechaFmt),
+          eur: eurPrevio, cop: copPrevio, metodo: metodoPrevio
+        });
+      }
+    }
+    historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
+
+    pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
+    var sumaEur = sumHistorial_(historialActual, 'eur');
+    var sumaCop = sumHistorial_(historialActual, 'cop');
+    if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
+    if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
+    pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Pendiente de confirmar');
+    pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
+    if (comprobanteUrl) {
+      var urlExistente = String(pagosSheet.getRange(targetSheetRow, pc.comprobante).getValue() || '').trim();
+      var urlFinal = urlExistente ? (urlExistente + '\n' + comprobanteUrl) : comprobanteUrl;
+      pagosSheet.getRange(targetSheetRow, pc.comprobante).setValue(urlFinal);
+    }
+    pagosSheet.getRange(targetSheetRow, pc.verificacion_ia).setValue(resultadoIA.status);
+    pagosSheet.getRange(targetSheetRow, pc.detalle_ia).setValue(resultadoIA.detalle);
+    // Columna opcional: si no existe todavía en la hoja Pagos (fila 5, header
+    // "Metodo de pago"), pc.metodo_de_pago queda undefined y esto no hace nada.
+    if (pc.metodo_de_pago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
+  } else {
+    var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia, pc.metodo_de_pago || 0);
+    var newRow = new Array(writeWidth).fill('');
+    newRow[pc.jugador_acompanante - 1] = tipoParticipante;
+    newRow[pc.nombre_familia - 1] = nombreParticipante;
+    newRow[pc.fecha_pago - 1] = fechaDate;
+    newRow[pc.valor_cop - 1] = cop > 0 ? cop : '';
+    newRow[pc.valor_eur - 1] = eur;
+    newRow[pc.estado - 1] = 'Pendiente de confirmar';
+    newRow[pc.notas - 1] = tipo;
+    newRow[pc.comprobante - 1] = comprobanteUrl;
+    newRow[pc.verificacion_ia - 1] = resultadoIA.status;
+    newRow[pc.detalle_ia - 1] = resultadoIA.detalle;
+    if (pc.metodo_de_pago) newRow[pc.metodo_de_pago - 1] = metodoPago;
+
+    var filaInsertada = -1;
+    if (blockPagoFinalRow > 0) {
+      pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
+      filaInsertada = blockPagoFinalRow;
+    } else {
+      var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
+      var lastDataRow = startRow - 1;
+      for (var k = 0; k < allData.length; k++) {
+        var gv = String(allData[k][idxNotas] || '').trim().toLowerCase();
+        if (tiposValidos[gv]) lastDataRow = startRow + k;
+      }
+      filaInsertada = lastDataRow + 1;
+      pagosSheet.insertRowsBefore(filaInsertada, 1);
+    }
+    pagosSheet.getRange(filaInsertada, 1, 1, writeWidth).setValues([newRow]);
+  }
+}
+
 function marcarComprobanteSubido(data) {
   try {
     var nombre = String(data.nombre || '').trim();
@@ -2233,120 +2390,34 @@ function marcarComprobanteSubido(data) {
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
     var pc = getPagosColMap_(pagosSheet);
-    var idxNombre = pc.nombre_familia - 1;
-    var idxNotas  = pc.notas - 1;
-    var idxTipoP  = pc.jugador_acompanante - 1;
 
-    var startRow = 6;
-    var lastRow = pagosSheet.getLastRow();
-    var numRows = lastRow - startRow + 1;
-    var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.notas);
-    var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
-
-    var nombreLower = nombre.toLowerCase();
-    var tipoLower = tipo.toLowerCase();
-    var inBlock = false;
-    var targetSheetRow = -1;
-    var blockPagoFinalRow = -1;
-    var tipoParticipante = String(data.tipo_participante || '').trim();
-
-    for (var i = 0; i < allData.length; i++) {
-      var cellB = String(allData[i][idxNombre] || '').trim();
-      var cellH = String(allData[i][idxNotas] || '').trim();
-      if (cellB) {
-        if (cellB.toLowerCase() === nombreLower) {
-          inBlock = true;
-          if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
-        } else if (inBlock) { break; }
-      }
-      if (inBlock) {
-        if (cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
-        if (cellH.toLowerCase() === 'pago final') blockPagoFinalRow = startRow + i;
-      }
-    }
-
+    // El monto mostrado en pantalla (eur/cop) es el TOTAL del comprobante —
+    // se usa tal cual para verificar contra la IA, que lee UN solo recibo.
     var resultadoIA = verificarComprobanteIA_(fileId, eur, cop, metodoPago);
     var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
 
-    if (targetSheetRow > 0) {
-      // Antes: si la fila ya estaba "Completo" el envío se ignoraba por
-      // completo (return skipped:true) — pensado para no dejar que un reenvío
-      // tardío/duplicado pisara un pago ya confirmado por el admin. Pero si
-      // después se agrega un participante al grupo y aparece saldo nuevo, el
-      // participante SÍ puede volver a deber y su comprobante del abono
-      // adicional se perdía en silencio: la app decía "enviado" pero nunca
-      // llegaba a Pagos para revisión. Ahora el envío SIEMPRE se registra,
-      // como un abono nuevo AGREGADO al historial (nunca sobrescribe lo ya
-      // confirmado) y el estado vuelve a "Pendiente de confirmar" para que el
-      // admin lo revise — igual de seguro ante duplicados (el admin ve las
-      // entradas y decide), pero ya no pierde pagos reales.
-      var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
-      if (historialActual.length === 0) {
-        // Fila con monto ya confirmado pero sin historial desglosado (pago
-        // único, o registrado antes de que existiera esta columna) — se
-        // reconstruye una primera entrada con lo que ya había, para no
-        // perderlo al pasar al modo aditivo.
-        var eurPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
-        if (eurPrevio > 0) {
-          var copPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
-          var fechaPrevia = pagosSheet.getRange(targetSheetRow, pc.fecha_pago).getValue();
-          var metodoPrevio = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '') : '';
-          historialActual.push({
-            fecha: fechaPrevia instanceof Date ? formatFechaDDMMYYYY_(fechaPrevia) : String(fechaPrevia || fechaFmt),
-            eur: eurPrevio, cop: copPrevio, metodo: metodoPrevio
-          });
-        }
-      }
-      historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
-
-      pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
-      var formulaEur = buildSumFormula_(historialActual, 'eur');
-      var formulaCop = buildSumFormula_(historialActual, 'cop');
-      if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormula(formulaEur);
-      if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormula(formulaCop);
-      pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Pendiente de confirmar');
-      pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
-      if (comprobanteUrl) {
-        var urlExistente = String(pagosSheet.getRange(targetSheetRow, pc.comprobante).getValue() || '').trim();
-        var urlFinal = urlExistente ? (urlExistente + '\n' + comprobanteUrl) : comprobanteUrl;
-        pagosSheet.getRange(targetSheetRow, pc.comprobante).setValue(urlFinal);
-      }
-      pagosSheet.getRange(targetSheetRow, pc.verificacion_ia).setValue(resultadoIA.status);
-      pagosSheet.getRange(targetSheetRow, pc.detalle_ia).setValue(resultadoIA.detalle);
-      // Columna opcional: si no existe todavía en la hoja Pagos (fila 5, header
-      // "Metodo de pago"), pc.metodo_de_pago queda undefined y esto no hace nada.
-      if (pc.metodo_de_pago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
-    } else {
-      var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.comprobante, pc.historial_de_abonos, pc.verificacion_ia, pc.detalle_ia, pc.metodo_de_pago || 0);
-      var newRow = new Array(writeWidth).fill('');
-      newRow[pc.jugador_acompanante - 1] = tipoParticipante;
-      newRow[pc.nombre_familia - 1] = nombre;
-      newRow[pc.fecha_pago - 1] = fechaDate;
-      newRow[pc.valor_cop - 1] = cop > 0 ? cop : '';
-      newRow[pc.valor_eur - 1] = eur;
-      newRow[pc.estado - 1] = 'Pendiente de confirmar';
-      newRow[pc.notas - 1] = tipo;
-      newRow[pc.comprobante - 1] = comprobanteUrl;
-      newRow[pc.verificacion_ia - 1] = resultadoIA.status;
-      newRow[pc.detalle_ia - 1] = resultadoIA.detalle;
-      if (pc.metodo_de_pago) newRow[pc.metodo_de_pago - 1] = metodoPago;
-
-      var filaInsertada = -1;
-      if (blockPagoFinalRow > 0) {
-        pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
-        filaInsertada = blockPagoFinalRow;
-      } else {
-        var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
-        var lastDataRow = startRow - 1;
-        for (var k = 0; k < allData.length; k++) {
-          var gv = String(allData[k][idxNotas] || '').trim().toLowerCase();
-          if (tiposValidos[gv]) lastDataRow = startRow + k;
-        }
-        filaInsertada = lastDataRow + 1;
-        pagosSheet.insertRowsBefore(filaInsertada, 1);
-      }
-      pagosSheet.getRange(filaInsertada, 1, 1, writeWidth).setValues([newRow]);
-    }
+    // Si el correo tiene varios participantes vinculados, el saldo que ve el
+    // cliente es la suma de todos — pero cada uno tiene su propia fila en
+    // Pagos. El frontend calcula cómo repartir el monto entre quienes
+    // realmente todavía deban (ver calcularDistribucionPago_ en
+    // areapersonal.html) y lo manda en `distribucion`. Si no viene (llamada
+    // antigua, o un solo participante), se aplica todo a `nombre` como antes.
+    var distribucion = Array.isArray(data.distribucion) && data.distribucion.length
+      ? data.distribucion
+      : [{ nombre: nombre, eur: eur, cop: cop }];
+    var tipoParticipanteHint = String(data.tipo_participante || '').trim();
+    distribucion.forEach(function(item) {
+      var itemNombre = String((item && item.nombre) || '').trim();
+      if (!itemNombre) return;
+      var itemEur = parseFloat(item.eur) || 0;
+      var itemCop = parseFloat(item.cop) || 0;
+      if (itemEur <= 0 && itemCop <= 0) return;
+      aplicarPagoAFilaParticipante_(
+        pagosSheet, pc, itemNombre, tipo,
+        itemNombre === nombre ? tipoParticipanteHint : '',
+        fechaDate, fechaFmt, itemEur, itemCop, metodoPago, comprobanteUrl, resultadoIA
+      );
+    });
 
     return sendResponse(200, { ok: true });
   } catch (err) {
@@ -2411,10 +2482,10 @@ function agregarAbonoPago(data) {
     historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
 
     pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
-    var formulaCop = buildSumFormula_(historialActual, 'cop');
-    var formulaEur = buildSumFormula_(historialActual, 'eur');
-    if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormula(formulaCop);
-    if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormula(formulaEur);
+    var sumaCop = sumHistorial_(historialActual, 'cop');
+    var sumaEur = sumHistorial_(historialActual, 'eur');
+    if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
+    if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
     pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Parcial');
     pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
     if (pc.metodo_de_pago && metodoPago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
