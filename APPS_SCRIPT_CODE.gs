@@ -2109,34 +2109,18 @@ function sumHistorial_(entradas, campo) {
   return campo === 'cop' ? Math.round(suma) : Math.round(suma * 100) / 100;
 }
 
-// Cuando hay 2+ abonos, arma una fórmula de suma auditable (ej. "=500+500")
-// para escribir en Valor EUR/COP con setFormulaLocal() — a diferencia del
-// setFormula() que rompía antes (#ERROR bajo locale español, porque esperaba
-// coma decimal y se le pasaba con punto), setFormulaLocal() SÍ respeta el
-// locale del Sheet, así que aquí los números se formatean con coma decimal a
-// propósito. Con un solo abono no tiene sentido mostrar "=500" — se deja como
-// número plano (ver sumHistorial_ + setValue en cada punto de escritura).
-function formulaLocalDesdeHistorial_(entradas, campo) {
-  var valores = entradas
-    .map(function(e) { return campo === 'cop' ? Math.round(e[campo] || 0) : Math.round((e[campo] || 0) * 100) / 100; })
-    .filter(function(v) { return v !== 0; });
-  if (valores.length < 2) return null;
-  return '=' + valores.map(function(v) { return String(v).replace('.', ','); }).join('+');
-}
-
-// Escribe Valor EUR/COP a partir del historial acumulado — como fórmula
-// auditable (=500+500) si hay 2+ abonos, o como número plano si es el único.
-// SpreadsheetApp.flush() fuerza el recálculo antes de devolver el control,
-// para que una lectura posterior de esta misma celda EN LA MISMA EJECUCIÓN
-// (ej. otro abono llegando justo después) no encuentre un valor sin refrescar.
+// Escribe Valor EUR/COP como el número ya sumado (sumHistorial_), con
+// setValue(). Se intentó mostrar una fórmula auditable (=500+500) con
+// setFormulaLocal(), pero ese método NO EXISTE en Apps Script (Range no lo
+// tiene) — cada vez que había 2+ abonos, esto lanzaba un TypeError que
+// abortaba TODA la escritura en Pagos (el comprobante se subía a Drive, pero
+// nunca llegaba a la hoja ni al panel admin). setFormula() sí existe, pero
+// no vale la pena arriesgarse de nuevo con fórmulas en esta celda — el
+// historial de abonos ya deja el detalle de "quién pagó qué" auditable en su
+// propia columna como texto, que es donde se necesita.
 function escribirTotalesHistorial_(pagosSheet, pc, targetSheetRow, historialActual, sumaEur, sumaCop) {
-  var formulaEur = formulaLocalDesdeHistorial_(historialActual, 'eur');
-  var formulaCop = formulaLocalDesdeHistorial_(historialActual, 'cop');
-  if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormulaLocal(formulaEur);
-  else if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
-  if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormulaLocal(formulaCop);
-  else if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
-  if (formulaEur || formulaCop) SpreadsheetApp.flush();
+  if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
+  if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
 }
 
 function formatFechaDDMMYYYY_(dateObj) {
@@ -2609,6 +2593,20 @@ function marcarComprobanteSubido(data) {
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('marcarComprobanteSubido error: ' + err);
+    // El frontend sube el comprobante con un fetch "fire-and-forget" — si esta
+    // función falla, antes el error solo quedaba en el Registro de
+    // Ejecuciones de Apps Script (difícil de revisar). Ahora también se
+    // manda por correo al admin, con el error completo y los datos del
+    // intento, para poder diagnosticar sin depender de esa pantalla.
+    try {
+      GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net', '[Error] marcarComprobanteSubido — ' + (data && data.nombre || 'sin nombre'),
+        'Falló el registro de un comprobante subido por un participante.\n\n'
+        + 'Error: ' + (err && err.stack ? err.stack : err) + '\n\n'
+        + 'Datos recibidos: ' + JSON.stringify(data),
+        { name: 'Área Personal — Errores' });
+    } catch (mailErr) {
+      Logger.log('marcarComprobanteSubido: error enviando aviso de fallo: ' + mailErr);
+    }
     return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
@@ -2878,10 +2876,14 @@ function actualizarResumenPagos(pagosSheet) {
     var sr = summaryRow;
     var dataEnd = sr - 1;
     // D = suma COP, E = suma EUR, G = completos, H = parciales
-    pagosSheet.getRange(sr, 4).setFormulaLocal('=SUMA(D6:D' + dataEnd + ')');
-    pagosSheet.getRange(sr, 5).setFormulaLocal('=SUMA(E6:E' + dataEnd + ')');
-    pagosSheet.getRange(sr, 7).setFormulaLocal('=CONTAR.SI(F6:F' + dataEnd + ';"Completo")');
-    pagosSheet.getRange(sr, 8).setFormulaLocal('=CONTAR.SI(F6:F' + dataEnd + ';"Parcial")');
+    // setFormulaLocal() no existe en Apps Script (Range no lo tiene) — esta
+    // función llevaba fallando en silencio cada vez que se llamaba (el catch
+    // de abajo se comía el TypeError sin que nadie lo notara). setFormula()
+    // sí es un método real.
+    pagosSheet.getRange(sr, 4).setFormula('=SUMA(D6:D' + dataEnd + ')');
+    pagosSheet.getRange(sr, 5).setFormula('=SUMA(E6:E' + dataEnd + ')');
+    pagosSheet.getRange(sr, 7).setFormula('=CONTAR.SI(F6:F' + dataEnd + ';"Completo")');
+    pagosSheet.getRange(sr, 8).setFormula('=CONTAR.SI(F6:F' + dataEnd + ';"Parcial")');
     Logger.log('actualizarResumenPagos: fórmulas actualizadas en fila ' + sr);
   } catch (err) {
     Logger.log('actualizarResumenPagos error: ' + err);
