@@ -97,9 +97,14 @@
     display: flex;
     align-items: center;
     gap: 2px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
     margin-left: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .nav-links::-webkit-scrollbar { display: none; }
   .nav-link {
     color: rgba(255,255,255,0.65);
     font-size: 13px;
@@ -147,6 +152,8 @@
     transition: all 0.2s;
   }
   .nav-dropdown-item:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .nav-dropdown-sep { height: 1px; background: rgba(255,255,255,0.1); margin: 6px 6px; }
+  button.nav-link { background: transparent; font-family: inherit; -webkit-appearance: none; appearance: none; }
   .nav-divider {
     width: 1px;
     height: 18px;
@@ -984,15 +991,16 @@
       </a>
     </div>
     <div class="nav-links" id="nav-links">
-      <div class="nav-dropdown">
-        <a href="#programas" class="nav-link nav-dropdown-toggle" data-es="Programas" data-en="Programs">Programas</a>
+      <div class="nav-dropdown" id="nav-menu-dropdown">
+        <button type="button" class="nav-link nav-dropdown-toggle" id="nav-menu-toggle" aria-haspopup="true" aria-expanded="false" data-es="Menú" data-en="Menu">Menú</button>
         <div class="nav-dropdown-menu">
           <a href="#programas" class="nav-dropdown-item" data-es="Real Madrid Foundation Clinic" data-en="Real Madrid Foundation Clinic">Real Madrid Foundation Clinic</a>
           <a href="#world-challenge" class="nav-dropdown-item" data-es="Real Madrid Foundation World Challenge" data-en="Real Madrid Foundation World Challenge">Real Madrid Foundation World Challenge</a>
+          <div class="nav-dropdown-sep"></div>
+          <a href="memorias.html" class="nav-dropdown-item" data-es="Memorias" data-en="Memories">Memorias</a>
+          <a href="#faq" class="nav-dropdown-item" data-es="Preguntas frecuentes" data-en="FAQ">Preguntas frecuentes</a>
         </div>
       </div>
-      <a href="memorias.html" class="nav-link" data-es="Memorias" data-en="Memories">Memorias</a>
-      <a href="#faq" class="nav-link" data-es="Preguntas frecuentes" data-en="FAQ">Preguntas frecuentes</a>
       <a href="areapersonal.html" class="nav-link" data-es="Área Personal" data-en="Personal Area">Área Personal</a>
       <div class="nav-divider"></div>
       <a href="inscripcion.html" class="nav-cta" style="background:transparent; border-color:rgba(255,255,255,0.45);" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
@@ -2283,6 +2291,29 @@ img, video, iframe, table {
 </a>
 
 <script>
+(function() {
+  var menuToggle = document.getElementById('nav-menu-toggle');
+  var menuDropdown = document.getElementById('nav-menu-dropdown');
+  if (menuToggle && menuDropdown) {
+    menuToggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isOpen = menuDropdown.classList.toggle('open');
+      menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+    menuDropdown.querySelectorAll('.nav-dropdown-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        menuDropdown.classList.remove('open');
+        menuToggle.setAttribute('aria-expanded', 'false');
+      });
+    });
+    document.addEventListener('click', function(e) {
+      if (!menuDropdown.contains(e.target)) {
+        menuDropdown.classList.remove('open');
+        menuToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+})();
 (function() {
   var btn = document.getElementById('nav-hamburger');
   var drawer = document.getElementById('nav-drawer');

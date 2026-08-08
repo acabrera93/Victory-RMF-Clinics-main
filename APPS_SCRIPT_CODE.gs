@@ -3510,18 +3510,22 @@ function sincronizarLeadsDesdeInscripciones_(e, sourceSheetId, propKey) {
     const emailColIdx = leadsHeaders.findIndex(h => normHeaderKey_(h) === 'email');
     const nombreColIdx = leadsHeaders.findIndex(h => normHeaderKey_(h) === 'nombre');
 
+    // existingKeys[clave] guarda la fila de Leads (1-based) donde ya está ese
+    // email+nombre, o 'queued' si un lead nuevo de este mismo batch ya se
+    // encoló para insertar (evita duplicarlo si aparece dos veces seguidas).
     const existingKeys = {};
     const leadsLastRow = leadsSheet.getLastRow();
     if (leadsLastRow >= 2 && emailColIdx >= 0) {
       const leadsData = leadsSheet.getRange(2, 1, leadsLastRow - 1, leadsHeaders.length).getValues();
-      leadsData.forEach(function(r) {
+      leadsData.forEach(function(r, idx) {
         const em = normText_(r[emailColIdx]);
         const nm = nombreColIdx >= 0 ? normText_(r[nombreColIdx]) : '';
-        if (em) existingKeys[em + '|||' + nm] = true;
+        if (em) existingKeys[em + '|||' + nm] = idx + 2; // +2: fila de cabecera + índice 1-based
       });
     }
 
     const rowsToAppend = [];
+    const rowsToUpdate = [];
     newRowsValues.forEach(function(rowValues) {
       const tieneAlgo = rowValues.some(v => String(v || '').trim() !== '');
       if (!tieneAlgo) return;
@@ -3535,20 +3539,43 @@ function sincronizarLeadsDesdeInscripciones_(e, sourceSheetId, propKey) {
       const email = normText_(dataByNorm['email']);
       const nombre = normText_(dataByNorm['nombre']);
       const key = email + '|||' + nombre;
-      if (email && existingKeys[key]) return;
-      existingKeys[key] = true;
-
       const newLeadRow = leadsHeaders.map(function(h) {
         const sourceKey = LEADS_FIELD_MAP[normHeaderKey_(h)];
         if (!sourceKey) return '';
         return dataByNorm[sourceKey] !== undefined ? dataByNorm[sourceKey] : '';
       });
+
+      const existente = email ? existingKeys[key] : undefined;
+      if (typeof existente === 'number') {
+        // Este lead ya estaba en Leads (llegó primero por "más información")
+        // — se actualiza con los datos reales de la inscripción, para que el
+        // Programa (y demás campos) queden correctos y el correo de
+        // cumpleaños salga con la marca correcta. No pisa columnas sin
+        // fuente en Inscripciones (ej. pdf_link) — ver merge más abajo.
+        rowsToUpdate.push({ rowIndex: existente, values: newLeadRow });
+        existingKeys[key] = 'done';
+        return;
+      }
+      if (existente === 'done' || existente === 'queued') return; // ya procesado en este mismo batch
+
+      if (email) existingKeys[key] = 'queued';
       rowsToAppend.push(newLeadRow);
     });
 
     if (rowsToAppend.length > 0) {
       leadsSheet.getRange(leadsSheet.getLastRow() + 1, 1, rowsToAppend.length, leadsHeaders.length).setValues(rowsToAppend);
-      Logger.log('Sincronizadas ' + rowsToAppend.length + ' fila(s) de Jugadores a Leads desde ' + sourceSheetId + '.');
+      Logger.log('Sincronizadas ' + rowsToAppend.length + ' fila(s) nueva(s) de Jugadores a Leads desde ' + sourceSheetId + '.');
+    }
+    if (rowsToUpdate.length > 0) {
+      rowsToUpdate.forEach(function(u) {
+        const filaActual = leadsSheet.getRange(u.rowIndex, 1, 1, leadsHeaders.length).getValues()[0];
+        const merged = filaActual.map(function(valorActual, idx) {
+          const valorNuevo = u.values[idx];
+          return (valorNuevo !== '' && valorNuevo !== null && valorNuevo !== undefined) ? valorNuevo : valorActual;
+        });
+        leadsSheet.getRange(u.rowIndex, 1, 1, leadsHeaders.length).setValues([merged]);
+      });
+      Logger.log('Actualizadas ' + rowsToUpdate.length + ' fila(s) existentes en Leads con datos de inscripción desde ' + sourceSheetId + '.');
     }
 
     props.setProperty(propKey, String(lastRow));
@@ -3605,8 +3632,11 @@ function obtenerNombrePila_(nombreCompleto) {
   return partes.slice(0, 2).join(' ');
 }
 
-function buildCumpleanosHtml_(nombreCompleto, edad) {
+function buildCumpleanosHtml_(nombreCompleto, edad, programa) {
   const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
+  const esWC = esWorldChallenge_(programa);
+  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+  const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
   return `
 <div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
   <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
@@ -3621,7 +3651,7 @@ function buildCumpleanosHtml_(nombreCompleto, edad) {
       <span style="display:inline-block;background:#d4a017;color:#0b1f3a;font-weight:700;font-size:16px;padding:6px 18px;border-radius:30px;margin-top:6px;">Hoy cumples ${edad} años</span>
     </div>
     <div style="padding:34px 34px 10px;color:#1a2c4a;">
-      <p style="font-size:18px;font-weight:500;color:#0b1f3a;margin:0 0 18px;">Hoy es un día especial, y todo el equipo de Real Madrid Foundation Clinic quiere ser parte de tu celebración.</p>
+      <p style="font-size:18px;font-weight:500;color:#0b1f3a;margin:0 0 18px;">Hoy es un día especial, y todo el equipo de ${nombreProgramaCorto} quiere ser parte de tu celebración.</p>
       <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Cada año que cumples es un paso más cerca de tus sueños, dentro y fuera de la cancha. Nos llena de orgullo saber que haces parte de esta familia, y no podemos esperar a verte entrenar en la Ciudad del Fútbol del Real Madrid, dando lo mejor de ti en el campo y en cada meta que te propongas en la vida.</p>
       <div style="background:#f4f7fb;border-left:4px solid #1e5ba8;border-radius:0 10px 10px 0;padding:16px 20px;margin:22px 0;font-style:italic;color:#1e5ba8;font-size:15px;">
         "Los sueños no son lo que ves mientras duermes, son las cosas que no te dejan dormir." — Cristiano Ronaldo
@@ -3632,7 +3662,7 @@ function buildCumpleanosHtml_(nombreCompleto, edad) {
     <div style="padding:0 34px 30px;color:#1a2c4a;">
       <p style="margin:2px 0;font-size:14px;font-weight:700;color:#0b1f3a;margin-top:14px;">Con cariño,</p>
       <p style="margin:2px 0;font-size:14px;">Equipo Victory Sports · Fundación Revel</p>
-      <p style="margin:2px 0;font-size:14px;">Real Madrid Foundation Clinic 2026</p>
+      <p style="margin:2px 0;font-size:14px;">${nombrePrograma}</p>
     </div>
     <div style="background:#f4f7fb;padding:20px 30px;text-align:center;font-size:12px;color:#8a93a6;">
       ¿Dudas? Escríbenos por WhatsApp o a <a href="mailto:alejandro.cabrera@fundacionrevel.net" style="color:#1e5ba8;text-decoration:none;">alejandro.cabrera@fundacionrevel.net</a>
@@ -3641,11 +3671,17 @@ function buildCumpleanosHtml_(nombreCompleto, edad) {
 </div>`;
 }
 
-// Revisa diariamente el Sheet de Inscripciones y envía el correo a cada
-// Jugador (nunca Acompañante ni Staff) cuyo cumpleaños sea HOY, al correo
-// del acudiente. SOLO envía si el jugador cumple 18 años o menos — a partir
-// de los 19 deja de recibirlo. Deduplica con PropertiesService para no
-// reenviar el mismo cumpleaños dos veces el mismo año.
+// Revisa diariamente el Sheet de LEADS (no Inscripciones) y envía el correo
+// a cada lead cuyo cumpleaños sea HOY, al correo registrado. Se usa Leads —
+// no Inscripciones — porque ahí quedan agrupados los jugadores de AMBOS
+// programas (gracias a sincronizarLeadsDesdeInscripciones_, que solo empuja
+// filas de tipo Jugador) además de quienes solo llenaron "más información"
+// sin haberse inscrito todavía — así el saludo de cumpleaños empieza desde
+// el primer contacto, no solo tras completar la inscripción. SOLO envía si
+// cumple 18 años o menos — a partir de los 19 deja de recibirlo. Deduplica
+// con PropertiesService para no reenviar el mismo cumpleaños dos veces el
+// mismo año. La marca del correo (Clinic/World Challenge) sale de la propia
+// columna "Programa" de Leads.
 function enviarCorreosCumpleanos() {
   try {
     const tz = 'America/Bogota';
@@ -3654,20 +3690,18 @@ function enviarCorreosCumpleanos() {
     const hoyDia = parseInt(Utilities.formatDate(hoy, tz, 'd'));
     const anioActual = parseInt(Utilities.formatDate(hoy, tz, 'yyyy'));
 
-    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    const sheet = getLeadsSheet_();
     const data = sheet.getDataRange().getValues();
+    if (data.length < 2) { Logger.log('enviarCorreosCumpleanos: sin datos en Leads.'); return; }
     const headers = data[0] || [];
+    const normHeaders = headers.map(normHeaderKey_);
 
-    let tipoCol = -1, nombreCol = -1, fechaCol = -1, emailCol = -1;
-    for (let j = 0; j < headers.length; j++) {
-      const h = String(headers[j]).toLowerCase().trim();
-      if (h === 'tipo') tipoCol = j;
-      if (h === 'nombre') nombreCol = j;
-      if (h === 'fecha nacimiento' || h === 'fecha de nacimiento') fechaCol = j;
-      if (h === 'email' || h === 'correo') emailCol = j;
-    }
-    if (tipoCol < 0 || nombreCol < 0 || fechaCol < 0 || emailCol < 0) {
-      Logger.log('enviarCorreosCumpleanos: no se encontraron todas las columnas necesarias.');
+    const nombreCol = normHeaders.indexOf('nombre');
+    const fechaCol = normHeaders.indexOf('fecha_de_nacimiento');
+    const emailCol = normHeaders.indexOf('email');
+    const programaCol = normHeaders.indexOf('programa');
+    if (nombreCol < 0 || fechaCol < 0 || emailCol < 0) {
+      Logger.log('enviarCorreosCumpleanos: no se encontraron todas las columnas necesarias en Leads.');
       return;
     }
 
@@ -3676,9 +3710,6 @@ function enviarCorreosCumpleanos() {
 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const tipo = String(row[tipoCol] || '').toLowerCase().trim();
-      if (!tipo.includes('jugador')) continue;
-
       const fechaObj = parseFechaNacimiento(row[fechaCol]);
       if (!fechaObj) continue;
       if (fechaObj.mes !== hoyMes || fechaObj.dia !== hoyDia) continue;
@@ -3693,12 +3724,14 @@ function enviarCorreosCumpleanos() {
       const dedupKey = 'bday_' + anioActual + '_' + normText_(email) + '_' + normText_(nombre);
       if (props.getProperty(dedupKey)) continue;
 
+      const programa = programaCol >= 0 ? String(row[programaCol] || '') : '';
+      const nombreProgramaCorto = esWorldChallenge_(programa) ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
       const asunto = '\u{2728}\u{26BD} ¡Feliz cumpleaños, ' + obtenerNombrePila_(nombre) + '!';
-      const htmlBody = buildCumpleanosHtml_(nombre, edad);
+      const htmlBody = buildCumpleanosHtml_(nombre, edad, programa);
 
       GmailApp.sendEmail(email, asunto, 'Feliz cumpleaños ' + nombre + '! Hoy cumples ' + edad + ' años.', {
         htmlBody: htmlBody,
-        name: 'Real Madrid Foundation Clinic'
+        name: nombreProgramaCorto
       });
 
       // Recordatorio interno: aviso al equipo cada vez que se envía un
@@ -3711,7 +3744,7 @@ function enviarCorreosCumpleanos() {
           nombre + ' cumple ' + edad + ' años hoy.\n\n' +
           'Correo del acudiente: ' + email + '\n' +
           'Ya se le envió automáticamente el correo de felicitación.',
-          { name: 'Real Madrid Foundation Clinic' }
+          { name: nombreProgramaCorto }
         );
       } catch (notifErr) {
         Logger.log('Aviso interno de cumpleaños error: ' + notifErr);
