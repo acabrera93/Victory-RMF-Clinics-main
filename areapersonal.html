@@ -1947,6 +1947,7 @@ let adminCurrentRow = null;
 let pagoCurrentIdx = null;
 let pagoCurrentNombre = null;
 let pagoCurrentTipo = '';
+let pagoCurrentParticipanteNorm = null; // participante normalizado del modal de Pagos abierto — usado para calcular el monto esperado al confirmar/registrar un pago
 let pagoCurrentTieneTiquete = true;
 let habitacion = '';
 let fotosLoaded = false;
@@ -6306,6 +6307,7 @@ function openPagosModal(idx, nombreOverride) {
   }
   if (!nombre) return;
   pagoCurrentTieneTiquete = tieneTiquete;
+  pagoCurrentParticipanteNorm = participanteNorm;
   pagoCurrentProgramKey = (participanteNorm && participanteNorm.program_key) || adminProgramaActivo;
 
   const pagos = adminFinData && adminFinData.pagos_lista
@@ -6391,11 +6393,12 @@ function openPagosModal(idx, nombreOverride) {
     const readonlyStyle = barrasReadonly ? 'background:#f1f5f9;color:var(--muted)' : '';
     // Monto EUR esperado para este concepto según el tipo de participante —
     // permite auto-seleccionar Completo/Parcial mientras el admin escribe,
-    // sin necesidad de elegir el estado a mano. No aplica en "Pendiente de
-    // confirmar" (ese flujo usa su propio botón "Confirmar pago") ni cuando
-    // el campo está en solo lectura (ya hay historial acumulado).
+    // sin necesidad de elegir el estado a mano. También aplica en "Pendiente
+    // de confirmar": si el admin edita el monto (ej. para corregir lo que
+    // detectó la IA), el estado se recalcula en vivo en vez de quedar fijo.
+    // No aplica cuando el campo está en solo lectura (ya hay historial acumulado).
     const montoEsperado = montoEsperadoPrevio;
-    const wireAutoEstado = !barrasReadonly && !esPendienteConfirmar && montoEsperado > 0;
+    const wireAutoEstado = !barrasReadonly && montoEsperado > 0;
     // "+ Agregar abono" solo tiene sentido mientras el pago sigue Parcial —
     // no debe verse ni en Pendiente de confirmar (ahí aparece "Confirmar
     // pago" en su lugar) ni en Completo (ya no hay nada que agregar).
@@ -6435,6 +6438,18 @@ function openPagosModal(idx, nombreOverride) {
       eurMostrado = ex ? ex.eur : '';
       copMostrado = ex ? ex.cop : '';
     }
+    // Si el pago quedó "Pendiente de confirmar" y la IA detectó (o el admin
+    // ya corrigió) un monto MENOR al esperado, el estado a preseleccionar es
+    // "Parcial", no "Completo" — antes el botón "Confirmar pago" forzaba
+    // siempre "Completo" sin mirar el monto, así que un abono parcial menor
+    // (ej. comprobante detectado por la IA como inferior a lo esperado)
+    // terminaba marcado como pago completo por error.
+    const estadoAutoPendiente = (esPendienteConfirmar && montoEsperado > 0 && eurMostrado > 0)
+      ? ((eurMostrado > montoEsperado || Math.abs(eurMostrado - montoEsperado) <= 1) ? 'Completo' : 'Parcial')
+      : null;
+    const estadoSeleccionado = esPendienteConfirmar
+      ? (estadoAutoPendiente || 'Pendiente de confirmar')
+      : (estadoActual === 'Parcial' ? 'Parcial' : 'Completo');
     // Normalmente la celda "Metodo de pago" (de la fila, o de cada abono
     // dentro del historial) solo dice "tarjeta" (recargo estándar 3,5%).
     // Para casos puntuales con un recargo real distinto (ej. pagos antiguos
@@ -6506,9 +6521,9 @@ function openPagosModal(idx, nombreOverride) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div><div class="clabel">Fecha</div><input type="date" id="pago-${tid}-fecha" value="${fechaToInput(ex ? ex.fecha : '')}" style="${inputStyle}" ${barrasReadonly ? 'readonly' : ''}></div>
         <div><div class="clabel">Estado</div><select id="pago-${tid}-estado" style="${selectStyle}">
-          <option${estadoActual==='Parcial'?' selected':''}>Parcial</option>
-          <option${esPendienteConfirmar?' selected':''}>Pendiente de confirmar</option>
-          <option${!esPendienteConfirmar&&estadoActual!=='Parcial'?' selected':''}>Completo</option>
+          <option${estadoSeleccionado==='Parcial'?' selected':''}>Parcial</option>
+          <option${estadoSeleccionado==='Pendiente de confirmar'?' selected':''}>Pendiente de confirmar</option>
+          <option${estadoSeleccionado==='Completo'?' selected':''}>Completo</option>
         </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -6610,33 +6625,43 @@ function confirmarPagoDesdePanel(tipo) {
   const metodoEl = document.getElementById(`pago-${tid}-metodo`);
   const metodoPago = metodoEl ? metodoEl.value : 'transferencia';
   if (!fecha || eur <= 0) { alert('Ingresa al menos la fecha y el valor en EUR.'); return; }
-  if (estadoEl.value.toLowerCase() === 'pendiente de confirmar') estadoEl.value = 'Completo';
+  // El estado ya viene preseleccionado como Parcial/Completo según el monto
+  // detectado (ver estadoAutoPendiente en openPagosModal) y se recalcula en
+  // vivo si el admin edita el EUR (actualizarEstadoAuto_) — ya NO se fuerza
+  // "Completo" a ciegas, porque un abono parcial (ej. la IA detectó un monto
+  // menor al esperado) terminaba marcado como pago completo por error. Si
+  // sigue en "Pendiente de confirmar" es porque no hay monto esperado con
+  // qué comparar — se le pide al admin que elija a mano.
+  if (estadoEl.value.toLowerCase() === 'pendiente de confirmar') {
+    alert('Selecciona si el pago quedó Parcial o Completo antes de confirmar.');
+    return;
+  }
   const estado = estadoEl.value;
+  const esperadoEur = pagoCurrentParticipanteNorm ? montoEsperadoEur_(tipo, pagoCurrentParticipanteNorm) : null;
 
   const statusEl = document.getElementById('pagos-modal-status');
   statusEl.style.display = 'block';
   statusEl.innerHTML = '<span style="color:var(--blue)">Confirmando...</span>';
 
+  // Una sola llamada que CORRIGE la entrada pendiente (en vez de agregar_abono_pago
+  // + actualizar_estado_pago por separado) — esas dos acciones encadenadas
+  // duplicaban el monto: la primera agregaba el valor del modal como una
+  // entrada NUEVA encima de la que ya había quedado "Pendiente de confirmar"
+  // tras la subida del comprobante, así que el correo (y la hoja) terminaban
+  // sumando el mismo pago dos veces.
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur, cop, metodo_pago: metodoPago, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'confirmar_pago_pendiente', nombre, tipo, fecha, eur, cop, estado, paquete, metodo_pago: metodoPago, esperado_eur: esperadoEur, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
   .then(res => {
-    if (!res.ok) { statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`; return; }
-    return fetch(APPS_SCRIPT_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, programa: pagoCurrentProgramKey, token: adminSessionToken }),
-      redirect: 'follow'
-    }).then(r2 => r2.json()).then(res2 => {
-      if (res2.ok) {
-        statusEl.innerHTML = '<span style="color:#166534">✓ Pago confirmado.</span>';
-        setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
-      } else {
-        statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res2.error || 'desconocido'}</span>`;
-      }
-    });
+    if (res.ok) {
+      statusEl.innerHTML = '<span style="color:#166534">✓ Pago confirmado.</span>';
+      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+    } else {
+      statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
+    }
   })
   .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
 }
@@ -6649,6 +6674,7 @@ function actualizarEstadoDesdePanel(tipo) {
   const tid = tipo.replace(' ', '-').toLowerCase();
   const estado = document.getElementById(`pago-${tid}-estado`).value;
   const paquete = document.getElementById(`pago-${tid}-paquete`).value;
+  const esperadoEur = pagoCurrentParticipanteNorm ? montoEsperadoEur_(tipo, pagoCurrentParticipanteNorm) : null;
 
   const statusEl = document.getElementById('pagos-modal-status');
   statusEl.style.display = 'block';
@@ -6656,7 +6682,7 @@ function actualizarEstadoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, programa: pagoCurrentProgramKey, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'actualizar_estado_pago', nombre, tipo, estado, paquete, esperado_eur: esperadoEur, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
@@ -6698,6 +6724,7 @@ function registrarPagoDesdePanel(tipo) {
   const paquete = document.getElementById(`pago-${tid}-paquete`).value;
   const metodoEl = document.getElementById(`pago-${tid}-metodo`);
   const metodoPago = metodoEl ? metodoEl.value : 'transferencia';
+  const esperadoEur = participanteActual ? montoEsperadoEur_(tipo, participanteActual) : null;
 
   if (!fecha || !eur) { alert('Ingresa al menos la fecha y el valor en EUR.'); return; }
 
@@ -6707,7 +6734,7 @@ function registrarPagoDesdePanel(tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, metodo_pago: metodoPago, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'registrar_pago', nombre, tipo, fecha, eur, cop, estado, paquete, metodo_pago: metodoPago, esperado_eur: esperadoEur, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())
