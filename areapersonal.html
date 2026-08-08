@@ -3961,6 +3961,12 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
   // backend los agrega, uno por línea, a los que ya hubiera de envíos anteriores.
   const comprobanteUrl = (urlsNuevas && urlsNuevas.length) ? urlsNuevas.join('\n') : (comprobanteUrls[tipoPago] || '');
   const fileId = comprobanteFileIds[tipoPago] || '';
+  // Cuántos comprobantes se subieron en ESTA tanda — si son 2+ (ej. dos abonos
+  // distintos pagados por separado), la IA solo alcanza a leer UNO (fileId
+  // guarda el último que terminó de subir) y compararlo contra el monto total
+  // combinado siempre daría "no coincide", así que el backend debe saltarse
+  // la verificación/auto-corrección automática y dejarlo en revisión manual.
+  const comprobanteCount = (urlsNuevas && urlsNuevas.length) ? urlsNuevas.length : 1;
   const metodoPago = metodoPagoSel[tipoPago] || 'transferencia';
   // eur/cop de arriba son el monto BASE del programa (eur2/cop2 nunca incluyen
   // el recargo de tarjeta). Lo que hay que guardar en la hoja — y lo que
@@ -3990,7 +3996,7 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago, programa: programKeyActivo }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, comprobante_count: comprobanteCount, metodo_pago: metodoPago, programa: programKeyActivo }),
     keepalive: true
   }).catch(() => {});
 }

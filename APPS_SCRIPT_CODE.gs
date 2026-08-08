@@ -2377,24 +2377,37 @@ function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo,
     // confirmado) y el estado vuelve a "Pendiente de confirmar" para que el
     // admin lo revise — igual de seguro ante duplicados (el admin ve las
     // entradas y decide), pero ya no pierde pagos reales.
+    // Si la fila TODAVÍA está "Pendiente de confirmar" (nadie la validó),
+    // este envío no es un abono adicional — es una CORRECCIÓN/reemplazo del
+    // mismo comprobante pendiente (ej. el participante subió un comprobante
+    // equivocado, lo borró y subió el correcto). Reconstruir el Valor EUR/COP
+    // ya existente como una entrada "previa" y sumarle la nueva duplicaba el
+    // monto (500 ya guardado + 500 del reenvío = 1.000, aunque solo se pagó
+    // una vez). Solo se reconstruye y se ACUMULA cuando la fila ya estaba
+    // Completo/Parcial — ahí sí es un abono nuevo sobre un pago ya validado.
+    var estadoActualFila = String(pagosSheet.getRange(targetSheetRow, pc.estado).getValue() || '').trim().toLowerCase();
     var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
-    if (historialActual.length === 0) {
-      // Fila con monto ya confirmado pero sin historial desglosado (pago
-      // único, o registrado antes de que existiera esta columna) — se
-      // reconstruye una primera entrada con lo que ya había, para no
-      // perderlo al pasar al modo aditivo.
-      var eurPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
-      if (eurPrevio > 0) {
-        var copPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
-        var fechaPrevia = pagosSheet.getRange(targetSheetRow, pc.fecha_pago).getValue();
-        var metodoPrevio = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '') : '';
-        historialActual.push({
-          fecha: fechaPrevia instanceof Date ? formatFechaDDMMYYYY_(fechaPrevia) : String(fechaPrevia || fechaFmt),
-          eur: eurPrevio, cop: copPrevio, metodo: metodoPrevio
-        });
+    if (estadoActualFila === 'pendiente de confirmar') {
+      historialActual = [{ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago }];
+    } else {
+      if (historialActual.length === 0) {
+        // Fila con monto ya confirmado pero sin historial desglosado (pago
+        // único, o registrado antes de que existiera esta columna) — se
+        // reconstruye una primera entrada con lo que ya había, para no
+        // perderlo al pasar al modo aditivo.
+        var eurPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_eur).getValue()) || 0;
+        if (eurPrevio > 0) {
+          var copPrevio = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
+          var fechaPrevia = pagosSheet.getRange(targetSheetRow, pc.fecha_pago).getValue();
+          var metodoPrevio = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '') : '';
+          historialActual.push({
+            fecha: fechaPrevia instanceof Date ? formatFechaDDMMYYYY_(fechaPrevia) : String(fechaPrevia || fechaFmt),
+            eur: eurPrevio, cop: copPrevio, metodo: metodoPrevio
+          });
+        }
       }
+      historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
     }
-    historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
 
     pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
     var sumaEur = sumHistorial_(historialActual, 'eur');
@@ -2427,6 +2440,12 @@ function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo,
     newRow[pc.verificacion_ia - 1] = resultadoIA.status;
     newRow[pc.detalle_ia - 1] = resultadoIA.detalle;
     if (pc.metodo_de_pago) newRow[pc.metodo_de_pago - 1] = metodoPago;
+    // Bug: esta rama (fila nueva) nunca escribía el Historial de abonos —
+    // solo la rama de "fila existente" lo hacía. Una fila nueva se quedaba
+    // con Valor EUR/COP correctos pero el historial vacío, obligando a que
+    // el próximo abono reconstruyera una entrada sintética en vez de tener
+    // el registro real desde el primer pago.
+    newRow[pc.historial_de_abonos - 1] = buildHistorialString_([{ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago }]);
 
     var filaInsertada = -1;
     if (blockPagoFinalRow > 0) {
@@ -2470,8 +2489,17 @@ function marcarComprobanteSubido(data) {
 
     // El monto mostrado en pantalla (eur/cop) es el TOTAL esperado del
     // comprobante — se usa tal cual para verificar contra la IA, que lee UN
-    // solo recibo.
-    var resultadoIA = verificarComprobanteIA_(fileId, eur, cop, metodoPago);
+    // solo recibo. Si el participante subió VARIOS comprobantes en la misma
+    // tanda (ej. dos abonos separados que juntos completan el pago), fileId
+    // solo apunta al último que terminó de subir — compararlo a solas contra
+    // el total combinado casi siempre daría "no coincide" y activaría la
+    // auto-corrección de más abajo, que entonces REDUCIRÍA mal un pago que en
+    // realidad sí está completo entre los dos recibos. En ese caso se salta
+    // la verificación IA por completo y queda en revisión manual.
+    var comprobanteCount = parseInt(data.comprobante_count) || 1;
+    var resultadoIA = comprobanteCount > 1
+      ? { status: 'manual', detalle: 'Se subieron ' + comprobanteCount + ' comprobantes en el mismo envío — revisar el monto combinado manualmente.' }
+      : verificarComprobanteIA_(fileId, eur, cop, metodoPago);
     var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
 
     // Si el correo tiene varios participantes vinculados, el saldo que ve el
