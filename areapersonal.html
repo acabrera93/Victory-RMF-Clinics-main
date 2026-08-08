@@ -2137,6 +2137,12 @@ function normalizeParticipant(raw) {
     abono_reserva_bruto: parseFloat(rowVal(raw, 'abono_reserva_bruto')) || 0,
     abono_tiquete_bruto: parseFloat(rowVal(raw, 'abono_tiquete_bruto')) || 0,
     abono_final_bruto: parseFloat(rowVal(raw, 'abono_final_bruto')) || 0,
+    // Estado de la fila PROPIA de este participante en Pagos (no del grupo) —
+    // se usa para exigir que cada quien esté individualmente en "Completo"
+    // antes de dar el concepto por pagado (ver conceptoGrupoCompleto_).
+    abono_reserva_estado: (rowVal(raw, 'abono_reserva_estado') || '').toLowerCase(),
+    abono_tiquete_estado: (rowVal(raw, 'abono_tiquete_estado') || '').toLowerCase(),
+    abono_final_estado: (rowVal(raw, 'abono_final_estado') || '').toLowerCase(),
   };
 }
 
@@ -2260,6 +2266,79 @@ function calcPaymentTotals() {
   };
 }
 
+// Monto BASE (sin recargo de tarjeta) que le corresponde pagar a UN
+// participante para un concepto — mismas reglas que calcPaymentTotals(), pero
+// para una sola persona. Devuelve 0 si el concepto no le aplica (ej. tiquete
+// para quien no lo tiene).
+function montoEsperadoParticipante_(tipoPago, p, esWC) {
+  if (tipoPago === 'reserva') return montoReservaFinalParticipante_(p, esWC).reserva;
+  if (tipoPago === 'tiquete') return p.tiquete_aereo === 'Con tiquete' ? tiqueteUnitEur_() : 0;
+  return montoReservaFinalParticipante_(p, esWC).final;
+}
+
+// Reparte un pago (monto BASE en EUR, sin recargo de tarjeta) entre los
+// participantes del grupo activo que todavía tengan saldo pendiente para
+// `tipoPago` — llenando a cada uno hasta cubrir exactamente lo que le falta
+// antes de pasar al siguiente (en el orden en que aparecen en el grupo).
+//
+// Por qué existe: el área personal muestra un solo "saldo pendiente"
+// combinado cuando el correo tiene varios participantes vinculados (ej. un
+// jugador y sus acompañantes, o varios acompañantes bajo el mismo correo),
+// pero en la hoja Pagos cada participante tiene su PROPIA fila independiente.
+// Sin este reparto, todo el pago quedaría registrado contra quien subió el
+// comprobante — aunque el dinero en realidad cubra lo que debe OTRO
+// participante del grupo — y las filas de los demás nunca se pondrían al día
+// aunque el grupo ya haya pagado todo.
+function calcularDistribucionPago_(tipoPago, montoBaseEur) {
+  const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
+  const esWC = programKeyActivo === 'world_challenge';
+
+  let restanteAAsignar = Math.round(montoBaseEur * 100) / 100;
+  const distribucion = [];
+  for (const raw of participantesPrograma) {
+    if (restanteAAsignar <= 0) break;
+    const p = normalizeParticipant(raw) || raw;
+    const esperado = montoEsperadoParticipante_(tipoPago, p, esWC);
+    if (esperado <= 0) continue; // no debe nada de este concepto
+    const abonoCampo = tipoPago === 'reserva' ? 'abono_reserva' : tipoPago === 'tiquete' ? 'abono_tiquete' : 'abono_final';
+    const faltante = Math.max(0, esperado - (p[abonoCampo] || 0));
+    if (faltante <= 0) continue; // ya está cubierto
+    const asignado = Math.round(Math.min(faltante, restanteAAsignar) * 100) / 100;
+    if (asignado <= 0) continue;
+    distribucion.push({ nombre: p.nombre, eur: asignado });
+    restanteAAsignar = Math.round((restanteAAsignar - asignado) * 100) / 100;
+  }
+  // Si sobra dinero después de cubrir a todos los que debían (ej. pagó de
+  // más, o hubo un desfase de redondeo), se le suma al último participante
+  // de la lista para no perder el excedente en vez de descartarlo.
+  if (restanteAAsignar > 0 && participantesPrograma.length > 0) {
+    const ultimoRaw = participantesPrograma[participantesPrograma.length - 1];
+    const ultimo = normalizeParticipant(ultimoRaw) || ultimoRaw;
+    const existente = distribucion.find(d => d.nombre === ultimo.nombre);
+    if (existente) existente.eur = Math.round((existente.eur + restanteAAsignar) * 100) / 100;
+    else distribucion.push({ nombre: ultimo.nombre, eur: restanteAAsignar });
+  }
+  return distribucion;
+}
+
+// Un concepto (reserva/tiquete/final) se considera realmente completo para
+// TODO el grupo solo cuando cada participante que debía algo de ese concepto
+// quedó individualmente en estado "Completo" en su propia fila de Pagos — no
+// basta con que la SUMA del grupo alcance el total (ver applyPasoActual /
+// applyPaymentTotals). Alguien que no debe nada de ese concepto (ej. reserva
+// para un acompañante solo actividades) no bloquea el chequeo.
+function conceptoGrupoCompleto_(tipoPago) {
+  const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
+  const esWC = programKeyActivo === 'world_challenge';
+  const estadoCampo = tipoPago === 'reserva' ? 'abono_reserva_estado' : tipoPago === 'tiquete' ? 'abono_tiquete_estado' : 'abono_final_estado';
+  return participantesPrograma.every(raw => {
+    const p = normalizeParticipant(raw) || raw;
+    const esperado = montoEsperadoParticipante_(tipoPago, p, esWC);
+    if (esperado <= 0) return true; // no debe nada de este concepto, no bloquea
+    return p[estadoCampo] === 'completo';
+  });
+}
+
 function applyPaymentTotals(t) {
   // Reserva: input + título del card, usando lo restante si hay abono
   const e1 = document.getElementById('eur1');
@@ -2274,7 +2353,7 @@ function applyPaymentTotals(t) {
     if (h) h.childNodes[0].textContent = `Pago de reserva — ${t.reserva.toLocaleString('es-CO')} EUR `;
   }
   const idxR = STEP_DEFS.findIndex(s => s.panel === 'panel2');
-  if (idxR > -1) STEP_DEFS[idxR].done = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva;
+  if (idxR > -1) STEP_DEFS[idxR].done = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva && conceptoGrupoCompleto_('reserva');
 
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
@@ -2284,7 +2363,7 @@ function applyPaymentTotals(t) {
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
   const idxT = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
-  if (idxT > -1) STEP_DEFS[idxT].done = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur;
+  if (idxT > -1) STEP_DEFS[idxT].done = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur && conceptoGrupoCompleto_('tiquete');
 
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
@@ -2296,7 +2375,7 @@ function applyPaymentTotals(t) {
   const sub3 = document.getElementById('panel3-subtitle');
   if (sub3) sub3.textContent = `SEGUNDO PAGO — ${t.final.toLocaleString('es-CO')} EUR`;
   const idxF = STEP_DEFS.findIndex(s => s.panel === 'panel3');
-  if (idxF > -1) STEP_DEFS[idxF].done = t.final > 0 && (t.abonoFinal || 0) >= t.final;
+  if (idxF > -1) STEP_DEFS[idxF].done = t.final > 0 && (t.abonoFinal || 0) >= t.final && conceptoGrupoCompleto_('final');
 
   buildSteps();
   buildBreakdown(t);
@@ -2692,20 +2771,25 @@ function applyPasoActual(paso, opts) {
   // donde el monto recién enviado aún no llegó a la hoja para reflejarse en
   // calcPaymentTotals(), así que ahí sí confiamos en el avance de `paso`.
   const t = calcPaymentTotals();
+  // "Cubierto" exige DOS cosas: que la suma del grupo alcance el total, Y que
+  // cada participante quede individualmente en Completo en su propia fila
+  // (conceptoGrupoCompleto_) — no basta con que el total cuadre, porque el
+  // dinero puede estar repartido pero alguna fila seguir "Pendiente de
+  // confirmar" sin que el admin la haya revisado todavía.
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
   if (idxReserva > -1) {
-    const cubierto = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva;
+    const cubierto = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva && conceptoGrupoCompleto_('reserva');
     STEP_DEFS[idxReserva].done = cubierto || (opts.optimistic && paso >= 4);
   }
   const idxTiq = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
   if (idxTiq > -1) {
     const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
-    const cubierto = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur;
+    const cubierto = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur && conceptoGrupoCompleto_('tiquete');
     STEP_DEFS[idxTiq].done = cubierto || (opts.optimistic && paso >= 5);
   }
   const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
   if (idxFinal > -1) {
-    const cubierto = t.final > 0 && (t.abonoFinal || 0) >= t.final;
+    const cubierto = t.final > 0 && (t.abonoFinal || 0) >= t.final && conceptoGrupoCompleto_('final');
     STEP_DEFS[idxFinal].done = cubierto || (opts.optimistic && paso >= 6);
   }
   const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
@@ -3179,6 +3263,15 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
   }
   if (!datos) {
     try { datos = JSON.parse(localStorage.getItem(congelarPagoKey(tipoPago)) || 'null'); } catch(e) { datos = null; }
+    // Blindaje: un blob viejo/corrupto con eur vacío o en 0 (ej. guardado
+    // durante una carrera de recálculo mientras el campo aún no tenía valor)
+    // nunca debe aplicarse — se descarta y se recalcula desde cero abajo, en
+    // vez de dejar el monto congelado en 0 mientras el COP sí muestra un
+    // número (esto fue lo que causó el envío en 0 EUR de Andrea).
+    if (datos && !(parseFloat(datos.eur) > 0)) {
+      try { localStorage.removeItem(congelarPagoKey(tipoPago)); } catch(e) {}
+      datos = null;
+    }
   }
   if (!datos) {
     // Sin registro local guardado (ej. otro dispositivo o caché borrada): calcular
@@ -3786,6 +3879,16 @@ function enviarComprobante(tipoPago) {
   const eurInputId = { reserva: 'eur1', tiquete: 'eur-tiq', final: 'eur2' }[tipoPago];
   const eurEl = document.getElementById(eurInputId);
   const eurSubmitted = eurEl ? (parseFloat(eurEl.value) || 0) : 0;
+  // Nunca enviar un comprobante con monto en 0 — puede pasar si el campo quedó
+  // vacío por una carrera de recálculo (ej. un valor congelado corrupto). Un
+  // envío en 0 EUR queda invisible para el admin (no hay nada que revisar) y
+  // el participante cree que ya pagó. Mejor bloquear aquí con un mensaje claro
+  // que dejar pasar un registro roto.
+  if (eurSubmitted <= 0) {
+    alert('No se pudo calcular el monto a pagar (aparece en 0). Refresca la página e intenta de nuevo — si el problema sigue, contáctanos por WhatsApp.');
+    if (btn) { btn.disabled = false; btn.style.cursor = 'pointer'; btn.textContent = originalLabel; }
+    return;
+  }
   const restantePend = (window.restantePendiente && window.restantePendiente[tipoPago] != null)
     ? window.restantePendiente[tipoPago]
     : eurSubmitted; // si no hay dato de restante (sin abonos previos), se asume el monto completo
@@ -3856,16 +3959,29 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
   // el Sheet debe reflejar siempre el total real pagado, para la contabilidad
   // final. El backend (getAbonosValidados_) es quien separa base/comisión al
   // calcular el saldo del participante — aquí solo se guarda el bruto.
-  let eurFinal = eur, copFinal = cop;
-  if (metodoPago === 'tarjeta') {
-    eurFinal = Math.round(eur * (1 + RECARGO_TARJETA_PCT) * 100) / 100;
-    copFinal = Math.round(cop * (1 + RECARGO_TARJETA_PCT));
-  }
+  const recargo = metodoPago === 'tarjeta' ? RECARGO_TARJETA_PCT : 0;
+  const eurFinal = Math.round(eur * (1 + recargo) * 100) / 100;
+  const copFinal = Math.round(cop * (1 + recargo));
+
+  // El monto que se ve en pantalla puede ser el saldo COMBINADO de varios
+  // participantes vinculados al mismo correo — hay que repartirlo entre
+  // quienes realmente todavía deban (ver calcularDistribucionPago_), no
+  // registrarlo entero contra `nombre` (quien subió el comprobante). tasaBase
+  // = cop base / eur base del monto mostrado, para poder convertir cada
+  // porción repartida a su propio COP proporcional.
+  const tasaBase = eur > 0 ? cop / eur : 0;
+  const distribucionBase = calcularDistribucionPago_(tipoPago, eur);
+  const distribucion = distribucionBase.map(d => ({
+    nombre: d.nombre,
+    eur: Math.round(d.eur * (1 + recargo) * 100) / 100,
+    cop: Math.round(d.eur * tasaBase * (1 + recargo))
+  }));
+
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago, programa: programKeyActivo }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, metodo_pago: metodoPago, programa: programKeyActivo }),
     keepalive: true
   }).catch(() => {});
 }
