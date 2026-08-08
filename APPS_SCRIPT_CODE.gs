@@ -2289,14 +2289,16 @@ function evaluarComprobante_(parsed, eurEsperado, copEsperado, metodoPago) {
     return {
       status: 'coincide',
       detalle: 'Coincide · ' + monedaLabel + ' ' + monto.toLocaleString('es-CO')
-        + (esTarjeta ? ' (incluye 3.5% de recargo Bold — no cuenta para el saldo)' : '')
+        + (esTarjeta ? ' (incluye 3.5% de recargo Bold — no cuenta para el saldo)' : ''),
+      monedaDetectada: monedaLabel, montoDetectado: monto
     };
   }
 
   return {
     status: 'revisar',
     detalle: 'Detectó ' + monedaLabel + ' ' + monto.toLocaleString('es-CO') + ', se esperaba ' + esperado.toLocaleString('es-CO')
-      + (esTarjeta ? ' (con recargo de tarjeta incluido)' : '')
+      + (esTarjeta ? ' (con recargo de tarjeta incluido)' : ''),
+    monedaDetectada: monedaLabel, montoDetectado: monto
   };
 }
 
@@ -2446,8 +2448,9 @@ function marcarComprobanteSubido(data) {
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
     var pc = getPagosColMap_(pagosSheet);
 
-    // El monto mostrado en pantalla (eur/cop) es el TOTAL del comprobante —
-    // se usa tal cual para verificar contra la IA, que lee UN solo recibo.
+    // El monto mostrado en pantalla (eur/cop) es el TOTAL esperado del
+    // comprobante — se usa tal cual para verificar contra la IA, que lee UN
+    // solo recibo.
     var resultadoIA = verificarComprobanteIA_(fileId, eur, cop, metodoPago);
     var fechaFmt = formatFechaDDMMYYYY_(fechaDate);
 
@@ -2460,12 +2463,31 @@ function marcarComprobanteSubido(data) {
     var distribucion = Array.isArray(data.distribucion) && data.distribucion.length
       ? data.distribucion
       : [{ nombre: nombre, eur: eur, cop: cop }];
+
+    // Si la IA detectó un monto DISTINTO al esperado en UNA sola moneda (ej.
+    // el participante subió un comprobante de un abono parcial, menor a lo
+    // que se mostraba en pantalla), el total que hay que registrar no es el
+    // esperado sino el realmente recibido — se recalcula con la TRM
+    // implícita en lo que el frontend ya había calculado (cop/eur
+    // esperados guardan la misma proporción), y ese factor de corrección se
+    // aplica por igual a cada porción de `distribucion`, para que la hoja
+    // quede con el monto REAL desde el primer registro sin depender de que
+    // el admin lo corrija a mano.
+    var factorDistribucion = 1;
+    if (resultadoIA.status === 'revisar' && resultadoIA.montoDetectado > 0 && resultadoIA.monedaDetectada) {
+      if (resultadoIA.monedaDetectada === 'COP' && cop > 0) {
+        factorDistribucion = resultadoIA.montoDetectado / cop;
+      } else if (resultadoIA.monedaDetectada !== 'COP' && eur > 0) {
+        factorDistribucion = resultadoIA.montoDetectado / eur;
+      }
+    }
+
     var tipoParticipanteHint = String(data.tipo_participante || '').trim();
     distribucion.forEach(function(item) {
       var itemNombre = String((item && item.nombre) || '').trim();
       if (!itemNombre) return;
-      var itemEur = parseFloat(item.eur) || 0;
-      var itemCop = parseFloat(item.cop) || 0;
+      var itemEur = Math.round((parseFloat(item.eur) || 0) * factorDistribucion * 100) / 100;
+      var itemCop = Math.round((parseFloat(item.cop) || 0) * factorDistribucion);
       if (itemEur <= 0 && itemCop <= 0) return;
       aplicarPagoAFilaParticipante_(
         pagosSheet, pc, itemNombre, tipo,
