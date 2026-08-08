@@ -2142,6 +2142,10 @@ function normalizeParticipant(raw) {
     abono_reserva_bruto: parseFloat(rowVal(raw, 'abono_reserva_bruto')) || 0,
     abono_tiquete_bruto: parseFloat(rowVal(raw, 'abono_tiquete_bruto')) || 0,
     abono_final_bruto: parseFloat(rowVal(raw, 'abono_final_bruto')) || 0,
+    // Equivalente en COP de lo realmente pagado (bruto) — ver getAbonosValidados_.
+    abono_reserva_cop_bruto: parseFloat(rowVal(raw, 'abono_reserva_cop_bruto')) || 0,
+    abono_tiquete_cop_bruto: parseFloat(rowVal(raw, 'abono_tiquete_cop_bruto')) || 0,
+    abono_final_cop_bruto: parseFloat(rowVal(raw, 'abono_final_cop_bruto')) || 0,
     // Estado de la fila PROPIA de este participante en Pagos (no del grupo) —
     // se usa para exigir que cada quien esté individualmente en "Completo"
     // antes de dar el concepto por pagado (ver conceptoGrupoCompleto_).
@@ -2253,20 +2257,26 @@ function calcPaymentTotals() {
   const comisionReserva = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva_comision || 0), 0);
   const comisionTiquete = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete_comision || 0), 0);
   const comisionFinal = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final_comision || 0), 0);
+  // Equivalente en COP de lo realmente pagado (bruto) — para mostrar el abono
+  // recibido también en COP, no solo en EUR (ver mostrarAbonoYRestante).
+  const copBrutoReserva = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva_cop_bruto || 0), 0);
+  const copBrutoTiquete = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete_cop_bruto || 0), 0);
+  const copBrutoFinal = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_final_cop_bruto || 0), 0);
   // Detalle de cada abono individual (monto + fecha) — si más de un participante del
   // grupo pagó por separado el mismo concepto, se listan todos en vez de mostrar
   // arbitrariamente la fecha del primero.
-  const detalleAbonos = (campoMonto, campoFecha) => participantesPrograma
+  const detalleAbonos = (campoMonto, campoFecha, campoCop) => participantesPrograma
     .map(raw => normalizeParticipant(raw) || raw)
     .filter(p => (p[campoMonto] || 0) > 0)
-    .map(p => ({ monto: p[campoMonto], fecha: p[campoFecha] || '' }));
-  const abonosReservaDetalle = detalleAbonos('abono_reserva', 'abono_reserva_fecha');
-  const abonosTiqueteDetalle = detalleAbonos('abono_tiquete', 'abono_tiquete_fecha');
-  const abonosFinalDetalle = detalleAbonos('abono_final', 'abono_final_fecha');
+    .map(p => ({ monto: p[campoMonto], fecha: p[campoFecha] || '', cop: p[campoCop] || 0 }));
+  const abonosReservaDetalle = detalleAbonos('abono_reserva', 'abono_reserva_fecha', 'abono_reserva_cop_bruto');
+  const abonosTiqueteDetalle = detalleAbonos('abono_tiquete', 'abono_tiquete_fecha', 'abono_tiquete_cop_bruto');
+  const abonosFinalDetalle = detalleAbonos('abono_final', 'abono_final_fecha', 'abono_final_cop_bruto');
 
   return {
     reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal,
     comisionReserva, comisionTiquete, comisionFinal,
+    copBrutoReserva, copBrutoTiquete, copBrutoFinal,
     abonosReservaDetalle, abonosTiqueteDetalle, abonosFinalDetalle
   };
 }
@@ -2347,7 +2357,7 @@ function conceptoGrupoCompleto_(tipoPago) {
 function applyPaymentTotals(t) {
   // Reserva: input + título del card, usando lo restante si hay abono
   const e1 = document.getElementById('eur1');
-  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonosReservaDetalle, t.comisionReserva || 0);
+  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonosReservaDetalle, t.comisionReserva || 0, t.copBrutoReserva || 0);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.reserva = restanteReserva;
   if (e1) { e1.value = restanteReserva; calc1(); }
@@ -2363,7 +2373,7 @@ function applyPaymentTotals(t) {
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
   const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
-  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle, t.comisionTiquete || 0);
+  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle, t.comisionTiquete || 0, t.copBrutoTiquete || 0);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
@@ -2372,7 +2382,7 @@ function applyPaymentTotals(t) {
 
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
-  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonosFinalDetalle, t.comisionFinal || 0);
+  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonosFinalDetalle, t.comisionFinal || 0, t.copBrutoFinal || 0);
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.final = restanteFinal;
   if (e2) { e2.value = restanteFinal; calc2(); }
@@ -3108,7 +3118,7 @@ function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
   if (elTrT) elTrT.textContent = fmt(base);
 }
 
-function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, detalleAbonos, comision) {
+function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, detalleAbonos, comision, copBruto) {
   const aviso = document.getElementById(idAviso);
   const input = document.getElementById(idInput);
   if (!aviso || !input) return 0;
@@ -3127,16 +3137,23 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
   const listaDetalle = detalles.length > 1
     ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--gborder)">
         ${detalles.map(d => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--green);opacity:0.85;margin-top:3px">
-          <span>${d.fecha ? escapeHtml(d.fecha) : '—'}</span><span>${d.monto.toLocaleString('es-CO')} EUR</span>
+          <span>${d.fecha ? escapeHtml(d.fecha) : '—'}</span><span>${d.monto.toLocaleString('es-CO')} EUR${d.cop ? ' · $' + Math.round(d.cop).toLocaleString('es-CO') + ' COP' : ''}</span>
         </div>`).join('')}
       </div>`
     : '';
   const comisionNum = comision || 0;
   const totalPagado = abono + comisionNum;
+  const copBrutoNum = copBruto || 0;
+  // El COP solo se conoce a nivel BRUTO (lo que realmente entró, tal cual la
+  // hoja) — el desglose base/comisión en COP se reparte proporcionalmente al
+  // mismo % que ya separa el EUR (abono/totalPagado y comisionNum/totalPagado),
+  // para no depender de un recargo fijo aquí también.
+  const copBase = copBrutoNum > 0 && totalPagado > 0 ? Math.round(copBrutoNum * (abono / totalPagado)) : 0;
+  const copComision = copBrutoNum > 0 ? Math.round(copBrutoNum - copBase) : 0;
   const desgloseComision = comisionNum > 0
     ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--gborder);font-size:12px;color:var(--green);opacity:0.85">
-        <div style="display:flex;justify-content:space-between;gap:10px"><span>Monto del programa</span><span>${abono.toLocaleString('es-CO')} EUR</span></div>
-        <div style="display:flex;justify-content:space-between;gap:10px;margin-top:3px"><span>Comisión pago con tarjeta (3,5%)</span><span>${comisionNum.toLocaleString('es-CO')} EUR</span></div>
+        <div style="display:flex;justify-content:space-between;gap:10px"><span>Monto del programa</span><span>${abono.toLocaleString('es-CO')} EUR${copBase ? ' · $' + copBase.toLocaleString('es-CO') + ' COP' : ''}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:10px;margin-top:3px"><span>Comisión pago con tarjeta (3,5%)</span><span>${comisionNum.toLocaleString('es-CO')} EUR${copComision ? ' · $' + copComision.toLocaleString('es-CO') + ' COP' : ''}</span></div>
       </div>`
     : '';
   const saldoBox = cubierto ? '' : `
@@ -3149,7 +3166,7 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
       <div style="background:var(--gbg);padding:14px 16px${cubierto ? '' : ';border-bottom:1px dashed var(--gborder)'}">
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);margin-bottom:5px">✅ Abono recibido</div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div style="font-size:20px;font-weight:700;color:var(--green)">${totalPagado.toLocaleString('es-CO')} EUR</div>
+          <div style="font-size:20px;font-weight:700;color:var(--green)">${totalPagado.toLocaleString('es-CO')} EUR${copBrutoNum ? ' <span style="font-size:14px;opacity:.85">· $' + Math.round(copBrutoNum).toLocaleString('es-CO') + ' COP</span>' : ''}</div>
           ${fechaUnica ? `<div style="font-size:12px;color:var(--green);opacity:0.8">${escapeHtml(fechaUnica)}</div>` : ''}
         </div>
         ${listaDetalle}
@@ -3313,6 +3330,42 @@ function calcTiq() {
 
 fetchTasa();
 setInterval(fetchTasa, 30 * 60 * 1000); // Refrescar cada 30 minutos
+
+// ── AUTO-REFRESH DEL ÁREA PERSONAL (participante y admin) ─────────────────────
+// Mientras la pestaña quede abierta, se refresca todo cada 60s — así el
+// participante ve reflejado en vivo cualquier pago que el admin confirme
+// mientras tiene la página abierta, y el admin ve pagos/comprobantes nuevos
+// sin tener que recargar manualmente. Se salta el ciclo si hay un modal
+// abierto (ej. el admin a mitad de editar un pago), para no pisarle cambios
+// sin guardar con datos frescos del servidor.
+function hayModalAbierto_() {
+  return !!document.querySelector('.modal-overlay.open');
+}
+
+// Solo participante: releer sus datos (abonos, pasos) y volver a aplicar el
+// programa activo — reutiliza el mismo pipeline que ya corre al iniciar
+// sesión (activarPrograma → applyPaymentTotals/applyPasoActual), así que no
+// hay lógica de render duplicada que mantener sincronizada aparte.
+function refrescarParticipanteAuto_() {
+  if (hayModalAbierto_() || !participantEmail || !allParticipants.length) return;
+  fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(participantEmail) + '&_t=' + Date.now(), { redirect: 'follow' })
+    .then(r => r.text())
+    .then(rawText => {
+      let data; try { data = JSON.parse(rawText); } catch(e) { data = null; }
+      const rawParticipants = extractParticipants(data);
+      if (!rawParticipants.length) return;
+      allParticipants = rawParticipants.map(p => normalizeParticipant(p) || p);
+      activarPrograma(programKeyActivo);
+    })
+    .catch(() => {});
+}
+
+setInterval(() => {
+  const mainVisible = document.getElementById('main-content') && document.getElementById('main-content').style.display !== 'none';
+  if (!mainVisible) return;
+  if (adminSessionToken) { loadAdmin(true); return; } // vista admin — refresca participantes+financiero+acceso
+  refrescarParticipanteAuto_();
+}, 60 * 1000);
 
 // ── T&C ──────────────────────────────────────────────────────────────────────
 function getTyC() {
@@ -6441,14 +6494,28 @@ function openPagosModal(idx, nombreOverride) {
     // pago, para que EUR y COP mostrados sean coherentes entre sí y con lo
     // que realmente se recibió.
     const trmConcepto = trmEsperadaConcepto_(tipo, participanteNorm);
+    // Si ya hay 2+ abonos en el historial (ej. el participante pagó en varias
+    // veces), el monto a mostrar/confirmar debe ser la SUMA de todos, no solo
+    // el último — los abonos previos ya están en el historial tal cual; solo
+    // el más reciente puede necesitar la corrección de la IA (ver arriba).
+    // Sin esto, confirmar un segundo abono pisaba el primero en vez de sumarlo.
+    const entradasPreviasAbono = historialEntradas.length > 1 ? historialEntradas.slice(0, -1) : [];
+    const sumaPreviasEur = entradasPreviasAbono.reduce((s, e) => s + (e.eur || 0), 0);
+    const sumaPreviasCop = entradasPreviasAbono.reduce((s, e) => s + (e.cop || 0), 0);
     let eurMostrado, copMostrado;
     if (iaDetectado && iaDetectado.moneda === 'COP') {
-      copMostrado = iaDetectado.monto;
-      eurMostrado = trmConcepto > 0 ? Math.round((iaDetectado.monto / trmConcepto) * 100) / 100 : (ex ? ex.eur : '');
+      const copActual = iaDetectado.monto;
+      const eurActual = trmConcepto > 0 ? (copActual / trmConcepto) : (ex ? ex.eur : 0);
+      copMostrado = Math.round(sumaPreviasCop + copActual);
+      eurMostrado = Math.round((sumaPreviasEur + eurActual) * 100) / 100;
     } else if (iaDetectado) {
-      eurMostrado = iaDetectado.monto;
-      copMostrado = trmConcepto > 0 ? Math.round(iaDetectado.monto * trmConcepto) : (ex ? ex.cop : '');
+      const eurActual = iaDetectado.monto;
+      const copActual = trmConcepto > 0 ? (eurActual * trmConcepto) : (ex ? ex.cop : 0);
+      eurMostrado = Math.round((sumaPreviasEur + eurActual) * 100) / 100;
+      copMostrado = Math.round(sumaPreviasCop + copActual);
     } else {
+      // Sin corrección de IA que aplicar — ex.eur/ex.cop ya vienen sumados
+      // (Valor EUR/COP en el Sheet reflejan siempre el total acumulado).
       eurMostrado = ex ? ex.eur : '';
       copMostrado = ex ? ex.cop : '';
     }
@@ -6602,6 +6669,7 @@ function agregarAbonoServidor(tid, tipo) {
   if (!nombre) return;
   const metodoEl = document.getElementById(`pago-${tid}-metodo`);
   const metodoPago = metodoEl ? metodoEl.value : 'transferencia';
+  const esperadoEur = pagoCurrentParticipanteNorm ? montoEsperadoEur_(tipo, pagoCurrentParticipanteNorm) : null;
 
   const statusEl = document.getElementById('pagos-modal-status');
   statusEl.style.display = 'block';
@@ -6609,7 +6677,7 @@ function agregarAbonoServidor(tid, tipo) {
 
   fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur: abonoEur, cop: abonoCop, metodo_pago: metodoPago, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
+    body: JSON.stringify({ action: 'agregar_abono_pago', nombre, tipo, fecha, eur: abonoEur, cop: abonoCop, metodo_pago: metodoPago, esperado_eur: esperadoEur, tipo_participante: pagoCurrentTipo, programa: pagoCurrentProgramKey, token: adminSessionToken }),
     redirect: 'follow'
   })
   .then(r => r.json())

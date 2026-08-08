@@ -306,6 +306,11 @@ function getAbonosValidados_(nombre, budgetSheetId) {
     // total real que salió de su bolsillo. reserva = reserva_bruto - reserva_comision.
     reserva_comision: 0, tiquete_comision: 0, final_comision: 0,
     reserva_bruto: 0, tiquete_bruto: 0, final_bruto: 0,
+    // *_cop_bruto = el equivalente en COP de *_bruto (lo realmente pagado,
+    // tomado directo del Valor COP de la hoja / cada entrada del historial) —
+    // para mostrarle al cliente el abono recibido también en COP, igual que
+    // ya se le muestra en EUR.
+    reserva_cop_bruto: 0, tiquete_cop_bruto: 0, final_cop_bruto: 0,
     // *_estado = el estado (Completo/Parcial/Pendiente de confirmar/...) de la
     // fila PROPIA de este participante para ese concepto — a diferencia de
     // reserva/tiquete/final arriba (que suman TODOS los abonos validados del
@@ -352,6 +357,7 @@ function getAbonosValidados_(nombre, budgetSheetId) {
       if (estado !== 'completo' && estado !== 'parcial') continue; // solo suma abonos validados
       const eurBruto = num(r[4]);
       if (eurBruto <= 0) continue;
+      const copBrutoFila = num(r[3]);
       // Valor EUR en la hoja = lo REALMENTE pagado (bruto). Si fue con tarjeta,
       // ese bruto trae el recargo de Bold incluido — se separa aquí para que
       // "concepto" (reserva/tiquete/final) quede SIEMPRE en base, sin comisión,
@@ -369,8 +375,8 @@ function getAbonosValidados_(nombre, budgetSheetId) {
       const historialRaw = historialCol ? String(r[historialCol - 1] || '') : '';
       const entradasFila = parseHistorialAbonos_(historialRaw);
       const abonos = entradasFila.length > 0
-        ? entradasFila.map(function(en) { return { eur: en.eur, metodo: en.metodo || metodoRowRaw }; })
-        : [{ eur: eurBruto, metodo: metodoRowRaw }];
+        ? entradasFila.map(function(en) { return { eur: en.eur, cop: en.cop, metodo: en.metodo || metodoRowRaw }; })
+        : [{ eur: eurBruto, cop: copBrutoFila, metodo: metodoRowRaw }];
       abonos.forEach(function(abono) {
         const recargoAbono = recargoTarjetaDeCelda_(abono.metodo);
         let eurBase = abono.eur, eurComision = 0;
@@ -385,6 +391,7 @@ function getAbonosValidados_(nombre, budgetSheetId) {
         resultado[concepto] += eurBase;
         resultado[concepto + '_comision'] += eurComision;
         resultado[concepto + '_bruto'] += abono.eur;
+        resultado[concepto + '_cop_bruto'] += (abono.cop || 0);
       });
       const fechaCelda = r[2];
       const fechaComparable = (fechaCelda instanceof Date) ? fechaCelda : new Date(String(fechaCelda));
@@ -468,6 +475,11 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
       participant['abono_reserva_bruto'] = String(abonos.reserva_bruto);
       participant['abono_tiquete_bruto'] = String(abonos.tiquete_bruto);
       participant['abono_final_bruto'] = String(abonos.final_bruto);
+      // Equivalente en COP de lo realmente pagado (bruto) — para mostrar el
+      // abono recibido también en COP en el área personal.
+      participant['abono_reserva_cop_bruto'] = String(abonos.reserva_cop_bruto);
+      participant['abono_tiquete_cop_bruto'] = String(abonos.tiquete_cop_bruto);
+      participant['abono_final_cop_bruto'] = String(abonos.final_cop_bruto);
       // Estado de la fila PROPIA de este participante (no del grupo) — usado
       // para exigir que cada quien esté individualmente Completo.
       participant['abono_reserva_estado'] = abonos.reserva_estado;
@@ -1017,7 +1029,7 @@ function buscarEmailPorNombre_(nombre, programa) {
 // no siempre es fijo y no queremos arriesgarnos a mostrar un número incorrecto).
 // Se llama en CADA registro desde registrarPago(), incluyendo abonos repetidos
 // al mismo concepto — cada uno deja su propio correo como comprobante.
-function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metodoPago, esperadoEur) {
+function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metodoPago, esperadoEur, historialEntradas) {
   try {
     const email = buscarEmailPorNombre_(nombre, programa);
     if (!email) {
@@ -1060,6 +1072,29 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metod
       + '<p style="font-size:18px;color:' + (restanteEur > 0 ? '#92400e' : '#166534') + ';font-weight:600;margin:0">'
       + (restanteEur > 0 ? restanteEur.toLocaleString('es-CO') + ' €' : '0 € — sin saldo pendiente') + '</p></div>'
     );
+    // Si hay 2+ abonos registrados para este concepto, el correo muestra el
+    // desglose completo (abonos anteriores + el nuevo) en vez de solo el
+    // total — así el participante ve exactamente qué se sumó, no solo el
+    // resultado final.
+    const entradasHist = Array.isArray(historialEntradas) ? historialEntradas : [];
+    const tieneVariasEntradas = entradasHist.length > 1;
+    const fmtEntradaAbono = function(en) {
+      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#334155;padding:4px 0">'
+        + '<span>' + (en.fecha || '') + '</span>'
+        + '<span>' + (en.eur || 0).toLocaleString('es-CO') + ' €' + (en.cop ? ' · $' + Math.round(en.cop).toLocaleString('es-CO') + ' COP' : '') + '</span></div>';
+    };
+    const montoBox = tieneVariasEntradas
+      ? ('<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
+        + '<p style="font-size:12px;color:#94a3b8;margin:0 0 6px">Abonos anteriores</p>'
+        + entradasHist.slice(0, -1).map(fmtEntradaAbono).join('')
+        + '<p style="font-size:12px;color:#94a3b8;margin:12px 0 6px;padding-top:8px;border-top:1px dashed #e2e8f0">Nuevo abono</p>'
+        + fmtEntradaAbono(entradasHist[entradasHist.length - 1])
+        + '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:baseline">'
+        + '<span style="font-size:12px;color:#94a3b8;font-weight:600">Total abonado</span>'
+        + '<span style="font-size:18px;color:' + colorMonto + ';font-weight:600">' + montoTexto + '</span></div></div>')
+      : ('<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
+        + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">' + montoLabel + '</p>'
+        + '<p style="font-size:18px;color:' + colorMonto + ';font-weight:600;margin:0">' + montoTexto + '</p></div>');
     const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto">'
       + '<div style="background:' + colorHeader + ';padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
       + '<table cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto"><tr>'
@@ -1072,9 +1107,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metod
       + '<div style="background:#f8fafc;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
       + '<p style="color:#334155;margin-top:0">Hola ' + nombre + ',</p>'
       + '<p style="color:#334155">' + cuerpoTexto + '</p>'
-      + '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
-      + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">' + montoLabel + '</p>'
-      + '<p style="font-size:18px;color:' + colorMonto + ';font-weight:600;margin:0">' + montoTexto + '</p></div>'
+      + montoBox
       + saldoBox
       + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Ver mi área personal →</a>'
       + '<p style="color:#94a3b8;font-size:12px;margin-top:20px">Si tienes dudas, escríbenos por WhatsApp o al correo alejandro.cabrera@fundacionrevel.net.</p>'
@@ -2076,6 +2109,36 @@ function sumHistorial_(entradas, campo) {
   return campo === 'cop' ? Math.round(suma) : Math.round(suma * 100) / 100;
 }
 
+// Cuando hay 2+ abonos, arma una fórmula de suma auditable (ej. "=500+500")
+// para escribir en Valor EUR/COP con setFormulaLocal() — a diferencia del
+// setFormula() que rompía antes (#ERROR bajo locale español, porque esperaba
+// coma decimal y se le pasaba con punto), setFormulaLocal() SÍ respeta el
+// locale del Sheet, así que aquí los números se formatean con coma decimal a
+// propósito. Con un solo abono no tiene sentido mostrar "=500" — se deja como
+// número plano (ver sumHistorial_ + setValue en cada punto de escritura).
+function formulaLocalDesdeHistorial_(entradas, campo) {
+  var valores = entradas
+    .map(function(e) { return campo === 'cop' ? Math.round(e[campo] || 0) : Math.round((e[campo] || 0) * 100) / 100; })
+    .filter(function(v) { return v !== 0; });
+  if (valores.length < 2) return null;
+  return '=' + valores.map(function(v) { return String(v).replace('.', ','); }).join('+');
+}
+
+// Escribe Valor EUR/COP a partir del historial acumulado — como fórmula
+// auditable (=500+500) si hay 2+ abonos, o como número plano si es el único.
+// SpreadsheetApp.flush() fuerza el recálculo antes de devolver el control,
+// para que una lectura posterior de esta misma celda EN LA MISMA EJECUCIÓN
+// (ej. otro abono llegando justo después) no encuentre un valor sin refrescar.
+function escribirTotalesHistorial_(pagosSheet, pc, targetSheetRow, historialActual, sumaEur, sumaCop) {
+  var formulaEur = formulaLocalDesdeHistorial_(historialActual, 'eur');
+  var formulaCop = formulaLocalDesdeHistorial_(historialActual, 'cop');
+  if (formulaEur) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setFormulaLocal(formulaEur);
+  else if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
+  if (formulaCop) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setFormulaLocal(formulaCop);
+  else if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
+  if (formulaEur || formulaCop) SpreadsheetApp.flush();
+}
+
 function formatFechaDDMMYYYY_(dateObj) {
   return String(dateObj.getDate()).padStart(2, '0') + '/' + String(dateObj.getMonth() + 1).padStart(2, '0') + '/' + dateObj.getFullYear();
 }
@@ -2412,8 +2475,7 @@ function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo,
     pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
     var sumaEur = sumHistorial_(historialActual, 'eur');
     var sumaCop = sumHistorial_(historialActual, 'cop');
-    if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
-    if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
+    escribirTotalesHistorial_(pagosSheet, pc, targetSheetRow, historialActual, sumaEur, sumaCop);
     pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Pendiente de confirmar');
     pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
     if (comprobanteUrl) {
@@ -2626,11 +2688,15 @@ function agregarAbonoPago(data) {
     pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
     var sumaCop = sumHistorial_(historialActual, 'cop');
     var sumaEur = sumHistorial_(historialActual, 'eur');
-    if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
-    if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
+    escribirTotalesHistorial_(pagosSheet, pc, targetSheetRow, historialActual, sumaEur, sumaCop);
     pagosSheet.getRange(targetSheetRow, pc.estado).setValue('Parcial');
     pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
     if (pc.metodo_de_pago && metodoPago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
+
+    // Antes esta acción ("+ Agregar abono") no avisaba nada al participante —
+    // el correo con el desglose (abonos anteriores + nuevo + total + saldo)
+    // se manda aquí también, no solo al confirmar un pago pendiente.
+    notificarPagoConfirmado(nombre, tipo, sumaEur, sumaCop, 'Parcial', data.programa, metodoPago, parseFloat(data.esperado_eur), historialActual);
 
     actualizarResumenPagos(pagosSheet);
     return sendResponse(200, { ok: true });
@@ -2697,8 +2763,23 @@ function confirmarPagoPendiente(data) {
     if (targetSheetRow < 0) return sendResponse(404, { ok: false, error: 'No se encontró el pago a confirmar' });
 
     var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
-    if (historialActual.length > 0) {
-      historialActual[historialActual.length - 1] = { fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago };
+    if (historialActual.length > 1) {
+      // El modal ya muestra (y por tanto envía) el TOTAL acumulado — suma de
+      // todos los abonos, no solo el último — para que el admin decida
+      // Completo/Parcial mirando el saldo real. Aquí se corrige SOLO la
+      // última entrada restándole lo que ya sumaban las anteriores (que
+      // quedan intactas), en vez de reemplazarla por el total completo —
+      // si no, cada confirmación pisaría el total anterior y lo duplicaría.
+      var sumaPreviasEur = sumHistorial_(historialActual.slice(0, -1), 'eur');
+      var sumaPreviasCop = sumHistorial_(historialActual.slice(0, -1), 'cop');
+      historialActual[historialActual.length - 1] = {
+        fecha: fechaFmt,
+        eur: Math.round((eur - sumaPreviasEur) * 100) / 100,
+        cop: Math.round(cop - sumaPreviasCop),
+        metodo: metodoPago
+      };
+    } else if (historialActual.length === 1) {
+      historialActual[0] = { fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago };
     } else {
       historialActual.push({ fecha: fechaFmt, eur: eur, cop: cop, metodo: metodoPago });
     }
@@ -2706,15 +2787,14 @@ function confirmarPagoPendiente(data) {
     pagosSheet.getRange(targetSheetRow, pc.fecha_pago).setValue(fechaDate);
     var sumaEur = sumHistorial_(historialActual, 'eur');
     var sumaCop = sumHistorial_(historialActual, 'cop');
-    if (sumaEur > 0) pagosSheet.getRange(targetSheetRow, pc.valor_eur).setValue(sumaEur);
-    if (sumaCop > 0) pagosSheet.getRange(targetSheetRow, pc.valor_cop).setValue(sumaCop);
+    escribirTotalesHistorial_(pagosSheet, pc, targetSheetRow, historialActual, sumaEur, sumaCop);
     pagosSheet.getRange(targetSheetRow, pc.estado).setValue(estado);
     pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).setValue(buildHistorialString_(historialActual));
     if (paquete) pagosSheet.getRange(targetSheetRow, pc.paquete).setValue(paquete);
     if (pc.metodo_de_pago && metodoPago) pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).setValue(metodoPago);
 
     if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
-      notificarPagoConfirmado(nombre, tipo, sumaEur, sumaCop, estado, data.programa, metodoPago, esperadoEur);
+      notificarPagoConfirmado(nombre, tipo, sumaEur, sumaCop, estado, data.programa, metodoPago, esperadoEur, historialActual);
     }
 
     actualizarResumenPagos(pagosSheet);
