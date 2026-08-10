@@ -1056,38 +1056,38 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
     <!-- CLIMA -->
     <div class="card" style="margin-bottom:18px;">
-      <div class="ctitle">Datos Históricos del Clima · 2–10 Octubre</div>
+      <div class="ctitle" id="clima-titulo">Datos Históricos del Clima · 2–10 Octubre</div>
 
       <!-- Histórico octubre -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:20px;">
         <div style="background:#f0f6ff;border-radius:8px;padding:14px;text-align:center;">
           <div style="font-size:24px;margin-bottom:4px;">🌡️</div>
-          <div style="font-size:20px;font-weight:700;color:var(--navy);">19°C</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy);" id="clima-max">19°C</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">Máx. promedio</div>
         </div>
         <div style="background:#f0f6ff;border-radius:8px;padding:14px;text-align:center;">
           <div style="font-size:24px;margin-bottom:4px;">🌙</div>
-          <div style="font-size:20px;font-weight:700;color:var(--navy);">10°C</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy);" id="clima-min">10°C</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">Mín. promedio</div>
         </div>
         <div style="background:#f0f6ff;border-radius:8px;padding:14px;text-align:center;">
           <div style="font-size:24px;margin-bottom:4px;">☀️</div>
-          <div style="font-size:20px;font-weight:700;color:var(--navy);">7</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy);" id="clima-soleados">7</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">Días soleados</div>
         </div>
         <div style="background:#f0f6ff;border-radius:8px;padding:14px;text-align:center;">
           <div style="font-size:24px;margin-bottom:4px;">🌧️</div>
-          <div style="font-size:20px;font-weight:700;color:var(--navy);">3</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy);" id="clima-lluvia">3</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">Días de lluvia</div>
         </div>
         <div style="background:#f0f6ff;border-radius:8px;padding:14px;text-align:center;">
           <div style="font-size:24px;margin-bottom:4px;">💧</div>
-          <div style="font-size:20px;font-weight:700;color:var(--navy);">40%</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy);" id="clima-humedad">40%</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">Humedad media</div>
         </div>
         <div style="background:#f0f6ff;border-radius:8px;padding:14px;text-align:center;">
           <div style="font-size:24px;margin-bottom:4px;">🌬️</div>
-          <div style="font-size:20px;font-weight:700;color:var(--navy);">14 km/h</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy);" id="clima-viento">14 km/h</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">Viento promedio</div>
         </div>
       </div>
@@ -1099,7 +1099,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
 
       <!-- Pronóstico del viaje -->
-      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Pronóstico 3–10 octubre 2026</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;" id="clima-forecast-titulo">Pronóstico 3–10 octubre 2026</div>
       <div id="madrid-forecast" style="font-size:13px;color:var(--muted);">Cargando...</div>
     </div>
 
@@ -3067,6 +3067,42 @@ function actualizarFechasLimitePorPrograma_() {
       ? 'Debes coordinar con Victory tu itinerario de vuelo. El programa inicia el <strong>19 de marzo</strong> y finaliza el <strong>27 de marzo de 2027</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.'
       : 'Debes coordinar con Victory tu itinerario de vuelo. El vuelo sale el <strong>2 de octubre</strong> y la llegada a Madrid es el <strong>3 de octubre de 2026</strong>. La salida de regreso es el <strong>10 de octubre</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.';
   }
+
+  renderClimaEstatico_();
+}
+
+// Datos históricos de clima de Madrid por ventana de viaje de cada programa.
+// Clinic (2–10 oct): normales de octubre. World Challenge (19–27 mar): normales
+// de marzo — más fresco y algo más lluvioso que octubre (fuente: normales
+// climáticas de Madrid, ver weatherapi.com/climatestotravel — máx 18°C, mín
+// 5°C, ~12 días de lluvia/mes, humedad ~68%, viento ~22 km/h; días
+// soleados/lluvia de abajo son una proporción para la ventana de 9 días del
+// viaje, no el mes completo).
+const CLIMA_DATA = {
+  clinic: {
+    tituloRango: '2–10 Octubre', max: '19°C', min: '10°C', soleados: '7', lluvia: '3', humedad: '40%', viento: '14 km/h',
+    forecastTitulo: 'Pronóstico 3–10 octubre 2026', forecastStart: '2026-10-03', forecastEnd: '2026-10-10',
+    cutoffTexto: '19 de septiembre de 2026'
+  },
+  world_challenge: {
+    tituloRango: '19–27 Marzo', max: '18°C', min: '5°C', soleados: '5', lluvia: '4', humedad: '65%', viento: '22 km/h',
+    forecastTitulo: 'Pronóstico 19–27 marzo 2027', forecastStart: '2027-03-19', forecastEnd: '2027-03-27',
+    cutoffTexto: '5 de marzo de 2027'
+  }
+};
+
+function renderClimaEstatico_() {
+  const esWC = programKeyActivo === 'world_challenge';
+  const c = esWC ? CLIMA_DATA.world_challenge : CLIMA_DATA.clinic;
+  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setTxt('clima-titulo', 'Datos Históricos del Clima · ' + c.tituloRango);
+  setTxt('clima-max', c.max);
+  setTxt('clima-min', c.min);
+  setTxt('clima-soleados', c.soleados);
+  setTxt('clima-lluvia', c.lluvia);
+  setTxt('clima-humedad', c.humedad);
+  setTxt('clima-viento', c.viento);
+  setTxt('clima-forecast-titulo', c.forecastTitulo);
 }
 
 function updateTasaFecha() {
@@ -4852,13 +4888,15 @@ function loadClima() {
       document.getElementById('madrid-ahora').innerHTML = '<span style="font-size:13px;color:rgba(255,255,255,.4)">No se pudo cargar la temperatura.</span>';
     });
 
-  // Pronóstico 3–10 oct 2026
-  fetch('https://api.open-meteo.com/v1/forecast?latitude=40.4168&longitude=-3.7038&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe%2FMadrid&start_date=2026-10-03&end_date=2026-10-10')
+  // Pronóstico de la ventana de viaje del programa activo (ver CLIMA_DATA).
+  renderClimaEstatico_();
+  const climaProg = programKeyActivo === 'world_challenge' ? CLIMA_DATA.world_challenge : CLIMA_DATA.clinic;
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=40.4168&longitude=-3.7038&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe%2FMadrid&start_date=' + climaProg.forecastStart + '&end_date=' + climaProg.forecastEnd)
     .then(r => r.json())
     .then(d => {
       const el = document.getElementById('madrid-forecast');
       if (!d.daily || !d.daily.time || !d.daily.time.length) {
-        el.innerHTML = '<p style="color:var(--muted);font-size:13px;">⏳ El pronóstico exacto estará disponible aproximadamente el <strong>19 de septiembre de 2026</strong> (14 días antes del viaje).</p>';
+        el.innerHTML = '<p style="color:var(--muted);font-size:13px;">⏳ El pronóstico exacto estará disponible aproximadamente el <strong>' + climaProg.cutoffTexto + '</strong> (14 días antes del viaje).</p>';
         return;
       }
       const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -4867,8 +4905,9 @@ function loadClima() {
           const date = new Date(t + 'T12:00:00');
           const day = days[date.getDay()];
           const dd = date.getDate();
+          const mm = date.getMonth() + 1;
           return `<div style="background:#f0f6ff;border-radius:8px;padding:10px 8px;text-align:center;">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">${day} ${dd}/10</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:2px;">${day} ${dd}/${mm}</div>
             <div style="font-size:22px;margin:4px 0;">${wmoIcon(d.daily.weathercode[i])}</div>
             <div style="font-size:13px;font-weight:700;color:var(--navy);">${Math.round(d.daily.temperature_2m_max[i])}°</div>
             <div style="font-size:11px;color:var(--muted);">${Math.round(d.daily.temperature_2m_min[i])}°</div>
@@ -4877,7 +4916,7 @@ function loadClima() {
     })
     .catch(() => {
       document.getElementById('madrid-forecast').innerHTML =
-        '<p style="color:var(--muted);font-size:13px;">⏳ El pronóstico exacto estará disponible aproximadamente el <strong>19 de septiembre de 2026</strong>.</p>';
+        '<p style="color:var(--muted);font-size:13px;">⏳ El pronóstico exacto estará disponible aproximadamente el <strong>' + climaProg.cutoffTexto + '</strong>.</p>';
     });
 }
 
