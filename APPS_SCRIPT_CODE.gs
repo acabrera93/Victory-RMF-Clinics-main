@@ -3941,6 +3941,144 @@ function crearTriggerSyncLeadsWorldChallenge() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// AVISO DE SEGUIMIENTO — 1 semana sin avanzar (leads e inscripciones)
+// ═══════════════════════════════════════════════════════════════════════
+// Revisa diariamente la hoja Leads (que ya reúne tanto a quienes solo
+// pidieron "más información" como a las inscripciones de Jugador de ambos
+// programas — ver sincronizarLeadsDesdeInscripciones_) y, para cada uno cuyo
+// Timestamp cumpla EXACTAMENTE 7 días hoy, le avisa al admin por correo para
+// que haga seguimiento manual (llamada, WhatsApp, etc.). No avisa de quien ya
+// completó su proceso (paso_actual >= 7 en Inscripciones) — a esos no hace
+// falta perseguirlos. Deduplica con PropertiesService para no avisar dos
+// veces del mismo lead.
+function buscarPasoActualPorEmail_(email, programa) {
+  try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    if (!emailNorm) return null;
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    let emailCol = -1, pasoCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+      if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+    }
+    if (emailCol < 0) return null;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) {
+        const pv = pasoCol >= 0 ? data[i][pasoCol] : data[i][20];
+        return parseInt(pv) || 0;
+      }
+    }
+    return null; // no se encontró como inscripción — sigue siendo lead puro
+  } catch (err) {
+    Logger.log('buscarPasoActualPorEmail_ error: ' + err);
+    return null;
+  }
+}
+
+function enviarSeguimientoLeads_() {
+  try {
+    const tz = 'America/Bogota';
+    const hoy = new Date();
+
+    const sheet = getLeadsSheet_();
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) { Logger.log('enviarSeguimientoLeads_: sin datos en Leads.'); return; }
+    const headers = data[0] || [];
+    const normHeaders = headers.map(normHeaderKey_);
+
+    const timestampCol = normHeaders.indexOf('timestamp');
+    const nombreCol = normHeaders.indexOf('nombre');
+    const emailCol = normHeaders.indexOf('email');
+    const whatsappCol = normHeaders.indexOf('whatsapp');
+    const programaCol = normHeaders.indexOf('programa');
+    if (timestampCol < 0 || nombreCol < 0) {
+      Logger.log('enviarSeguimientoLeads_: no se encontraron las columnas necesarias en Leads.');
+      return;
+    }
+
+    const props = PropertiesService.getScriptProperties();
+    const pendientes = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const tsRaw = row[timestampCol];
+      const fechaLead = tsRaw instanceof Date ? tsRaw : new Date(String(tsRaw || ''));
+      if (isNaN(fechaLead.getTime())) continue;
+
+      const diasTranscurridos = Math.floor((hoy.getTime() - fechaLead.getTime()) / 86400000);
+      if (diasTranscurridos !== 7) continue; // exactamente 1 semana — se avisa una sola vez
+
+      const nombre = String(row[nombreCol] || '').trim();
+      const email = emailCol >= 0 ? String(row[emailCol] || '').trim() : '';
+      if (!nombre) continue;
+
+      const dedupKey = 'seguimiento_' + normText_(email || nombre);
+      if (props.getProperty(dedupKey)) continue;
+
+      const programa = programaCol >= 0 ? String(row[programaCol] || '') : '';
+      // No molestar con seguimiento a quien ya completó todo su proceso.
+      const pasoActual = email ? buscarPasoActualPorEmail_(email, programa) : null;
+      if (pasoActual !== null && pasoActual >= 7) { props.setProperty(dedupKey, 'skipped_completo'); continue; }
+
+      pendientes.push({
+        nombre: nombre, email: email,
+        whatsapp: whatsappCol >= 0 ? String(row[whatsappCol] || '') : '',
+        programa: programa,
+        fecha: Utilities.formatDate(fechaLead, tz, 'dd/MM/yyyy')
+      });
+      props.setProperty(dedupKey, 'sent');
+    }
+
+    if (!pendientes.length) { Logger.log('enviarSeguimientoLeads_: nadie cumple 1 semana hoy.'); return; }
+
+    const filas = pendientes.map(function(p) {
+      const progLabel = esWorldChallenge_(p.programa) ? 'World Challenge' : 'Clinic';
+      return '<tr>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + p.nombre + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + (p.email || '—') + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + (p.whatsapp || '—') + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + progLabel + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + p.fecha + '</td></tr>';
+    }).join('');
+
+    const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">'
+      + '<div style="background:#92400e;padding:18px 24px;border-radius:8px 8px 0 0">'
+      + '<h2 style="color:#fff;margin:0;font-size:17px">⏰ Seguimiento pendiente — 1 semana sin avanzar</h2></div>'
+      + '<div style="background:#f8fafc;padding:22px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
+      + '<p style="color:#334155;margin-top:0">Estos leads/inscripciones llevan <strong>7 días</strong> desde su primer contacto sin completar el proceso:</p>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;color:#334155"><thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">'
+      + '<th style="padding:8px 12px">Nombre</th><th style="padding:8px 12px">Email</th><th style="padding:8px 12px">WhatsApp</th><th style="padding:8px 12px">Programa</th><th style="padding:8px 12px">Fecha contacto</th></tr></thead>'
+      + '<tbody>' + filas + '</tbody></table></div></div>';
+
+    GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+      '⏰ Seguimiento pendiente — ' + pendientes.length + ' lead(s) sin avanzar hace 1 semana',
+      pendientes.map(function(p) { return p.nombre + ' (' + (p.email || 'sin email') + ')'; }).join('\n'),
+      { htmlBody: htmlBody, name: 'Victory Sports · Seguimiento' });
+
+    Logger.log('enviarSeguimientoLeads_: ' + pendientes.length + ' aviso(s) de seguimiento enviados.');
+  } catch (err) {
+    Logger.log('enviarSeguimientoLeads_ error: ' + err);
+  }
+}
+
+// ── Ejecutar UNA VEZ desde el editor para instalar el trigger diario ────────
+function crearTriggerSeguimientoLeads() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'enviarSeguimientoLeads_') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('enviarSeguimientoLeads_')
+    .timeBased()
+    .everyDays(1)
+    .atHour(9)
+    .inTimezone('America/Bogota')
+    .create();
+  Logger.log('Trigger de seguimiento de leads creado: correrá todos los días a las 9am (Bogotá).');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // CORREO DE CUMPLEAÑOS AUTOMÁTICO (solo Jugadores, hasta los 18 años)
 // ═══════════════════════════════════════════════════════════════════════
 
