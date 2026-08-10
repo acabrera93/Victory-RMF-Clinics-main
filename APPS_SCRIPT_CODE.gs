@@ -3044,6 +3044,85 @@ function sincronizarPasosDesdePagos() {
   if (noEncontrados.length) Logger.log('Sin coincidencia en Pre-inscripción (revisar nombres): ' + noEncontrados.join(', '));
 }
 
+// ── Ejecutar UNA VEZ para fijar Paquete = Premium/Estándar según tiquete aéreo ─
+// Recorre la hoja Pagos de Clinic y de World Challenge y, para CADA fila de
+// pago ya registrada, sobrescribe la columna "Paquete": Premium si el
+// participante tiene tiquete aéreo incluido en su inscripción, Estándar si no.
+// 1. Selecciona esta función y pulsa ▶ Run
+// 2. Revisa el Log (Ver → Registros) para ver cuántas filas se actualizaron
+//    por programa y si hay nombres de Pagos sin coincidencia en Inscripción.
+function sincronizarPaqueteSegunTiquete() {
+  function normNombreGS(s) {
+    return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  const programas = [
+    { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, label: 'Clinic' },
+    { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
+  ];
+
+  let totalActualizados = 0;
+
+  programas.forEach(function(fuente) {
+    // 1. Mapa nombre_normalizado → tiene tiquete aéreo, desde Inscripción
+    const inscSheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
+    const inscData = inscSheet.getDataRange().getValues();
+    const headers = inscData[0] || [];
+    let nombreCol = -1, tiqueteCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'nombre' && nombreCol < 0) nombreCol = j;
+      if (h === 'tiquete aereo' || h === 'tiquete aéreo') tiqueteCol = j;
+    }
+    if (nombreCol < 0 || tiqueteCol < 0) {
+      Logger.log('sincronizarPaqueteSegunTiquete: ' + fuente.label + ' — no se encontró columna Nombre/Tiquete Aéreo en Inscripción, se omite.');
+      return;
+    }
+    const tiqueteMap = {};
+    for (let i = 1; i < inscData.length; i++) {
+      const nombre = String(inscData[i][nombreCol] || '').trim();
+      if (!nombre) continue;
+      tiqueteMap[normNombreGS(nombre)] = String(inscData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
+    }
+
+    // 2. Recorrer Pagos y fijar Paquete según el mapa
+    const ss = SpreadsheetApp.openById(fuente.budgetSheetId);
+    const pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) { Logger.log('sincronizarPaqueteSegunTiquete: ' + fuente.label + ' — no se encontró la hoja Pagos.'); return; }
+    const pc = getPagosColMap_(pagosSheet);
+    if (!pc.nombre_familia || !pc.paquete) { Logger.log('sincronizarPaqueteSegunTiquete: ' + fuente.label + ' — faltan columnas nombre_familia/paquete en Pagos.'); return; }
+    const lastRow = pagosSheet.getLastRow();
+    if (lastRow < 6) { Logger.log('sincronizarPaqueteSegunTiquete: ' + fuente.label + ' — sin datos en Pagos.'); return; }
+    const readWidth = Math.max(pc.nombre_familia, pc.paquete);
+    const data = pagosSheet.getRange(6, 1, lastRow - 5, readWidth).getValues();
+
+    let currentNombre = '';
+    let actualizadosPrograma = 0;
+    const noEncontrados = [];
+    for (let i = 0; i < data.length; i++) {
+      const rowNombre = String(data[i][pc.nombre_familia - 1] || '').trim();
+      if (rowNombre) {
+        if (rowNombre.toLowerCase().indexOf('total') >= 0) { currentNombre = ''; continue; }
+        currentNombre = rowNombre;
+      }
+      if (!currentNombre) continue;
+      const key = normNombreGS(currentNombre);
+      if (!(key in tiqueteMap)) { if (noEncontrados.indexOf(currentNombre) < 0) noEncontrados.push(currentNombre); continue; }
+      const nuevoPaquete = tiqueteMap[key] ? 'Premium' : 'Estándar';
+      const actual = String(data[i][pc.paquete - 1] || '').trim();
+      if (actual !== nuevoPaquete) {
+        pagosSheet.getRange(6 + i, pc.paquete).setValue(nuevoPaquete);
+        actualizadosPrograma++;
+      }
+    }
+    totalActualizados += actualizadosPrograma;
+    Logger.log('sincronizarPaqueteSegunTiquete: ' + fuente.label + ' → ' + actualizadosPrograma + ' filas actualizadas.');
+    if (noEncontrados.length) Logger.log('sincronizarPaqueteSegunTiquete: ' + fuente.label + ' — sin coincidencia en Inscripción: ' + noEncontrados.join(', '));
+  });
+
+  Logger.log('sincronizarPaqueteSegunTiquete: TOTAL actualizado = ' + totalActualizados);
+}
+
 // ── Ejecutar UNA VEZ para corregir el bug de columna "Tiquete Actualizado" ────
 // La detección de columna de tiquete leía por error "Tiquete Actualizado" en vez
 // de "Tiquete Aéreo", causando que participantes CON tiquete (aún sin pagarlo)
