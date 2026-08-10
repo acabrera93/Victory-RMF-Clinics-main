@@ -6432,8 +6432,10 @@ function openPagosModal(idx, nombreOverride) {
   const inputStyle = 'width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:\'DM Sans\',sans-serif;font-size:14px;outline:none;box-sizing:border-box';
   const selectStyle = inputStyle + ';background:#fff';
 
-  // Paquete ya guardado en cualquier pago de este participante (para pre-llenar filas sin pago)
-  const currentPaquete = Object.values(pagosByTipo).find(p => p.paquete && p.paquete !== '')?.paquete || 'Estándar';
+  // Paquete ya guardado en cualquier pago de este participante (para pre-llenar filas sin pago).
+  // Si no hay ninguno guardado todavía, el default sigue la regla: con tiquete
+  // aéreo → Premium, sin tiquete → Estándar.
+  const currentPaquete = Object.values(pagosByTipo).find(p => p.paquete && p.paquete !== '')?.paquete || (tieneTiquete ? 'Premium' : 'Estándar');
 
   document.getElementById('pagos-modal-body').innerHTML = ['Reserva', 'Tiquete', 'Pago Final'].map(tipo => {
     const ex = pagosByTipo[tipo.toLowerCase()] || null;
