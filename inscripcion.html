@@ -169,7 +169,7 @@ img, video, iframe, table {
         <input class="finput" id="j-nombre" type="text" placeholder="Nombre completo del jugador">
       </div>
       <div>
-        <label class="flabel">Fecha de nacimiento <span class="req">*</span></label>
+        <label class="flabel">Fecha de nacimiento <span class="req">*</span> <span id="j-fnac-hint" style="text-transform:none;font-weight:400;color:var(--muted)"></span></label>
         <input class="finput" id="j-fnac" type="date">
       </div>
       <div>
@@ -229,7 +229,7 @@ img, video, iframe, table {
     </div>
 
     <div class="ctitle" style="margin-top:4px">Tiquete Aéreo</div>
-    <div class="info-note">Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>$4.050.000 COP</strong> por persona.</div>
+    <div class="info-note" id="j-tiq-precio">Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>$4.050.000 COP</strong> por persona.</div>
     <div class="info-note" id="j-tiq-itinerario" style="background:#eff6ff;border-color:#bfdbfe;line-height:1.8"></div>
     <div class="info-note" id="j-cupos-nota" style="display:none;background:#fffbeb;border-color:#f59e0b;color:#92400e;font-weight:600"></div>
     <div class="radio-group">
@@ -319,7 +319,7 @@ img, video, iframe, table {
     </div>
 
     <div class="ctitle" style="margin-top:4px">Tiquete Aéreo</div>
-    <div class="info-note">Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong>. Costo <strong>$4.050.000 COP</strong> por persona.</div>
+    <div class="info-note" id="a-tiq-precio">Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong>. Costo <strong>$4.050.000 COP</strong> por persona.</div>
     <div class="info-note" id="a-tiq-itinerario" style="background:#eff6ff;border-color:#bfdbfe;line-height:1.8"></div>
     <div class="info-note" id="a-cupos-nota" style="display:none;background:#fffbeb;border-color:#f59e0b;color:#92400e;font-weight:600"></div>
     <div class="radio-group">
@@ -424,11 +424,15 @@ function renderCuposWC() {
 const ITIN_VUELOS_INSCRIPCION = {
   'Real Madrid Foundation Clinic': {
     idaFecha: '2 de octubre 2026', idaVuelo: 'Air Europa UX194', idaSalida: '20:15', idaLlegada: '13:00 (3 de octubre, hora Madrid)',
-    regresoFecha: '10 de octubre 2026', regresoVuelo: 'Air Europa UX0193', regresoSalida: '15:15', regresoLlegada: '18:15'
+    regresoFecha: '10 de octubre 2026', regresoVuelo: 'Air Europa UX0193', regresoSalida: '15:15', regresoLlegada: '18:15',
+    // Costo de referencia en COP a tasa fija (mismo criterio que TRM_RESERVA/TIQUETE_EUR en areapersonal.html)
+    precioHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>$4.050.000 COP</strong> por persona.'
   },
   'Real Madrid Foundation World Challenge': {
     idaFecha: '19 de marzo 2027', idaVuelo: 'Air Europa UX0194', idaSalida: '21:35', idaLlegada: '13:10 (20 de marzo, hora Madrid)',
-    regresoFecha: '27 de marzo 2027', regresoVuelo: 'Air Europa UX0193', regresoSalida: '15:15', regresoLlegada: '19:15'
+    regresoFecha: '27 de marzo 2027', regresoVuelo: 'Air Europa UX0193', regresoSalida: '15:15', regresoLlegada: '19:15',
+    // World Challenge paga a la tasa del día (no una TRM fija) — ver TIQUETE_EUR_WC en areapersonal.html
+    precioHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>950 EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> del pago.'
   }
 };
 
@@ -441,6 +445,39 @@ function renderItinerarioInscripcion() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = html;
   });
+  ['j-tiq-precio', 'a-tiq-precio'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = itin.precioHtml;
+  });
+}
+
+// World Challenge solo acepta jugadores nacidos entre 2013 y 2019 — restringe
+// el selector nativo de fecha (min/max) y valida en el envío por si el
+// navegador permite escribir la fecha a mano fuera de ese rango.
+const WC_ANIO_NAC_MIN = 2013;
+const WC_ANIO_NAC_MAX = 2019;
+
+function renderRangoFechaNacJugador() {
+  const input = document.getElementById('j-fnac');
+  const hint = document.getElementById('j-fnac-hint');
+  if (!input) return;
+  if (selectedPrograma === 'Real Madrid Foundation World Challenge') {
+    input.min = WC_ANIO_NAC_MIN + '-01-01';
+    input.max = WC_ANIO_NAC_MAX + '-12-31';
+    if (hint) hint.textContent = '(nacidos entre ' + WC_ANIO_NAC_MIN + ' y ' + WC_ANIO_NAC_MAX + ')';
+  } else {
+    input.removeAttribute('min');
+    input.removeAttribute('max');
+    if (hint) hint.textContent = '';
+  }
+}
+
+function fechaNacJugadorEnRangoWC_() {
+  if (selectedPrograma !== 'Real Madrid Foundation World Challenge') return true;
+  const val = document.getElementById('j-fnac').value;
+  if (!val) return true; // campo vacío ya lo marca chk() por separado
+  const anio = parseInt(val.split('-')[0], 10);
+  return anio >= WC_ANIO_NAC_MIN && anio <= WC_ANIO_NAC_MAX;
 }
 
 function selectPrograma(programa) {
@@ -448,6 +485,7 @@ function selectPrograma(programa) {
   document.getElementById('card-programa-clinic').classList.toggle('selected', programa === 'Real Madrid Foundation Clinic');
   document.getElementById('card-programa-world-challenge').classList.toggle('selected', programa === 'Real Madrid Foundation World Challenge');
   renderItinerarioInscripcion();
+  renderRangoFechaNacJugador();
   if (programa === 'Real Madrid Foundation World Challenge') actualizarCuposWC();
   else renderCuposWC();
 
@@ -484,6 +522,7 @@ function selectPrograma(programa) {
     selectPrograma('Real Madrid Foundation Clinic');
   } else {
     renderItinerarioInscripcion(); // programa por defecto (Clinic) — sin cambio de selección, solo pintar el itinerario inicial
+    renderRangoFechaNacJugador();
   }
 })();
 
@@ -546,6 +585,13 @@ async function submitForm(tipo) {
   let valid = true;
   if (tipo === 'jugador') {
     valid = ['j-nombre','j-fnac','j-pasaporte','j-pais','j-posicion','j-ciudad','j-acudiente','j-relacion','j-email','j-phone'].map(chk).every(Boolean) && tiqJugador !== null;
+    if (valid && !fechaNacJugadorEnRangoWC_()) {
+      document.getElementById('j-fnac').classList.add('error');
+      document.getElementById('j-err').textContent = 'Para World Challenge, la fecha de nacimiento del jugador debe estar entre ' + WC_ANIO_NAC_MIN + ' y ' + WC_ANIO_NAC_MAX + '.';
+      document.getElementById('j-err').style.display = 'block';
+      return;
+    }
+    document.getElementById('j-err').textContent = 'Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.';
     if (!valid) { document.getElementById('j-err').style.display = 'block'; return; }
     document.getElementById('j-err').style.display = 'none';
   } else {
