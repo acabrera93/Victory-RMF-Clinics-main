@@ -4027,6 +4027,12 @@ function columnToLetter_(col) {
 // la duplicada sí tenía, y las filas duplicadas se borran. Se llama tanto
 // desde el trigger onChange como de forma manual para limpiar duplicados ya
 // existentes.
+// Clave = email + nombre (no solo email) — una misma familia puede tener
+// varios hijos inscritos con el correo del acudiente repetido; cada uno es
+// un lead legítimo y distinto. Deduplicar solo por email los fusionaría/
+// borraría por error (esto fue justo el bug reportado: "se me están
+// borrando los leads" — hermanos con el mismo correo desaparecían). Debe
+// coincidir con la clave que ya usa sincronizarLeadsDesdeInscripciones_.
 function deduplicarLeadsPorEmail_() {
   try {
     const sheet = getLeadsSheet_();
@@ -4035,16 +4041,19 @@ function deduplicarLeadsPorEmail_() {
 
     const headers = data[0];
     const emailColIdx = headers.map(normHeaderKey_).indexOf('email');
+    const nombreColIdx = headers.map(normHeaderKey_).indexOf('nombre');
     if (emailColIdx < 0) { Logger.log('deduplicarLeadsPorEmail_: no se encontró columna Email.'); return 0; }
 
-    const primeraFilaPorEmail = {}; // email normalizado -> índice en `data`
+    const primeraFilaPorClave = {}; // "email|||nombre" normalizado -> índice en `data`
     const filasABorrar = []; // números de fila del Sheet (1-based), de mayor a menor
 
     for (let i = 1; i < data.length; i++) {
       const email = normText_(data[i][emailColIdx]);
       if (!email) continue;
-      if (primeraFilaPorEmail[email] !== undefined) {
-        const idxOriginal = primeraFilaPorEmail[email];
+      const nombre = nombreColIdx >= 0 ? normText_(data[i][nombreColIdx]) : '';
+      const clave = email + '|||' + nombre;
+      if (primeraFilaPorClave[clave] !== undefined) {
+        const idxOriginal = primeraFilaPorClave[clave];
         data[idxOriginal] = data[idxOriginal].map(function(valActual, col) {
           const valNuevo = data[i][col];
           const vacio = valActual === '' || valActual === null || valActual === undefined;
@@ -4052,21 +4061,21 @@ function deduplicarLeadsPorEmail_() {
         });
         filasABorrar.push(i + 1); // +1: data[i] corresponde a la fila (i+1) del Sheet
       } else {
-        primeraFilaPorEmail[email] = i;
+        primeraFilaPorClave[clave] = i;
       }
     }
 
     if (!filasABorrar.length) return 0;
 
-    Object.keys(primeraFilaPorEmail).forEach(function(email) {
-      const idx = primeraFilaPorEmail[email];
+    Object.keys(primeraFilaPorClave).forEach(function(clave) {
+      const idx = primeraFilaPorClave[clave];
       sheet.getRange(idx + 1, 1, 1, headers.length).setValues([data[idx]]);
     });
 
     filasABorrar.sort(function(a, b) { return b - a; }); // borrar de abajo hacia arriba
     filasABorrar.forEach(function(rowNum) { sheet.deleteRow(rowNum); });
 
-    Logger.log('deduplicarLeadsPorEmail_: fusionadas/eliminadas ' + filasABorrar.length + ' fila(s) duplicada(s) por correo.');
+    Logger.log('deduplicarLeadsPorEmail_: fusionadas/eliminadas ' + filasABorrar.length + ' fila(s) duplicada(s) por correo+nombre.');
     return filasABorrar.length;
   } catch (err) {
     Logger.log('deduplicarLeadsPorEmail_ error: ' + err);
@@ -4094,19 +4103,30 @@ function crearTriggerLeadsSinDuplicados() {
   const sheet = getLeadsSheet_();
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const emailColIdx = headers.map(normHeaderKey_).indexOf('email');
+  const nombreColIdx = headers.map(normHeaderKey_).indexOf('nombre');
   if (emailColIdx < 0) {
     Logger.log('crearTriggerLeadsSinDuplicados: no se encontró columna Email — no se aplicó validación de datos.');
   } else {
     const emailCol = emailColIdx + 1;
-    const colLetter = columnToLetter_(emailCol);
+    const emailColLetter = columnToLetter_(emailCol);
     // requireFormulaSatisfied() NO traduce el formato de la fórmula al locale
     // del Sheet (a diferencia de setFormula(), que sí lo hace) — en una hoja
     // en español hay que escribir el separador de argumentos como ";", no ",".
     // Con "," Sheets rechaza la regla entera con "El argumento ... no es válido".
+    //
+    // La clave de unicidad es email+nombre, no solo email: una misma familia
+    // puede tener varios hijos inscritos con el correo del acudiente repetido
+    // (leads legítimos y distintos) — validar solo por email bloquearía/
+    // borraría hermanos por error. Si no se encuentra columna Nombre, se cae
+    // de vuelta a validar solo por email (mejor que no validar nada).
+    const formula = nombreColIdx >= 0
+      ? '=COUNTIFS(' + emailColLetter + '$2:' + emailColLetter + '2;' + emailColLetter + '2;'
+        + columnToLetter_(nombreColIdx + 1) + '$2:' + columnToLetter_(nombreColIdx + 1) + '2;' + columnToLetter_(nombreColIdx + 1) + '2)=1'
+      : '=COUNTIF(' + emailColLetter + '$2:' + emailColLetter + '2;' + emailColLetter + '2)=1';
     const rule = SpreadsheetApp.newDataValidation()
-      .requireFormulaSatisfied('=COUNTIF(' + colLetter + '$2:' + colLetter + '2;' + colLetter + '2)=1')
+      .requireFormulaSatisfied(formula)
       .setAllowInvalid(false)
-      .setHelpText('Este correo ya existe en Leads — no se permiten duplicados.')
+      .setHelpText('Este correo + nombre ya existe en Leads — no se permiten duplicados.')
       .build();
     const primeraCelda = sheet.getRange(2, emailCol);
     primeraCelda.setDataValidation(rule);
