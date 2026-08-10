@@ -3405,7 +3405,6 @@ function getTyC() {
   <li><strong>Menos de 1 mes antes:</strong> <strong>sin reembolso</strong></li>
   <li>Con <strong>justificante médico válido</strong>: el programa podrá ser reprogramado para una edición futura</li>
   <li>⚠️ Estas políticas <strong>no aplican al tiquete aéreo</strong>, que se rige según las condiciones de la aerolínea correspondiente</li>
-  <li>El primer pago de reserva (1.000 EUR) es <strong>no reembolsable</strong> en todos los casos</li>
   <li>Situaciones personales (pasaporte vencido, documentación incompleta, demoras en aeropuerto, etc.) no dan derecho a reembolso</li>
 </ul>`;
 
@@ -3593,10 +3592,8 @@ function getTyCWorldChallenge_(tipoCurrent) {
   <li>Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del 100% del valor pagado</li>
 </ul>`;
   } else {
-    const reservaMonto = esJug ? PRECIOS_WC.jugador.reserva : (esDoble ? PRECIOS_WC.acomp_doble.reserva : PRECIOS_WC.acomp_sencilla.reserva);
     cancelacion = `
 <ul>
-  <li>El primer pago (reserva de <strong>${reservaMonto} EUR</strong>) <strong>no es reembolsable</strong> bajo ninguna circunstancia</li>
   <li><strong>3 meses o más antes del inicio del programa:</strong> penalidad del 30% del valor pagado (reembolso del 70%)</li>
   <li><strong>2 meses de anticipación:</strong> penalidad del 60% (reembolso del 40%)</li>
   <li><strong>1 mes o menos de anticipación:</strong> penalidad del 100% (no hay lugar a reembolso)</li>
