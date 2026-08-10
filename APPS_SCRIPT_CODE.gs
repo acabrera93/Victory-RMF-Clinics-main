@@ -4046,6 +4046,7 @@ function deduplicarLeadsPorEmail_() {
 
     const primeraFilaPorClave = {}; // "email|||nombre" normalizado -> índice en `data`
     const filasABorrar = []; // números de fila del Sheet (1-based), de mayor a menor
+    const idxModificados = new Set(); // índices en `data` que SÍ recibieron un merge — solo estos se reescriben
 
     for (let i = 1; i < data.length; i++) {
       const email = normText_(data[i][emailColIdx]);
@@ -4059,6 +4060,7 @@ function deduplicarLeadsPorEmail_() {
           const vacio = valActual === '' || valActual === null || valActual === undefined;
           return (vacio && valNuevo !== '' && valNuevo !== null && valNuevo !== undefined) ? valNuevo : valActual;
         });
+        idxModificados.add(idxOriginal);
         filasABorrar.push(i + 1); // +1: data[i] corresponde a la fila (i+1) del Sheet
       } else {
         primeraFilaPorClave[clave] = i;
@@ -4067,8 +4069,11 @@ function deduplicarLeadsPorEmail_() {
 
     if (!filasABorrar.length) return 0;
 
-    Object.keys(primeraFilaPorClave).forEach(function(clave) {
-      const idx = primeraFilaPorClave[clave];
+    // Solo se reescriben las filas que efectivamente recibieron datos
+    // fusionados de una duplicada — las demás filas sobrevivientes no
+    // cambiaron y no hace falta tocarlas (evita un setValues() innecesario
+    // por cada fila de la hoja en cada pasada).
+    idxModificados.forEach(function(idx) {
       sheet.getRange(idx + 1, 1, 1, headers.length).setValues([data[idx]]);
     });
 
@@ -4130,8 +4135,17 @@ function crearTriggerLeadsSinDuplicados() {
       .build();
     const primeraCelda = sheet.getRange(2, emailCol);
     primeraCelda.setDataValidation(rule);
-    // copyTo con relative references adapta la fórmula a cada fila (E2, E3, E4…)
-    primeraCelda.copyTo(sheet.getRange(2, emailCol, Math.max(sheet.getMaxRows() - 1, 1), 1), { contentsOnly: false });
+    // copyTo con relative references adapta la fórmula a cada fila (E2, E3, E4…).
+    // IMPORTANTE: debe usarse el enum CopyPasteType.PASTE_DATA_VALIDATION — la
+    // forma con objeto ({contentsOnly:false}) NO significa "solo validación",
+    // copia también el VALOR de la celda origen sobre todo el destino (fue
+    // justo el bug que sobrescribió todos los correos de Leads con el de la
+    // primera fila la primera vez que se ejecutó esta función).
+    primeraCelda.copyTo(
+      sheet.getRange(2, emailCol, Math.max(sheet.getMaxRows() - 1, 1), 1),
+      SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION,
+      false
+    );
   }
 
   ScriptApp.getProjectTriggers().forEach(function(t) {
