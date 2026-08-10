@@ -149,7 +149,7 @@ img, video, iframe, table {
       <div class="type-icon">⚽</div>
       <div class="type-title">Jugador</div>
       <div class="type-desc">Para el jugador que participará en el RMF Clinic. Incluye programa deportivo completo en la Ciudad Deportiva del Real Madrid.</div>
-      <div class="type-badge">8 a 17 años</div>
+      <div class="type-badge" id="jugador-edad-badge">8 a 17 años</div>
     </div>
     <div class="type-card" id="card-acompanante" onclick="selectType('acompanante')">
       <div class="type-icon">👨‍👩‍👧</div>
@@ -460,15 +460,18 @@ const WC_ANIO_NAC_MAX = 2019;
 function renderRangoFechaNacJugador() {
   const input = document.getElementById('j-fnac');
   const hint = document.getElementById('j-fnac-hint');
+  const badge = document.getElementById('jugador-edad-badge');
   if (!input) return;
   if (selectedPrograma === 'Real Madrid Foundation World Challenge') {
     input.min = WC_ANIO_NAC_MIN + '-01-01';
     input.max = WC_ANIO_NAC_MAX + '-12-31';
     if (hint) hint.textContent = '(nacidos entre ' + WC_ANIO_NAC_MIN + ' y ' + WC_ANIO_NAC_MAX + ')';
+    if (badge) badge.textContent = '8 a 14 años';
   } else {
     input.removeAttribute('min');
     input.removeAttribute('max');
     if (hint) hint.textContent = '';
+    if (badge) badge.textContent = '8 a 17 años';
   }
 }
 
