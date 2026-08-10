@@ -406,7 +406,7 @@ function renderCuposWC() {
     if (!esWC || cuposTiqueteWC === null) { nota.style.display = 'none'; return; }
     nota.style.display = 'block';
     if (cuposTiqueteWC > 0) {
-      nota.textContent = '✈️ Quedan ' + cuposTiqueteWC + ' de 9 cupos disponibles para tiquete aéreo del vuelo grupal.';
+      nota.textContent = '✈️ Quedan ' + cuposTiqueteWC + ' cupos disponibles.';
       if (radioSi) radioSi.disabled = false;
       if (labelSi) labelSi.classList.remove('disabled');
     } else {
