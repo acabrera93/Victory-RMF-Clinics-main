@@ -44,6 +44,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .radio-opt{flex:1;min-width:140px;border:1.5px solid var(--border);border-radius:8px;padding:13px 16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text)}
 .radio-opt:hover{border-color:var(--blue-light)}
 .radio-opt.sel{border-color:var(--blue);background:rgba(30,91,168,.04);color:var(--navy);font-weight:500}
+.radio-opt.disabled{opacity:.5;cursor:not-allowed;background:var(--off)}
 .radio-opt input{accent-color:var(--blue);width:16px;height:16px;flex-shrink:0}
 .btn-submit{width:100%;padding:16px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:500;cursor:pointer;transition:all .2s;margin-top:16px;letter-spacing:.3px}
 .btn-submit:hover:not(:disabled){background:#1a50a0;transform:translateY(-1px);box-shadow:0 6px 20px rgba(30,91,168,.3)}
@@ -229,6 +230,8 @@ img, video, iframe, table {
 
     <div class="ctitle" style="margin-top:4px">Tiquete Aéreo</div>
     <div class="info-note">Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>$4.050.000 COP</strong> por persona.</div>
+    <div class="info-note" id="j-tiq-itinerario" style="background:#eff6ff;border-color:#bfdbfe;line-height:1.8"></div>
+    <div class="info-note" id="j-cupos-nota" style="display:none;background:#fffbeb;border-color:#f59e0b;color:#92400e;font-weight:600"></div>
     <div class="radio-group">
       <label class="radio-opt" id="j-tiq-si" onclick="selTiq('jugador','si')">
         <input type="radio" name="j-tiquete" value="si"> ✈️ Sí, incluir tiquete aéreo
@@ -317,6 +320,8 @@ img, video, iframe, table {
 
     <div class="ctitle" style="margin-top:4px">Tiquete Aéreo</div>
     <div class="info-note">Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong>. Costo <strong>$4.050.000 COP</strong> por persona.</div>
+    <div class="info-note" id="a-tiq-itinerario" style="background:#eff6ff;border-color:#bfdbfe;line-height:1.8"></div>
+    <div class="info-note" id="a-cupos-nota" style="display:none;background:#fffbeb;border-color:#f59e0b;color:#92400e;font-weight:600"></div>
     <div class="radio-group">
       <label class="radio-opt" id="a-tiq-si" onclick="selTiq('acompanante','si')">
         <input type="radio" name="a-tiquete" value="si"> ✈️ Sí, incluir tiquete aéreo
@@ -375,10 +380,76 @@ let selectedPrograma = 'Real Madrid Foundation Clinic';
 let tiqJugador = null;
 let tiqAcompanante = null;
 
+// Mismo endpoint de Apps Script usado en areapersonal.html — aquí solo para
+// consultar cupos, no para escribir (la inscripción sigue yendo por el
+// webhook de Make, ver WEBHOOK_PREINSCRIPCION).
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
+
+// ── CUPOS TIQUETE AÉREO — World Challenge (vuelo grupal, asientos limitados) ──
+let cuposTiqueteWC = null; // null = aún no consultado
+
+async function actualizarCuposWC() {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=cupos_tiquete_wc&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json());
+    if (typeof res.disponibles === 'number') cuposTiqueteWC = res.disponibles;
+  } catch (e) { /* si falla, no se muestra el contador — no bloquea la inscripción */ }
+  renderCuposWC();
+}
+
+function renderCuposWC() {
+  const esWC = selectedPrograma === 'Real Madrid Foundation World Challenge';
+  ['j', 'a'].forEach(function(pfx) {
+    const nota = document.getElementById(pfx + '-cupos-nota');
+    const radioSi = document.querySelector('input[name="' + pfx + '-tiquete"][value="si"]');
+    const labelSi = document.getElementById(pfx + '-tiq-si');
+    if (!nota) return;
+    if (!esWC || cuposTiqueteWC === null) { nota.style.display = 'none'; return; }
+    nota.style.display = 'block';
+    if (cuposTiqueteWC > 0) {
+      nota.textContent = '✈️ Quedan ' + cuposTiqueteWC + ' de 9 cupos disponibles para tiquete aéreo del vuelo grupal.';
+      if (radioSi) radioSi.disabled = false;
+      if (labelSi) labelSi.classList.remove('disabled');
+    } else {
+      nota.textContent = '✈️ Cupos de tiquete aéreo agotados — puedes inscribirte y gestionar tu propio vuelo.';
+      if (radioSi) radioSi.disabled = true;
+      if (labelSi) labelSi.classList.add('disabled');
+    }
+  });
+}
+
+// Mismo itinerario ya confirmado que se muestra en el área personal — ver
+// ITIN_VUELOS en areapersonal.html. Se muestra aquí ANTES de inscribirse,
+// para que la familia sepa fechas/horarios exactos antes de decidir si
+// quiere el tiquete aéreo Victory o gestionar el suyo.
+const ITIN_VUELOS_INSCRIPCION = {
+  'Real Madrid Foundation Clinic': {
+    idaFecha: '2 de octubre 2026', idaVuelo: 'Air Europa UX194', idaSalida: '20:15', idaLlegada: '13:00 (3 de octubre, hora Madrid)',
+    regresoFecha: '10 de octubre 2026', regresoVuelo: 'Air Europa UX0193', regresoSalida: '15:15', regresoLlegada: '18:15'
+  },
+  'Real Madrid Foundation World Challenge': {
+    idaFecha: '19 de marzo 2027', idaVuelo: 'Air Europa UX0194', idaSalida: '21:35', idaLlegada: '13:10 (20 de marzo, hora Madrid)',
+    regresoFecha: '27 de marzo 2027', regresoVuelo: 'Air Europa UX0193', regresoSalida: '15:15', regresoLlegada: '19:15'
+  }
+};
+
+function renderItinerarioInscripcion() {
+  const itin = ITIN_VUELOS_INSCRIPCION[selectedPrograma];
+  if (!itin) return;
+  const html = '✈️ <strong>Ida</strong> — ' + itin.idaFecha + ' · ' + itin.idaVuelo + ' · Bogotá ' + itin.idaSalida + ' → Madrid ' + itin.idaLlegada + '<br>'
+    + '✈️ <strong>Regreso</strong> — ' + itin.regresoFecha + ' · ' + itin.regresoVuelo + ' · Madrid ' + itin.regresoSalida + ' → Bogotá ' + itin.regresoLlegada;
+  ['j-tiq-itinerario', 'a-tiq-itinerario'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
 function selectPrograma(programa) {
   selectedPrograma = programa;
   document.getElementById('card-programa-clinic').classList.toggle('selected', programa === 'Real Madrid Foundation Clinic');
   document.getElementById('card-programa-world-challenge').classList.toggle('selected', programa === 'Real Madrid Foundation World Challenge');
+  renderItinerarioInscripcion();
+  if (programa === 'Real Madrid Foundation World Challenge') actualizarCuposWC();
+  else renderCuposWC();
 
   // El atributo `hidden` en <option> no se respeta en el picker nativo de
   // iOS Safari (la opción se sigue viendo aunque esté "oculta"), así que la
@@ -411,6 +482,8 @@ function selectPrograma(programa) {
     selectPrograma('Real Madrid Foundation World Challenge');
   } else if (programaURL.toLowerCase().includes('clinic')) {
     selectPrograma('Real Madrid Foundation Clinic');
+  } else {
+    renderItinerarioInscripcion(); // programa por defecto (Clinic) — sin cambio de selección, solo pintar el itinerario inicial
   }
 })();
 
@@ -445,6 +518,8 @@ function onHabitacion() {
 }
 
 function selTiq(tipo, val) {
+  const pfx = tipo === 'jugador' ? 'j' : 'a';
+  if (val === 'si' && document.getElementById(pfx + '-tiq-si').classList.contains('disabled')) return;
   if (tipo === 'jugador') {
     tiqJugador = val;
     document.getElementById('j-tiq-si').classList.toggle('sel', val === 'si');
@@ -531,6 +606,14 @@ async function submitForm(tipo) {
   try {
     await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload);
     if (window.victoryTrack) window.victoryTrack('formulario_enviado', { tipo: tipo });
+    // Descuento optimista del contador de cupos — el conteo real (desde la
+    // hoja de Inscripciones) se vuelve a consultar la próxima vez que alguien
+    // entre al formulario de World Challenge, así que esto solo evita que la
+    // MISMA sesión siga mostrando cupos ya tomados por ella misma.
+    if (payload.programa === 'Real Madrid Foundation World Challenge' && payload.tiquete_aereo === 'Con tiquete' && cuposTiqueteWC !== null) {
+      cuposTiqueteWC = Math.max(0, cuposTiqueteWC - 1);
+      renderCuposWC();
+    }
     document.getElementById('type-grid').style.display = 'none';
     document.getElementById('form-' + tipo).style.display = 'none';
     document.getElementById('success-msg').innerHTML =

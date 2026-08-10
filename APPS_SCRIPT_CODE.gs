@@ -253,6 +253,7 @@ function doGet(e) {
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '');
     if (action === 'mis_pagos') return getMisPagos(params.nombre || '', params.programa || '');
+    if (action === 'cupos_tiquete_wc') return getCuposTiqueteWC_();
     if (action === 'tasa_wise') return getTasaWise_();
     if (action === 'admin_participantes') return getAdminParticipantes(params);
     if (action === 'admin_financiero') return getAdminFinanciero(params);
@@ -596,6 +597,43 @@ function getMisPagos(nombre, programa) {
   } catch (err) {
     Logger.log('getMisPagos error: ' + err);
     return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ───── CUPOS TIQUETE AÉREO — World Challenge (vuelo grupal, asientos limitados) ─
+// El vuelo grupal de World Challenge tiene un cupo fijo de asientos. En vez de
+// llevar un contador separado (que podría desincronizarse), se cuenta en vivo
+// cuántas filas de Inscripción (World Challenge) ya tienen "Con tiquete" —
+// mismo criterio que usa el resto del código (tiqueteCol, ver
+// getDocumentosRequeridos/sincronizarPaqueteSegunTiquete). inscripcion.html
+// consulta este endpoint para mostrar "quedan X cupos" y bloquear la opción
+// cuando se agotan.
+const CUPOS_TIQUETE_WC_TOTAL = 9;
+function getCuposTiqueteWC_() {
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID_WORLD_CHALLENGE).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    let tiqueteCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'tiquete aereo' || h === 'tiquete aéreo') { tiqueteCol = j; break; }
+    }
+    let usados = 0;
+    if (tiqueteCol >= 0) {
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0) usados++;
+      }
+    }
+    const disponibles = Math.max(0, CUPOS_TIQUETE_WC_TOTAL - usados);
+    return ContentService.createTextOutput(JSON.stringify({ total: CUPOS_TIQUETE_WC_TOTAL, usados: usados, disponibles: disponibles }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('getCuposTiqueteWC_ error: ' + err);
+    // Ante un error, se reporta el cupo total como disponible en vez de 0 —
+    // así un fallo del lado del servidor no bloquea la venta de tiquetes.
+    return ContentService.createTextOutput(JSON.stringify({ total: CUPOS_TIQUETE_WC_TOTAL, usados: 0, disponibles: CUPOS_TIQUETE_WC_TOTAL, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
