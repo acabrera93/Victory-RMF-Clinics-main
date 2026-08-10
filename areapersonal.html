@@ -1937,6 +1937,7 @@ let soloAct = false;
 let sinPagoFinal = false; // World Challenge: grupo cuyo Pago Final es 0 (Solo Actividades/Solo World Challenge) — oculta el paso "Pago final" del stepper
 let esStaffView = false;
 let esComercialOnly = false;
+let _gatedOnlySession = false; // true cuando se entra directo a admin/comercial sin datos de participante real
 let grupoPaso = 1;
 let programa = '';
 let programKeyActivo = 'clinic'; // 'clinic' | 'world_challenge' — programa activo en pantalla
@@ -4241,10 +4242,31 @@ function openResetGate(token, email, type) {
 function closePasswordGate() {
   if (_pwdMode === 'must_change' || _pwdMode === 'reset') return; // no se puede cerrar
   document.getElementById('pwd-gate').classList.remove('open');
+  const sec = _pwdPendingSection;
+  _pwdPendingSection = null;
+
+  // Login directo a admin/comercial (sin participante real detrás): si cancela
+  // sin haberse autenticado, no dejar el área principal visible y vacía —
+  // volver a la pantalla de login.
+  if (_gatedOnlySession && sec && !sessionStorage.getItem('auth_' + sec)) {
+    _gatedOnlySession = false;
+    esComercialOnly = false;
+    participantEmail = '';
+    document.getElementById('main-content').style.display = 'none';
+    document.getElementById('section-tabs').style.display = 'none';
+    document.getElementById('stab-admin').style.display = 'none';
+    document.getElementById('stab-comercial').style.display = 'none';
+    document.getElementById('login-gate').style.display = 'flex';
+    const emailInput = document.getElementById('login-email');
+    const errEl = document.getElementById('login-err');
+    if (errEl) errEl.style.display = 'none';
+    if (emailInput) { emailInput.value = ''; emailInput.focus(); }
+    return;
+  }
+
   document.querySelectorAll('.stab').forEach(b =>
     b.classList.toggle('active', b.dataset.section === _pwdPrevSection)
   );
-  _pwdPendingSection = null;
 }
 
 // ── BIOMETRIC AUTH (WebAuthn) ──────────────────────────────────────────────────
@@ -4867,6 +4889,7 @@ function showComercialOnly(data) {
     document.getElementById('panel-comercial').classList.add('active');
     renderComercialPanel();
   } else {
+    _gatedOnlySession = true;
     openPasswordGate('comercial');
   }
 }
@@ -5029,6 +5052,7 @@ function showAdminOnly() {
   // Mostrar proceso vacío por defecto — el password gate se dispara al pulsar el tab admin
   document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.section === 'proceso'));
   _pwdPrevSection = 'proceso';
+  _gatedOnlySession = true;
   openPasswordGate('admin');
 }
 
