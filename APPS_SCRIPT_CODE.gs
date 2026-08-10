@@ -3997,6 +3997,134 @@ function crearTriggerSyncLeadsWorldChallenge() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// LEADS SIN CORREOS DUPLICADOS
+// ═══════════════════════════════════════════════════════════════════════
+// Dos mecanismos, porque un correo puede llegar duplicado a Leads por dos vías
+// distintas: (1) alguien lo escribe/pega a mano en el Sheet, y (2) el webhook
+// de Make (formulario de "más información" en rmf-clinic.html) escribe filas
+// nuevas directamente por API, sin pasar por Apps Script — la validación de
+// datos de Sheets NO bloquea escrituras por API, así que esa vía necesita
+// limpieza automática en vez de solo prevención:
+//   1. Validación de datos en la columna Email (rechaza duplicados tecleados
+//      a mano en la hoja).
+//   2. Trigger onChange sobre la propia hoja Leads que, tras CUALQUIER
+//      cambio (edición manual o escritura de Make), fusiona y elimina filas
+//      duplicadas por correo — se queda con la primera fila y le copia
+//      cualquier dato que le faltara desde la duplicada antes de borrarla.
+
+function columnToLetter_(col) {
+  let letter = '';
+  while (col > 0) {
+    const rem = (col - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    col = Math.floor((col - 1) / 26);
+  }
+  return letter;
+}
+
+// Fusiona filas de Leads que comparten el mismo email (normalizado): la
+// primera fila con ese correo se queda, se le copian los campos vacíos que
+// la duplicada sí tenía, y las filas duplicadas se borran. Se llama tanto
+// desde el trigger onChange como de forma manual para limpiar duplicados ya
+// existentes.
+function deduplicarLeadsPorEmail_() {
+  try {
+    const sheet = getLeadsSheet_();
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 3) return 0; // header + a lo sumo 1 fila — nada que fusionar
+
+    const headers = data[0];
+    const emailColIdx = headers.map(normHeaderKey_).indexOf('email');
+    if (emailColIdx < 0) { Logger.log('deduplicarLeadsPorEmail_: no se encontró columna Email.'); return 0; }
+
+    const primeraFilaPorEmail = {}; // email normalizado -> índice en `data`
+    const filasABorrar = []; // números de fila del Sheet (1-based), de mayor a menor
+
+    for (let i = 1; i < data.length; i++) {
+      const email = normText_(data[i][emailColIdx]);
+      if (!email) continue;
+      if (primeraFilaPorEmail[email] !== undefined) {
+        const idxOriginal = primeraFilaPorEmail[email];
+        data[idxOriginal] = data[idxOriginal].map(function(valActual, col) {
+          const valNuevo = data[i][col];
+          const vacio = valActual === '' || valActual === null || valActual === undefined;
+          return (vacio && valNuevo !== '' && valNuevo !== null && valNuevo !== undefined) ? valNuevo : valActual;
+        });
+        filasABorrar.push(i + 1); // +1: data[i] corresponde a la fila (i+1) del Sheet
+      } else {
+        primeraFilaPorEmail[email] = i;
+      }
+    }
+
+    if (!filasABorrar.length) return 0;
+
+    Object.keys(primeraFilaPorEmail).forEach(function(email) {
+      const idx = primeraFilaPorEmail[email];
+      sheet.getRange(idx + 1, 1, 1, headers.length).setValues([data[idx]]);
+    });
+
+    filasABorrar.sort(function(a, b) { return b - a; }); // borrar de abajo hacia arriba
+    filasABorrar.forEach(function(rowNum) { sheet.deleteRow(rowNum); });
+
+    Logger.log('deduplicarLeadsPorEmail_: fusionadas/eliminadas ' + filasABorrar.length + ' fila(s) duplicada(s) por correo.');
+    return filasABorrar.length;
+  } catch (err) {
+    Logger.log('deduplicarLeadsPorEmail_ error: ' + err);
+    return 0;
+  }
+}
+
+function onChangeLeads_(e) {
+  try {
+    if (e && e.changeType &&
+        ['INSERT_ROW', 'EDIT', 'INSERT_GRID', 'OTHER', 'PASTE'].indexOf(e.changeType) === -1) return;
+    deduplicarLeadsPorEmail_();
+  } catch (err) {
+    Logger.log('onChangeLeads_ error: ' + err);
+  }
+}
+
+// ── Ejecutar UNA VEZ desde el editor: limpia duplicados existentes, aplica la
+// validación de datos en la columna Email, e instala el trigger onChange que
+// mantiene la hoja sin duplicados de ahí en adelante.
+function crearTriggerLeadsSinDuplicados() {
+  const eliminadas = deduplicarLeadsPorEmail_();
+  Logger.log('crearTriggerLeadsSinDuplicados: ' + eliminadas + ' duplicado(s) existente(s) fusionado(s)/eliminado(s).');
+
+  const sheet = getLeadsSheet_();
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const emailColIdx = headers.map(normHeaderKey_).indexOf('email');
+  if (emailColIdx < 0) {
+    Logger.log('crearTriggerLeadsSinDuplicados: no se encontró columna Email — no se aplicó validación de datos.');
+  } else {
+    const emailCol = emailColIdx + 1;
+    const colLetter = columnToLetter_(emailCol);
+    // requireFormulaSatisfied() NO traduce el formato de la fórmula al locale
+    // del Sheet (a diferencia de setFormula(), que sí lo hace) — en una hoja
+    // en español hay que escribir el separador de argumentos como ";", no ",".
+    // Con "," Sheets rechaza la regla entera con "El argumento ... no es válido".
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireFormulaSatisfied('=COUNTIF(' + colLetter + '$2:' + colLetter + '2;' + colLetter + '2)=1')
+      .setAllowInvalid(false)
+      .setHelpText('Este correo ya existe en Leads — no se permiten duplicados.')
+      .build();
+    const primeraCelda = sheet.getRange(2, emailCol);
+    primeraCelda.setDataValidation(rule);
+    // copyTo con relative references adapta la fórmula a cada fila (E2, E3, E4…)
+    primeraCelda.copyTo(sheet.getRange(2, emailCol, Math.max(sheet.getMaxRows() - 1, 1), 1), { contentsOnly: false });
+  }
+
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'onChangeLeads_') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('onChangeLeads_')
+    .forSpreadsheet(LEADS_SHEET_ID)
+    .onChange()
+    .create();
+  Logger.log('crearTriggerLeadsSinDuplicados: trigger onChange instalado en la hoja Leads.');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // AVISO DE SEGUIMIENTO — 1 semana sin avanzar (leads e inscripciones)
 // ═══════════════════════════════════════════════════════════════════════
 // Revisa diariamente la hoja Leads (que ya reúne tanto a quienes solo
