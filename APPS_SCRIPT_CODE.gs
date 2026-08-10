@@ -4079,6 +4079,192 @@ function crearTriggerSeguimientoLeads() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// RECORDATORIO SEMANAL — pagos vencidos (Reserva/Tiquete/Pago Final)
+// ═══════════════════════════════════════════════════════════════════════
+// Cada lunes revisa, por programa, qué fechas límite de pago ya pasaron y
+// avisa al admin de todos los participantes que, debiendo ese concepto
+// (monto esperado > 0 para su tipo/habitación, o tiquete_aereo = "Con
+// tiquete"), todavía NO lo tienen en estado "Completo" en la hoja Pagos. A
+// diferencia de enviarSeguimientoLeads_(), este SÍ se repite cada semana
+// mientras el pago siga pendiente — no deduplica, porque el objetivo es
+// insistir hasta que se resuelva.
+const DEADLINES_PAGO = {
+  // Deben coincidir con FECHAS_LIMITE_CLINIC / FECHAS_LIMITE_WC en areapersonal.html
+  clinic:           { reserva: new Date(2026, 5, 1),  tiquete: new Date(2026, 5, 1),  final: new Date(2026, 6, 30) },
+  world_challenge:  { reserva: new Date(2026, 9, 5),  tiquete: new Date(2026, 9, 5),  final: new Date(2026, 11, 11) }
+};
+
+// Duplica montoReservaFinalParticipante_ de areapersonal.html (solo lo
+// necesario para saber si un participante DEBE dinero en Reserva/Pago Final,
+// no el desglose completo) — mantener en sync si cambian precios o reglas.
+function montoReservaFinalGS_(tipo, habitacion, fechaNacimiento, esWC) {
+  const esJug = String(tipo || '').toLowerCase().indexOf('jug') >= 0;
+  const hab = String(habitacion || '').toLowerCase();
+  if (esWC) {
+    if (esJug) return { reserva: 1150, final: 1740 };
+    if (hab === 'solo_world_challenge') return { reserva: 185, final: 0 };
+    if (hab === '' || hab === 'solo_actividades') return { reserva: 590, final: 0 };
+    if (hab.indexOf('doble') >= 0) return { reserva: 1150, final: 1040 };
+    return { reserva: 1150, final: 1360 };
+  }
+  if (esJug) return { reserva: 1000, final: 1790 };
+  if (hab === '') {
+    const fObj = parseFechaNacimiento(fechaNacimiento);
+    const edad = calcEdadRef(fObj);
+    return { reserva: 0, final: (edad !== null && edad <= 12) ? 190 : 590 };
+  }
+  if (hab.indexOf('doble') >= 0) return { reserva: 1000, final: 1190 };
+  return { reserva: 1000, final: 1510 };
+}
+
+function enviarRecordatorioPagosVencidos_() {
+  try {
+    const hoy = new Date();
+    const programas = [
+      { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, key: 'clinic', label: 'Clinic' },
+      { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, key: 'world_challenge', label: 'World Challenge' }
+    ];
+
+    const pendientes = [];
+
+    programas.forEach(function(fuente) {
+      const esWC = fuente.key === 'world_challenge';
+      const deadlines = DEADLINES_PAGO[fuente.key];
+
+      const conceptosVencidos = [];
+      ['reserva', 'tiquete', 'final'].forEach(function(c) {
+        if (hoy > deadlines[c]) conceptosVencidos.push(c);
+      });
+      if (!conceptosVencidos.length) return;
+
+      // 1. Datos de Inscripción: tipo, habitación, fecha_nac, tiquete_aereo, email
+      const inscSheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
+      const inscData = inscSheet.getDataRange().getValues();
+      const headers = inscData[0] || [];
+      let nombreCol = -1, tipoCol = -1, habCol = -1, fechaNacCol = -1, tiqueteCol = -1, emailCol = -1;
+      for (let j = 0; j < headers.length; j++) {
+        const h = String(headers[j]).toLowerCase().trim();
+        if (h === 'nombre' && nombreCol < 0) nombreCol = j;
+        if (h === 'tipo') tipoCol = j;
+        if (h === 'habitacion' || h === 'habitación') habCol = j;
+        if (h.indexOf('fecha') >= 0 && h.indexOf('nac') >= 0) fechaNacCol = j;
+        if (h === 'tiquete aereo' || h === 'tiquete aéreo') tiqueteCol = j;
+        if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+      }
+      if (nombreCol < 0) return;
+
+      const participantesMap = {};
+      for (let i = 1; i < inscData.length; i++) {
+        const nombre = String(inscData[i][nombreCol] || '').trim();
+        if (!nombre) continue;
+        participantesMap[normText_(nombre)] = {
+          nombre: nombre,
+          email: emailCol >= 0 ? String(inscData[i][emailCol] || '').trim() : '',
+          tipo: tipoCol >= 0 ? String(inscData[i][tipoCol] || '') : '',
+          habitacion: habCol >= 0 ? String(inscData[i][habCol] || '') : '',
+          fechaNac: fechaNacCol >= 0 ? inscData[i][fechaNacCol] : '',
+          tieneTiquete: tiqueteCol >= 0 && String(inscData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0
+        };
+      }
+
+      // 2. Estado de pagos por participante+concepto desde Pagos
+      const pagosSheet = getSheetCI(SpreadsheetApp.openById(fuente.budgetSheetId), 'Pagos');
+      if (!pagosSheet) return;
+      const pc = getPagosColMap_(pagosSheet);
+      if (!pc.nombre_familia || !pc.notas || !pc.estado) return;
+      const lastRow = pagosSheet.getLastRow();
+      const estadoPorNombreConcepto = {};
+      if (lastRow >= 6) {
+        const readWidth = Math.max(pc.nombre_familia, pc.notas, pc.estado);
+        const pagData = pagosSheet.getRange(6, 1, lastRow - 5, readWidth).getValues();
+        let currentNombre = '';
+        for (let i = 0; i < pagData.length; i++) {
+          const rowNombre = String(pagData[i][pc.nombre_familia - 1] || '').trim();
+          if (rowNombre) {
+            if (rowNombre.toLowerCase().indexOf('total') >= 0) { currentNombre = ''; continue; }
+            currentNombre = rowNombre;
+          }
+          if (!currentNombre) continue;
+          const concepto = String(pagData[i][pc.notas - 1] || '').toLowerCase().trim();
+          const estado = String(pagData[i][pc.estado - 1] || '').toLowerCase().trim();
+          const key = normText_(currentNombre);
+          if (!estadoPorNombreConcepto[key]) estadoPorNombreConcepto[key] = {};
+          estadoPorNombreConcepto[key][concepto] = estado;
+        }
+      }
+
+      // 3. Cruzar: para cada participante y cada concepto vencido, ¿debe algo y no está Completo?
+      const conceptoLabel = { reserva: 'Reserva', tiquete: 'Tiquete aéreo', final: 'Pago Final' };
+      const conceptoNotas = { reserva: 'reserva', tiquete: 'tiquete', final: 'pago final' };
+      Object.keys(participantesMap).forEach(function(key) {
+        const p = participantesMap[key];
+        const montos = montoReservaFinalGS_(p.tipo, p.habitacion, p.fechaNac, esWC);
+        conceptosVencidos.forEach(function(c) {
+          if (c === 'tiquete') {
+            if (!p.tieneTiquete) return; // no debe tiquete
+          } else if (!montos[c] || montos[c] <= 0) {
+            return; // no debe este concepto (ej. Solo Actividades sin reserva)
+          }
+          const estados = estadoPorNombreConcepto[key] || {};
+          const estadoActual = estados[conceptoNotas[c]] || '';
+          if (estadoActual === 'completo') return; // ya pagado
+
+          pendientes.push({
+            nombre: p.nombre, email: p.email,
+            concepto: conceptoLabel[c],
+            programa: fuente.label,
+            estado: estadoActual || 'Sin registrar'
+          });
+        });
+      });
+    });
+
+    if (!pendientes.length) { Logger.log('enviarRecordatorioPagosVencidos_: nadie con pagos vencidos.'); return; }
+
+    const filas = pendientes.map(function(p) {
+      return '<tr>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + p.nombre + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + (p.email || '—') + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + p.concepto + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">' + p.programa + '</td>'
+        + '<td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-transform:capitalize">' + p.estado + '</td></tr>';
+    }).join('');
+
+    const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto">'
+      + '<div style="background:#991b1b;padding:18px 24px;border-radius:8px 8px 0 0">'
+      + '<h2 style="color:#fff;margin:0;font-size:17px">🚨 Pagos vencidos sin completar</h2></div>'
+      + '<div style="background:#f8fafc;padding:22px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
+      + '<p style="color:#334155;margin-top:0">Estos participantes ya pasaron su fecha límite de pago y todavía no tienen el concepto marcado como <strong>Completo</strong>:</p>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;color:#334155"><thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">'
+      + '<th style="padding:8px 12px">Nombre</th><th style="padding:8px 12px">Email</th><th style="padding:8px 12px">Concepto</th><th style="padding:8px 12px">Programa</th><th style="padding:8px 12px">Estado actual</th></tr></thead>'
+      + '<tbody>' + filas + '</tbody></table></div></div>';
+
+    GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+      '🚨 Recordatorio semanal — ' + pendientes.length + ' pago(s) vencido(s) sin completar',
+      pendientes.map(function(p) { return p.nombre + ' — ' + p.concepto + ' (' + p.programa + ')'; }).join('\n'),
+      { htmlBody: htmlBody, name: 'Victory Sports · Pagos' });
+
+    Logger.log('enviarRecordatorioPagosVencidos_: ' + pendientes.length + ' pendiente(s) reportado(s).');
+  } catch (err) {
+    Logger.log('enviarRecordatorioPagosVencidos_ error: ' + err);
+  }
+}
+
+// ── Ejecutar UNA VEZ desde el editor para instalar el trigger semanal (lunes) ──
+function crearTriggerRecordatorioPagosVencidos() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'enviarRecordatorioPagosVencidos_') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('enviarRecordatorioPagosVencidos_')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(9)
+    .inTimezone('America/Bogota')
+    .create();
+  Logger.log('Trigger de recordatorio de pagos vencidos creado: correrá todos los lunes a las 9am (Bogotá).');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // CORREO DE CUMPLEAÑOS AUTOMÁTICO (solo Jugadores, hasta los 18 años)
 // ═══════════════════════════════════════════════════════════════════════
 
