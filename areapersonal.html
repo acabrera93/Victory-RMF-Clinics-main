@@ -6777,7 +6777,7 @@ function confirmarPagoDesdePanel(tipo) {
   .then(res => {
     if (res.ok) {
       statusEl.innerHTML = '<span style="color:#166534">✓ Pago confirmado.</span>';
-      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 2200);
     } else {
       statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
     }
