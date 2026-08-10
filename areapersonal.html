@@ -1193,11 +1193,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
             <div id="itinerario-vuelo-confirmado" style="display:flex;flex-direction:column;gap:12px;">
               <!-- Vuelo ida -->
               <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(90,157,224,0.25);border-radius:8px;padding:14px 16px;">
-                <div style="font-size:11px;font-weight:600;color:var(--blue-bright);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✈️ Vuelo ida · 2 de octubre 2026</div>
+                <div style="font-size:11px;font-weight:600;color:var(--blue-bright);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✈️ Vuelo ida · <span id="itin-ida-fecha">2 de octubre 2026</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">AEROLÍNEA / VUELO</div>
-                    <div style="font-size:14px;font-weight:600;color:#fff;">Air Europa · UX194</div>
+                    <div style="font-size:14px;font-weight:600;color:#fff;" id="itin-ida-vuelo">Air Europa · UX194</div>
                   </div>
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">RUTA</div>
@@ -1205,22 +1205,22 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                   </div>
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">SALIDA (Bogotá)</div>
-                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">20:15 hrs</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);" id="itin-ida-salida">20:15 hrs</div>
                   </div>
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">LLEGADA (Madrid)</div>
-                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">13:00 hrs</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);" id="itin-ida-llegada">13:00 hrs</div>
                   </div>
                 </div>
               </div>
 
               <!-- Vuelo regreso -->
               <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(90,157,224,0.25);border-radius:8px;padding:14px 16px;">
-                <div style="font-size:11px;font-weight:600;color:var(--blue-bright);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✈️ Vuelo regreso · 10 de octubre 2026</div>
+                <div style="font-size:11px;font-weight:600;color:var(--blue-bright);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">✈️ Vuelo regreso · <span id="itin-regreso-fecha">10 de octubre 2026</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">AEROLÍNEA / VUELO</div>
-                    <div style="font-size:14px;font-weight:600;color:#fff;">Air Europa · UX0193</div>
+                    <div style="font-size:14px;font-weight:600;color:#fff;" id="itin-regreso-vuelo">Air Europa · UX0193</div>
                   </div>
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">RUTA</div>
@@ -1228,11 +1228,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                   </div>
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">SALIDA (Madrid)</div>
-                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">15:15 hrs</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);" id="itin-regreso-salida">15:15 hrs</div>
                   </div>
                   <div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:2px;">LLEGADA (Bogotá)</div>
-                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);">18:15 hrs</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--blue-bright);" id="itin-regreso-llegada">18:15 hrs</div>
                   </div>
                 </div>
               </div>
@@ -2908,10 +2908,10 @@ const TIQUETE_EUR = 993; // Valor fijo del tiquete aéreo por persona, convertid
 // para LOS TRES pagos — ver tasaReservaTiquete_() y tiqueteUnitEur_(), que
 // centralizan esta rama para que calc1/calcTiq/congelamiento y
 // calcPaymentTotals/buildBreakdown queden siempre consistentes entre sí.
-const TIQUETE_EUR_WC = 1005; // tiquete aéreo World Challenge — mismo valor para Jugador y Acompañante
+const TIQUETE_EUR_WC = 950; // tiquete aéreo World Challenge — mismo valor para Jugador y Acompañante
 // Valores oficiales según los T&C de World Challenge 2027 (PDFs por tipo de
 // paquete) — son los totales "Sin Tiquete"; el tiquete aéreo se cobra APARTE
-// en su propio panel (1.005€, ver TIQUETE_EUR_WC), no está incluido aquí.
+// en su propio panel (950€, ver TIQUETE_EUR_WC), no está incluido aquí.
 const PRECIOS_WC = {
   jugador:           { reserva: 1150, final: 1740 }, // total sin tiquete: 2.890€ — reserva fija (no % del total; el tiquete se cobra aparte, ver TIQUETE_EUR_WC)
   acomp_doble:       { reserva: 1150, final: 1040 }, // total sin tiquete: 2.190€ — reserva fija (no % del total)
@@ -3029,17 +3029,36 @@ function actualizarFechasLimitePorPrograma_() {
   const elPasaporte2 = document.getElementById('doc-pasaporte-desc-2');
   if (elPasaporte2) elPasaporte2.innerHTML = `Debe tener validez mínima de <strong>6 meses</strong> después del ${finPrograma}. Sin excepciones.`;
 
-  // Itinerario de vuelo grupal: el Clinic ya tiene vuelo confirmado con la
-  // aerolínea; World Challenge todavía no, así que se muestra un aviso de
-  // "por confirmar" en su lugar.
+  // Itinerario de vuelo grupal — Clinic y World Challenge ya tienen vuelo
+  // confirmado con la aerolínea, cada uno con su propio itinerario.
   const elItinTitulo = document.getElementById('itinerario-vuelo-titulo');
-  if (elItinTitulo) elItinTitulo.textContent = esWC ? '🗓️ Itinerario de vuelos' : '🗓️ Itinerario de vuelos confirmado';
+  if (elItinTitulo) elItinTitulo.textContent = '🗓️ Itinerario de vuelos confirmado';
   const elItinPendiente = document.getElementById('itinerario-vuelo-pendiente');
   const elItinConfirmado = document.getElementById('itinerario-vuelo-confirmado');
   if (elItinPendiente && elItinConfirmado) {
-    elItinPendiente.style.display = esWC ? 'block' : 'none';
-    elItinConfirmado.style.display = esWC ? 'none' : 'flex';
+    elItinPendiente.style.display = 'none';
+    elItinConfirmado.style.display = 'flex';
   }
+  const ITIN_VUELOS = {
+    clinic: {
+      idaFecha: '2 de octubre 2026', idaVuelo: 'Air Europa · UX194', idaSalida: '20:15 hrs', idaLlegada: '13:00 hrs',
+      regresoFecha: '10 de octubre 2026', regresoVuelo: 'Air Europa · UX0193', regresoSalida: '15:15 hrs', regresoLlegada: '18:15 hrs'
+    },
+    world_challenge: {
+      idaFecha: '19 de marzo 2027', idaVuelo: 'Air Europa · UX0194', idaSalida: '21:35 hrs', idaLlegada: '13:10 hrs',
+      regresoFecha: '27 de marzo 2027', regresoVuelo: 'Air Europa · UX0193', regresoSalida: '15:15 hrs', regresoLlegada: '19:15 hrs'
+    }
+  };
+  const itinVuelo = esWC ? ITIN_VUELOS.world_challenge : ITIN_VUELOS.clinic;
+  const setItinTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setItinTxt('itin-ida-fecha', itinVuelo.idaFecha);
+  setItinTxt('itin-ida-vuelo', itinVuelo.idaVuelo);
+  setItinTxt('itin-ida-salida', itinVuelo.idaSalida);
+  setItinTxt('itin-ida-llegada', itinVuelo.idaLlegada);
+  setItinTxt('itin-regreso-fecha', itinVuelo.regresoFecha);
+  setItinTxt('itin-regreso-vuelo', itinVuelo.regresoVuelo);
+  setItinTxt('itin-regreso-salida', itinVuelo.regresoSalida);
+  setItinTxt('itin-regreso-llegada', itinVuelo.regresoLlegada);
 
   // Vuelo independiente (participantes que gestionan su propio tiquete).
   const elVueloIndep = document.getElementById('doc-vuelo-independiente-desc');
