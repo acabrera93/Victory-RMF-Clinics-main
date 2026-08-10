@@ -638,8 +638,26 @@ function getCuposTiqueteWC_() {
 }
 
 // ───── NOTIFICAR ACCESO AL ÁREA PERSONAL ───────────────────────────────────────
+// buscarParticipantes() (action=buscar) se llama no solo al iniciar sesión,
+// sino también cada 60s mientras el área personal sigue abierta
+// (refrescarParticipanteAuto_ en areapersonal.html) — sin límite, eso mandaba
+// un correo de "acceso" cada minuto. Máximo 2 avisos por email por día (huso
+// Bogotá), y cada uno separado del anterior por al menos 1 hora — se guarda
+// contador + timestamp del último envío en una sola propiedad ("count|epoch").
 function notificarAccesoAreaPersonal(email, participants) {
   try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    const props = PropertiesService.getScriptProperties();
+    const ahora = new Date();
+    const hoy = Utilities.formatDate(ahora, 'America/Bogota', 'yyyy-MM-dd');
+    const dedupKey = 'acceso_notif_' + hoy + '_' + emailNorm;
+    const raw = (props.getProperty(dedupKey) || '').split('|');
+    const enviados = parseInt(raw[0]) || 0;
+    const ultimoEnvio = raw[1] ? parseInt(raw[1]) : 0;
+    if (enviados >= 2) return; // ya se enviaron los 2 avisos permitidos hoy
+    if (ultimoEnvio && (ahora.getTime() - ultimoEnvio) < 3600000) return; // menos de 1 hora desde el aviso anterior
+    props.setProperty(dedupKey, (enviados + 1) + '|' + ahora.getTime());
+
     const nombres = participants.map(function(p) {
       for (const k in p) { if (String(k).toLowerCase().trim() === 'nombre') return p[k]; }
       return '';
