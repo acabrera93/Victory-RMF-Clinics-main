@@ -819,6 +819,9 @@
   .form-select option { background: var(--navy-mid); }
   .form-input.field-error, .form-select.field-error { border-color: #dc2626; }
   .field-error-msg { display: none; color: #f87171; font-size: 12px; margin-top: 6px; }
+  .phone-row { display: flex; gap: 8px; }
+  .phone-code-input { flex: 0 0 68px; width: 68px; text-align: center; padding-left: 4px; padding-right: 4px; }
+  .phone-row .form-input:not(.phone-code-input) { flex: 1 1 auto; }
   .field-error-msg.show { display: block; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .form-submit {
@@ -1752,8 +1755,12 @@
             <div class="field-error-msg" id="err-f-edad">Por favor selecciona la edad del jugador.</div>
           </div>
           <div class="form-group">
-            <input class="form-input" id="f-phone" type="tel" placeholder="WhatsApp *" data-placeholder-es="WhatsApp *" data-placeholder-en="WhatsApp *" required>
-            <div class="field-error-msg" id="err-f-phone">Ingresa un número de WhatsApp válido con código de país (ej: +57 310...).</div>
+            <div class="phone-row">
+              <input class="form-input phone-code-input" id="f-phone-code" type="text" inputmode="tel" placeholder="+57" data-placeholder-es="+57" data-placeholder-en="+57" maxlength="5" required>
+              <input class="form-input" id="f-phone" type="tel" placeholder="Número de WhatsApp *" data-placeholder-es="Número de WhatsApp *" data-placeholder-en="WhatsApp number *" required>
+            </div>
+            <div class="field-error-msg" id="err-f-phone-code">Ingresa el indicativo de tu país (ej: +57).</div>
+            <div class="field-error-msg" id="err-f-phone">Ingresa un número de WhatsApp válido (ej: 310 123 4567).</div>
           </div>
           <div class="form-group">
             <input class="form-input" id="f-email" type="email" placeholder="Correo electrónico *" data-placeholder-es="Correo electrónico *" data-placeholder-en="Email address *" required>
@@ -1894,8 +1901,9 @@ function selectPrograma(which) {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^\+?[\d\s\-()]{8,}$/;
-const REQUIRED_FIELD_IDS = ['f-programa', 'f-nombre', 'f-jugador', 'f-edad', 'f-phone', 'f-email'];
+const PHONE_CODE_RE = /^\+\d{1,4}$/;
+const PHONE_RE = /^[\d\s\-()]{6,}$/;
+const REQUIRED_FIELD_IDS = ['f-programa', 'f-nombre', 'f-jugador', 'f-edad', 'f-phone-code', 'f-phone', 'f-email'];
 
 function clearFieldErrors() {
   REQUIRED_FIELD_IDS.forEach(id => {
@@ -1922,6 +1930,7 @@ async function handleSubmit(e) {
   const nombre     = document.getElementById('f-nombre')?.value?.trim();
   const jugador    = document.getElementById('f-jugador')?.value?.trim();
   const edad       = document.getElementById('f-edad')?.value;
+  const phoneCode  = document.getElementById('f-phone-code')?.value?.trim();
   const phone      = document.getElementById('f-phone')?.value?.trim();
   const email      = document.getElementById('f-email')?.value?.trim();
 
@@ -1931,6 +1940,7 @@ async function handleSubmit(e) {
   if (!nombre)   { markFieldError('f-nombre');  firstErrorId = firstErrorId || 'f-nombre'; }
   if (!jugador)  { markFieldError('f-jugador'); firstErrorId = firstErrorId || 'f-jugador'; }
   if (!edad)     { markFieldError('f-edad');    firstErrorId = firstErrorId || 'f-edad'; }
+  if (!phoneCode || !PHONE_CODE_RE.test(phoneCode)) { markFieldError('f-phone-code'); firstErrorId = firstErrorId || 'f-phone-code'; }
   if (!phone || !PHONE_RE.test(phone)) { markFieldError('f-phone'); firstErrorId = firstErrorId || 'f-phone'; }
   if (!email || !EMAIL_RE.test(email)) { markFieldError('f-email'); firstErrorId = firstErrorId || 'f-email'; }
 
@@ -1944,12 +1954,18 @@ async function handleSubmit(e) {
   btn.disabled = true;
   btn.innerHTML = '<span style="opacity:0.7">Enviando...</span>';
 
+  // phone_whatsapp = indicativo + número, solo dígitos (sin '+', espacios ni
+  // guiones) — listo para armar el link de WhatsApp en Make.com como
+  // https://wa.me/{{phone_whatsapp}} sin tener que limpiar el string allá.
+  const phoneWhatsapp = (phoneCode + phone).replace(/[^\d]/g, '');
+
   const payload = {
     nombre:            nombre || '',
     jugador:           jugador || '',
     edad:              edad || '',
     pais:              '',
-    phone:             phone || '',
+    phone:             (phoneCode + ' ' + phone) || '',
+    phone_whatsapp:    phoneWhatsapp,
     email:             email || '',
     programa:          programa || '',
     mensaje_whatsapp:  getMensajeWhatsApp({ nombre, programa }),
@@ -1970,7 +1986,7 @@ async function handleSubmit(e) {
     document.getElementById('spam-modal').style.display = 'flex';
     btn.innerHTML = '✓ Solicitud enviada';
     btn.style.background = '#1a3a60';
-    ['f-nombre','f-jugador','f-phone','f-email'].forEach(id => {
+    ['f-nombre','f-jugador','f-phone-code','f-phone','f-email'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
