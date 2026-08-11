@@ -794,6 +794,28 @@
     background-position: right 14px center;
   }
   .form-select:focus { border-color: rgba(59,127,212,0.6); }
+  .programa-toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .programa-toggle-card {
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.04);
+    border-radius: var(--radius);
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .programa-toggle-card:hover { border-color: rgba(90,157,224,0.5); }
+  .programa-toggle-card.selected { border-color: var(--blue); background: rgba(30,91,168,0.18); }
+  .programa-toggle-date { font-size: 10px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+  .programa-toggle-card.selected .programa-toggle-date { color: var(--blue-bright); }
+  .programa-toggle-name { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); line-height: 1.3; }
+  .programa-toggle-card.selected .programa-toggle-name { color: var(--white); }
+  .programa-toggle-card.field-error { border-color: #dc2626; }
+  @media (max-width: 480px) {
+    .programa-toggle-grid { grid-template-columns: 1fr; }
+  }
   .form-select option { background: var(--navy-mid); }
   .form-input.field-error, .form-select.field-error { border-color: #dc2626; }
   .field-error-msg { display: none; color: #f87171; font-size: 12px; margin-top: 6px; }
@@ -1688,14 +1710,22 @@
       <div class="form-right">
         <div class="form-card">
           <div class="form-title" data-es="Recibe la información" data-en="Get the information">Recibe la información</div>
-          <div class="form-sub" data-es="Cupos Limitados — Real Madrid Foundation Clinic 2026" data-en="Limited Spots — Real Madrid Foundation Clinic 2026">Cupos Limitados — Real Madrid Foundation Clinic 2026</div>
+          <div class="form-sub" data-es="Cupos limitados en ambos programas" data-en="Limited spots on both programs">Cupos limitados en ambos programas</div>
 
           <div class="form-group">
-            <select class="form-select" id="f-programa" required>
-              <option value="Real Madrid Foundation Clinic" data-es="Real Madrid Foundation Clinic" data-en="Real Madrid Foundation Clinic">Real Madrid Foundation Clinic</option>
-              <option value="Real Madrid Foundation World Challenge" data-es="Real Madrid Foundation World Challenge" data-en="Real Madrid Foundation World Challenge">Real Madrid Foundation World Challenge</option>
-            </select>
-            <div class="field-error-msg" id="err-f-programa">Por favor selecciona un programa.</div>
+            <label class="form-label" style="margin-bottom:8px;" data-es="¿Qué programa te interesa? *" data-en="Which program are you interested in? *">¿Qué programa te interesa? *</label>
+            <div class="programa-toggle-grid">
+              <div class="programa-toggle-card" id="card-clinic" data-value="Real Madrid Foundation Clinic" onclick="selectPrograma('clinic')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPrograma('clinic');}">
+                <span class="programa-toggle-date" data-es="2 – 10 OCT 2026" data-en="OCT 2 – 10, 2026">2 – 10 OCT 2026</span>
+                <span class="programa-toggle-name" data-es="RMF Clinic 2026" data-en="RMF Clinic 2026">RMF Clinic 2026</span>
+              </div>
+              <div class="programa-toggle-card" id="card-wc" data-value="Real Madrid Foundation World Challenge" onclick="selectPrograma('wc')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPrograma('wc');}">
+                <span class="programa-toggle-date" data-es="19 – 27 MAR 2027" data-en="MAR 19 – 27, 2027">19 – 27 MAR 2027</span>
+                <span class="programa-toggle-name" data-es="World Challenge 2027" data-en="World Challenge 2027">World Challenge 2027</span>
+              </div>
+            </div>
+            <input type="hidden" id="f-programa" required>
+            <div class="field-error-msg" id="err-f-programa" data-es="Por favor selecciona un programa." data-en="Please select a program.">Por favor selecciona un programa.</div>
           </div>
           <div class="form-group">
             <input class="form-input" id="f-nombre" type="text" placeholder="Tu nombre y apellido *" data-placeholder-es="Tu nombre y apellido *" data-placeholder-en="Your full name *" required>
@@ -1847,26 +1877,48 @@ Un asesor de Revel Fundación te contactará en menos de 24 horas para:
 ¡Nos emociona acompañarte en esta experiencia! 🌍`;
 }
 
+function selectPrograma(which) {
+  const cardClinic = document.getElementById('card-clinic');
+  const cardWc = document.getElementById('card-wc');
+  const hidden = document.getElementById('f-programa');
+  cardClinic.classList.remove('selected', 'field-error');
+  cardWc.classList.remove('selected', 'field-error');
+  document.getElementById('err-f-programa')?.classList.remove('show');
+  if (which === 'clinic') {
+    cardClinic.classList.add('selected');
+    hidden.value = cardClinic.dataset.value;
+  } else {
+    cardWc.classList.add('selected');
+    hidden.value = cardWc.dataset.value;
+  }
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[\d\s\-()]{8,}$/;
-const REQUIRED_FIELD_IDS = ['f-nombre', 'f-jugador', 'f-edad', 'f-phone', 'f-email'];
+const REQUIRED_FIELD_IDS = ['f-programa', 'f-nombre', 'f-jugador', 'f-edad', 'f-phone', 'f-email'];
 
 function clearFieldErrors() {
   REQUIRED_FIELD_IDS.forEach(id => {
     document.getElementById(id)?.classList.remove('field-error');
     document.getElementById('err-' + id)?.classList.remove('show');
   });
+  document.getElementById('card-clinic')?.classList.remove('field-error');
+  document.getElementById('card-wc')?.classList.remove('field-error');
 }
 
 function markFieldError(id) {
   document.getElementById(id)?.classList.add('field-error');
   document.getElementById('err-' + id)?.classList.add('show');
+  if (id === 'f-programa') {
+    document.getElementById('card-clinic')?.classList.add('field-error');
+    document.getElementById('card-wc')?.classList.add('field-error');
+  }
 }
 
 async function handleSubmit(e) {
   e.preventDefault();
 
-  const programa   = document.getElementById('f-programa')?.value || 'Real Madrid Foundation Clinic';
+  const programa   = document.getElementById('f-programa')?.value;
   const nombre     = document.getElementById('f-nombre')?.value?.trim();
   const jugador    = document.getElementById('f-jugador')?.value?.trim();
   const edad       = document.getElementById('f-edad')?.value;
@@ -1875,6 +1927,7 @@ async function handleSubmit(e) {
 
   clearFieldErrors();
   let firstErrorId = null;
+  if (!programa) { markFieldError('f-programa'); firstErrorId = firstErrorId || 'f-programa'; }
   if (!nombre)   { markFieldError('f-nombre');  firstErrorId = firstErrorId || 'f-nombre'; }
   if (!jugador)  { markFieldError('f-jugador'); firstErrorId = firstErrorId || 'f-jugador'; }
   if (!edad)     { markFieldError('f-edad');    firstErrorId = firstErrorId || 'f-edad'; }
