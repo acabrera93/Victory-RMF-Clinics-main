@@ -180,6 +180,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .mc-blue .mc-value{color:var(--blue)}
 .mc-green .mc-value{color:#166534}
 .mc-orange .mc-value{color:#c2410c}
+.kpi-clickable{cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .1s;user-select:none}
+.kpi-clickable:hover{box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.kpi-clickable:active{transform:scale(.98)}
+.kpi-activo{border-color:var(--blue) !important;box-shadow:0 0 0 2px rgba(30,91,168,.18)}
 /* Admin KPI cards v2 */
 .kpi-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px}
 .kpi-card.kc-blue{border-top:3px solid var(--blue)}
@@ -5815,38 +5819,32 @@ function renderAdminPagos(fin) {
     pagoMap[key][(p.notas || '').toLowerCase().trim()] = p;
   });
 
-  const conPago  = allNombres.filter(n => pagoMap[normNombre(n)]).length;
-  const sinPago  = allNombres.length - conPago;
-  const completos = allNombres.filter(n => {
-    const key = normNombre(n);
+  // Clasificación por participante — usada tanto para los KPIs (conteo) como
+  // para el atributo data-resumen de cada fila (filtro al hacer clic en un KPI).
+  // Debe coincidir exactamente con la lógica que antes solo vivía inline en
+  // los .filter() de completos/parciales, para que el número del KPI y las
+  // filas que efectivamente se muestran al hacer clic sean siempre consistentes.
+  const resumenPagoParticipante_ = key => {
     const pp = pagoMap[key] || {};
+    if (!Object.keys(pp).length) return 'sin_pago';
     const reserva   = pp['reserva'];
     const pagoFinal = pp['pago final'];
     const tiquete   = pp['tiquete'];
     const isCompleto = p => p && (p.estado || '').toLowerCase() === 'completo';
-    if (!esSoloAct(key) && !isCompleto(reserva)) return false;
-    if (!isCompleto(pagoFinal)) return false;
-    if (tiquete && !isCompleto(tiquete)) return false;
-    return true;
-  }).length;
-  const parciales = allNombres.filter(n => {
-    const key = normNombre(n);
-    const pp = pagoMap[key] || {};
-    if (!Object.keys(pp).length) return false;
-    const reserva   = pp['reserva'];
-    const pagoFinal = pp['pago final'];
-    const tiquete   = pp['tiquete'];
-    const isCompleto = p => p && (p.estado || '').toLowerCase() === 'completo';
-    if (!esSoloAct(key) && !isCompleto(reserva)) return true;
-    if (!isCompleto(pagoFinal)) return true;
-    if (tiquete && !isCompleto(tiquete)) return true;
-    return false;
-  }).length;
+    if (!esSoloAct(key) && !isCompleto(reserva)) return 'parcial';
+    if (!isCompleto(pagoFinal)) return 'parcial';
+    if (tiquete && !isCompleto(tiquete)) return 'parcial';
+    return 'completo';
+  };
+
+  const completos = allNombres.filter(n => resumenPagoParticipante_(normNombre(n)) === 'completo').length;
+  const parciales = allNombres.filter(n => resumenPagoParticipante_(normNombre(n)) === 'parcial').length;
+  const sinPago   = allNombres.filter(n => resumenPagoParticipante_(normNombre(n)) === 'sin_pago').length;
 
   document.getElementById('admin-pagos-summary').innerHTML = `
-    <div class="metric-card" style="border-top:3px solid #166534"><div class="mc-label">Pagos completos</div><div class="mc-value" style="color:#166534">${completos}</div><div class="mc-sub">Reserva + Pago Final (+ Tiquete si aplica)</div></div>
-    <div class="metric-card mc-green"><div class="mc-label">Pagos parciales</div><div class="mc-value">${parciales}</div><div class="mc-sub">Al menos 1 pago pendiente</div></div>
-    <div class="metric-card"><div class="mc-label">Sin pago aún</div><div class="mc-value" style="color:#dc2626">${sinPago}</div><div class="mc-sub">Sin ningún pago registrado</div></div>
+    <div id="kpi-pago-completo" class="metric-card kpi-clickable${filtroResumenPagos==='completo'?' kpi-activo':''}" style="border-top:3px solid #166534" onclick="filtrarPorResumenPagos('completo')"><div class="mc-label">Pagos completos</div><div class="mc-value" style="color:#166534">${completos}</div><div class="mc-sub">Reserva + Pago Final (+ Tiquete si aplica)</div></div>
+    <div id="kpi-pago-parcial" class="metric-card mc-green kpi-clickable${filtroResumenPagos==='parcial'?' kpi-activo':''}" onclick="filtrarPorResumenPagos('parcial')"><div class="mc-label">Pagos parciales</div><div class="mc-value">${parciales}</div><div class="mc-sub">Al menos 1 pago pendiente</div></div>
+    <div id="kpi-pago-sin_pago" class="metric-card kpi-clickable${filtroResumenPagos==='sin_pago'?' kpi-activo':''}" onclick="filtrarPorResumenPagos('sin_pago')"><div class="mc-label">Sin pago aún</div><div class="mc-value" style="color:#dc2626">${sinPago}</div><div class="mc-sub">Sin ningún pago registrado</div></div>
   `;
 
   const fmtPago = (pago) => {
@@ -5896,7 +5894,7 @@ function renderAdminPagos(fin) {
     const esPendienteConfirmar = p => p && (p.estado || '').toLowerCase().trim() === 'pendiente de confirmar';
     const tieneRevisar = esPendienteConfirmar(reserva) || esPendienteConfirmar(tiquete) || esPendienteConfirmar(pagoFinal);
     const colegioKey = normNombre(adRow.club_colegio || '');
-    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-colegio="${escapeHtml(colegioKey)}" data-revisar="${tieneRevisar ? '1' : '0'}">
+    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-colegio="${escapeHtml(colegioKey)}" data-revisar="${tieneRevisar ? '1' : '0'}" data-resumen="${resumenPagoParticipante_(key)}">
       <td>${tipoBadge}</td>
       <td style="font-weight:500">${escapeHtml(nombre)}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
@@ -5913,6 +5911,9 @@ function renderAdminPagos(fin) {
 }
 
 let soloRevisarPagos = false;
+// null | 'completo' | 'parcial' | 'sin_pago' — activado al hacer clic en uno
+// de los 3 KPIs de arriba de la tabla de Pagos (ver renderAdminPagos).
+let filtroResumenPagos = null;
 
 function filtrarTablaPagos(q) {
   const term = (q || '').toLowerCase().trim();
@@ -5922,12 +5923,25 @@ function filtrarTablaPagos(q) {
     const pasaRedcol = esBusquedaRedcol && esColegioRedcol_(tr.dataset.colegio || '');
     const pasaTexto = !term || pasaRedcol || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term);
     const pasaRevisar = !soloRevisarPagos || tr.dataset.revisar === '1';
-    const visible = pasaTexto && pasaRevisar;
+    const pasaResumen = !filtroResumenPagos || tr.dataset.resumen === filtroResumenPagos;
+    const visible = pasaTexto && pasaRevisar && pasaResumen;
     tr.style.display = visible ? '' : 'none';
     if (visible) visibles++;
   });
   const countEl = document.getElementById('pagos-search-count');
   if (countEl) countEl.textContent = visibles + (visibles === 1 ? ' resultado' : ' resultados');
+}
+
+// Clic en un KPI de "Pagos completos/parciales/sin pago" — filtra la tabla de
+// abajo a solo esos participantes. Un segundo clic en el MISMO KPI lo quita
+// (vuelve a mostrar todo, sujeto a los demás filtros activos).
+function filtrarPorResumenPagos(valor) {
+  filtroResumenPagos = (filtroResumenPagos === valor) ? null : valor;
+  ['completo', 'parcial', 'sin_pago'].forEach(v => {
+    const card = document.getElementById('kpi-pago-' + v);
+    if (card) card.classList.toggle('kpi-activo', filtroResumenPagos === v);
+  });
+  reapplyPagosFilter();
 }
 
 function toggleSoloRevisarPagos() {
@@ -6475,6 +6489,24 @@ function saveComercialModal() {
   });
 }
 
+// Reabre el modal de Pagos DESPUÉS de refrescar adminFinData desde el servidor.
+// Las 4 acciones del modal (registrar/agregar abono/confirmar/actualizar
+// estado) reabrían el modal directo desde el adminFinData en memoria, que
+// todavía tenía el estado ANTERIOR al cambio recién guardado (adminFinData
+// solo se actualiza al cargar la pestaña o con "↻ Actualizar") — el admin
+// veía "Actualizado" un instante y luego, al reabrirse el modal con datos
+// viejos, parecía que el estado "volvía" a Parcial/Pendiente. No era la fila
+// del Sheet (que sí quedó bien) sino el modal mostrando una foto vieja.
+function refrescarFinDataYReabrirPagosModal_() {
+  const idxAbrir = pagoCurrentIdx, nombreAbrir = pagoCurrentNombre;
+  const programa = pagoCurrentProgramKey || adminProgramaActivo;
+  fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&programa=' + encodeURIComponent(programa) + '&_t=' + Date.now(), { redirect: 'follow' })
+    .then(r => r.json())
+    .then(fin => { if (fin && !fin.error) adminFinData = fin; })
+    .catch(() => {})
+    .finally(() => { openPagosModal(idxAbrir, nombreAbrir); });
+}
+
 // ── MODAL PAGOS ────────────────────────────────────────────────────────────────
 function openPagosModal(idx, nombreOverride) {
   if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
@@ -6812,7 +6844,7 @@ function agregarAbonoServidor(tid, tipo) {
   .then(res => {
     if (res.ok) {
       statusEl.innerHTML = '<span style="color:#166534">✓ Abono agregado.</span>';
-      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+      setTimeout(() => { refrescarFinDataYReabrirPagosModal_(); statusEl.style.display = 'none'; }, 700);
     } else {
       statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
     }
@@ -6868,7 +6900,7 @@ function confirmarPagoDesdePanel(tipo) {
   .then(res => {
     if (res.ok) {
       statusEl.innerHTML = '<span style="color:#166534">✓ Pago confirmado.</span>';
-      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 2200);
+      setTimeout(() => { refrescarFinDataYReabrirPagosModal_(); statusEl.style.display = 'none'; }, 2200);
     } else {
       statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
     }
@@ -6899,7 +6931,7 @@ function actualizarEstadoDesdePanel(tipo) {
   .then(res => {
     if (res.ok) {
       statusEl.innerHTML = '<span style="color:#166534">✓ Actualizado.</span>';
-      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+      setTimeout(() => { refrescarFinDataYReabrirPagosModal_(); statusEl.style.display = 'none'; }, 700);
     } else {
       statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
     }
@@ -6992,7 +7024,7 @@ function registrarPagoDesdePanel(tipo) {
           if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
         }).catch(() => {});
       }
-      setTimeout(() => { openPagosModal(pagoCurrentIdx, pagoCurrentNombre); statusEl.style.display = 'none'; }, 700);
+      setTimeout(() => { refrescarFinDataYReabrirPagosModal_(); statusEl.style.display = 'none'; }, 700);
     } else {
       statusEl.innerHTML = `<span style="color:#dc2626">Error: ${res.error || 'desconocido'}</span>`;
     }
