@@ -1079,6 +1079,47 @@ function buscarEmailPorNombre_(nombre, programa) {
   return '';
 }
 
+// "Redcol" agrupa a los jugadores de estos 4 colegios, que pagan de forma
+// centralizada a través del colegio (no cada familia por su cuenta) — debe
+// coincidir con REDCOL_COLEGIOS_KEYWORDS / esColegioRedcol_ en areapersonal.html.
+// normText_ (definida más abajo en este archivo, function hoisting la deja
+// disponible aquí) hace el mismo trabajo que normNombre() en el frontend:
+// minúsculas + sin tildes, para que la coincidencia no dependa de la
+// redacción exacta del campo Club/Colegio en el Sheet.
+const REDCOL_COLEGIOS_KEYWORDS = ['new cambridge', 'britanico', 'arboleda', 'vermont'];
+function esColegioRedcol_(clubColegio) {
+  const c = normText_(clubColegio);
+  return REDCOL_COLEGIOS_KEYWORDS.some(function(k) { return c.indexOf(k) >= 0; });
+}
+
+// Busca si un participante (por nombre) pertenece a un colegio Redcol,
+// leyendo la columna Club/Colegio de la hoja de Inscripciones del programa.
+function participanteEsRedcol_(nombre, programa) {
+  try {
+    const nombreNorm = String(nombre || '').toLowerCase().trim();
+    if (!nombreNorm) return false;
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    let nombreCol = -1, colegioCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
+      if (h.indexOf('colegio') >= 0 || h === 'club') colegioCol = j;
+    }
+    if (nombreCol < 0 || colegioCol < 0) return false;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][nombreCol] || '').toLowerCase().trim() === nombreNorm) {
+        return esColegioRedcol_(data[i][colegioCol]);
+      }
+    }
+    return false;
+  } catch (err) {
+    Logger.log('participanteEsRedcol_ error: ' + err);
+    return false;
+  }
+}
+
 // Envía al participante la confirmación de que su pago quedó registrado.
 // `estado` determina el texto y color: "Completo" = verde/confirmado,
 // "Parcial" = ámbar/abono (sin mencionar cuánto falta por pagar, ese dato
@@ -1087,6 +1128,13 @@ function buscarEmailPorNombre_(nombre, programa) {
 // al mismo concepto — cada uno deja su propio correo como comprobante.
 function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metodoPago, esperadoEur, historialEntradas) {
   try {
+    // Colegios Redcol pagan de forma centralizada — no se envía notificación
+    // individual de pago ni al acudiente ni la copia interna del admin, para
+    // no confundir a familias que no hicieron el pago ellas mismas.
+    if (participanteEsRedcol_(nombre, programa)) {
+      Logger.log('notificarPagoConfirmado: omitido para ' + nombre + ' (colegio Redcol).');
+      return;
+    }
     const email = buscarEmailPorNombre_(nombre, programa);
     if (!email) {
       Logger.log('notificarPagoConfirmado: no se encontró email para ' + nombre);
@@ -4359,7 +4407,7 @@ function enviarRecordatorioPagosVencidos_() {
       const inscSheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
       const inscData = inscSheet.getDataRange().getValues();
       const headers = inscData[0] || [];
-      let nombreCol = -1, tipoCol = -1, habCol = -1, fechaNacCol = -1, tiqueteCol = -1, emailCol = -1;
+      let nombreCol = -1, tipoCol = -1, habCol = -1, fechaNacCol = -1, tiqueteCol = -1, emailCol = -1, colegioCol = -1;
       for (let j = 0; j < headers.length; j++) {
         const h = String(headers[j]).toLowerCase().trim();
         if (h === 'nombre' && nombreCol < 0) nombreCol = j;
@@ -4368,6 +4416,7 @@ function enviarRecordatorioPagosVencidos_() {
         if (h.indexOf('fecha') >= 0 && h.indexOf('nac') >= 0) fechaNacCol = j;
         if (h === 'tiquete aereo' || h === 'tiquete aéreo') tiqueteCol = j;
         if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+        if (h.indexOf('colegio') >= 0 || h === 'club') colegioCol = j;
       }
       if (nombreCol < 0) return;
 
@@ -4381,7 +4430,8 @@ function enviarRecordatorioPagosVencidos_() {
           tipo: tipoCol >= 0 ? String(inscData[i][tipoCol] || '') : '',
           habitacion: habCol >= 0 ? String(inscData[i][habCol] || '') : '',
           fechaNac: fechaNacCol >= 0 ? inscData[i][fechaNacCol] : '',
-          tieneTiquete: tiqueteCol >= 0 && String(inscData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0
+          tieneTiquete: tiqueteCol >= 0 && String(inscData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0,
+          esRedcol: colegioCol >= 0 && esColegioRedcol_(inscData[i][colegioCol])
         };
       }
 
@@ -4416,6 +4466,7 @@ function enviarRecordatorioPagosVencidos_() {
       const conceptoNotas = { reserva: 'reserva', tiquete: 'tiquete', final: 'pago final' };
       Object.keys(participantesMap).forEach(function(key) {
         const p = participantesMap[key];
+        if (p.esRedcol) return; // colegios Redcol pagan de forma centralizada — no se les recuerda pagos vencidos
         const montos = montoReservaFinalGS_(p.tipo, p.habitacion, p.fechaNac, esWC);
         conceptosVencidos.forEach(function(c) {
           if (c === 'tiquete') {
