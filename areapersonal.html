@@ -531,8 +531,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="EFI">
       <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel">
     </div>
-    <div class="login-title">Área Personal</div>
-    <div class="login-sub">RMF Clinic 2026 · Madrid, España<br>Ingresa el correo electrónico con el que te inscribiste para acceder a tu información.</div>
+    <div class="login-sub">Ingresa el correo electrónico con el que te inscribiste para acceder a tu información.</div>
     <input class="login-input" id="login-email" type="email" placeholder="tucorreo@ejemplo.com" onkeydown="if(event.key==='Enter') doLogin()">
     <button class="login-btn" id="login-btn" onclick="doLogin()">Acceder →</button>
     <div class="login-err" id="login-err">No encontramos ninguna inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.</div>
@@ -706,6 +705,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="calc-note1" style="display:none;margin-top:12px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles en este momento.</strong> Contacta a tu asesor para conocer el tipo de cambio aplicado: <strong>alejandro.cabrera@fundacionrevel.net</strong> · WhatsApp: <strong>+34 658233126</strong></div>
     </div>
 
+    <div id="reserva-tc-lock-msg" style="display:none;margin-bottom:20px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:14px 16px;font-size:14px;color:#92400e;line-height:1.6;text-align:center;font-weight:500">🔒 Debes aceptar los Términos y Condiciones para habilitar el pago de la reserva.</div>
     <div class="card pay-lock" id="pay-card1">
       <div class="ctitle">Pago de reserva — 1.000 EUR</div>
       <div id="aviso-abono-reserva" class="info-box" style="display:none"></div>
@@ -2159,6 +2159,17 @@ function normalizeParticipant(raw) {
 // Normaliza nombres para comparar identidad entre hojas (ignora may/min, espacios y tildes)
 function normNombre(s) {
   return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// "Redcol" agrupa a los jugadores de estos 4 colegios — no es un valor real
+// del campo Club/Colegio, así que buscar "redcol" en Participantes/Pagos no
+// encontraría nada por texto plano. Se usan fragmentos distintivos de cada
+// nombre (sin "Colegio"/ciudad) para que la coincidencia sea robusta aunque
+// el dato en el Sheet varíe un poco en redacción.
+const REDCOL_COLEGIOS_KEYWORDS = ['new cambridge', 'britanico', 'arboleda', 'vermont'];
+function esColegioRedcol_(clubColegio) {
+  const c = normNombre(clubColegio);
+  return REDCOL_COLEGIOS_KEYWORDS.some(k => c.includes(k));
 }
 
 function extractParticipants(body) {
@@ -3684,6 +3695,12 @@ function onTC() {
   const ok = document.getElementById('tc-chk').checked;
   const card = document.getElementById('pay-card1');
   if (card) card.classList.toggle('pay-lock', !ok);
+  // El aviso vive FUERA de #pay-card1 a propósito: pay-lock deja la tarjeta
+  // al 40% de opacidad, y un hijo no puede "deshacer" la opacidad de su
+  // padre con su propio opacity — el mensaje quedaría igual de apagado y
+  // fácil de pasar por alto si estuviera adentro.
+  const lockMsg = document.getElementById('reserva-tc-lock-msg');
+  if (lockMsg) lockMsg.style.display = ok ? 'none' : 'block';
   const btnContinuar = document.getElementById('btn-continuar-tc');
   if (btnContinuar) {
     btnContinuar.disabled = !ok;
@@ -5876,7 +5893,8 @@ function renderAdminPagos(fin) {
     const emailKey = (adRow.email || '').toLowerCase();
     const esPendienteConfirmar = p => p && (p.estado || '').toLowerCase().trim() === 'pendiente de confirmar';
     const tieneRevisar = esPendienteConfirmar(reserva) || esPendienteConfirmar(tiquete) || esPendienteConfirmar(pagoFinal);
-    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-revisar="${tieneRevisar ? '1' : '0'}">
+    const colegioKey = normNombre(adRow.club_colegio || '');
+    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-colegio="${escapeHtml(colegioKey)}" data-revisar="${tieneRevisar ? '1' : '0'}">
       <td>${tipoBadge}</td>
       <td style="font-weight:500">${escapeHtml(nombre)}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
@@ -5896,8 +5914,10 @@ let soloRevisarPagos = false;
 
 function filtrarTablaPagos(q) {
   const term = (q || '').toLowerCase().trim();
+  const esBusquedaRedcol = term.includes('redcol');
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
-    const pasaTexto = !term || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term);
+    const pasaRedcol = esBusquedaRedcol && esColegioRedcol_(tr.dataset.colegio || '');
+    const pasaTexto = !term || pasaRedcol || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term);
     const pasaRevisar = !soloRevisarPagos || tr.dataset.revisar === '1';
     tr.style.display = (pasaTexto && pasaRevisar) ? '' : 'none';
   });
@@ -6169,8 +6189,10 @@ function formatFechaNac(v) {
 function filterAdminTable() {
   const q = (document.getElementById('admin-search').value || '').toLowerCase();
   if (!q) { renderAdminTable(adminData); return; }
+  const esBusquedaRedcol = q.includes('redcol');
   renderAdminTable(adminData.filter(row => {
     const n = normalizeParticipant(row) || {};
+    if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
     return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.acudiente || '').toLowerCase().includes(q);
   }));
 }
