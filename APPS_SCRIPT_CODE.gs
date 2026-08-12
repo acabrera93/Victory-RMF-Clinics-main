@@ -2266,9 +2266,26 @@ function registrarPago(data) {
 
     var nombreNorm = normText_(nombre);
     var tipoLower   = tipo.toLowerCase();
-    var inBlock = false;
+    // No usa "romper al ver otro nombre": si el Pago Final de este
+    // participante quedó insertado suelto, lejos de su Reserva/Tiquete (ver
+    // nota en el bloque `else` de más abajo, rama "insertar al final de
+    // todo"), un scan que se detiene en el primer nombre distinto nunca
+    // llegaría a esa fila — se reportaría "no encontrado" aunque la fila sí
+    // exista. En vez de eso, se recorre TODA la hoja llevando "de quién es
+    // esta fila" (currentNombreNorm, heredado del último nombre no vacío en
+    // columna B) — igual que ya hace getAdminFinanciero() para construir
+    // pagos_lista, que es de donde sale lo que el panel admin le muestra al
+    // usuario antes de llegar aquí.
+    var currentNombreNorm = '';
     var targetSheetRow = -1;
     var blockPagoFinalRow = -1;
+    // Última fila ya perteneciente a este participante (cualquier concepto),
+    // sin importar si coincide con `tipo` — se usa como punto de inserción
+    // cuando no existe una fila de este concepto ni un placeholder de Pago
+    // Final: así una fila nueva siempre queda justo debajo de sus otros
+    // pagos, en vez de saltar al final de TODA la hoja (ver rama `else` más
+    // abajo).
+    var lastOwnRow = -1;
     var tipoParticipante = String(data.tipo_participante || '').trim();
 
     for (var i = 0; i < allData.length; i++) {
@@ -2276,16 +2293,21 @@ function registrarPago(data) {
       var cellH = String(allData[i][idxNotas] || '').trim();
 
       if (cellB) {
-        if (normText_(cellB) === nombreNorm) {
-          inBlock = true;
-          if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
-        } else if (inBlock) {
-          break;
-        }
+        currentNombreNorm = normText_(cellB);
+        if (currentNombreNorm === nombreNorm && !tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
       }
 
-      if (inBlock) {
-        if (cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+      if (currentNombreNorm === nombreNorm) {
+        lastOwnRow = startRow + i;
+        // Sin "break": si el participante tiene filas DUPLICADAS del mismo
+        // concepto (ej. dos "Pago Final"), esto se queda con la ÚLTIMA — el
+        // panel admin arma su vista con pagosByTipo[notas] = fila (ver
+        // openPagosModal en areapersonal.html), que sobrescribe con cada
+        // coincidencia y por tanto también termina mostrando la última. Si
+        // aquí se cortara en la primera, la escritura caería en una fila
+        // duplicada que el admin nunca ve — "dice actualizado" pero el
+        // estado visible no cambia, porque se editó la fila equivocada.
+        if (cellH.toLowerCase() === tipoLower) targetSheetRow = startRow + i;
         if (cellH.toLowerCase() === 'pago final') blockPagoFinalRow = startRow + i;
       }
     }
@@ -2310,7 +2332,19 @@ function registrarPago(data) {
       pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
       pagosSheet.getRange(blockPagoFinalRow, 1, 1, writeWidth).setValues([newRow]);
       finalRow = blockPagoFinalRow;
+    } else if (lastOwnRow > 0) {
+      // Este participante ya tiene otras filas en Pagos (ej. Reserva) pero
+      // ninguna de este concepto ni un placeholder de Pago Final — se
+      // inserta justo debajo de su última fila para mantener todos sus
+      // pagos agrupados y en orden, en vez de saltar al final de la hoja.
+      var insertRow = lastOwnRow + 1;
+      pagosSheet.insertRowsBefore(insertRow, 1);
+      pagosSheet.getRange(insertRow, 1, 1, writeWidth).setValues([newRow]);
+      finalRow = insertRow;
     } else {
+      // Participante sin ninguna fila todavía en Pagos — va al final de la
+      // lista general de pagos (después del último Reserva/Tiquete/Pago
+      // Final de cualquier participante).
       var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
       var lastDataRow = startRow - 1;
       for (var k = 0; k < allData.length; k++) {
@@ -2335,14 +2369,11 @@ function registrarPago(data) {
     var numRows2 = lastRow2 - startRow + 1;
     if (numRows2 > 0) {
       var allData2 = pagosSheet.getRange(startRow, 1, numRows2, readWidth).getValues();
-      var inBlock2 = false;
+      var currentNombreNorm2 = '';
       for (var j = 0; j < allData2.length; j++) {
         var cellB2 = String(allData2[j][idxNombre] || '').trim();
-        if (cellB2) {
-          if (normText_(cellB2) === nombreNorm) { inBlock2 = true; }
-          else if (inBlock2) { break; }
-        }
-        if (inBlock2 && String(allData2[j][pc.paquete - 1] || '').trim() !== paquete) {
+        if (cellB2) currentNombreNorm2 = normText_(cellB2);
+        if (currentNombreNorm2 === nombreNorm && String(allData2[j][pc.paquete - 1] || '').trim() !== paquete) {
           pagosSheet.getRange(startRow + j, pc.paquete).setValue(paquete);
         }
       }
@@ -2496,22 +2527,32 @@ function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo,
 
   var nombreNorm = normText_(nombreParticipante);
   var tipoLower = tipo.toLowerCase();
-  var inBlock = false;
+  // Sin "romper al ver otro nombre" — ver comentario equivalente en
+  // registrarPago(). Un Pago Final insertado suelto (lejos de la Reserva/
+  // Tiquete del mismo participante) nunca se encontraría con un scan que se
+  // detiene en el primer nombre distinto.
+  var currentNombreNorm = '';
   var targetSheetRow = -1;
   var blockPagoFinalRow = -1;
+  // Última fila ya de este participante (cualquier concepto) — punto de
+  // inserción para que un pago nuevo siempre quede debajo de sus otros
+  // pagos, no al final de toda la hoja. Ver mismo patrón en registrarPago().
+  var lastOwnRow = -1;
   var tipoParticipante = String(tipoParticipanteHint || '').trim();
 
   for (var i = 0; i < allData.length; i++) {
     var cellB = String(allData[i][idxNombre] || '').trim();
     var cellH = String(allData[i][idxNotas] || '').trim();
     if (cellB) {
-      if (normText_(cellB) === nombreNorm) {
-        inBlock = true;
-        if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
-      } else if (inBlock) { break; }
+      currentNombreNorm = normText_(cellB);
+      if (currentNombreNorm === nombreNorm && !tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
     }
-    if (inBlock) {
-      if (cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+    if (currentNombreNorm === nombreNorm) {
+      lastOwnRow = startRow + i;
+      // Sin "break" — ver comentario equivalente en registrarPago(): con
+      // filas duplicadas se queda con la ÚLTIMA, igual que la vista del
+      // panel admin (pagosByTipo en openPagosModal).
+      if (cellH.toLowerCase() === tipoLower) targetSheetRow = startRow + i;
       if (cellH.toLowerCase() === 'pago final') blockPagoFinalRow = startRow + i;
     }
   }
@@ -2601,7 +2642,13 @@ function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo,
     if (blockPagoFinalRow > 0) {
       pagosSheet.insertRowsBefore(blockPagoFinalRow, 1);
       filaInsertada = blockPagoFinalRow;
+    } else if (lastOwnRow > 0) {
+      // Ya hay otras filas de este participante — insertar justo debajo,
+      // para mantener todos sus pagos agrupados y en orden.
+      filaInsertada = lastOwnRow + 1;
+      pagosSheet.insertRowsBefore(filaInsertada, 1);
     } else {
+      // Participante sin ninguna fila todavía — va al final de la lista general.
       var tiposValidos = { 'reserva': true, 'tiquete': true, 'pago final': true };
       var lastDataRow = startRow - 1;
       for (var k = 0; k < allData.length; k++) {
@@ -2745,17 +2792,17 @@ function agregarAbonoPago(data) {
     var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
     var nombreNorm = normText_(nombre);
     var tipoLower = tipo.toLowerCase();
-    var inBlock = false;
+    // Sin "romper al ver otro nombre" — ver comentario en registrarPago().
+    var currentNombreNorm = '';
     var targetSheetRow = -1;
 
     for (var i = 0; i < allData.length; i++) {
       var cellB = String(allData[i][idxNombre] || '').trim();
       var cellH = String(allData[i][idxNotas] || '').trim();
-      if (cellB) {
-        if (normText_(cellB) === nombreNorm) inBlock = true;
-        else if (inBlock) break;
-      }
-      if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+      if (cellB) currentNombreNorm = normText_(cellB);
+      // Sin "break" — con filas duplicadas se queda con la ÚLTIMA, igual
+      // que la vista del panel admin (pagosByTipo en openPagosModal).
+      if (currentNombreNorm === nombreNorm && cellH.toLowerCase() === tipoLower) targetSheetRow = startRow + i;
     }
 
     if (targetSheetRow < 0) {
@@ -2851,16 +2898,16 @@ function confirmarPagoPendiente(data) {
     var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
     var nombreNorm = normText_(nombre);
     var tipoLower = tipo.toLowerCase();
-    var inBlock = false;
+    // Sin "romper al ver otro nombre" — ver comentario en registrarPago().
+    var currentNombreNorm = '';
     var targetSheetRow = -1;
     for (var i = 0; i < allData.length; i++) {
       var cellB = String(allData[i][idxNombre] || '').trim();
       var cellH = String(allData[i][idxNotas] || '').trim();
-      if (cellB) {
-        if (normText_(cellB) === nombreNorm) inBlock = true;
-        else if (inBlock) break;
-      }
-      if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+      if (cellB) currentNombreNorm = normText_(cellB);
+      // Sin "break" — con filas duplicadas se queda con la ÚLTIMA, igual
+      // que la vista del panel admin (pagosByTipo en openPagosModal).
+      if (currentNombreNorm === nombreNorm && cellH.toLowerCase() === tipoLower) targetSheetRow = startRow + i;
     }
     if (targetSheetRow < 0) return sendResponse(404, { ok: false, error: 'No se encontró el pago a confirmar' });
 
@@ -2930,16 +2977,19 @@ function actualizarEstadoPago(data) {
     var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
     var nombreNorm = normText_(nombre);
     var tipoLower = tipo.toLowerCase();
-    var inBlock = false;
+    // Sin "romper al ver otro nombre" — ver comentario en registrarPago().
+    var currentNombreNorm = '';
     var targetSheetRow = -1;
     for (var i = 0; i < allData.length; i++) {
       var cellB = String(allData[i][idxNombre] || '').trim();
       var cellH = String(allData[i][idxNotas] || '').trim();
-      if (cellB) {
-        if (normText_(cellB) === nombreNorm) inBlock = true;
-        else if (inBlock) break;
-      }
-      if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
+      if (cellB) currentNombreNorm = normText_(cellB);
+      // Sin "break" — con filas duplicadas se queda con la ÚLTIMA, igual
+      // que la vista del panel admin (pagosByTipo en openPagosModal): si
+      // hubiera dos filas "Pago Final" para el mismo participante, cortar
+      // en la primera actualizaría una fila que el admin ni siquiera ve —
+      // "dice actualizado" pero el estado visible nunca cambia.
+      if (currentNombreNorm === nombreNorm && cellH.toLowerCase() === tipoLower) targetSheetRow = startRow + i;
     }
     if (targetSheetRow < 0) return sendResponse(404, { ok: false, error: 'No se encontró el pago a actualizar' });
 
@@ -3017,7 +3067,15 @@ function sincronizarParticipantes(params) {
     if (lastRow >= 6) {
       var existingData = pagosSheet.getRange(6, 2, lastRow - 5, 1).getValues(); // col B = nombre
       existingData.forEach(function(row) {
-        var n = String(row[0] || '').trim().toLowerCase();
+        // normText_ (no solo toLowerCase) — si el nombre en Pagos y el de
+        // Inscripciones difieren solo en tildes/mayúsculas (ej. "José" vs
+        // "Jose"), esta comprobación con toLowerCase() a secas no los
+        // reconocía como el mismo participante y creaba un bloque de 3
+        // filas (Reserva/Tiquete/Pago Final) duplicado cada vez que se
+        // corría "Sincronizar participantes" — la causa real de los
+        // conceptos repetidos (ej. dos "Pago Final") que rompían la
+        // actualización de estado más arriba.
+        var n = normText_(row[0] || '');
         if (n) existingNames[n] = true;
       });
     }
@@ -3040,13 +3098,14 @@ function sincronizarParticipantes(params) {
     var added = 0;
     for (var i = 1; i < mainData.length; i++) {
       var nombre = String(mainData[i][nombreCol] || '').trim();
-      if (!nombre || existingNames[nombre.toLowerCase()]) continue;
+      var nombreKey = normText_(nombre);
+      if (!nombre || existingNames[nombreKey]) continue;
       var tieneTiquete = String(mainData[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
       var tipoP = String(mainData[i][0] || 'Jugador').trim() || 'Jugador'; // col A main = tipo
       newRows.push([tipoP, nombre, '', '', 0, 'Pendiente', '', 'Reserva']);
       if (tieneTiquete) newRows.push([tipoP, '', '', '', 0, '', '', 'Tiquete']);
       newRows.push([tipoP, '', '', '', 0, '', '', 'Pago Final']);
-      existingNames[nombre.toLowerCase()] = true;
+      existingNames[nombreKey] = true;
       added++;
     }
     if (newRows.length > 0) {
@@ -3059,6 +3118,171 @@ function sincronizarParticipantes(params) {
     Logger.log('sincronizarParticipantes error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
   }
+}
+
+// ── Ejecutar UNA VEZ para DETECTAR (no borra nada) filas duplicadas de un
+// mismo concepto de pago ───────────────────────────────────────────────────
+// Invariante: cada participante debe tener EXACTAMENTE una fila por
+// concepto (Reserva, Tiquete, Pago Final) en Pagos — los abonos adicionales
+// van en la columna "Historial de abonos" de esa MISMA fila, nunca como
+// filas nuevas. sincronizarParticipantes() tenía un bug (comparaba nombres
+// sin quitar tildes) que podía crear un bloque duplicado de 3 filas para un
+// participante ya existente — ya corregido, pero los duplicados que ese bug
+// ya haya creado siguen en el Sheet. Esta función SOLO lista en el Log
+// quién tiene más de una fila para el mismo concepto, con el número de fila
+// y sus datos (estado, EUR, COP), para decidir a mano cuál conservar y si
+// hay que sumar algo antes de borrar la sobrante — no toca el Sheet.
+// 1. Selecciona esta función y pulsa ▶ Run
+// 2. Revisa el Log (Ver → Registros)
+function detectarPagosDuplicados() {
+  var programas = [
+    { budgetSheetId: BUDGET_SHEET_ID, label: 'Clinic' },
+    { budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
+  ];
+
+  programas.forEach(function(fuente) {
+    var ss = SpreadsheetApp.openById(fuente.budgetSheetId);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) { Logger.log(fuente.label + ': no se encontró la hoja Pagos.'); return; }
+    var pc = getPagosColMap_(pagosSheet);
+    if (!pc.nombre_familia || !pc.notas) { Logger.log(fuente.label + ': faltan columnas nombre_familia/notas en Pagos.'); return; }
+    var lastRow = pagosSheet.getLastRow();
+    if (lastRow < 6) { Logger.log(fuente.label + ': sin datos en Pagos.'); return; }
+    var readWidth = Math.max(pc.nombre_familia, pc.notas, pc.estado || 0, pc.valor_eur || 0, pc.valor_cop || 0);
+    var data = pagosSheet.getRange(6, 1, lastRow - 5, readWidth).getValues();
+
+    var currentNombreNorm = '';
+    var currentNombreRaw = '';
+    var filasPorClave = {}; // "nombreNorm|||concepto" -> [ {fila, estado, eur, cop} ]
+    for (var i = 0; i < data.length; i++) {
+      var cellB = String(data[i][pc.nombre_familia - 1] || '').trim();
+      var cellH = String(data[i][pc.notas - 1] || '').trim().toLowerCase();
+      if (cellB) {
+        if (cellB.toLowerCase().indexOf('total') >= 0) { currentNombreNorm = ''; currentNombreRaw = ''; continue; }
+        currentNombreNorm = normText_(cellB);
+        currentNombreRaw = cellB;
+      }
+      if (!currentNombreNorm) continue;
+      if (cellH !== 'reserva' && cellH !== 'tiquete' && cellH !== 'pago final') continue;
+      var clave = currentNombreNorm + '|||' + cellH;
+      if (!filasPorClave[clave]) filasPorClave[clave] = [];
+      filasPorClave[clave].push({
+        fila: 6 + i,
+        nombre: currentNombreRaw,
+        concepto: cellH,
+        estado: pc.estado ? String(data[i][pc.estado - 1] || '').trim() : '',
+        eur: pc.valor_eur ? (parseFloat(data[i][pc.valor_eur - 1]) || 0) : 0,
+        cop: pc.valor_cop ? (parseFloat(data[i][pc.valor_cop - 1]) || 0) : 0
+      });
+    }
+
+    var duplicados = Object.keys(filasPorClave).filter(function(k) { return filasPorClave[k].length > 1; });
+    if (!duplicados.length) { Logger.log(fuente.label + ': sin duplicados de concepto.'); return; }
+
+    Logger.log(fuente.label + ': ' + duplicados.length + ' participante(s)+concepto con filas duplicadas:');
+    duplicados.forEach(function(k) {
+      var filas = filasPorClave[k];
+      Logger.log('— ' + filas[0].nombre + ' · ' + filas[0].concepto + ' (' + filas.length + ' filas):');
+      filas.forEach(function(f) {
+        Logger.log('    fila ' + f.fila + ' | estado=' + f.estado + ' | eur=' + f.eur + ' | cop=' + f.cop);
+      });
+    });
+  });
+}
+
+// ── Ejecutar UNA VEZ para limpiar SOLO los duplicados "seguros": un
+// participante+concepto con 2+ filas donde AL MENOS UNA está totalmente
+// vacía (estado='' y eur=0 y cop=0 — el placeholder que dejó el bug ya
+// corregido de sincronizarParticipantes) y OTRA tiene datos reales. En ese
+// caso borra la(s) fila(s) vacía(s) y deja intacta la que sí tiene el pago.
+// A propósito NO toca ningún grupo donde 2+ filas tengan datos reales (ej.
+// Christian Alberto Castrillon Balanta — dos filas "Pago Final" ambas en
+// Completo/1500€) — eso requiere que un humano revise el Historial de
+// abonos de cada fila antes de decidir cuál conservar, para no borrar un
+// pago real por error.
+// 1. Ejecuta primero detectarPagosDuplicados() y revisa el Log
+// 2. Selecciona esta función y pulsa ▶ Run
+// 3. Revisa el Log: dice qué filas borró y cuáles dejó para revisión manual
+function limpiarDuplicadosVaciosPago() {
+  var programas = [
+    { budgetSheetId: BUDGET_SHEET_ID, label: 'Clinic' },
+    { budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
+  ];
+
+  programas.forEach(function(fuente) {
+    var ss = SpreadsheetApp.openById(fuente.budgetSheetId);
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) { Logger.log(fuente.label + ': no se encontró la hoja Pagos.'); return; }
+    var pc = getPagosColMap_(pagosSheet);
+    if (!pc.nombre_familia || !pc.notas) { Logger.log(fuente.label + ': faltan columnas nombre_familia/notas en Pagos.'); return; }
+    var lastRow = pagosSheet.getLastRow();
+    if (lastRow < 6) { Logger.log(fuente.label + ': sin datos en Pagos.'); return; }
+    var readWidth = Math.max(pc.nombre_familia, pc.notas, pc.estado || 0, pc.valor_eur || 0, pc.valor_cop || 0);
+    var data = pagosSheet.getRange(6, 1, lastRow - 5, readWidth).getValues();
+
+    var currentNombreNorm = '';
+    var currentNombreRaw = '';
+    var filasPorClave = {};
+    for (var i = 0; i < data.length; i++) {
+      var cellB = String(data[i][pc.nombre_familia - 1] || '').trim();
+      var cellH = String(data[i][pc.notas - 1] || '').trim().toLowerCase();
+      if (cellB) {
+        if (cellB.toLowerCase().indexOf('total') >= 0) { currentNombreNorm = ''; currentNombreRaw = ''; continue; }
+        currentNombreNorm = normText_(cellB);
+        currentNombreRaw = cellB;
+      }
+      if (!currentNombreNorm) continue;
+      if (cellH !== 'reserva' && cellH !== 'tiquete' && cellH !== 'pago final') continue;
+      var clave = currentNombreNorm + '|||' + cellH;
+      if (!filasPorClave[clave]) filasPorClave[clave] = [];
+      filasPorClave[clave].push({
+        fila: 6 + i,
+        nombre: currentNombreRaw,
+        concepto: cellH,
+        estado: pc.estado ? String(data[i][pc.estado - 1] || '').trim() : '',
+        eur: pc.valor_eur ? (parseFloat(data[i][pc.valor_eur - 1]) || 0) : 0,
+        cop: pc.valor_cop ? (parseFloat(data[i][pc.valor_cop - 1]) || 0) : 0
+      });
+    }
+
+    var filasABorrar = []; // números de fila del Sheet, se borran de mayor a menor
+    var gruposParaRevisar = [];
+
+    Object.keys(filasPorClave).forEach(function(k) {
+      var filas = filasPorClave[k];
+      if (filas.length < 2) return;
+      var vacias = filas.filter(function(f) { return !f.estado && f.eur === 0 && f.cop === 0; });
+      var conDatos = filas.filter(function(f) { return !(!f.estado && f.eur === 0 && f.cop === 0); });
+      if (vacias.length > 0 && conDatos.length > 0) {
+        // Caso seguro: borrar solo las vacías, dejar las que tienen datos
+        vacias.forEach(function(f) { filasABorrar.push(f); });
+      } else if (conDatos.length > 1) {
+        // 2+ filas con datos reales — no se toca, requiere revisión manual
+        gruposParaRevisar.push(filas);
+      }
+    });
+
+    if (filasABorrar.length > 0) {
+      filasABorrar.sort(function(a, b) { return b.fila - a.fila; }); // borrar de abajo hacia arriba
+      filasABorrar.forEach(function(f) {
+        pagosSheet.deleteRow(f.fila);
+        Logger.log(fuente.label + ': eliminada fila vacía ' + f.fila + ' (' + f.nombre + ' · ' + f.concepto + ')');
+      });
+      actualizarResumenPagos(pagosSheet);
+    } else {
+      Logger.log(fuente.label + ': ningún duplicado vacío para eliminar.');
+    }
+
+    if (gruposParaRevisar.length > 0) {
+      Logger.log(fuente.label + ': ' + gruposParaRevisar.length + ' grupo(s) con 2+ filas de datos REALES — revisar Historial de abonos a mano antes de borrar nada:');
+      gruposParaRevisar.forEach(function(filas) {
+        Logger.log('— ' + filas[0].nombre + ' · ' + filas[0].concepto + ':');
+        filas.forEach(function(f) {
+          Logger.log('    fila ' + f.fila + ' | estado=' + f.estado + ' | eur=' + f.eur + ' | cop=' + f.cop);
+        });
+      });
+    }
+  });
 }
 
 // ── Ejecutar UNA VEZ para sincronizar paso_actual con pagos YA registrados ────
