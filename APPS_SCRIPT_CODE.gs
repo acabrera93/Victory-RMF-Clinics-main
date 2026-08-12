@@ -2264,7 +2264,7 @@ function registrarPago(data) {
     var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.notas);
     var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
 
-    var nombreLower = nombre.toLowerCase();
+    var nombreNorm = normText_(nombre);
     var tipoLower   = tipo.toLowerCase();
     var inBlock = false;
     var targetSheetRow = -1;
@@ -2276,7 +2276,7 @@ function registrarPago(data) {
       var cellH = String(allData[i][idxNotas] || '').trim();
 
       if (cellB) {
-        if (cellB.toLowerCase() === nombreLower) {
+        if (normText_(cellB) === nombreNorm) {
           inBlock = true;
           if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
         } else if (inBlock) {
@@ -2339,7 +2339,7 @@ function registrarPago(data) {
       for (var j = 0; j < allData2.length; j++) {
         var cellB2 = String(allData2[j][idxNombre] || '').trim();
         if (cellB2) {
-          if (cellB2.toLowerCase() === nombreLower) { inBlock2 = true; }
+          if (normText_(cellB2) === nombreNorm) { inBlock2 = true; }
           else if (inBlock2) { break; }
         }
         if (inBlock2 && String(allData2[j][pc.paquete - 1] || '').trim() !== paquete) {
@@ -2494,7 +2494,7 @@ function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo,
   var readWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.notas);
   var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
 
-  var nombreLower = nombreParticipante.toLowerCase();
+  var nombreNorm = normText_(nombreParticipante);
   var tipoLower = tipo.toLowerCase();
   var inBlock = false;
   var targetSheetRow = -1;
@@ -2505,7 +2505,7 @@ function aplicarPagoAFilaParticipante_(pagosSheet, pc, nombreParticipante, tipo,
     var cellB = String(allData[i][idxNombre] || '').trim();
     var cellH = String(allData[i][idxNotas] || '').trim();
     if (cellB) {
-      if (cellB.toLowerCase() === nombreLower) {
+      if (normText_(cellB) === nombreNorm) {
         inBlock = true;
         if (!tipoParticipante) tipoParticipante = String(allData[i][idxTipoP] || '').trim();
       } else if (inBlock) { break; }
@@ -2743,7 +2743,7 @@ function agregarAbonoPago(data) {
     var numRows = lastRow - startRow + 1;
     var readWidth = Math.max(pc.nombre_familia, pc.notas);
     var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
-    var nombreLower = nombre.toLowerCase();
+    var nombreNorm = normText_(nombre);
     var tipoLower = tipo.toLowerCase();
     var inBlock = false;
     var targetSheetRow = -1;
@@ -2752,7 +2752,7 @@ function agregarAbonoPago(data) {
       var cellB = String(allData[i][idxNombre] || '').trim();
       var cellH = String(allData[i][idxNotas] || '').trim();
       if (cellB) {
-        if (cellB.toLowerCase() === nombreLower) inBlock = true;
+        if (normText_(cellB) === nombreNorm) inBlock = true;
         else if (inBlock) break;
       }
       if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
@@ -2849,7 +2849,7 @@ function confirmarPagoPendiente(data) {
     var numRows = lastRow - startRow + 1;
     var readWidth = Math.max(pc.nombre_familia, pc.notas);
     var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
-    var nombreLower = nombre.toLowerCase();
+    var nombreNorm = normText_(nombre);
     var tipoLower = tipo.toLowerCase();
     var inBlock = false;
     var targetSheetRow = -1;
@@ -2857,7 +2857,7 @@ function confirmarPagoPendiente(data) {
       var cellB = String(allData[i][idxNombre] || '').trim();
       var cellH = String(allData[i][idxNotas] || '').trim();
       if (cellB) {
-        if (cellB.toLowerCase() === nombreLower) inBlock = true;
+        if (normText_(cellB) === nombreNorm) inBlock = true;
         else if (inBlock) break;
       }
       if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
@@ -2928,7 +2928,7 @@ function actualizarEstadoPago(data) {
     var numRows = lastRow - startRow + 1;
     var readWidth = Math.max(pc.nombre_familia, pc.notas);
     var allData = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
-    var nombreLower = nombre.toLowerCase();
+    var nombreNorm = normText_(nombre);
     var tipoLower = tipo.toLowerCase();
     var inBlock = false;
     var targetSheetRow = -1;
@@ -2936,7 +2936,7 @@ function actualizarEstadoPago(data) {
       var cellB = String(allData[i][idxNombre] || '').trim();
       var cellH = String(allData[i][idxNotas] || '').trim();
       if (cellB) {
-        if (cellB.toLowerCase() === nombreLower) inBlock = true;
+        if (normText_(cellB) === nombreNorm) inBlock = true;
         else if (inBlock) break;
       }
       if (inBlock && cellH.toLowerCase() === tipoLower) { targetSheetRow = startRow + i; break; }
