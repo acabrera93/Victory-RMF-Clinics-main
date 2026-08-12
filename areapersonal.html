@@ -1434,6 +1434,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div class="ctitle" style="margin-bottom:0">Pagos por participante</div>
           <input id="pagos-search" type="text" placeholder="Buscar por nombre o correo..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
+          <span id="pagos-search-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
           <button id="btn-pagos-revisar" onclick="toggleSoloRevisarPagos()" style="padding:7px 14px;border:1px solid rgba(220,38,38,.4);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:#dc2626;font-weight:500">⚠ Solo por revisar</button>
           <button id="btn-pagos-actualizar" onclick="refreshAdminPagos(this)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">↻ Actualizar</button>
         </div>
@@ -1555,6 +1556,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                    style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px;transition:border-color .2s"
                    onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
                    oninput="filterAdminTable()">
+            <span id="admin-search-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
             <button onclick="openAddParticipantModal()" style="padding:9px 16px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">+ Agregar inscrito</button>
             <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">Recargar</button>
           </div>
@@ -5915,12 +5917,17 @@ let soloRevisarPagos = false;
 function filtrarTablaPagos(q) {
   const term = (q || '').toLowerCase().trim();
   const esBusquedaRedcol = term.includes('redcol');
+  let visibles = 0;
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
     const pasaRedcol = esBusquedaRedcol && esColegioRedcol_(tr.dataset.colegio || '');
     const pasaTexto = !term || pasaRedcol || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term);
     const pasaRevisar = !soloRevisarPagos || tr.dataset.revisar === '1';
-    tr.style.display = (pasaTexto && pasaRevisar) ? '' : 'none';
+    const visible = pasaTexto && pasaRevisar;
+    tr.style.display = visible ? '' : 'none';
+    if (visible) visibles++;
   });
+  const countEl = document.getElementById('pagos-search-count');
+  if (countEl) countEl.textContent = visibles + (visibles === 1 ? ' resultado' : ' resultados');
 }
 
 function toggleSoloRevisarPagos() {
@@ -6188,13 +6195,20 @@ function formatFechaNac(v) {
 
 function filterAdminTable() {
   const q = (document.getElementById('admin-search').value || '').toLowerCase();
-  if (!q) { renderAdminTable(adminData); return; }
+  const countEl = document.getElementById('admin-search-count');
+  if (!q) {
+    renderAdminTable(adminData);
+    if (countEl) countEl.textContent = adminData.length + (adminData.length === 1 ? ' participante' : ' participantes');
+    return;
+  }
   const esBusquedaRedcol = q.includes('redcol');
-  renderAdminTable(adminData.filter(row => {
+  const filtrados = adminData.filter(row => {
     const n = normalizeParticipant(row) || {};
     if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
     return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.acudiente || '').toLowerCase().includes(q);
-  }));
+  });
+  renderAdminTable(filtrados);
+  if (countEl) countEl.textContent = filtrados.length + (filtrados.length === 1 ? ' resultado' : ' resultados');
 }
 
 // Base fields shared by all participants
