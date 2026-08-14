@@ -6853,6 +6853,18 @@ function activarTiquete() {
   document.getElementById('tiquete-form').style.display = '';
 }
 
+// Sobrescribe en el objeto crudo de adminData la clave que realmente trae el
+// campo Tiquete Aéreo — el header del Sheet varía ('Tiquete Aéreo',
+// 'tiquete_aereo', etc., ver normalizeParticipant) — para que el cambio se
+// refleje de inmediato en la UI sin esperar un recargo completo de adminData.
+function marcarTiqueteAereoLocal_(row) {
+  if (!row) return;
+  const candidatos = ['tiquete_aereo', 'tiquete aereo', 'Tiquete aéreo', 'Tiquete aereo', 'Tiquete', 'tiquete', 'vuelo', 'Vuelo'];
+  const nkCandidatos = candidatos.map(normFieldName);
+  const keyExistente = Object.keys(row).find(k => nkCandidatos.includes(normFieldName(k)));
+  row[keyExistente || 'tiquete_aereo'] = 'Con tiquete';
+}
+
 // Suma un abono adicional al monto ya cargado en los campos Valor EUR/COP del
 // modal, en vez de que el admin tenga que calcular la suma a mano y sobreescribir
 // el campo. EUR y COP son OBLIGATORIOS — se exige el COP real del comprobante
@@ -7031,6 +7043,31 @@ function registrarPagoDesdePanel(tipo) {
   .then(res => {
     if (res.ok) {
       statusEl.innerHTML = '<span style="color:#166534">✓ Guardado correctamente.</span>';
+
+      // Registrar un pago de Tiquete NO activa por sí solo el campo "Tiquete
+      // Aéreo" del participante (son dos cosas distintas: la fila de pago vs.
+      // la fila del participante) — el botón "+ Activar tiquete aéreo" solo
+      // mostraba el formulario sin persistir nada, así que el participante
+      // seguía apareciendo como "Sin tiquete" aunque ya tuviera el pago
+      // registrado. Al confirmar el pago de Tiquete para alguien que no lo
+      // tenía, se marca explícitamente en el Sheet vía actualizar_participante.
+      if (tipo === 'Tiquete' && !pagoCurrentTieneTiquete) {
+        const rowTiquete = pagoCurrentIdx >= 0 && adminData[pagoCurrentIdx]
+          ? adminData[pagoCurrentIdx]
+          : (adminData || []).find(r => normNombre((normalizeParticipant(r) || {}).nombre || r['Nombre'] || '') === normNombre(nombre));
+        if (rowTiquete && rowTiquete._row) {
+          fetch(APPS_SCRIPT_URL, {
+            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'actualizar_participante', _row: rowTiquete._row, programa: rowTiquete._program_key || pagoCurrentProgramKey, tiquete_aereo: 'Con tiquete', token: adminSessionToken }),
+            redirect: 'follow'
+          }).catch(() => {});
+          marcarTiqueteAereoLocal_(rowTiquete);
+        }
+        pagoCurrentTieneTiquete = true;
+        if (pagoCurrentParticipanteNorm) pagoCurrentParticipanteNorm.tiquete_aereo = 'Con tiquete';
+        if (participanteActual) participanteActual.tiquete_aereo = 'Con tiquete';
+      }
+
       // Actualizar caché local para que el modal se refresque
       if (adminFinData && adminFinData.pagos_lista) {
         const fmtFecha = fecha.split('-').reverse().join('/');
