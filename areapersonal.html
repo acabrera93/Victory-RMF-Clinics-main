@@ -2629,7 +2629,8 @@ function cambiarPrograma(key) {
 // pago y paso actual. Se llama una vez al login y de nuevo en cada cambio de
 // programa. Devuelve true si el programa activo es de Staff (mismo atajo que
 // tenía doLogin: showStaffView() y no continuar con el resto del flujo).
-function activarPrograma(key) {
+function activarPrograma(key, opts) {
+  opts = opts || {};
   const btnClinic = document.getElementById('btn-prog-clinic');
   const btnWc = document.getElementById('btn-prog-wc');
   if (btnClinic) btnClinic.classList.toggle('active', key === 'clinic');
@@ -2678,7 +2679,7 @@ function activarPrograma(key) {
   // Staff: saltar al paso de documentación directamente
   esStaffView = programParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
   if (esStaffView) { showStaffView(); return true; }
-  applyPasoActual(grupoPaso);
+  applyPasoActual(grupoPaso, opts);
   return false;
 }
 
@@ -2869,11 +2870,19 @@ function applyPasoActual(paso, opts) {
 
   actualizarPagosCompletados();
 
-  // Ir al panel correcto según paso
-  const panelMap = {1:'panel-tc', 2:'panel-tc', 3:'panel2', 4:'panel-tiq', 5:'panel3', 6:'panel4', 7:'panel-done'};
-  const targetPanel = panelMap[paso] || 'panel-tc';
   buildSteps();
-  goPanel(targetPanel, true); // no scroll en carga inicial
+
+  // Ir al panel correcto según paso — salvo que esta llamada venga de un
+  // auto-refresh en segundo plano (ver refrescarParticipanteAuto_, cada 60s):
+  // en ese caso el participante puede estar navegando a propósito a un paso
+  // anterior (ej. releer T&C estando ya en Reserva) y el refresh no debe
+  // sacarlo de ahí. Solo se fuerza la navegación en el login inicial, el
+  // cambio de programa, y el avance optimista tras subir un comprobante.
+  if (!opts.isAutoRefresh) {
+    const panelMap = {1:'panel-tc', 2:'panel-tc', 3:'panel2', 4:'panel-tiq', 5:'panel3', 6:'panel4', 7:'panel-done'};
+    const targetPanel = panelMap[paso] || 'panel-tc';
+    goPanel(targetPanel, true); // no scroll en carga inicial
+  }
 }
 
 // ── STEPS ────────────────────────────────────────────────────────────────────
@@ -3467,7 +3476,7 @@ function refrescarParticipanteAuto_() {
       const rawParticipants = extractParticipants(data);
       if (!rawParticipants.length) return;
       allParticipants = rawParticipants.map(p => normalizeParticipant(p) || p);
-      activarPrograma(programKeyActivo);
+      activarPrograma(programKeyActivo, { isAutoRefresh: true });
     })
     .catch(() => {});
 }
