@@ -1169,7 +1169,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metod
     const cuerpoTexto = esCompleto
       ? 'Confirmamos que tu pago correspondiente a <strong>' + tipoLabel + '</strong> ha sido registrado correctamente.'
       : 'Registramos un abono a cuenta de <strong>' + tipoLabel + '</strong>. Este pago queda guardado en tu historial de pagos.';
-    const subject = (esCompleto ? '✅ Pago confirmado — ' : '💰 Abono registrado — ') + tipoLabel + ' · ' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026');
+    const subject = (esCompleto ? '✅ Pago confirmado — ' : 'Abono registrado — ') + tipoLabel + ' · ' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026');
     const saldoBox = restanteEur === null ? '' : (
       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
       + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">Saldo pendiente de ' + tipoLabel + '</p>'
@@ -1183,9 +1183,10 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metod
     const entradasHist = Array.isArray(historialEntradas) ? historialEntradas : [];
     const tieneVariasEntradas = entradasHist.length > 1;
     const fmtEntradaAbono = function(en) {
-      return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#334155;padding:4px 0">'
-        + '<span>' + (en.fecha || '') + '</span>'
-        + '<span>' + (en.eur || 0).toLocaleString('es-CO') + ' €' + (en.cop ? ' · $' + Math.round(en.cop).toLocaleString('es-CO') + ' COP' : '') + '</span></div>';
+      return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:#334155"><tr>'
+        + '<td style="padding:4px 0;text-align:left;white-space:nowrap">' + (en.fecha || '') + '</td>'
+        + '<td style="padding:4px 0 4px 12px;text-align:right">' + (en.eur || 0).toLocaleString('es-CO') + ' €' + (en.cop ? ' · $' + Math.round(en.cop).toLocaleString('es-CO') + ' COP' : '') + '</td>'
+        + '</tr></table>';
     };
     const montoBox = tieneVariasEntradas
       ? ('<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
@@ -1193,9 +1194,10 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metod
         + entradasHist.slice(0, -1).map(fmtEntradaAbono).join('')
         + '<p style="font-size:12px;color:#94a3b8;margin:12px 0 6px;padding-top:8px;border-top:1px dashed #e2e8f0">Nuevo abono</p>'
         + fmtEntradaAbono(entradasHist[entradasHist.length - 1])
-        + '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:baseline">'
-        + '<span style="font-size:12px;color:#94a3b8;font-weight:600">Total abonado</span>'
-        + '<span style="font-size:18px;color:' + colorMonto + ';font-weight:600">' + montoTexto + '</span></div></div>')
+        + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0"><tr>'
+        + '<td style="text-align:left;font-size:12px;color:#94a3b8;font-weight:600">Total abonado</td>'
+        + '<td style="text-align:right;font-size:18px;color:' + colorMonto + ';font-weight:600">' + montoTexto + '</td>'
+        + '</tr></table></div>')
       : ('<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
         + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">' + montoLabel + '</p>'
         + '<p style="font-size:18px;color:' + colorMonto + ';font-weight:600;margin:0">' + montoTexto + '</p></div>');
@@ -3000,8 +3002,9 @@ function actualizarEstadoPago(data) {
     var cop = parseFloat(pagosSheet.getRange(targetSheetRow, pc.valor_cop).getValue()) || 0;
     var metodoPagoActual = pc.metodo_de_pago ? String(pagosSheet.getRange(targetSheetRow, pc.metodo_de_pago).getValue() || '').toLowerCase() : '';
     var esperadoEur = parseFloat(data.esperado_eur);
+    var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
     if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
-      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa, metodoPagoActual, esperadoEur);
+      notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa, metodoPagoActual, esperadoEur, historialActual);
     }
 
     actualizarResumenPagos(pagosSheet);
@@ -4733,7 +4736,7 @@ function enviarRecordatorioPagosVencidos_() {
       + '<tbody>' + filas + '</tbody></table></div></div>';
 
     GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
-      '🚨 Recordatorio semanal — ' + pendientes.length + ' pago(s) vencido(s) sin completar',
+      'Recordatorio semanal — ' + pendientes.length + ' pago(s) vencido(s) sin completar',
       pendientes.map(function(p) { return p.nombre + ' — ' + p.concepto + ' (' + p.programa + ')'; }).join('\n'),
       { htmlBody: htmlBody, name: 'Victory Sports · Pagos' });
 
