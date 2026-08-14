@@ -3037,10 +3037,14 @@ function actualizarResumenPagos(pagosSheet) {
     // función llevaba fallando en silencio cada vez que se llamaba (el catch
     // de abajo se comía el TypeError sin que nadie lo notara). setFormula()
     // sí es un método real.
-    pagosSheet.getRange(sr, 4).setFormula('=SUMA(D6:D' + dataEnd + ')');
-    pagosSheet.getRange(sr, 5).setFormula('=SUMA(E6:E' + dataEnd + ')');
-    pagosSheet.getRange(sr, 7).setFormula('=CONTAR.SI(F6:F' + dataEnd + ';"Completo")');
-    pagosSheet.getRange(sr, 8).setFormula('=CONTAR.SI(F6:F' + dataEnd + ';"Parcial")');
+    // setFormula() siempre espera nombres de función en inglés (SUM, COUNTIF),
+    // incluso en un Sheet en español — Google traduce solo para mostrarlo en
+    // la UI. Escribir SUMA/CONTAR.SI aquí genera #NAME? porque Sheets guarda
+    // ese texto literal sin reconocerlo como función.
+    pagosSheet.getRange(sr, 4).setFormula('=SUM(D6:D' + dataEnd + ')');
+    pagosSheet.getRange(sr, 5).setFormula('=SUM(E6:E' + dataEnd + ')');
+    pagosSheet.getRange(sr, 7).setFormula('=COUNTIF(F6:F' + dataEnd + ',"Completo")');
+    pagosSheet.getRange(sr, 8).setFormula('=COUNTIF(F6:F' + dataEnd + ',"Parcial")');
     Logger.log('actualizarResumenPagos: fórmulas actualizadas en fila ' + sr);
   } catch (err) {
     Logger.log('actualizarResumenPagos error: ' + err);
