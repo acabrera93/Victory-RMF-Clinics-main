@@ -681,34 +681,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
   <div class="panel section-anchor" id="panel2">
 
-    <div class="card">
-      <div class="ctitle">Calculadora EUR → COP</div>
-      <p id="reserva-tasa-info" style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
-      <p id="reserva-tasa-nota" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
-      <div class="calc-row">
-        <div>
-          <div class="clabel">Monto en euros (€)</div>
-          <input class="cinput ro" id="eur1" type="number" value="1000" min="1" oninput="calc1()" readonly>
-        </div>
-        <div>
-          <div class="clabel">Tasa de referencia</div>
-          <input class="cinput ro" id="tasa1" type="text" readonly>
-        </div>
-      </div>
-      <div class="cresult">
-        <div>
-          <div class="crlabel">Total en COP</div>
-          <div class="crvalue" id="cop1">$ —</div>
-        </div>
-        <div style="text-align:right">
-          <div class="crref">Referencia de pago:</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:3px" id="ref1">—</div>
-        </div>
-      </div>
-      <div class="info-box">💡 Usa tu <strong>nombre completo</strong> como referencia al pagar, tanto en transferencia como con tarjeta. Así identificamos tu pago de inmediato.</div>
-      <div id="calc-note1" style="display:none;margin-top:12px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles en este momento.</strong> Contacta a tu asesor para conocer el tipo de cambio aplicado: <strong>alejandro.cabrera@fundacionrevel.net</strong> · WhatsApp: <strong>+34 658233126</strong></div>
-    </div>
-
     <div id="reserva-tc-lock-msg" style="display:none;margin-bottom:20px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:14px 16px;font-size:14px;color:#92400e;line-height:1.6;text-align:center;font-weight:500">🔒 Debes aceptar los Términos y Condiciones para habilitar el pago de la reserva.</div>
     <div class="card pay-lock" id="pay-card1">
       <div class="ctitle">Pago de reserva — 1.000 EUR</div>
@@ -766,6 +738,34 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <span style="font-size:12px;color:var(--muted);">Nuestro equipo está revisando tu pago. Te notificaremos en máx. 24 horas.</span>
         </div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="ctitle">Calculadora EUR → COP</div>
+      <p id="reserva-tasa-info" style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
+      <p id="reserva-tasa-nota" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
+      <div class="calc-row">
+        <div>
+          <div class="clabel">Monto en euros (€)</div>
+          <input class="cinput ro" id="eur1" type="number" value="1000" min="1" oninput="calc1()" readonly>
+        </div>
+        <div>
+          <div class="clabel">Tasa de referencia</div>
+          <input class="cinput ro" id="tasa1" type="text" readonly>
+        </div>
+      </div>
+      <div class="cresult">
+        <div>
+          <div class="crlabel">Total en COP</div>
+          <div class="crvalue" id="cop1">$ —</div>
+        </div>
+        <div style="text-align:right">
+          <div class="crref">Referencia de pago:</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.8);margin-top:3px" id="ref1">—</div>
+        </div>
+      </div>
+      <div class="info-box">💡 Usa tu <strong>nombre completo</strong> como referencia al pagar, tanto en transferencia como con tarjeta. Así identificamos tu pago de inmediato.</div>
+      <div id="calc-note1" style="display:none;margin-top:12px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles en este momento.</strong> Contacta a tu asesor para conocer el tipo de cambio aplicado: <strong>alejandro.cabrera@fundacionrevel.net</strong> · WhatsApp: <strong>+34 658233126</strong></div>
     </div>
   </div>
 
