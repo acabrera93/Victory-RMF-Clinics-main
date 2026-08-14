@@ -659,10 +659,6 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div class="card" id="resumen-precio-card">
       <div class="ctitle" style="margin-top:0">Valor total de tu inscripción</div>
       <div id="breakdown-total-programa" class="breakdown-box" style="display:none"></div>
-      <div id="breakdown-total-tiquete-box" style="display:none;margin-top:12px">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500">✈️ Tiquete aéreo (aparte)</div>
-        <div id="breakdown-total-tiquete" class="breakdown-box"></div>
-      </div>
     </div>
 
     <div class="card">
@@ -2474,33 +2470,32 @@ function buildBreakdown(t) {
   }
 
   // Valor total del programa (reserva + pago final combinados, sin
-  // subdividir) — vive en el paso de T&C para que el participante vea de
-  // entrada cuánto va a pagar en total, sea solo jugador o jugador +
-  // acompañantes. El tiquete aéreo se muestra aparte (es opcional y se paga
-  // en su propio panel), nunca sumado dentro de este total.
+  // subdividir) y del tiquete aéreo (si aplica) — vive en el paso de T&C
+  // para que el participante vea de entrada cuánto va a pagar en total, sea
+  // solo jugador o jugador + acompañantes. Antes programa y tiquete se
+  // mostraban en dos cajas separadas, cada una con su propio subtotal; ahora
+  // van juntas en un solo bloque — nombre, programa, tiquete — cerrado con
+  // un único Total combinado (el tiquete se sigue pagando en su propio
+  // panel aparte, esto es solo el resumen informativo).
   const bTotal = document.getElementById('breakdown-total-programa');
   if (bTotal) {
     if (participantesPrograma.length > 0) {
-      let sumaTotal = 0;
-      bTotal.innerHTML = participantesPrograma.map(raw => {
+      let sumaPrograma = 0;
+      const filasPrograma = participantesPrograma.map(raw => {
         const p = normalizeParticipant(raw) || raw;
         const m = montoReservaFinalParticipante_(p, esWC);
-        sumaTotal += m.reserva + m.final;
+        sumaPrograma += m.reserva + m.final;
         return bkRow(p.nombre || 'Participante', m.sub, m.reserva + m.final);
-      }).join('') + totalRow('Total programa', sumaTotal);
+      }).join('');
+
+      const tiqueteUnit = tiqueteUnitEur_();
+      const paxConTiquete = participantesPrograma.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
+      const filasTiquete = paxConTiquete.map(p => bkRow(p.nombre || 'Participante', 'Tiquete aéreo', tiqueteUnit)).join('');
+      const sumaTiquete = tiqueteUnit * paxConTiquete.length;
+
+      bTotal.innerHTML = filasPrograma + filasTiquete + totalRow('Total', sumaPrograma + sumaTiquete);
       bTotal.style.display = 'block';
     } else { bTotal.style.display = 'none'; }
-  }
-
-  const bTotalTiqBox = document.getElementById('breakdown-total-tiquete-box');
-  const bTotalTiq = document.getElementById('breakdown-total-tiquete');
-  if (bTotalTiq && bTotalTiqBox) {
-    const tiqueteUnit = tiqueteUnitEur_();
-    const paxConTiquete = participantesPrograma.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
-    if (paxConTiquete.length > 0) {
-      bTotalTiq.innerHTML = paxConTiquete.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', tiqueteUnit)).join('') + totalRow('Total tiquete', tiqueteUnit * paxConTiquete.length);
-      bTotalTiqBox.style.display = 'block';
-    } else { bTotalTiqBox.style.display = 'none'; }
   }
 }
 
