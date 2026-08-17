@@ -96,12 +96,15 @@
     display:flex;align-items:center;gap:16px;padding:14px 18px;
     background:var(--off);border-radius:8px;
   }
+  .funnel-bar-track{
+    flex:1;overflow:hidden;border-radius:6px;background:var(--border);
+  }
   .funnel-bar{
     height:28px;background:linear-gradient(90deg,var(--blue),var(--blue-bright));
-    border-radius:6px;flex-shrink:0;
+    border-radius:6px;
   }
   .funnel-label{font-size:13px;color:var(--text);width:170px;flex-shrink:0}
-  .funnel-value{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--navy);width:60px;text-align:right}
+  .funnel-value{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--navy);width:60px;text-align:right;flex-shrink:0}
   .funnel-rate{font-size:12px;color:var(--muted);width:70px;text-align:right;flex-shrink:0}
 
   table.utm-table{width:100%;border-collapse:collapse;font-size:13px}
@@ -252,26 +255,51 @@
       <canvas id="chartDaily" height="70"></canvas>
     </div>
 
-    <div class="grid">
+    <div class="panel" style="margin-bottom:16px;">
+      <h2>Páginas más visitadas</h2>
+      <div id="topPagesList" class="bar-list"></div>
+    </div>
+
+    <div class="section-title">Usuarios</div>
+    <div class="grid-3">
       <div class="panel">
-        <h2>Páginas más visitadas</h2>
-        <div id="topPagesList" class="bar-list"></div>
+        <h2>País</h2>
+        <div id="countriesList" class="bar-list"></div>
       </div>
       <div class="panel">
-        <h2>Dispositivos</h2>
+        <h2>Idioma</h2>
+        <div id="languagesList" class="bar-list"></div>
+      </div>
+      <div class="panel">
+        <h2>Dispositivo</h2>
         <canvas id="chartDevices"></canvas>
       </div>
     </div>
+    <p style="font-size:12px;color:var(--muted);background:var(--off);padding:10px 14px;border-radius:8px;margin-bottom:16px;">
+      Edad no disponible — el sitio no solicita fecha de nacimiento a visitantes anónimos antes del formulario.
+    </p>
 
-    <div class="grid">
-      <div class="panel">
-        <h2>Fuentes de tráfico (referrer)</h2>
-        <div id="referrersList" class="bar-list"></div>
-      </div>
-      <div class="panel">
-        <h2>Países</h2>
-        <div id="countriesList" class="bar-list"></div>
-      </div>
+    <div class="section-title">Origen del tráfico</div>
+    <div class="panel" style="margin-bottom:16px;">
+      <h2>Por categoría</h2>
+      <div id="trafficSourcesList" class="bar-list"></div>
+    </div>
+    <div class="panel" style="margin-bottom:16px;">
+      <details>
+        <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;">Ver detalle crudo de referrers</summary>
+        <div id="referrersList" class="bar-list" style="margin-top:14px;"></div>
+      </details>
+    </div>
+
+    <div class="section-title">Comportamiento por página</div>
+    <div class="panel" style="margin-bottom:16px;">
+      <table class="utm-table" id="pageBehaviorTable">
+        <thead>
+          <tr><th>Página</th><th>Vistas</th><th>Tiempo promedio</th><th>% Salida</th></tr>
+        </thead>
+        <tbody id="pageBehaviorTableBody"></tbody>
+      </table>
+      <p id="pageBehaviorInsight" class="mc-sub" style="margin-top:10px;"></p>
     </div>
 
     <div class="section-title">Conversión por campaña (UTM)</div>
@@ -401,8 +429,11 @@
       renderBarList('topPagesList', data.topPages || {});
       renderBarList('referrersList', data.referrers || {});
       renderBarList('countriesList', data.countries || {}, 'Sin datos de país');
+      renderBarList('languagesList', data.languages || {}, 'Sin datos de idioma');
+      renderBarList('trafficSourcesList', data.trafficSources || {}, 'Sin datos de origen');
       renderDevicesChart(data.devices || {});
       renderUtmTable(data.utmConversion || []);
+      renderPageBehavior(data);
     } catch (err) {
       showError('Los datos cargaron pero hubo un error al dibujar las gráficas: ' + err.message);
     }
@@ -472,7 +503,7 @@
       row.className = 'funnel-step';
       row.innerHTML = `
         <div class="funnel-label">${step.label}</div>
-        <div class="funnel-bar" style="width:${Math.max(rate, 2)}%"></div>
+        <div class="funnel-bar-track"><div class="funnel-bar" style="width:${Math.max(rate, 2)}%"></div></div>
         <div class="funnel-value">${step.value}</div>
         <div class="funnel-rate">${rate}%</div>
       `;
@@ -499,6 +530,56 @@
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  function fmtDuracion(segundos) {
+    if (segundos === null || segundos === undefined) return '—';
+    const m = Math.floor(segundos / 60);
+    const s = segundos % 60;
+    return (m > 0 ? m + 'm ' : '') + s + 's';
+  }
+
+  function renderPageBehavior(data) {
+    const topPages = data.topPages || {};
+    const avgTime = data.avgTimeByPage || {};
+    const exitRate = data.exitRateByPage || {};
+    const tbody = document.getElementById('pageBehaviorTableBody');
+    const insightEl = document.getElementById('pageBehaviorInsight');
+    tbody.innerHTML = '';
+    insightEl.textContent = '';
+
+    const pages = Object.keys(topPages).sort((a, b) => topPages[b] - topPages[a]);
+    if (!pages.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Sin datos de páginas en este rango</td></tr>';
+      return;
+    }
+
+    // La página de "más fuga" se calcula comparando los % de salida reales
+    // de esta carga — no está fijada a ninguna página en particular.
+    let maxExitPage = null, maxExitRate = -1;
+    pages.forEach(page => {
+      const rate = exitRate[page];
+      if (rate !== undefined && rate > maxExitRate) { maxExitRate = rate; maxExitPage = page; }
+    });
+
+    pages.forEach(page => {
+      const vistas = topPages[page];
+      const tiempo = avgTime[page];
+      const salida = exitRate[page];
+      const esPeor = page === maxExitPage && maxExitRate >= 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td title="${escapeHtml(page)}">${escapeHtml(page)}</td>
+        <td>${vistas}</td>
+        <td>${tiempo !== undefined ? fmtDuracion(tiempo) : '—'}</td>
+        <td style="${esPeor ? 'color:var(--red);font-weight:600;' : ''}">${salida !== undefined ? (esPeor ? '⚠ ' : '') + salida + '%' : '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    if (maxExitPage) {
+      insightEl.textContent = 'Mayor fuga: "' + maxExitPage + '" es la última página vista en el ' + maxExitRate + '% de sus visitas.';
+    }
   }
 
   function renderBarList(containerId, obj, emptyMsg) {
