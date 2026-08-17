@@ -839,6 +839,8 @@
     display: flex; align-items: center; justify-content: center; gap: 8px;
   }
   .form-submit:hover { background: var(--blue-light); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(30,91,168,0.4); }
+  .form-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+  .form-submit:disabled:hover { background: var(--blue); transform: none; box-shadow: none; }
   .form-disclaimer {
     margin-top: 12px;
     font-size: 11px; color: rgba(255,255,255,0.25);
@@ -1767,7 +1769,7 @@
             <div class="field-error-msg" id="err-f-email">Ingresa un correo electrónico válido.</div>
           </div>
 
-          <button id="submit-btn" class="form-submit" onclick="handleSubmit(event)" data-es="Enviarme la presentación y precios →" data-en="Send me the presentation and pricing →">
+          <button id="submit-btn" class="form-submit" onclick="handleSubmit(event)" disabled data-es="Enviarme la presentación y precios →" data-en="Send me the presentation and pricing →">
             Enviarme la presentación y precios →
           </button>
 
@@ -1844,7 +1846,10 @@ async function detectarPaisVisitante_() {
     visitorCountry = null; // se trata como "fuera de España/LatAm" por seguridad
   }
 }
-detectarPaisVisitante_();
+// Se guarda la promesa para poder esperarla antes de enviar el formulario —
+// si el visitante envía el formulario antes de que esta llamada responda,
+// visitorCountry seguiría en null y el pdf_link saldría vacío/roto.
+const paisVisitanteListo_ = detectarPaisVisitante_();
 
 // Devuelve la URL real del PDF, o null si el visitante está fuera de
 // España/LatAm y el PDF en inglés aún no existe.
@@ -1898,6 +1903,8 @@ function selectPrograma(which) {
     cardWc.classList.add('selected');
     hidden.value = cardWc.dataset.value;
   }
+  const submitBtn = document.getElementById('submit-btn');
+  if (submitBtn) submitBtn.disabled = false;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1958,6 +1965,11 @@ async function handleSubmit(e) {
   // guiones) — listo para armar el link de WhatsApp en Make.com como
   // https://wa.me/{{phone_whatsapp}} sin tener que limpiar el string allá.
   const phoneWhatsapp = (phoneCode + phone).replace(/[^\d]/g, '');
+
+  // Espera a que se resuelva la geolocalización (con tope de 3s) para que
+  // getPdfLink() no reciba visitorCountry en null solo porque el envío fue
+  // más rápido que la respuesta de ipapi.co.
+  await Promise.race([paisVisitanteListo_, new Promise(resolve => setTimeout(resolve, 3000))]);
 
   const payload = {
     nombre:            nombre || '',
