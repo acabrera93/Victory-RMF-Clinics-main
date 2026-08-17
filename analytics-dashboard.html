@@ -64,8 +64,19 @@
   }
 
   .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
   .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
-  @media (max-width:800px){.grid, .grid-3{grid-template-columns:1fr}}
+  @media (max-width:800px){.grid, .grid-2, .grid-3{grid-template-columns:1fr}}
+
+  .pipeline-badge{
+    display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;
+    color:var(--red);background:var(--rbg);border:1px solid var(--rborder);padding:2px 8px;border-radius:10px;margin-bottom:10px;
+  }
+  .pipeline-name{font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)}
+  .pipeline-name:last-child{border-bottom:none}
+  .comm-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .comm-row:last-child{border-bottom:none}
+  .comm-prog{font-size:11px;color:var(--muted)}
 
   .panel{background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px}
   .panel h2{
@@ -192,6 +203,42 @@
           <div class="mc-value" id="kpiFormularios">—</div>
           <span class="mc-delta hidden" id="deltaFormularios"></span>
         </div>
+      </div>
+    </div>
+
+    <div class="section-title">Panel ejecutivo</div>
+    <div id="execAvisos"></div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="mc-label">Inscritos totales</div>
+        <div class="mc-value-row"><div class="mc-value" id="execKpiInscritos">—</div></div>
+      </div>
+      <div class="metric-card mc-blue">
+        <div class="mc-label">Ingresos brutos combinados</div>
+        <div class="mc-value-row"><div class="mc-value" id="execKpiIngresos">—</div></div>
+      </div>
+      <div class="metric-card mc-green">
+        <div class="mc-label">Cobrado real combinado</div>
+        <div class="mc-value-row"><div class="mc-value" id="execKpiCobrado">—</div></div>
+      </div>
+      <div class="metric-card">
+        <div class="mc-label">% costos de programa pagados</div>
+        <div class="mc-value-row"><div class="mc-value" id="execKpiPctCostos">—</div></div>
+        <div class="mc-sub" id="execKpiPctCostosSub">—</div>
+      </div>
+    </div>
+
+    <div class="grid-2" id="execProgramCards"></div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Comisiones pendientes de pago</h2>
+        <div id="execComisionesList"></div>
+      </div>
+      <div class="panel">
+        <h2>Pipeline — posible seguimiento</h2>
+        <div class="pipeline-badge">Posible pipeline — verificar antes de contactar</div>
+        <div id="execPipelineList"></div>
       </div>
     </div>
 
@@ -322,10 +369,22 @@
     url.searchParams.set('token', accessToken);
     if (days) url.searchParams.set('days', days);
 
+    const execUrl = new URL(APPS_SCRIPT_URL);
+    execUrl.searchParams.set('action', 'getResumenEjecutivo');
+    execUrl.searchParams.set('token', accessToken);
+
+    // Ambos fetches se lanzan a la vez (no en serie) para no duplicar tiempo
+    // de carga. El del panel ejecutivo queda aislado con su propio .catch —
+    // si falla, no debe tumbar el resto del dashboard.
+    const analyticsPromise = fetch(url.toString()).then(res => res.json());
+    const execPromise = fetch(execUrl.toString()).then(res => res.json()).catch(err => {
+      console.error('getResumenEjecutivo falló:', err);
+      return null;
+    });
+
     let data;
     try {
-      const res = await fetch(url.toString());
-      data = await res.json();
+      data = await analyticsPromise;
       if (data.error) {
         showError('Token inválido o sin autorización. Verifica ANALYTICS_TOKEN en Script Properties.');
         return;
@@ -346,6 +405,13 @@
       renderUtmTable(data.utmConversion || []);
     } catch (err) {
       showError('Los datos cargaron pero hubo un error al dibujar las gráficas: ' + err.message);
+    }
+
+    try {
+      const execData = await execPromise;
+      if (execData && !execData.error) renderResumenEjecutivo(execData);
+    } catch (err) {
+      console.error('Panel ejecutivo: error al renderizar', err);
     }
   }
 
@@ -483,6 +549,108 @@
           y: { ticks: { color: '#4a6080', font:{family:"'DM Sans'"} }, grid: { color: 'rgba(11,31,58,0.06)' }, beginAtZero: true }
         }
       }
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function fmtEUR(n) {
+    if (n === null || n === undefined) return '—';
+    return '€' + Math.round(n).toLocaleString('es-ES');
+  }
+  function fmtPct(n) {
+    if (n === null || n === undefined) return '—';
+    return Math.round(n) + '%';
+  }
+
+  function renderResumenEjecutivo(data) {
+    const porPrograma = data.porPrograma || {};
+    const clinic = porPrograma.clinic || {};
+    const wc = porPrograma.world_challenge || {};
+
+    const inscritosTotal = (clinic.inscritos || 0) + (wc.inscritos || 0);
+    const ingresosTotal = (clinic.ingresosBrutos || 0) + (wc.ingresosBrutos || 0);
+    const cobradoTotal = (clinic.cobradoReal || 0) + (wc.cobradoReal || 0);
+
+    document.getElementById('execKpiInscritos').textContent = inscritosTotal;
+    document.getElementById('execKpiIngresos').textContent = fmtEUR(ingresosTotal);
+    document.getElementById('execKpiCobrado').textContent = fmtEUR(cobradoTotal);
+
+    // No hay una base común (presupuesto por programa) para promediar el %
+    // de costos pagados de forma ponderada — se muestra cada programa por
+    // separado en vez de inventar un promedio simple que no reflejaría nada real.
+    const pctParts = [];
+    if (clinic.pctCostosPagados !== null && clinic.pctCostosPagados !== undefined) pctParts.push('Clinic ' + fmtPct(clinic.pctCostosPagados));
+    if (wc.pctCostosPagados !== null && wc.pctCostosPagados !== undefined) pctParts.push('World Challenge ' + fmtPct(wc.pctCostosPagados));
+    document.getElementById('execKpiPctCostos').textContent = pctParts.length ? fmtPct(clinic.pctCostosPagados ?? wc.pctCostosPagados) : '—';
+    document.getElementById('execKpiPctCostosSub').textContent = pctParts.join(' · ') || 'Sin datos';
+
+    const cardsContainer = document.getElementById('execProgramCards');
+    cardsContainer.innerHTML = '';
+    [['Clinic 2026', clinic], ['World Challenge 2027', wc]].forEach(([label, p]) => {
+      const cobrado = p.cobradoReal || 0;
+      const ingresos = p.ingresosBrutos || 0;
+      const pctCobrado = ingresos > 0 ? Math.round((cobrado / ingresos) * 100) : 0;
+      const card = document.createElement('div');
+      card.className = 'panel';
+      card.innerHTML = `
+        <h2>${label}</h2>
+        <div class="mc-value" style="font-size:26px;margin-bottom:10px;">${p.inscritos ?? '—'} inscritos</div>
+        <div class="mc-sub" style="margin-bottom:4px;">Ingresos brutos: ${fmtEUR(p.ingresosBrutos)}</div>
+        <div class="mc-sub" style="margin-bottom:10px;">Cobrado real: ${fmtEUR(p.cobradoReal)}</div>
+        <div class="bar-row">
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(pctCobrado,100)}%"></div></div>
+          <div class="bar-count">${pctCobrado}%</div>
+        </div>
+        <div class="mc-sub" style="margin-top:4px;">% cobrado sobre ingresos brutos</div>
+      `;
+      cardsContainer.appendChild(card);
+    });
+
+    const comisiones = data.comisionesPendientes || [];
+    const comEl = document.getElementById('execComisionesList');
+    comEl.innerHTML = '';
+    if (!comisiones.length) {
+      comEl.innerHTML = '<div class="empty-state">Sin comisiones pendientes</div>';
+    } else {
+      comisiones.forEach(c => {
+        const progLabel = c.programa === 'world_challenge' ? 'World Challenge' : 'Clinic';
+        const row = document.createElement('div');
+        row.className = 'comm-row';
+        row.innerHTML = `
+          <div>${escapeHtml(c.comercial)}<div class="comm-prog">${progLabel}</div></div>
+          <div>${fmtEUR(c.monto)}</div>
+        `;
+        comEl.appendChild(row);
+      });
+    }
+
+    const pipeline = data.pipelineSinPago || {};
+    const pipEl = document.getElementById('execPipelineList');
+    pipEl.innerHTML = '';
+    const gruposPipeline = [['Clinic 2026', pipeline.clinic || []], ['World Challenge 2027', pipeline.world_challenge || []]];
+    const totalPipeline = gruposPipeline.reduce((acc, [, arr]) => acc + arr.length, 0);
+    if (!totalPipeline) {
+      pipEl.innerHTML = '<div class="empty-state">Sin pipeline detectado</div>';
+    } else {
+      gruposPipeline.forEach(([label, nombres]) => {
+        if (!nombres.length) return;
+        const group = document.createElement('div');
+        group.style.marginBottom = '12px';
+        group.innerHTML = `<div class="mc-sub" style="margin-bottom:6px;font-weight:600;">${label} (${nombres.length})</div>` +
+          nombres.map(n => `<div class="pipeline-name">${escapeHtml(n)}</div>`).join('');
+        pipEl.appendChild(group);
+      });
+    }
+
+    const avisosEl = document.getElementById('execAvisos');
+    avisosEl.innerHTML = '';
+    (data.avisosCalidadDatos || []).forEach(msg => {
+      const banner = document.createElement('div');
+      banner.className = 'error-banner';
+      banner.textContent = '⚠ ' + msg;
+      avisosEl.appendChild(banner);
     });
   }
 

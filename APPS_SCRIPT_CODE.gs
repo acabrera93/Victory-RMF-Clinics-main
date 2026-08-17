@@ -241,6 +241,7 @@ function doGet(e) {
   Logger.log('doGet action=' + action + ' params=' + JSON.stringify(params));
   try {
     if (action === 'getAnalyticsSummary') return obtenerResumenAnalytics_(e);
+    if (action === 'getResumenEjecutivo') return obtenerResumenEjecutivo_(e);
     if (action === 'fotos') return listFiles(FOTOS_FOLDER_ID, 'image');
     if (action === 'memorias') return listFiles(MEMORIAS_FOLDER_ID, 'image');
     if (action === 'saber') {
@@ -5167,6 +5168,274 @@ function obtenerResumenAnalytics_(e) {
 
   return ContentService.createTextOutput(JSON.stringify(resumen))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// PANEL EJECUTIVO — datos financieros reales (ingresos, cobros, comisiones,
+// pipeline) leídos de las hojas de Presupuesto/Pagos de cada programa. A
+// diferencia del resto de analytics-dashboard.html (que lee la hoja
+// "Analytics" de eventos de tráfico), esto lee directamente los mismos
+// spreadsheets de presupuesto que ya usa getAdminFinanciero — reutiliza las
+// mismas pestañas ("Dashboard", "Pagos", "Gastos", "Comisiones") y las
+// mismas convenciones de columnas/filas ya validadas ahí. No se llama a
+// getAdminFinanciero directamente porque ese endpoint exige un token de
+// sesión de admin (verificarSesionToken) y este panel también debe aceptar
+// el ANALYTICS_TOKEN compartido que usa el resto del dashboard de analytics.
+// ═════════════════════════════════════════════════════════════════════════
+
+// Lee la hoja "Dashboard" del spreadsheet de presupuesto (fila 6: A=inscritos,
+// B=ingresos brutos, C=costos totales, D=beneficio, E=margen). Misma celda
+// que usa getAdminFinanciero. Devuelve null (sin lanzar) si la hoja no existe
+// o el rango está vacío, para que el endpoint degrade en vez de romperse.
+function leerDashboardPrograma_(ss, str, num) {
+  try {
+    var dashSheet = getSheetCI(ss, 'Dashboard');
+    if (!dashSheet) { Logger.log('leerDashboardPrograma_: hoja Dashboard no encontrada'); return null; }
+    var kpi = dashSheet.getRange('A6:E6').getValues()[0];
+    var rawMargen = kpi[4];
+    var margenPct = typeof rawMargen === 'number'
+      ? (rawMargen > 1 ? rawMargen : rawMargen * 100)
+      : (parseFloat(str(rawMargen).replace(',', '.').replace('%', '')) || 0);
+    return {
+      inscritos: num(kpi[0]),
+      ingresosBrutos: num(kpi[1]),
+      costosTotales: num(kpi[2]),
+      beneficio: num(kpi[3]),
+      margenPct: margenPct
+    };
+  } catch (err) {
+    Logger.log('leerDashboardPrograma_ error: ' + err);
+    return null;
+  }
+}
+
+// Suma la columna "Valor EUR" de TODAS las filas de datos de la pestaña
+// Pagos (fila 6 en adelante), en vez de confiar en una celda de texto tipo
+// "TOTAL RECIBIDO" que podría desalinearse si alguien inserta una fila.
+// Devuelve null (sin lanzar) si la hoja Pagos o la columna no existen.
+function leerCobradoReal_(ss) {
+  try {
+    var pagosSheet = getSheetCI(ss, 'Pagos');
+    if (!pagosSheet) { Logger.log('leerCobradoReal_: hoja Pagos no encontrada'); return null; }
+    var lastRow = pagosSheet.getLastRow();
+    if (lastRow < 6) return 0;
+    var pc = getPagosColMap_(pagosSheet);
+    if (!pc.valor_eur) { Logger.log('leerCobradoReal_: columna Valor EUR no encontrada en Pagos'); return null; }
+    var data = pagosSheet.getRange(6, pc.valor_eur, lastRow - 5, 1).getValues();
+    var suma = 0;
+    for (var i = 0; i < data.length; i++) {
+      var v = data[i][0];
+      suma += (typeof v === 'number') ? v : (parseFloat(String(v || '').replace(/[€$\s]/g, '').replace(',', '.')) || 0);
+    }
+    return Math.round(suma * 100) / 100;
+  } catch (err) {
+    Logger.log('leerCobradoReal_ error: ' + err);
+    return null;
+  }
+}
+
+// Lee la fila TOTAL de la pestaña "Gastos" (col B=presupuestado, C=pagado,
+// F=% pagado — mismas columnas que ya lee getAdminFinanciero). Devuelve
+// null (sin lanzar) si la hoja o la fila TOTAL no existen.
+function leerControlGastos_(ss, str, num) {
+  try {
+    var gastosSheet = getSheetCI(ss, 'Gastos');
+    if (!gastosSheet) { Logger.log('leerControlGastos_: hoja Gastos no encontrada'); return null; }
+    var lastRow = gastosSheet.getLastRow();
+    if (lastRow < 5) return null;
+    var data = gastosSheet.getRange(5, 1, lastRow - 4, 6).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (str(data[i][0]).toLowerCase().trim() === 'total') {
+        var presupuestado = num(data[i][1]);
+        var pagado = num(data[i][2]);
+        return { presupuestado: presupuestado, pagado: pagado, pendiente: presupuestado - pagado, pct: num(data[i][5]) };
+      }
+    }
+    Logger.log('leerControlGastos_: fila TOTAL no encontrada en Gastos');
+    return null;
+  } catch (err) {
+    Logger.log('leerControlGastos_ error: ' + err);
+    return null;
+  }
+}
+
+// Lee la pestaña "Comisiones" (mismo formato que getAdminFinanciero: secciones
+// por col A, "acomp" marca inicio de sección acompañantes, filas de comercial
+// con estado en col E) y devuelve solo las de la sección "jugadores" (la única
+// que trae Estado Pago) filtradas a Estado Pago = Pendiente.
+function leerComisionesPendientes_(ss, programKey, str, num) {
+  try {
+    var comSheet = getSheetCI(ss, 'Comisiones');
+    if (!comSheet) { Logger.log('leerComisionesPendientes_: hoja Comisiones no encontrada'); return []; }
+    var lastRow = comSheet.getLastRow();
+    if (lastRow < 6) return [];
+    var data = comSheet.getRange('A6:F' + lastRow).getValues();
+    var seccionActual = 'jugadores';
+    var pendientes = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      var colA = str(r[0]);
+      var colALow = colA.toLowerCase();
+      if (!colA) continue;
+      if (colALow.indexOf('acomp') >= 0) { seccionActual = 'acompanantes'; continue; }
+      if (colALow.indexOf('total') >= 0) continue;
+      if (colALow === 'comercial') continue;
+      if (seccionActual !== 'jugadores') continue; // Estado Pago solo existe en la sección de jugadores
+      var estado = str(r[4]);
+      if (estado.toLowerCase().indexOf('pendient') < 0) continue;
+      pendientes.push({ programa: programKey, comercial: colA, monto: num(r[3]) });
+    }
+    return pendientes;
+  } catch (err) {
+    Logger.log('leerComisionesPendientes_ error: ' + err);
+    return [];
+  }
+}
+
+// Compara nombres normalizados de "Inscripciones" (Tipo=Jugador) contra los
+// nombres presentes en la pestaña Pagos del mismo programa. Es una
+// aproximación por texto (misma normNombreGS ya usada en getAbonosValidados_)
+// — NO es un hecho confirmado, ver aviso en el frontend. Limitado a 60
+// nombres por programa, igual que visitantes.slice(0,60) en analytics.
+function calcularPipelineSinPago_(sheetId, budgetSheetId) {
+  function normNombreGS(s) {
+    return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+  try {
+    var mainSheet = SpreadsheetApp.openById(sheetId).getSheets()[0];
+    var mainData = mainSheet.getDataRange().getValues();
+    var headers = mainData[0] || [];
+    var nombreCol = 1;
+    for (var j = 0; j < headers.length; j++) {
+      var h = String(headers[j]).toLowerCase();
+      if ((h === 'nombre' || h.indexOf('nombre') >= 0) && h.indexOf('acudiente') < 0) nombreCol = j;
+    }
+    var inscritos = [];
+    for (var i = 1; i < mainData.length; i++) {
+      var tipo = String(mainData[i][0] || '').trim().toLowerCase();
+      var nombre = String(mainData[i][nombreCol] || '').trim();
+      if (tipo === 'jugador' && nombre) inscritos.push(nombre);
+    }
+
+    var pagosNombresNorm = {};
+    var pagosSheet = getSheetCI(SpreadsheetApp.openById(budgetSheetId), 'Pagos');
+    if (pagosSheet) {
+      var lastRow = pagosSheet.getLastRow();
+      if (lastRow >= 6) {
+        var pc = getPagosColMap_(pagosSheet);
+        if (pc.nombre_familia) {
+          var data = pagosSheet.getRange(6, pc.nombre_familia, lastRow - 5, 1).getValues();
+          for (var k = 0; k < data.length; k++) {
+            var cell = String(data[k][0] || '').trim();
+            if (!cell || cell.toLowerCase().indexOf('total') >= 0) continue;
+            pagosNombresNorm[normNombreGS(cell)] = true;
+          }
+        }
+      }
+    }
+
+    var sinPago = [];
+    var vistos = {};
+    for (var m = 0; m < inscritos.length; m++) {
+      var norm = normNombreGS(inscritos[m]);
+      if (vistos[norm]) continue;
+      vistos[norm] = true;
+      if (!pagosNombresNorm[norm]) sinPago.push(inscritos[m]);
+    }
+    return sinPago.slice(0, 60);
+  } catch (err) {
+    Logger.log('calcularPipelineSinPago_ error: ' + err);
+    return [];
+  }
+}
+
+function obtenerResumenEjecutivo_(e) {
+  var providedToken = (e.parameter && e.parameter.token) || '';
+  var props = PropertiesService.getScriptProperties();
+  var storedToken = props.getProperty("ANALYTICS_TOKEN");
+  var autorizado = !!storedToken && providedToken === storedToken;
+  if (!autorizado) {
+    var payload = verificarSesionToken(providedToken);
+    autorizado = !!payload && ['superadmin', 'editor', 'viewer'].indexOf(payload.rol) >= 0;
+  }
+  if (!autorizado) {
+    return ContentService.createTextOutput(JSON.stringify({ error: "No autorizado" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var str = function(v) { return String(v == null ? '' : v).trim(); };
+  var num = function(v) {
+    if (typeof v === 'number') return v;
+    var s = str(v).replace(/[€$\s]/g, '').replace(/\.(?=\d{3})/g, '').replace(',', '.');
+    return parseFloat(s) || 0;
+  };
+
+  var fuentes = [
+    { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic', label: 'Clinic' },
+    { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge', label: 'World Challenge' }
+  ];
+
+  var porPrograma = {};
+  var comisionesPendientes = [];
+  var pipelineSinPago = {};
+  var gastosPorPrograma = {};
+
+  fuentes.forEach(function(fuente) {
+    try {
+      var ss = SpreadsheetApp.openById(fuente.budgetSheetId);
+      var dash = leerDashboardPrograma_(ss, str, num);
+      var cobradoReal = leerCobradoReal_(ss);
+      var gastos = leerControlGastos_(ss, str, num);
+      gastosPorPrograma[fuente.programKey] = gastos;
+
+      porPrograma[fuente.programKey] = {
+        inscritos: dash ? dash.inscritos : null,
+        ingresosBrutos: dash ? dash.ingresosBrutos : null,
+        cobradoReal: cobradoReal,
+        pctCostosPagados: gastos ? gastos.pct : null,
+        margenPct: dash ? dash.margenPct : null
+      };
+
+      comisionesPendientes = comisionesPendientes.concat(leerComisionesPendientes_(ss, fuente.programKey, str, num));
+    } catch (err) {
+      Logger.log('obtenerResumenEjecutivo_ error en ' + fuente.label + ': ' + err);
+      porPrograma[fuente.programKey] = { inscritos: null, ingresosBrutos: null, cobradoReal: null, pctCostosPagados: null, margenPct: null };
+    }
+
+    try {
+      pipelineSinPago[fuente.programKey] = calcularPipelineSinPago_(fuente.sheetId, fuente.budgetSheetId);
+    } catch (err) {
+      Logger.log('obtenerResumenEjecutivo_ pipeline error en ' + fuente.label + ': ' + err);
+      pipelineSinPago[fuente.programKey] = [];
+    }
+  });
+
+  comisionesPendientes = comisionesPendientes.slice(0, 60); // mismo límite que visitantes.slice(0,60) en analytics
+
+  // Aviso de calidad de datos: compara el Pagado(€) TOTAL de Control de Gastos
+  // entre programas — si son exactamente iguales (y no ambos en cero, que solo
+  // significaría "aún sin datos"), probablemente una hoja quedó copiada de la
+  // otra. Comparación dinámica: si algún día se corrige el Sheet, desaparece sola.
+  var avisosCalidadDatos = [];
+  var gClinic = gastosPorPrograma.clinic;
+  var gWC = gastosPorPrograma.world_challenge;
+  if (gClinic && gWC && gClinic.pagado === gWC.pagado && gClinic.pagado !== 0) {
+    avisosCalidadDatos.push('Los datos de costos de World Challenge parecen idénticos a los de Clinic — verificar en el Sheet origen antes de confiar en esta cifra.');
+  }
+
+  var resultado = {
+    porPrograma: porPrograma,
+    comisionesPendientes: comisionesPendientes,
+    pipelineSinPago: pipelineSinPago,
+    avisosCalidadDatos: avisosCalidadDatos
+  };
+
+  return ContentService.createTextOutput(JSON.stringify(resultado)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function testObtenerResumenEjecutivo() {
+  var resultado = obtenerResumenEjecutivo_({ parameter: { token: PropertiesService.getScriptProperties().getProperty('ANALYTICS_TOKEN') } });
+  Logger.log(resultado.getContent());
 }
 
 function enviarResumenSemanal_() {

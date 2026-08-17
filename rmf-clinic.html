@@ -1927,6 +1927,23 @@ async function handleSubmit(e) {
     return;
   }
 
+  // World Challenge es Sub14 — solo acepta jugadores nacidos en 2013 o después
+  // (misma categoría más vieja permitida, "U14: 2013–2014", ya mostrada arriba
+  // en esta página, y que inscripcion.html valida con fecha de nacimiento
+  // exacta). Este formulario de "más información" solo pide la edad en años,
+  // así que el año de nacimiento se aproxima restando la edad al año actual —
+  // suficiente para filtrar un lead antes de contactarlo, no para la
+  // inscripción vinculante (esa sí exige la fecha exacta).
+  const WC_ANIO_NAC_MIN_INFO = 2013;
+  const anioNacAprox = new Date().getFullYear() - parseInt(edad, 10);
+  if (programa.indexOf('World Challenge') >= 0 && anioNacAprox < WC_ANIO_NAC_MIN_INFO) {
+    showStatus('warning', '⚠️ El Real Madrid Foundation World Challenge es para jugadores Sub14 (nacidos en 2013 o después). Con la edad indicada, tu jugador no calificaría para este programa. Haz clic aquí para ver el Real Madrid Foundation Clinic 2026, que no tiene este límite de edad.', () => {
+      selectPrograma('clinic');
+      document.getElementById('f-nombre')?.focus();
+    });
+    return;
+  }
+
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
   btn.innerHTML = '<span style="opacity:0.7">Enviando...</span>';
