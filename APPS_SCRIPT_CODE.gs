@@ -4994,11 +4994,15 @@ function leerFilasAnalytics_(sheet) {
       page: row[idx["Page"]] || "(desconocida)",
       referrer: row[idx["Referrer"]] || "(directo)",
       utm_source: row[idx["UTM_Source"]] || "",
+      utm_medium: row[idx["UTM_Medium"]] || "",
       device: row[idx["Device"]] || "desconocido",
       browser: row[idx["Browser"]] || "desconocido",
       country: row[idx["Country"]] || "Desconocido",
       city: row[idx["City"]] || "Desconocida",
       eventType: row[idx["EventType"]] || "",
+      language: row[idx["Language"]] || "",
+      sessionId: row[idx["SessionID"]] || "",
+      eventData: row[idx["EventData"]] || "",
     };
   });
   return rows;
@@ -5020,6 +5024,28 @@ function calcularRangoPrevio_(rango) {
   };
 }
 
+// Agrupa el referrer crudo + UTM en categorías tipo Google Analytics para el
+// panel "Origen del tráfico". resumen.referrers (el crudo, por dominio/URL
+// exacta) sigue existiendo tal cual en calcularResumen_ — esto es un campo
+// adicional (resumen.trafficSources), no un reemplazo.
+function categorizarOrigenTrafico_(referrer, utmSource, utmMedium) {
+  var medio = String(utmMedium || '').toLowerCase();
+  if (medio.indexOf('cpc') >= 0 || medio.indexOf('paid') >= 0 || medio.indexOf('ads') >= 0 || medio.indexOf('ppc') >= 0) {
+    return 'Anuncios pagados';
+  }
+  var ref = String(referrer || '').toLowerCase();
+  var esDirecto = !ref || ref === '(directo)';
+  if (esDirecto && !utmSource) return 'Directo';
+  if (ref.indexOf('google.') >= 0 || ref.indexOf('bing.') >= 0 || ref.indexOf('yahoo.') >= 0 || ref.indexOf('duckduckgo.') >= 0) {
+    return 'Búsqueda orgánica';
+  }
+  if (ref.indexOf('facebook.') >= 0 || ref.indexOf('instagram.') >= 0 || ref.indexOf('whatsapp.') >= 0 || ref.indexOf('tiktok.') >= 0 || ref.indexOf('x.com') >= 0 || ref.indexOf('twitter.') >= 0) {
+    return 'Redes sociales';
+  }
+  if (ref) return 'Referidos';
+  return 'Directo';
+}
+
 function calcularResumen_(rows, rango) {
   var pageviewsByDay = {};
   var pagesCount = {};
@@ -5030,11 +5056,20 @@ function calcularResumen_(rows, rango) {
   var eventCount = {};
   var countryCount = {};
   var cityCount = {};
+  var trafficSourceCount = {};
+  var languageCount = {};
   var visitorSet = {};
   var newVisitorSet = {};
   var returningVisitorSet = {};
   var utmStats = {};
   var totalPageviews = 0;
+  // Tiempo promedio por página: acumuladores de los eventos time_on_page
+  // (antes se descartaban por completo — ver el `else if` de más abajo).
+  var timeSumByPage = {};
+  var timeCountByPage = {};
+  // % de salida por página: última página vista de cada sesión (por
+  // timestamp), para luego contar cuántas veces cada página fue la salida.
+  var lastPageviewBySession = {};
 
   rows.forEach(function (row) {
     if (rango && (row.timestamp < rango.start || row.timestamp > rango.end)) return;
@@ -5061,8 +5096,27 @@ function calcularResumen_(rows, rango) {
       browserCount[row.browser] = (browserCount[row.browser] || 0) + 1;
       countryCount[row.country] = (countryCount[row.country] || 0) + 1;
       cityCount[row.city] = (cityCount[row.city] || 0) + 1;
+      var origen = categorizarOrigenTrafico_(row.referrer, row.utm_source, row.utm_medium);
+      trafficSourceCount[origen] = (trafficSourceCount[origen] || 0) + 1;
+      var lang = row.language || "Desconocido";
+      languageCount[lang] = (languageCount[lang] || 0) + 1;
       utmStats[src].pageviews++;
-    } else if (row.eventType && row.eventType !== "time_on_page") {
+
+      // Sin sessionId no se puede agrupar de forma confiable — se excluye del
+      // cálculo de % de salida en vez de mezclarla con otras filas sin sesión.
+      if (row.sessionId) {
+        var actual = lastPageviewBySession[row.sessionId];
+        if (!actual || row.timestamp > actual.timestamp) {
+          lastPageviewBySession[row.sessionId] = { page: row.page, timestamp: row.timestamp };
+        }
+      }
+    } else if (row.eventType === "time_on_page") {
+      var segundos = parseInt(row.eventData, 10);
+      if (!isNaN(segundos) && segundos >= 0) {
+        timeSumByPage[row.page] = (timeSumByPage[row.page] || 0) + segundos;
+        timeCountByPage[row.page] = (timeCountByPage[row.page] || 0) + 1;
+      }
+    } else if (row.eventType) {
       eventCount[row.eventType] = (eventCount[row.eventType] || 0) + 1;
       if (row.eventType === "click_inscribirse") utmStats[src].clicks++;
       if (row.eventType === "formulario_enviado") utmStats[src].forms++;
@@ -5080,6 +5134,23 @@ function calcularResumen_(rows, rango) {
     };
   }).sort(function (a, b) { return b.pageviews - a.pageviews; });
 
+  var avgTimeByPage = {};
+  Object.keys(timeSumByPage).forEach(function (page) {
+    var count = timeCountByPage[page];
+    if (count > 0) avgTimeByPage[page] = Math.round(timeSumByPage[page] / count);
+  });
+
+  var exitCountByPage = {};
+  Object.keys(lastPageviewBySession).forEach(function (sessionId) {
+    var pagina = lastPageviewBySession[sessionId].page;
+    exitCountByPage[pagina] = (exitCountByPage[pagina] || 0) + 1;
+  });
+  var exitRateByPage = {};
+  Object.keys(exitCountByPage).forEach(function (page) {
+    var totalVistas = pagesCount[page] || 0;
+    if (totalVistas > 0) exitRateByPage[page] = Math.round((exitCountByPage[page] / totalVistas) * 100);
+  });
+
   return {
     totalPageviews: totalPageviews,
     uniqueVisitors: Object.keys(visitorSet).length,
@@ -5088,13 +5159,17 @@ function calcularResumen_(rows, rango) {
     pageviewsByDay: pageviewsByDay,
     topPages: pagesCount,
     referrers: referrersCount,
+    trafficSources: trafficSourceCount,
+    languages: languageCount,
     utmSources: utmSourceCount,
     devices: deviceCount,
     browsers: browserCount,
     countries: countryCount,
     cities: cityCount,
     customEvents: eventCount,
-    utmConversion: utmConversion
+    utmConversion: utmConversion,
+    avgTimeByPage: avgTimeByPage,
+    exitRateByPage: exitRateByPage
   };
 }
 
