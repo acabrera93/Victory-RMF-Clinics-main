@@ -1827,37 +1827,9 @@ const PDF_WORLD_CHALLENGE = 'https://drive.google.com/file/d/18-8t9vBa_kaauFgHOK
 const PDF_JAPAN = 'https://drive.google.com/file/d/TU_ID_PDF_JAPAN/view';
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Geolocalización por IP para el PDF de RMF Clinic ────────────────────────
-// Solo España y Latinoamérica reciben el PDF en español. Todo el resto del
-// mundo (EE.UU., Europa no hispanohablante, Asia, etc.) todavía no tiene PDF
-// propio — se les muestra un aviso de "no disponible" en vez de un link. Si
-// la detección de país falla, se trata igual que "resto del mundo" (más
-// seguro que asumir español por defecto).
-const PAISES_PDF_ESPANOL = ['ES','CO','MX','AR','CL','PE','EC','VE','BO','PY','UY','CR','PA','GT','HN','SV','NI','DO','CU','PR'];
-const MSG_PDF_NO_DISPONIBLE = "Content not currently available in your region — we'll send it to you as soon as it's ready.";
-let visitorCountry = null;
-
-async function detectarPaisVisitante_() {
-  try {
-    const res = await fetch('https://ipapi.co/json/');
-    const data = await res.json();
-    visitorCountry = (data && data.country_code) ? String(data.country_code).toUpperCase() : null;
-  } catch (e) {
-    visitorCountry = null; // se trata como "fuera de España/LatAm" por seguridad
-  }
-}
-// Se guarda la promesa para poder esperarla antes de enviar el formulario —
-// si el visitante envía el formulario antes de que esta llamada responda,
-// visitorCountry seguiría en null y el pdf_link saldría vacío/roto.
-const paisVisitanteListo_ = detectarPaisVisitante_();
-
-// Devuelve la URL real del PDF, o null si el visitante está fuera de
-// España/LatAm y el PDF en inglés aún no existe.
 function getPdfLink(programa) {
   const p = programa.toLowerCase();
   if (p.includes('japan golf')) return PDF_JAPAN;
-  const esPaisHispano = visitorCountry && PAISES_PDF_ESPANOL.includes(visitorCountry);
-  if (!esPaisHispano) return null;
   return p.includes('world challenge') ? PDF_WORLD_CHALLENGE : PDF_RMF;
 }
 
@@ -1872,9 +1844,7 @@ function getMensajeWhatsApp(data) {
     ? `¡Hola ${data.nombre}! 🇪🇸⚽\n\nGracias por tu interés en el *RMF Clinic 2026* como acompañante. Mientras tu hijo entrena en la Ciudad Deportiva del Real Madrid, tú vives Madrid a tu ritmo.`
     : `¡Hola ${data.nombre}! 🇪🇸⚽\n\nGracias por inscribir a *${data.jugador || 'tu hijo/a'}* en el *RMF Clinic 2026* — el programa oficial de la Fundación Real Madrid.`;
 
-  const pdfLine = pdf
-    ? `📄 Aquí tienes la presentación completa del programa:\n${pdf}`
-    : `📄 ${MSG_PDF_NO_DISPONIBLE}`;
+  const pdfLine = `📄 Aquí tienes la presentación completa del programa:\n${pdf}`;
 
   return `${intro}
 
@@ -1966,11 +1936,6 @@ async function handleSubmit(e) {
   // https://wa.me/{{phone_whatsapp}} sin tener que limpiar el string allá.
   const phoneWhatsapp = (phoneCode + phone).replace(/[^\d]/g, '');
 
-  // Espera a que se resuelva la geolocalización (con tope de 3s) para que
-  // getPdfLink() no reciba visitorCountry en null solo porque el envío fue
-  // más rápido que la respuesta de ipapi.co.
-  await Promise.race([paisVisitanteListo_, new Promise(resolve => setTimeout(resolve, 3000))]);
-
   const payload = {
     nombre:            nombre || '',
     jugador:           jugador || '',
@@ -1981,7 +1946,7 @@ async function handleSubmit(e) {
     email:             email || '',
     programa:          programa || '',
     mensaje_whatsapp:  getMensajeWhatsApp({ nombre, programa }),
-    pdf_link:          getPdfLink(programa) || MSG_PDF_NO_DISPONIBLE,
+    pdf_link:          getPdfLink(programa),
     timestamp:         new Date().toISOString(),
     fuente:            'Landing Revel Fundacion'
   };
