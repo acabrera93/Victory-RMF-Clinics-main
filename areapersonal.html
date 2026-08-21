@@ -5467,20 +5467,6 @@ document.addEventListener('click', () => {
   document.querySelectorAll('.ia-tip.show').forEach(el => el.classList.remove('show'));
 });
 
-// Extrae moneda y monto del texto generado por evaluarComprobante_() en el
-// backend (formato fijo y controlado por nuestro propio código, seguro de
-// parsear con regex). Devuelve null si no hay número que extraer (ej. IA
-// no pudo leer la imagen).
-function extraerMontoIA_(detalle) {
-  if (!detalle) return null;
-  const m = detalle.match(/(?:Detectó|Coincide[^A-Za-z]*)\s*(COP|EUR|USD)\s+([\d.,]+)/i);
-  if (!m) return null;
-  const moneda = m[1].toUpperCase();
-  const monto = parseFloat(m[2].replace(/\./g, '').replace(',', '.'));
-  if (isNaN(monto)) return null;
-  return { moneda, monto };
-}
-
 // Parsea "dd/mm/yyyy:eur:cop:metodo;dd/mm/yyyy:eur:cop:metodo;..." (mismo
 // formato que genera el backend) para mostrar el resumen de abonos en el
 // modal. `metodo` es el 4to campo, opcional (entradas viejas no lo traen) —
@@ -5508,19 +5494,6 @@ function montoEsperadoEur_(tipo, n) {
   }
   if (tipo === 'Pago Final') return montoReservaFinalParticipante_(n, esWC).final;
   return 0;
-}
-
-// TRM que debía aplicarse a este concepto para este participante — la misma
-// que se le muestra en su área personal al momento de pagar (fija TRM_RESERVA
-// para Reserva/Tiquete del Clinic; tasa de mercado del día para Pago Final y
-// para los tres conceptos en World Challenge). Se usa para reconstruir el
-// campo EUR o COP que no llegó en el comprobante, cuando este se recibió en
-// una sola moneda y por un monto distinto al esperado (ver eurMostrado/
-// copMostrado en openPagosModal).
-function trmEsperadaConcepto_(tipo, n) {
-  const esWC = ((n && n.program_key) || adminProgramaActivo) === 'world_challenge';
-  if (tipo === 'Pago Final') return tasa;
-  return esWC ? tasa : TRM_RESERVA;
 }
 
 // Al escribir el Valor EUR de un pago editable, decide automáticamente si el
@@ -6683,45 +6656,21 @@ function openPagosModal(idx, nombreOverride) {
       ? urlsComprobanteEx.map((url, i) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);text-decoration:underline;margin-bottom:6px;display:inline-block">📎 Ver comprobante${urlsComprobanteEx.length > 1 ? ' ' + (i + 1) : ''} subido por el participante</a><br>`).join('')
       : '';
     // Valor EUR/COP en la hoja (ex.eur/ex.cop) = lo REALMENTE pagado (bruto,
-    // incl. el 3,5% de recargo de Bold si fue con tarjeta) — así se registra
-    // siempre, tanto en el flujo automático como cuando el admin confirma un
-    // monto detectado por la IA (que también lee el bruto del comprobante).
-    // El saldo del cliente se calcula aparte con el monto BASE, que el backend
-    // (getAbonosValidados_) separa automáticamente cuando la fila tiene
-    // Método de pago = tarjeta — no hace falta restar nada aquí.
-    const iaDetectado = (ex && (ex.ia_status === 'coincide' || ex.ia_status === 'revisar'))
-      ? extraerMontoIA_(ex.ia_detalle) : null;
-    // El comprobante solo trae UNA moneda — el otro campo no debe quedarse
-    // con el monto esperado viejo (que puede no calzar, ej. un abono parcial
-    // menor al esperado): se reconstruye con la TRM que debía aplicar a este
-    // pago, para que EUR y COP mostrados sean coherentes entre sí y con lo
-    // que realmente se recibió.
-    const trmConcepto = trmEsperadaConcepto_(tipo, participanteNorm);
-    // Si ya hay 2+ abonos en el historial (ej. el participante pagó en varias
-    // veces), el monto a mostrar/confirmar debe ser la SUMA de todos, no solo
-    // el último — los abonos previos ya están en el historial tal cual; solo
-    // el más reciente puede necesitar la corrección de la IA (ver arriba).
-    // Sin esto, confirmar un segundo abono pisaba el primero en vez de sumarlo.
-    const entradasPreviasAbono = historialEntradas.length > 1 ? historialEntradas.slice(0, -1) : [];
-    const sumaPreviasEur = entradasPreviasAbono.reduce((s, e) => s + (e.eur || 0), 0);
-    const sumaPreviasCop = entradasPreviasAbono.reduce((s, e) => s + (e.cop || 0), 0);
-    let eurMostrado, copMostrado;
-    if (iaDetectado && iaDetectado.moneda === 'COP') {
-      const copActual = iaDetectado.monto;
-      const eurActual = trmConcepto > 0 ? (copActual / trmConcepto) : (ex ? ex.eur : 0);
-      copMostrado = Math.round(sumaPreviasCop + copActual);
-      eurMostrado = Math.round((sumaPreviasEur + eurActual) * 100) / 100;
-    } else if (iaDetectado) {
-      const eurActual = iaDetectado.monto;
-      const copActual = trmConcepto > 0 ? (eurActual * trmConcepto) : (ex ? ex.cop : 0);
-      eurMostrado = Math.round((sumaPreviasEur + eurActual) * 100) / 100;
-      copMostrado = Math.round(sumaPreviasCop + copActual);
-    } else {
-      // Sin corrección de IA que aplicar — ex.eur/ex.cop ya vienen sumados
-      // (Valor EUR/COP en el Sheet reflejan siempre el total acumulado).
-      eurMostrado = ex ? ex.eur : '';
-      copMostrado = ex ? ex.cop : '';
-    }
+    // incl. el 3,5% de recargo de Bold si fue con tarjeta), YA sumado y YA
+    // corregido contra lo detectado por la IA — el backend
+    // (aplicarPagoAFilaParticipante_ + factorDistribucion en
+    // marcarComprobanteSubido) aplica esa corrección antes de guardar la fila,
+    // incluida la repartición proporcional cuando el comprobante cubre a
+    // VARIOS participantes del mismo grupo (ver `distribucion`). Antes este
+    // modal RECALCULABA eur/cop a partir de ex.ia_detalle (el detalle de la
+    // IA), pero ese detalle guarda el monto TOTAL del comprobante — igual en
+    // la fila de cada participante del grupo — así que para un pago conjunto
+    // el recálculo terminaba mostrando (y al confirmar, escribiendo) el total
+    // combinado en la fila de CADA participante en vez de su porción. Usar
+    // ex.eur/ex.cop directamente evita ese doble cálculo y coincide con lo que
+    // ya quedó bien repartido en la hoja.
+    let eurMostrado = ex ? ex.eur : '';
+    let copMostrado = ex ? ex.cop : '';
     // Si el pago quedó "Pendiente de confirmar" y la IA detectó (o el admin
     // ya corrigió) un monto MENOR al esperado, el estado a preseleccionar es
     // "Parcial", no "Completo" — antes el botón "Confirmar pago" forzaba
