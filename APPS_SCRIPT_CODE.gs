@@ -252,7 +252,7 @@ function doGet(e) {
     if (action === 'comunicaciones') return getComunicaciones(params.email || '', params.programa || '');
     if (action === 'marcar_comunicados_vistos') return marcarComunicadosVistos(params.email || '', params.count || '0', params.programa || '');
     if (action === 'comercial_login') return getComercialData(params.email || '');
-    if (action === 'buscar') return buscarParticipantes(params.email || '');
+    if (action === 'buscar') return buscarParticipantes(params.email || '', params.login === '1');
     if (action === 'mis_pagos') return getMisPagos(params.nombre || '', params.programa || '');
     if (action === 'cupos_tiquete_wc') return getCuposTiqueteWC_();
     if (action === 'tasa_wise') return getTasaWise_();
@@ -495,7 +495,7 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
   return out;
 }
 
-function buscarParticipantes(email) {
+function buscarParticipantes(email, esLogin) {
   try {
     const emailNorm = email.toString().toLowerCase().trim();
     if (!emailNorm) return ContentService.createTextOutput(JSON.stringify([]))
@@ -514,7 +514,11 @@ function buscarParticipantes(email) {
     }
 
     Logger.log('buscarParticipantes: encontrados=' + participants.length);
-    if (participants.length > 0) notificarAccesoAreaPersonal(emailNorm, participants);
+    // Solo el login real (doLogin() en areapersonal.html, que manda login=1)
+    // dispara el aviso — el auto-refresh cada 60s (refrescarParticipanteAuto_)
+    // llama a esta misma acción sin ese flag para no generar un correo por cada
+    // refresco silencioso mientras el área personal sigue abierta.
+    if (esLogin && participants.length > 0) notificarAccesoAreaPersonal(emailNorm, participants);
     return ContentService.createTextOutput(JSON.stringify(participants))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
@@ -639,12 +643,14 @@ function getCuposTiqueteWC_() {
 }
 
 // ───── NOTIFICAR ACCESO AL ÁREA PERSONAL ───────────────────────────────────────
-// buscarParticipantes() (action=buscar) se llama no solo al iniciar sesión,
-// sino también cada 60s mientras el área personal sigue abierta
-// (refrescarParticipanteAuto_ en areapersonal.html) — sin límite, eso mandaba
-// un correo de "acceso" cada minuto. Máximo 2 avisos por email por día (huso
-// Bogotá), y cada uno separado del anterior por al menos 1 hora — se guarda
-// contador + timestamp del último envío en una sola propiedad ("count|epoch").
+// Solo se llama cuando buscarParticipantes() viene de un login real (ver
+// esLogin en esa función) — el auto-refresh cada 60s mientras el área
+// personal sigue abierta (refrescarParticipanteAuto_ en areapersonal.html) no
+// pasa por aquí. El límite de 2 avisos por email por día (huso Bogotá), con
+// al menos 1 hora entre cada uno, queda igual como red de seguridad ante
+// varios logins seguidos (ej. dos pestañas, o refrescos manuales de página) —
+// se guarda contador + timestamp del último envío en una sola propiedad
+// ("count|epoch").
 function notificarAccesoAreaPersonal(email, participants) {
   try {
     const emailNorm = String(email || '').toLowerCase().trim();
