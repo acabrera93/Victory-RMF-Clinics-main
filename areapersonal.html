@@ -6181,7 +6181,15 @@ function renderAdminTable(rows) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
     return;
   }
-  tbody.innerHTML = rows.map((row, i) => {
+  // Orden fijo: Jugadores → Acompañantes → Staff (sort estable: dentro de
+  // cada grupo se conserva el orden original, ej. el de la hoja).
+  const ordenTipo = tp => tp.toLowerCase().includes('jug') ? 0 : tp.toLowerCase().includes('staff') ? 2 : 1;
+  const rowsOrdenadas = [...rows].sort((a, b) => {
+    const ta = (normalizeParticipant(a) || {}).tipo || a['1'] || '';
+    const tb = (normalizeParticipant(b) || {}).tipo || b['1'] || '';
+    return ordenTipo(ta) - ordenTipo(tb);
+  });
+  tbody.innerHTML = rowsOrdenadas.map((row, i) => {
     const n = normalizeParticipant(row) || {};
     const nb = n.nombre || row['2'] || '';
     const tp = n.tipo || row['1'] || '';
