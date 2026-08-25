@@ -294,11 +294,15 @@ img, video, iframe, table {
     <!-- SECCIÓN COMPAÑERO DE HABITACIÓN (solo si doble) -->
     <div id="p2-section" style="display:none;animation:fadeIn .3s ease">
       <div class="ctitle" style="margin-top:4px">Compañero/a de habitación</div>
-      <div class="info-note">Ingresa los datos del otro acompañante con quien compartirás habitación. Ambos deben estar inscritos en el programa.</div>
+      <div class="info-note">Ingresa los datos del otro acompañante con quien compartirás habitación. Se inscribirá automáticamente junto contigo, con el mismo correo, WhatsApp, país, ciudad y elección de tiquete aéreo que indiques en este formulario.</div>
       <div class="form-grid">
         <div>
           <label class="flabel">Nombre completo <span class="req">*</span></label>
           <input class="finput" id="p2-nombre" type="text" placeholder="Nombre completo del compañero/a">
+        </div>
+        <div>
+          <label class="flabel">Fecha de nacimiento <span class="req">*</span></label>
+          <input class="finput" id="p2-fnac" type="date">
         </div>
         <div>
           <label class="flabel">No. Pasaporte <span class="req">*</span></label>
@@ -552,8 +556,10 @@ function onHabitacion() {
   p2.style.display = val === 'doble' ? 'block' : 'none';
   if (val !== 'doble') {
     document.getElementById('p2-nombre').value = '';
+    document.getElementById('p2-fnac').value = '';
     document.getElementById('p2-pasaporte').value = '';
     document.getElementById('p2-nombre').classList.remove('error');
+    document.getElementById('p2-fnac').classList.remove('error');
     document.getElementById('p2-pasaporte').classList.remove('error');
   }
   document.getElementById('solo-act-note').style.display = (val === 'solo_actividades' || val === 'solo_world_challenge') ? 'block' : 'none';
@@ -601,7 +607,7 @@ async function submitForm(tipo) {
     valid = ['a-nombre','a-fnac','a-pasaporte','a-pais','a-ciudad','a-habitacion','a-jugador','a-email','a-phone'].map(chk).every(Boolean) && tiqAcompanante !== null;
     // Si habitación doble, validar datos del P2
     if (document.getElementById('a-habitacion').value === 'doble') {
-      const p2ok = ['p2-nombre','p2-pasaporte'].map(chk).every(Boolean);
+      const p2ok = ['p2-nombre','p2-fnac','p2-pasaporte'].map(chk).every(Boolean);
       valid = valid && p2ok;
     }
     if (!valid) { document.getElementById('a-err').style.display = 'block'; return; }
@@ -652,21 +658,48 @@ async function submitForm(tipo) {
     paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web'
   };
 
+  // Habitación doble: el compañero/a de habitación (P2) también debe quedar
+  // inscrito como acompañante propio, con el acompañante principal como su
+  // "nombre_p2". Si no, P2 nunca tiene fila en el sheet y solo se cobra un
+  // paquete en vez de los dos.
+  const payload2 = (tipo === 'acompanante' && document.getElementById('a-habitacion').value === 'doble') ? {
+    action: 'preinscripcion',
+    timestamp: new Date().toISOString(), tipo: 'Acompañante',
+    nombre: document.getElementById('p2-nombre').value.trim(),
+    email: payload.email,
+    phone: payload.phone,
+    pais: payload.pais,
+    pasaporte: document.getElementById('p2-pasaporte').value.trim(),
+    fecha_nacimiento: document.getElementById('p2-fnac').value,
+    posicion: '', club_colegio: '',
+    ciudad: payload.ciudad,
+    salud_alergias: '', acudiente: '', relacion: '',
+    tiquete_aereo: payload.tiquete_aereo,
+    programa: payload.programa,
+    habitacion: 'doble',
+    jugador_acompana: payload.jugador_acompana,
+    nombre_p2: payload.nombre,
+    pasaporte_p2: payload.pasaporte,
+    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web'
+  } : null;
+
   try {
     await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload);
+    if (payload2) await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload2);
     if (window.victoryTrack) window.victoryTrack('formulario_enviado', { tipo: tipo });
     // Descuento optimista del contador de cupos — el conteo real (desde la
     // hoja de Inscripciones) se vuelve a consultar la próxima vez que alguien
     // entre al formulario de World Challenge, así que esto solo evita que la
     // MISMA sesión siga mostrando cupos ya tomados por ella misma.
     if (payload.programa === 'Real Madrid Foundation World Challenge' && payload.tiquete_aereo === 'Con tiquete' && cuposTiqueteWC !== null) {
-      cuposTiqueteWC = Math.max(0, cuposTiqueteWC - 1);
+      cuposTiqueteWC = Math.max(0, cuposTiqueteWC - (payload2 ? 2 : 1));
       renderCuposWC();
     }
     document.getElementById('type-grid').style.display = 'none';
     document.getElementById('form-' + tipo).style.display = 'none';
-    document.getElementById('success-msg').innerHTML =
-      `Recibimos la inscripción de <strong>${payload.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con las instrucciones para acceder a tu <strong>Área Personal</strong>.`;
+    document.getElementById('success-msg').innerHTML = payload2
+      ? `Recibimos la inscripción de <strong>${payload.nombre}</strong> y de su compañero/a de habitación <strong>${payload2.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con las instrucciones para acceder a tu <strong>Área Personal</strong>.`
+      : `Recibimos la inscripción de <strong>${payload.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con las instrucciones para acceder a tu <strong>Área Personal</strong>.`;
     document.getElementById('success').classList.add('active');
     window.scrollTo({top:0, behavior:'smooth'});
     let cuenta = 4;
@@ -700,7 +733,7 @@ function reiniciar() {
   ['j-nombre','j-email','j-phone','j-jugador','j-club','j-ciudad','j-pasaporte','j-fnac','j-acudiente','j-salud'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['a-nombre','a-email','a-phone','a-ciudad','a-pasaporte','a-fnac','a-jugador','p2-nombre','p2-pasaporte'].forEach(id => {
+  ['a-nombre','a-email','a-phone','a-ciudad','a-pasaporte','a-fnac','a-jugador','p2-nombre','p2-fnac','p2-pasaporte'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   window.scrollTo({top:0, behavior:'smooth'});
