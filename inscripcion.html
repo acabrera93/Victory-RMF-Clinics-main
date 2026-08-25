@@ -651,7 +651,7 @@ async function submitForm(tipo) {
     salud_alergias: '', acudiente: '', relacion: '',
     tiquete_aereo: tiqAcompanante === 'si' ? 'Con tiquete' : 'Sin tiquete',
     programa: selectedPrograma,
-    habitacion: document.getElementById('a-habitacion').value === 'solo_actividades' ? '' : document.getElementById('a-habitacion').value,
+    habitacion: document.getElementById('a-habitacion').value,
     jugador_acompana: document.getElementById('a-jugador').value.trim(),
     nombre_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-nombre').value.trim() : '',
     pasaporte_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-pasaporte').value.trim() : '',
