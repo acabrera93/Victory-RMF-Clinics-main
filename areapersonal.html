@@ -3680,20 +3680,22 @@ function getTyCWorldChallenge_(tipoCurrent) {
     cancelacion = `
 <ul>
   <li>El programa se paga en un solo pago (100% del valor total) al momento de la inscripción, sujeto a esta política de cancelación</li>
-  <li><strong>3 meses o más antes del inicio del programa:</strong> penalidad del 30% del valor pagado (reembolso del 70%)</li>
-  <li><strong>2 meses de anticipación:</strong> penalidad del 60% (reembolso del 40%)</li>
-  <li><strong>1 mes o menos de anticipación:</strong> penalidad del 100% (no hay lugar a reembolso)</li>
+  <li><strong>Antes de los 3 meses del inicio del programa (más de 90 días):</strong> penalidad del 10% del valor pagado (reembolso del 90%)</li>
+  <li><strong>De 90 a 61 días de anticipación:</strong> penalidad del 30% del valor pagado (reembolso del 70%)</li>
+  <li><strong>De 60 a 31 días de anticipación:</strong> penalidad del 60% del valor pagado (reembolso del 40%)</li>
+  <li><strong>30 días o menos de anticipación:</strong> penalidad del 100% (no hay lugar a reembolso)</li>
   <li>Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del 100% del valor pagado</li>
 </ul>`;
   } else {
     cancelacion = `
 <ul>
-  <li><strong>3 meses o más antes del inicio del programa:</strong> penalidad del 30% del valor pagado (reembolso del 70%)</li>
-  <li><strong>2 meses de anticipación:</strong> penalidad del 60% (reembolso del 40%)</li>
-  <li><strong>1 mes o menos de anticipación:</strong> penalidad del 100% (no hay lugar a reembolso)</li>
+  <li><strong>Antes de los 3 meses del inicio del programa (más de 90 días):</strong> penalidad del 10% del valor pagado (reembolso del 90%)</li>
+  <li><strong>De 90 a 61 días de anticipación:</strong> penalidad del 30% del valor pagado (reembolso del 70%)</li>
+  <li><strong>De 60 a 31 días de anticipación:</strong> penalidad del 60% del valor pagado (reembolso del 40%)</li>
+  <li><strong>30 días o menos de anticipación:</strong> penalidad del 100% (no hay lugar a reembolso)</li>
   ${esJug ? '<li>Tiquete aéreo: reembolsable según las políticas propias de la aerolínea, de forma independiente a esta política</li>' : ''}
   <li>Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del valor pagado</li>
-  ${esJug ? '<li>Devoluciones por condiciones médicas debidamente certificadas: reembolso del 100% del programa, menos el valor del tiquete aéreo (si aplica)</li>' : ''}
+  ${esJug ? '<li>Devoluciones por condiciones médicas debidamente certificadas: el programa se reprogramará a la siguiente fecha disponible del programa, conservando las mismas condiciones</li>' : ''}
 </ul>`;
   }
 
