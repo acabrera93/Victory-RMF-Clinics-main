@@ -7146,10 +7146,14 @@ function openPagosModal(idx, nombreOverride) {
           <option${estadoSeleccionado==='Completo'?' selected':''}>Completo</option>
         </select></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${barrasReadonly ? '4' : '10'}px">
         <div><div class="clabel">Valor EUR${barrasReadonly ? ' (total acumulado)' : ''}</div><input type="number" id="pago-${tid}-eur" value="${eurMostrado}" placeholder="1000" style="${inputStyle};${readonlyStyle}" ${readonlyAttr} ${wireAutoEstado ? `oninput="actualizarEstadoAuto_('${tid}', ${montoEsperado})"` : ''}></div>
         <div><div class="clabel">Valor COP${barrasReadonly ? ' (total acumulado)' : ''}</div><input type="number" id="pago-${tid}-cop" value="${copMostrado}" placeholder="4350000" style="${inputStyle};${readonlyStyle}" ${readonlyAttr}></div>
       </div>
+      ${barrasReadonly ? `<div id="pago-${tid}-editar-link" style="margin-bottom:10px">
+        <button type="button" onclick="habilitarEdicionMonto_('${tid}')" style="font-size:11px;background:none;border:none;color:var(--blue);text-decoration:underline;cursor:pointer;padding:0;font-family:'DM Sans',sans-serif">✏️ Editar monto ya registrado</button>
+      </div>
+      <div id="pago-${tid}-aviso-correccion" style="display:none;font-size:11px;color:#92400e;background:rgba(217,119,6,.08);border-radius:6px;padding:6px 10px;margin-bottom:10px">Al guardar, este valor reemplaza el total y el historial de abonos acumulado por una sola entrada corregida — no se puede deshacer.</div>` : ''}
       ${mostrarAgregarAbono ? `<div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:10px;padding:10px;background:var(--off);border-radius:8px;flex-wrap:wrap">
         <div style="flex:1;min-width:100px"><div class="clabel">Fecha del abono</div><input type="date" id="pago-${tid}-abono-add-fecha" value="${today}" style="${inputStyle}"></div>
         <div style="flex:1;min-width:110px"><div class="clabel">+ Abono (EUR)</div><input type="number" id="pago-${tid}-abono-add" placeholder="ej. 500" style="${inputStyle}"></div>
@@ -7164,8 +7168,8 @@ function openPagosModal(idx, nombreOverride) {
         <div><div class="clabel">Paquete</div><select id="pago-${tid}-paquete" onchange="syncPaqueteModal(this.value)" style="${selectStyle}"><option${paqueteVal!=='Premium'?' selected':''}>Estándar</option><option${paqueteVal==='Premium'?' selected':''}>Premium</option></select></div>
       </div>
       ${esPendienteConfirmar ? `<button onclick="confirmarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:#166534;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">✓ Confirmar pago de ${tipo}</button>` : ''}
-      ${(ex && !esPendienteConfirmar) ? `<button onclick="actualizarEstadoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Actualizar estado/paquete</button>` : ''}
-      ${!ex ? `<button onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Registrar pago de ${tipo}</button>` : ''}
+      ${(ex && !esPendienteConfirmar) ? `<button onclick="actualizarEstadoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:${barrasReadonly ? '8px' : '0'}">Actualizar estado/paquete</button>` : ''}
+      ${!esPendienteConfirmar ? `<button id="pago-${tid}-guardar-correccion" onclick="registrarPagoDesdePanel('${tipo}')" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;${(!ex || !barrasReadonly) ? '' : 'display:none'}">${ex ? 'Guardar corrección de ' + tipo : 'Registrar pago de ' + tipo}</button>` : ''}
     </div>`;
   }).join('');
 
@@ -7359,6 +7363,29 @@ function confirmarPagoDesdePanel(tipo) {
     }
   })
   .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
+}
+
+// Desbloquea la barra "Valor EUR/COP (total acumulado)" de un concepto ya
+// Completo/Parcial (con historial) para permitir corregir el monto — por
+// defecto queda en solo lectura para no editar por accidente un pago ya
+// validado. Al guardar, registrarPagoDesdePanel() reutiliza la misma acción
+// que registra un pago nuevo (registrar_pago): el backend encuentra la fila
+// existente de este participante+concepto y la SOBRESCRIBE por completo,
+// incluido el historial de abonos (que queda reducido a esta única entrada
+// corregida) — por eso la advertencia antes de desbloquear.
+function habilitarEdicionMonto_(tid) {
+  const ok = confirm('Vas a editar un pago ya registrado.\n\nAl guardar, el nuevo valor reemplaza el total y el historial de abonos acumulado por una sola entrada corregida — no se puede deshacer.\n\n¿Continuar?');
+  if (!ok) return;
+  ['fecha', 'eur', 'cop'].forEach(suf => {
+    const el = document.getElementById(`pago-${tid}-${suf}`);
+    if (el) { el.removeAttribute('readonly'); el.style.background = ''; el.style.color = ''; }
+  });
+  const linkEditar = document.getElementById(`pago-${tid}-editar-link`);
+  if (linkEditar) linkEditar.style.display = 'none';
+  const aviso = document.getElementById(`pago-${tid}-aviso-correccion`);
+  if (aviso) aviso.style.display = 'block';
+  const btnGuardar = document.getElementById(`pago-${tid}-guardar-correccion`);
+  if (btnGuardar) btnGuardar.style.display = 'block';
 }
 
 function actualizarEstadoDesdePanel(tipo) {
