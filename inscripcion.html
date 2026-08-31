@@ -383,6 +383,16 @@ let selectedType = null;
 let selectedPrograma = 'Real Madrid Foundation Clinic';
 let tiqJugador = null;
 let tiqAcompanante = null;
+// Guarda la "firma" (nombre+email+habitación) del acompañante principal ya
+// enviado con éxito cuando falla el segundo envío (el compañero de
+// habitación P2) — si el usuario reintenta con los MISMOS datos, evita
+// volver a enviar (y duplicar) el registro del principal que ya se guardó.
+// Se compara por firma, no un simple booleano, para no bloquear un envío
+// genuinamente distinto si el usuario cambia algo antes de reintentar.
+let acompanantePrincipalEnviado = null;
+function firmaPayloadPrincipal_(p) {
+  return [p.nombre, p.email, p.habitacion].join('|').toLowerCase();
+}
 
 // Mismo endpoint de Apps Script usado en areapersonal.html — aquí solo para
 // consultar cupos, no para escribir (la inscripción sigue yendo por el
@@ -684,8 +694,17 @@ async function submitForm(tipo) {
   } : null;
 
   try {
-    await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload);
+    // Si en un intento anterior el envío del acompañante principal (payload)
+    // ya tuvo éxito pero el del compañero de habitación (payload2) falló, un
+    // reintento con los MISMOS datos no debe reenviar al principal — crearía
+    // una fila duplicada de esa persona en el sheet.
+    const firmaActual = payload2 ? firmaPayloadPrincipal_(payload) : null;
+    if (!firmaActual || acompanantePrincipalEnviado !== firmaActual) {
+      await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload);
+      if (firmaActual) acompanantePrincipalEnviado = firmaActual;
+    }
     if (payload2) await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload2);
+    acompanantePrincipalEnviado = null;
     if (window.victoryTrack) window.victoryTrack('formulario_enviado', { tipo: tipo });
     // Descuento optimista del contador de cupos — el conteo real (desde la
     // hoja de Inscripciones) se vuelve a consultar la próxima vez que alguien
@@ -724,6 +743,7 @@ function reiniciar() {
   selectedType = null;
   tiqJugador = null;
   tiqAcompanante = null;
+  acompanantePrincipalEnviado = null;
   document.getElementById('card-jugador').classList.remove('selected');
   document.getElementById('card-acompanante').classList.remove('selected');
   document.getElementById('form-jugador').classList.remove('active');

@@ -260,6 +260,7 @@ function doGet(e) {
     if (action === 'admin_financiero') return getAdminFinanciero(params);
     if (action === 'admin_categorias') return getAdminCategorias(params);
     if (action === 'admin_acceso') return getAdminAcceso(params);
+    if (action === 'admin_comerciales_data') return getAdminComercialesData(params);
     if (action === 'admin_acceso_check') return checkAdminAcceso(params.email || '');
     if (action === 'verify_reset_token') {
       const token = params.token || '';
@@ -1020,6 +1021,8 @@ function doPost(e) {
         if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes(parsed);
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'guardar_comercial') return guardarComercial(parsed);
+        if (parsed.action === 'admin_comercial_asignar') return adminComercialAsignar(parsed);
+        if (parsed.action === 'eliminar_comercial') return eliminarComercial(parsed);
         if (parsed.action === 'check_admin_password') return checkAdminPassword(parsed);
         if (parsed.action === 'set_admin_password') return setAdminPassword(parsed);
         if (parsed.action === 'forgot_admin_password') return forgotAdminPassword(parsed);
@@ -1854,7 +1857,8 @@ function actualizarParticipante(data) {
 function guardarComercial(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    var ss = SpreadsheetApp.openById(resolverSheets_(data.programa).budgetSheetId);
+    var fuente = resolverSheets_(data.programa);
+    var ss = SpreadsheetApp.openById(fuente.budgetSheetId);
     var comSheet = getSheetCI(ss, 'Comisiones');
     if (!comSheet) return sendResponse(404, { ok: false, error: 'Hoja Comisiones no encontrada' });
 
@@ -1881,40 +1885,96 @@ function guardarComercial(data) {
       newRow = [comercial, comisionJugador, jugadores, total, estado, notas];
     }
 
-    if (rowNum >= 6) {
-      // Update existing row
-      comSheet.getRange(rowNum, 1, 1, 6).setValues([newRow]);
-    } else {
-      // New row — insert before the TOTAL row of the target section
-      var lastComRow = comSheet.getLastRow();
-      var colAData = lastComRow >= 6 ? comSheet.getRange('A6:A' + lastComRow).getValues() : [];
-      var inTargetSection = (seccion === 'jugadores');
-      var summaryRow = -1;
-
-      for (var i = 0; i < colAData.length; i++) {
-        var cellA = String(colAData[i][0] || '').trim().toLowerCase();
-        if (!inTargetSection && cellA.indexOf('acomp') >= 0) {
-          if (seccion === 'acompanantes') inTargetSection = true;
-        }
-        if (inTargetSection && cellA.indexOf('total') >= 0) {
-          summaryRow = 6 + i;
-          break;
-        }
-      }
-
-      if (summaryRow >= 6) {
-        comSheet.insertRowsBefore(summaryRow, 1);
-        comSheet.getRange(summaryRow, 1, 1, 6).setValues([newRow]);
-      } else {
-        // Fallback: append at end
-        comSheet.getRange(Math.max(comSheet.getLastRow(), 5) + 1, 1, 1, 6).setValues([newRow]);
-      }
+    // Lock: escribir la fila y (si aplica) migrar sus reglas de asignación en
+    // AsignacionesComercial debe quedar serializado frente a
+    // adminComercialAsignar_/eliminarComercial, que tocan el mismo recurso.
+    var lock = LockService.getScriptLock();
+    try {
+      lock.waitLock(15000);
+    } catch (lockErr) {
+      return sendResponse(429, { ok: false, error: 'Otro cambio está en curso, intenta de nuevo en unos segundos.' });
     }
 
-    return sendResponse(200, { ok: true });
+    try {
+      var nombreAnterior = rowNum >= 6 ? String(comSheet.getRange(rowNum, 1).getValue() || '').trim() : '';
+
+      if (rowNum >= 6) {
+        // Update existing row
+        comSheet.getRange(rowNum, 1, 1, 6).setValues([newRow]);
+        // Si cambió el nombre, migrar automáticamente sus reglas en
+        // AsignacionesComercial — si no, quedaban huérfanas bajo el nombre
+        // viejo: los jugadores que ese comercial tenía asignados quedaban
+        // marcados como "ya reclamados" para siempre, sin que la pestaña
+        // "Comerciales" pudiera mostrarlos ni liberarlos (su dropdown solo
+        // ofrece nombres que existan hoy en Comisiones).
+        if (nombreAnterior && normText_(nombreAnterior) !== normText_(comercial)) {
+          migrarNombreComercialEnAsignaciones_(fuente.budgetSheetId, nombreAnterior, comercial);
+        }
+      } else {
+        // New row — insert before the TOTAL row of the target section
+        var lastComRow = comSheet.getLastRow();
+        var colAData = lastComRow >= 6 ? comSheet.getRange('A6:A' + lastComRow).getValues() : [];
+        var inTargetSection = (seccion === 'jugadores');
+        var summaryRow = -1;
+
+        for (var i = 0; i < colAData.length; i++) {
+          var cellA = String(colAData[i][0] || '').trim().toLowerCase();
+          if (!inTargetSection && cellA.indexOf('acomp') >= 0) {
+            if (seccion === 'acompanantes') inTargetSection = true;
+          }
+          if (inTargetSection && cellA.indexOf('total') >= 0) {
+            summaryRow = 6 + i;
+            break;
+          }
+        }
+
+        if (summaryRow >= 6) {
+          comSheet.insertRowsBefore(summaryRow, 1);
+          comSheet.getRange(summaryRow, 1, 1, 6).setValues([newRow]);
+        } else {
+          // Fallback: append at end
+          comSheet.getRange(Math.max(comSheet.getLastRow(), 5) + 1, 1, 1, 6).setValues([newRow]);
+        }
+      }
+
+      return sendResponse(200, { ok: true });
+    } finally {
+      lock.releaseLock();
+    }
   } catch (err) {
     Logger.log('guardarComercial error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// Cuando se renombra un comercial (modal "Editar comercial" en la pestaña
+// Comisiones, o el formulario "+Crear comercial" de la pestaña Comerciales si
+// alguna vez se reutiliza para editar), sus reglas en AsignacionesComercial
+// seguían con el nombre viejo — huérfanas. Se migran al nuevo nombre en el
+// mismo momento del renombre, en las DOS secciones (jugadores/acompañantes
+// comparten un solo comercial por nombre en AsignacionesComercial).
+function migrarNombreComercialEnAsignaciones_(budgetSheetId, nombreAnterior, nombreNuevo) {
+  try {
+    const asigSheet = getAsignacionesComercialSheet_(budgetSheetId, false);
+    if (!asigSheet) return;
+    const lastRow = asigSheet.getLastRow();
+    if (lastRow < 2) return;
+    const nombreAnteriorNorm = normText_(nombreAnterior);
+    const rango = asigSheet.getRange(2, 1, lastRow - 1, 1);
+    const valores = rango.getValues();
+    let migrados = 0;
+    for (let i = 0; i < valores.length; i++) {
+      if (normText_(String(valores[i][0] || '').trim()) === nombreAnteriorNorm) {
+        valores[i][0] = nombreNuevo;
+        migrados++;
+      }
+    }
+    if (migrados) {
+      rango.setValues(valores);
+      Logger.log('migrarNombreComercialEnAsignaciones_: ' + migrados + ' regla(s) migradas de "' + nombreAnterior + '" a "' + nombreNuevo + '".');
+    }
+  } catch (err) {
+    Logger.log('migrarNombreComercialEnAsignaciones_ error: ' + err);
   }
 }
 
@@ -4083,10 +4143,22 @@ function getComercialData(email) {
     const hasPassword = encontrados.some(function(e) { return !!e.storedPwd; });
     let jugadores = [];
     let acompanantes = [];
+    let misJugadores = [];
     encontrados.forEach(function(e) {
       const datos = leerComisionesDeHoja_(e.comSheet, e.nombre);
       jugadores = jugadores.concat(datos.jugadores.map(function(r) { r.programa = e.programKey; return r; }));
       acompanantes = acompanantes.concat(datos.acompanantes.map(function(r) { r.programa = e.programKey; return r; }));
+
+      // Jugadores individuales asignados a este comercial (ver panel admin
+      // "Comerciales") — el listado con nombre/colegio/tiquete/paso que ve el
+      // comercial en su propia área, no solo el conteo agregado de Comisiones.
+      const budgetSheetIdPrograma = e.programKey === 'world_challenge' ? BUDGET_SHEET_ID_WORLD_CHALLENGE : BUDGET_SHEET_ID;
+      const sheetIdPrograma = e.programKey === 'world_challenge' ? SHEET_ID_WORLD_CHALLENGE : SHEET_ID;
+      const asignacionesPrograma = leerAsignacionesComercial_(budgetSheetIdPrograma);
+      const jugadoresPrograma = leerJugadoresPrograma_(sheetIdPrograma);
+      const resueltoPrograma = resolverAsignacionesComercial_(jugadoresPrograma, asignacionesPrograma);
+      const misJugadoresPrograma = resueltoPrograma.porComercial[e.nombre] || [];
+      misJugadores = misJugadores.concat(misJugadoresPrograma.map(function(j) { j.programa = e.programKey; return j; }));
     });
 
     return ContentService.createTextOutput(JSON.stringify({
@@ -4094,12 +4166,401 @@ function getComercialData(email) {
       nombre: nombre,
       has_password: hasPassword,
       jugadores: jugadores,
-      acompanantes: acompanantes
+      acompanantes: acompanantes,
+      misJugadores: misJugadores
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     Logger.log('getComercialData error: ' + err);
     return ContentService.createTextOutput(JSON.stringify({ found: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ASIGNACIÓN DE JUGADORES A COMERCIALES (panel admin "Comerciales")
+// ═══════════════════════════════════════════════════════════════════════
+// Permite al admin asignarle a cada comercial, por programa, jugadores
+// individuales, un colegio completo, o el grupo Redcol — en vez de que el
+// admin escriba a mano el "Número de jugadores" en Comisiones (pestaña
+// Comisiones, modal existente), ese número se recalcula automáticamente
+// aquí a partir de las asignaciones reales. Las reglas quedan guardadas en
+// una hoja nueva "AsignacionesComercial" (una por sheet de presupuesto, así
+// que separada por programa igual que Comisiones/Pagos/Gastos).
+//
+// Regla de negocio (confirmada): un mismo jugador NUNCA puede quedar
+// asignado a dos comerciales a la vez — ni por accidente (dos reglas
+// individuales) ni por solapamiento (colegio de uno vs. individual de otro).
+// adminComercialAsignar() rechaza la escritura si detecta el conflicto;
+// resolverAsignacionesComercial_() además nunca duplica un jugador entre
+// comerciales al resolver, como red de seguridad adicional.
+
+function getAsignacionesComercialSheet_(budgetSheetId, create) {
+  const ss = SpreadsheetApp.openById(budgetSheetId);
+  let sheet = getSheetCI(ss, 'AsignacionesComercial');
+  if (!sheet && create) {
+    sheet = ss.insertSheet('AsignacionesComercial');
+    sheet.getRange(1, 1, 1, 4).setValues([['Comercial', 'Tipo', 'Valor', 'Fecha']]);
+  }
+  return sheet;
+}
+
+// tipo: 'individual' (Valor = nombre exacto del jugador) | 'colegio' (Valor =
+// nombre exacto del club/colegio) | 'redcol' (Valor vacío — usa el grupo fijo
+// ya definido en REDCOL_COLEGIOS_KEYWORDS/esColegioRedcol_).
+function leerAsignacionesComercial_(budgetSheetId) {
+  const sheet = getAsignacionesComercialSheet_(budgetSheetId, false);
+  if (!sheet) return [];
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+  const out = [];
+  for (let i = 0; i < data.length; i++) {
+    const comercial = String(data[i][0] || '').trim();
+    const tipo = String(data[i][1] || '').trim().toLowerCase();
+    if (!comercial || !tipo) continue;
+    out.push({ _row: i + 2, comercial: comercial, tipo: tipo, valor: String(data[i][2] || '').trim() });
+  }
+  return out;
+}
+
+// Lee y parsea la sección de jugadores de la hoja de Inscripciones de UN
+// programa — separado de resolverAsignacionesComercial_ para poder reutilizar
+// una misma lectura varias veces dentro de una sola request. Antes,
+// adminComercialAsignar() releía la hoja completa hasta 3 veces por cada
+// clic (verificación de conflicto ×2 + recálculo final), y getComercialData
+// la releía en cada login — con un roster de cientos de filas es trabajo
+// (y cuota de ejecución de Apps Script) desperdiciado.
+function leerJugadoresPrograma_(sheetId) {
+  const sheet = SpreadsheetApp.openById(sheetId).getSheets()[0];
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  let tipoCol = -1, nombreCol = -1, colegioCol = -1, fechaCol = -1, tiqueteCol = -1, pasoCol = -1, emailCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = String(headers[j]).toLowerCase().trim();
+    if (h === 'tipo') tipoCol = j;
+    if ((h === 'nombre' || h === 'nombre completo') && nombreCol < 0) nombreCol = j;
+    if (h.indexOf('colegio') >= 0 || h === 'club') colegioCol = j;
+    if (h.indexOf('fecha') >= 0 && h.indexOf('nac') >= 0) fechaCol = j;
+    if (h === 'tiquete aereo' || h === 'tiquete aéreo') tiqueteCol = j;
+    if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+  }
+  if (tipoCol < 0) tipoCol = 0;
+  if (nombreCol < 0) nombreCol = 1;
+  if (emailCol < 0) emailCol = 3;
+
+  // El identificador de un jugador es su EMAIL, no su nombre — dos jugadores
+  // distintos pueden compartir nombre completo (común en un roster grande),
+  // lo que antes hacía que resolverAsignacionesComercial_ los tratara como
+  // el mismo participante y uno de los dos desapareciera en silencio de todo
+  // conteo de comisiones. El email (obligatorio en el formulario de
+  // inscripción) es el campo que sí identifica a una persona de forma única.
+  const jugadores = [];
+  const colegiosSet = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const tipo = String(row[tipoCol] || '').toLowerCase().trim();
+    if (tipo.indexOf('jug') < 0) continue;
+    const nombre = String(row[nombreCol] || '').trim();
+    const email = String(row[emailCol] || '').trim();
+    if (!nombre || !email) continue;
+    const colegio = colegioCol >= 0 ? String(row[colegioCol] || '').trim() : '';
+    if (colegio) colegiosSet[colegio] = true;
+    const pv = pasoCol >= 0 ? row[pasoCol] : row[20];
+    let fechaNacVal = fechaCol >= 0 ? row[fechaCol] : '';
+    if (fechaNacVal instanceof Date) {
+      fechaNacVal = fechaNacVal.getFullYear() + '-' + String(fechaNacVal.getMonth() + 1).padStart(2, '0') + '-' + String(fechaNacVal.getDate()).padStart(2, '0');
+    } else {
+      fechaNacVal = String(fechaNacVal == null ? '' : fechaNacVal);
+    }
+    jugadores.push({
+      nombre: nombre,
+      email: email,
+      colegio: colegio,
+      fecha_nacimiento: fechaNacVal,
+      tiquete_aereo: tiqueteCol >= 0 ? String(row[tiqueteCol] || '') : '',
+      paso_actual: (pv != null && pv !== '') ? String(pv) : '1',
+      _norm: normText_(email)
+    });
+  }
+
+  return { jugadores: jugadores, colegios: Object.keys(colegiosSet).sort() };
+}
+
+// Resuelve una lista de reglas de asignación contra un roster de jugadores YA
+// LEÍDO (ver leerJugadoresPrograma_ — llamarla una vez y reutilizar su
+// resultado para varios escenarios en la misma request) y devuelve:
+//  - porComercial: { nombreComercial: [ {nombre, email, colegio, fecha_nacimiento, tiquete_aereo, paso_actual} ] }
+//  - colegios: lista de colegios distintos presentes en Inscripciones (para el selector)
+//  - jugadoresTodos: [{nombre, email, colegio}] de TODOS los jugadores del programa
+// Si un jugador calzara con reglas de más de un comercial (no debería pasar,
+// adminComercialAsignar() lo bloquea al guardar), se queda con el PRIMER
+// comercial que lo reclame según el orden de `asignaciones` — nunca lo
+// duplica en dos listas.
+function resolverAsignacionesComercial_(jugadoresPrograma, asignaciones) {
+  const jugadores = jugadoresPrograma.jugadores;
+  const porComercial = {};
+  const claimedBy = {}; // emailNorm -> comercial que ya lo reclamó
+  asignaciones.forEach(function(a) { if (!porComercial[a.comercial]) porComercial[a.comercial] = []; });
+  asignaciones.forEach(function(a) {
+    let matches = [];
+    if (a.tipo === 'individual') {
+      // El valor de una regla individual es el EMAIL del jugador (ver
+      // ac-valor-individual en areapersonal.html) — nunca su nombre.
+      const norm = normText_(a.valor);
+      matches = jugadores.filter(function(j) { return j._norm === norm; });
+    } else if (a.tipo === 'colegio') {
+      const normCol = normText_(a.valor);
+      matches = jugadores.filter(function(j) { return normText_(j.colegio) === normCol; });
+    } else if (a.tipo === 'redcol') {
+      matches = jugadores.filter(function(j) { return esColegioRedcol_(j.colegio); });
+    }
+    matches.forEach(function(j) {
+      if (claimedBy[j._norm]) return; // ya reclamado (por este mismo comercial u otro) — nunca duplicar
+      claimedBy[j._norm] = a.comercial;
+      porComercial[a.comercial].push({
+        nombre: j.nombre, email: j.email, colegio: j.colegio, fecha_nacimiento: j.fecha_nacimiento,
+        tiquete_aereo: j.tiquete_aereo, paso_actual: j.paso_actual
+      });
+    });
+  });
+
+  return {
+    porComercial: porComercial,
+    colegios: jugadoresPrograma.colegios,
+    jugadoresTodos: jugadores.map(function(j) { return { nombre: j.nombre, email: j.email, colegio: j.colegio }; })
+  };
+}
+
+// Recorre la sección "jugadores" de Comisiones buscando la fila de
+// `nombreComercial` y sobrescribe columna C (Nº de jugadores) con `conteo` y
+// columna D (Total) con comisionPorJugador × conteo. Si el comercial todavía
+// no tiene fila en Comisiones, no hace nada — debe crearse primero desde la
+// pestaña "Comisiones" existente (con su comisión por jugador y estado).
+function actualizarConteoJugadoresComercial_(comSheet, nombreComercial, conteo) {
+  const lastRow = comSheet.getLastRow();
+  if (lastRow < 6) return;
+  const data = comSheet.getRange('A6:F' + lastRow).getValues();
+  let seccion = 'jugadores';
+  const nombreLower = nombreComercial.toLowerCase();
+  for (let i = 0; i < data.length; i++) {
+    const colA = String(data[i][0] || '').trim();
+    const colALow = colA.toLowerCase();
+    if (!colA) continue;
+    if (colALow.indexOf('acomp') >= 0) { seccion = 'acompanantes'; continue; }
+    if (colALow.indexOf('total') >= 0) continue;
+    if (colALow === 'comercial') continue;
+    if (seccion !== 'jugadores' || colALow !== nombreLower) continue;
+    const fila = 6 + i;
+    const comisionJugador = parseFloat(data[i][1]) || 0;
+    comSheet.getRange(fila, 3).setValue(conteo);
+    comSheet.getRange(fila, 4).setValue(comisionJugador * conteo);
+    return;
+  }
+}
+
+// GET admin_comerciales_data — datos para la pestaña "Comerciales" del panel
+// admin: lista de comerciales ya existentes en Comisiones, sus reglas de
+// asignación actuales, colegios disponibles y el listado completo de
+// jugadores del programa (para el buscador de asignación individual).
+function getAdminComercialesData(params) {
+  try {
+    if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
+    const fuente = resolverSheets_(params.programa);
+    const asignaciones = leerAsignacionesComercial_(fuente.budgetSheetId);
+    const jugadoresPrograma = leerJugadoresPrograma_(fuente.sheetId);
+    const resuelto = resolverAsignacionesComercial_(jugadoresPrograma, asignaciones);
+
+    const comSheet = getSheetCI(SpreadsheetApp.openById(fuente.budgetSheetId), 'Comisiones');
+    const comerciales = [];
+    if (comSheet) {
+      const lastRow = comSheet.getLastRow();
+      if (lastRow >= 6) {
+        const data = comSheet.getRange('A6:A' + lastRow).getValues();
+        let seccion = 'jugadores';
+        for (let i = 0; i < data.length; i++) {
+          const colA = String(data[i][0] || '').trim();
+          const colALow = colA.toLowerCase();
+          if (!colA) continue;
+          if (colALow.indexOf('acomp') >= 0) { seccion = 'acompanantes'; continue; }
+          if (colALow.indexOf('total') >= 0) continue;
+          if (colALow === 'comercial') continue;
+          if (seccion === 'jugadores') comerciales.push(colA);
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      comerciales: comerciales,
+      asignaciones: asignaciones,
+      colegios: resuelto.colegios,
+      jugadoresTodos: resuelto.jugadoresTodos,
+      porComercial: resuelto.porComercial
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('getAdminComercialesData error: ' + err);
+    return sendResponse(500, { error: err.toString() });
+  }
+}
+
+// POST admin_comercial_asignar — agrega o quita una regla de asignación, y
+// recalcula/escribe el Nº de jugadores (Comisiones!C) de TODOS los
+// comerciales del programa (no solo el afectado, porque quitar una regla
+// libera jugadores que podrían afectar conteos ya calculados).
+function adminComercialAsignar(data) {
+  try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
+
+    // Sin lock, dos llamadas concurrentes (dos admins, o un doble clic) podían
+    // leer el mismo estado "antes", pasar ambas la verificación de conflicto,
+    // y terminar asignando el mismo jugador a dos comerciales — justo lo que
+    // esta función existe para impedir. El lock serializa lectura-verificación-
+    // escritura de este archivo entero mientras dura la operación.
+    const lock = LockService.getScriptLock();
+    try {
+      lock.waitLock(15000);
+    } catch (lockErr) {
+      return sendResponse(429, { ok: false, error: 'Otra asignación está en curso, intenta de nuevo en unos segundos.' });
+    }
+
+    try {
+      const fuente = resolverSheets_(data.programa);
+      const comercial = String(data.comercial || '').trim();
+      const tipo = String(data.tipo || '').trim().toLowerCase();
+      const valor = String(data.valor || '').trim();
+      const accion = String(data.accion || 'add').trim();
+      if (!comercial) return sendResponse(400, { ok: false, error: 'Comercial requerido' });
+
+      const asigSheet = getAsignacionesComercialSheet_(fuente.budgetSheetId, true);
+      const asignacionesActuales = leerAsignacionesComercial_(fuente.budgetSheetId);
+      // Una sola lectura de Inscripciones, reutilizada abajo en hasta 3
+      // resoluciones distintas — antes cada resolverAsignacionesComercial_
+      // releía la hoja completa por su cuenta.
+      const jugadoresPrograma = leerJugadoresPrograma_(fuente.sheetId);
+
+      if (accion === 'remove') {
+        const rowNum = parseInt(data._row);
+        // Antes de borrar, confirmar que esa fila sigue siendo del comercial
+        // esperado — `_row` viene de un fetch anterior en el cliente; si
+        // mientras tanto otra escritura corrió el número de filas, borrar a
+        // ciegas por índice podía eliminar la regla de OTRO comercial.
+        const filaActual = asignacionesActuales.find(function(a) { return a._row === rowNum; });
+        if (!filaActual) return sendResponse(409, { ok: false, error: 'Esa regla ya no existe — refresca e intenta de nuevo.' });
+        if (filaActual.comercial !== comercial) return sendResponse(409, { ok: false, error: 'La fila cambió mientras tanto — refresca e intenta de nuevo.' });
+        asigSheet.deleteRow(rowNum);
+      } else {
+        if (['individual', 'colegio', 'redcol'].indexOf(tipo) < 0) return sendResponse(400, { ok: false, error: 'Tipo inválido' });
+        if (tipo !== 'redcol' && !valor) return sendResponse(400, { ok: false, error: 'Valor requerido' });
+
+        const yaExiste = asignacionesActuales.some(function(a) {
+          return a.comercial === comercial && a.tipo === tipo && normText_(a.valor) === normText_(valor);
+        });
+        if (yaExiste) return sendResponse(400, { ok: false, error: 'Esta regla ya existe para este comercial.' });
+
+        // Verificar conflictos: ¿algún jugador que esta nueva regla reclamaría
+        // ya pertenece a OTRO comercial? Se resuelve el estado ANTES de sumar
+        // la regla nueva, y por separado qué jugadores reclamaría la regla
+        // nueva por sí sola, para poder listar los nombres en conflicto.
+        // Se compara por EMAIL (identificador único del jugador), no por
+        // nombre — dos jugadores distintos pueden compartir nombre completo.
+        const resueltoActual = resolverAsignacionesComercial_(jugadoresPrograma, asignacionesActuales);
+        const resueltoSoloNueva = resolverAsignacionesComercial_(jugadoresPrograma, [{ comercial: comercial, tipo: tipo, valor: valor }]);
+        const jugadoresPropuestos = resueltoSoloNueva.porComercial[comercial] || [];
+
+        const conflictos = [];
+        Object.keys(resueltoActual.porComercial).forEach(function(otroComercial) {
+          if (otroComercial === comercial) return;
+          resueltoActual.porComercial[otroComercial].forEach(function(j) {
+            if (jugadoresPropuestos.some(function(p) { return normText_(p.email) === normText_(j.email); })) {
+              conflictos.push(j.nombre + ' (ya asignado a ' + otroComercial + ')');
+            }
+          });
+        });
+        if (conflictos.length) return sendResponse(409, { ok: false, error: 'Conflicto — ya asignado a otro comercial: ' + conflictos.join(', ') });
+
+        asigSheet.appendRow([comercial, tipo, valor, new Date().toISOString()]);
+      }
+
+      const asignacionesFinal = leerAsignacionesComercial_(fuente.budgetSheetId);
+      const resuelto = resolverAsignacionesComercial_(jugadoresPrograma, asignacionesFinal);
+      const comSheet = getSheetCI(SpreadsheetApp.openById(fuente.budgetSheetId), 'Comisiones');
+      if (comSheet) {
+        Object.keys(resuelto.porComercial).forEach(function(nombreCom) {
+          actualizarConteoJugadoresComercial_(comSheet, nombreCom, resuelto.porComercial[nombreCom].length);
+        });
+      }
+
+      return sendResponse(200, { ok: true, porComercial: resuelto.porComercial });
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    Logger.log('adminComercialAsignar error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// POST eliminar_comercial — borra al comercial de la pestaña "Comisiones"
+// (ambas secciones, jugadores Y acompañantes, por si tiene fila en las dos)
+// y libera todas sus reglas en AsignacionesComercial, para que esos
+// jugadores queden disponibles y se los pueda asignar a otro comercial.
+function eliminarComercial(data) {
+  try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
+    const comercial = String(data.comercial || '').trim();
+    if (!comercial) return sendResponse(400, { ok: false, error: 'Comercial requerido' });
+    const nombreLower = comercial.toLowerCase();
+    const fuente = resolverSheets_(data.programa);
+
+    const lock = LockService.getScriptLock();
+    try {
+      lock.waitLock(15000);
+    } catch (lockErr) {
+      return sendResponse(429, { ok: false, error: 'Otro cambio está en curso, intenta de nuevo en unos segundos.' });
+    }
+
+    try {
+      const comSheet = getSheetCI(SpreadsheetApp.openById(fuente.budgetSheetId), 'Comisiones');
+      if (comSheet) {
+        const lastRow = comSheet.getLastRow();
+        if (lastRow >= 6) {
+          const colA = comSheet.getRange('A6:A' + lastRow).getValues();
+          const filasABorrar = [];
+          for (let i = 0; i < colA.length; i++) {
+            const val = String(colA[i][0] || '').trim();
+            const valLower = val.toLowerCase();
+            if (!val) continue;
+            if (valLower.indexOf('acomp') >= 0) continue; // marcador de sección, no una fila de comercial
+            if (valLower.indexOf('total') >= 0) continue;
+            if (valLower === 'comercial') continue;
+            if (valLower === nombreLower) filasABorrar.push(6 + i);
+          }
+          filasABorrar.sort(function(a, b) { return b - a; }); // de abajo hacia arriba, para no desfasar índices
+          filasABorrar.forEach(function(fila) { comSheet.deleteRow(fila); });
+        }
+      }
+
+      const asigSheet = getAsignacionesComercialSheet_(fuente.budgetSheetId, false);
+      if (asigSheet) {
+        const lastRow2 = asigSheet.getLastRow();
+        if (lastRow2 >= 2) {
+          const colA2 = asigSheet.getRange(2, 1, lastRow2 - 1, 1).getValues();
+          const filasABorrar2 = [];
+          for (let i = 0; i < colA2.length; i++) {
+            if (String(colA2[i][0] || '').trim().toLowerCase() === nombreLower) filasABorrar2.push(2 + i);
+          }
+          filasABorrar2.sort(function(a, b) { return b - a; });
+          filasABorrar2.forEach(function(fila) { asigSheet.deleteRow(fila); });
+        }
+      }
+
+      return sendResponse(200, { ok: true });
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    Logger.log('eliminarComercial error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
 
