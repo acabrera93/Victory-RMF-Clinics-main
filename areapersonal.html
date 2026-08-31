@@ -1766,7 +1766,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="ctitle" style="margin-bottom:8px">Jugadores asignados (<span id="ac-conteo">0</span>)</div>
           <div style="overflow-x:auto">
             <table class="com-table">
-              <thead><tr><th>Nombre</th><th>Colegio</th><th>Fecha nac.</th><th>Tiquete</th><th>Paso</th></tr></thead>
+              <thead><tr><th>Nombre</th><th>Colegio</th><th>Fecha nac.</th><th>Tiquete</th><th>Paso</th><th></th></tr></thead>
               <tbody id="ac-jugadores-tbody"></tbody>
             </table>
           </div>
@@ -6396,17 +6396,25 @@ function selComercialAsignacion(nombre) {
   if (bloqueAgregar) bloqueAgregar.style.display = isEditAdmin() ? '' : 'none';
 }
 
+// Clave única de un jugador para el frontend: EMAIL + NOMBRE, no solo email —
+// hermanos inscritos como jugadores separados suelen compartir el correo del
+// mismo acudiente, así que el email solo no basta para distinguirlos. Debe
+// coincidir con claveJugador_() en APPS_SCRIPT_CODE.gs.
+function claveJugadorJS_(email, nombre) {
+  return normalizarTextoJS_(email) + '|||' + normalizarTextoJS_(nombre);
+}
+
 function poblarSelectoresAsignacion() {
   const d = adminComercialesData;
   if (!d) return;
-  // El identificador de un jugador es su EMAIL (único), no su nombre — dos
-  // jugadores distintos pueden compartir nombre completo.
   const asignadosNorm = new Set();
-  Object.values(d.porComercial || {}).forEach(lista => lista.forEach(j => asignadosNorm.add(normalizarTextoJS_(j.email))));
-  const disponibles = (d.jugadoresTodos || []).filter(j => !asignadosNorm.has(normalizarTextoJS_(j.email)));
+  Object.values(d.porComercial || {}).forEach(lista => lista.forEach(j => asignadosNorm.add(claveJugadorJS_(j.email, j.nombre))));
+  const disponibles = (d.jugadoresTodos || []).filter(j => !asignadosNorm.has(claveJugadorJS_(j.email, j.nombre)));
   const selJug = document.getElementById('ac-valor-individual');
+  // El value codifica "email|||nombre" — el backend lo necesita completo para
+  // distinguir entre hermanos que comparten el correo del acudiente.
   selJug.innerHTML = disponibles.length
-    ? disponibles.map(j => `<option value="${escapeHtml(j.email)}">${escapeHtml(j.nombre)}${j.colegio ? ' — ' + escapeHtml(j.colegio) : ''}</option>`).join('')
+    ? disponibles.map(j => `<option value="${escapeHtml(j.email + '|||' + j.nombre)}">${escapeHtml(j.nombre)}${j.colegio ? ' — ' + escapeHtml(j.colegio) : ''}</option>`).join('')
     : '<option value="">No hay jugadores disponibles para asignar</option>';
 
   const selCol = document.getElementById('ac-valor-colegio');
@@ -6426,15 +6434,14 @@ function renderReglasYJugadoresComercial() {
   if (!d || !comercialAsignacionActivo) return;
   const reglas = (d.asignaciones || []).filter(a => a.comercial === comercialAsignacionActivo);
   const chipsEl = document.getElementById('ac-reglas-chips');
-  const iconos = { individual: '👤', colegio: '🏫', redcol: '🎓' };
+  const iconos = { individual: '👤', colegio: '🏫', redcol: '🎓', excluir: '🚫' };
   const puedeEditar = isEditAdmin();
-  // El valor guardado de una regla "individual" es el email del jugador —
-  // se busca su nombre en jugadoresTodos para mostrar algo legible en el chip.
-  const nombrePorEmail = {};
-  (d.jugadoresTodos || []).forEach(j => { nombrePorEmail[normalizarTextoJS_(j.email)] = j.nombre; });
+  // El valor guardado de una regla "individual"/"excluir" es "email|||nombre"
+  // — el nombre ya viene incluido, no hace falta buscarlo aparte.
   const etiquetaRegla = r => {
     if (r.tipo === 'redcol') return 'Redcol';
-    if (r.tipo === 'individual') return nombrePorEmail[normalizarTextoJS_(r.valor)] || r.valor;
+    if (r.tipo === 'individual') return r.valor.split('|||')[1] || r.valor;
+    if (r.tipo === 'excluir') return 'Excluido: ' + (r.valor.split('|||')[1] || r.valor);
     return r.valor;
   };
   chipsEl.innerHTML = reglas.length
@@ -6445,8 +6452,34 @@ function renderReglasYJugadoresComercial() {
   document.getElementById('ac-conteo').textContent = jugadores.length;
   const tbody = document.getElementById('ac-jugadores-tbody');
   tbody.innerHTML = jugadores.length
-    ? jugadores.map(j => `<tr><td>${escapeHtml(j.nombre)}</td><td>${escapeHtml(j.colegio) || '—'}</td><td>${escapeHtml(formatFechaNac(j.fecha_nacimiento))}</td><td>${(j.tiquete_aereo || '').toLowerCase().indexOf('con') >= 0 ? '✈ Sí' : '—'}</td><td>${escapeHtml(j.paso_actual || '1')}</td></tr>`).join('')
-    : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin jugadores asignados.</td></tr>';
+    ? jugadores.map((j, idx) => `<tr><td>${escapeHtml(j.nombre)}</td><td>${escapeHtml(j.colegio) || '—'}</td><td>${escapeHtml(formatFechaNac(j.fecha_nacimiento))}</td><td>${(j.tiquete_aereo || '').toLowerCase().indexOf('con') >= 0 ? '✈ Sí' : '—'}</td><td>${escapeHtml(j.paso_actual || '1')}</td><td>${puedeEditar ? `<button onclick="excluirJugadorDeLista(${idx})" style="background:none;border:1px solid var(--rborder);color:var(--red);border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;white-space:nowrap" title="Quitar de esta lista">✕ Quitar</button>` : ''}</td></tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:14px;font-size:13px">Sin jugadores asignados.</td></tr>';
+}
+
+// Excluye a un jugador puntual de la lista del comercial activo, aunque
+// calce con una regla amplia (colegio/redcol) — ej. un jugador que
+// pertenece a un colegio Redcol pero en realidad llegó por otro canal y no
+// es de este comercial. Queda libre para que otro comercial lo reclame.
+async function excluirJugadorDeLista(idx) {
+  if (!isEditAdmin() || !comercialAsignacionActivo) return;
+  const d = adminComercialesData;
+  const jugadores = (d && d.porComercial && d.porComercial[comercialAsignacionActivo]) || [];
+  const j = jugadores[idx];
+  if (!j) return;
+  if (!confirm('¿Quitar a "' + j.nombre + '" de la lista de ' + comercialAsignacionActivo + '? Dejará de contar para su comisión, pero seguirá disponible para asignarlo a otro comercial si corresponde.')) return;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'admin_comercial_asignar', accion: 'add', comercial: comercialAsignacionActivo, tipo: 'excluir', valor: j.email + '|||' + j.nombre, programa: adminProgramaActivo, token: adminSessionToken }),
+      redirect: 'follow'
+    }).then(r => r.json());
+    if (res.ok) {
+      mostrarStatusAsignacion('Jugador quitado de la lista.', true);
+      await refrescarComercialesTrasCambio();
+    } else {
+      mostrarStatusAsignacion(res.error || 'Error al quitar.', false);
+    }
+  } catch (e) { mostrarStatusAsignacion('Error de conexión.', false); }
 }
 
 function mostrarStatusAsignacion(msg, ok) {
