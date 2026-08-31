@@ -2453,6 +2453,13 @@ function registrarPago(data) {
     }
 
     actualizarResumenPagos(pagosSheet);
+    // Reserva/Pago Final cambian lo "facturado" que usa la comisión de
+    // comerciales — Tiquete no, así que se omite para no gastar cuota en un
+    // recálculo que no cambiaría nada.
+    var tipoLowerRecalc = tipo.toLowerCase().trim();
+    if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
+      recalcularComisionesComerciales_(data.programa);
+    }
     return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
   } catch (err) {
     Logger.log('registrarPago error: ' + err);
@@ -2810,6 +2817,10 @@ function marcarComprobanteSubido(data) {
       );
     });
 
+    var tipoLowerRecalc = tipo.toLowerCase().trim();
+    if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
+      recalcularComisionesComerciales_(data.programa);
+    }
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('marcarComprobanteSubido error: ' + err);
@@ -2917,6 +2928,10 @@ function agregarAbonoPago(data) {
     notificarPagoConfirmado(nombre, tipo, sumaEur, sumaCop, 'Parcial', data.programa, metodoPago, parseFloat(data.esperado_eur), historialActual);
 
     actualizarResumenPagos(pagosSheet);
+    var tipoLowerRecalc = tipo.toLowerCase().trim();
+    if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
+      recalcularComisionesComerciales_(data.programa);
+    }
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('agregarAbonoPago error: ' + err);
@@ -3016,6 +3031,10 @@ function confirmarPagoPendiente(data) {
     }
 
     actualizarResumenPagos(pagosSheet);
+    var tipoLowerRecalc = tipo.toLowerCase().trim();
+    if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
+      recalcularComisionesComerciales_(data.programa);
+    }
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('confirmarPagoPendiente error: ' + err);
@@ -4373,12 +4392,63 @@ function resolverAsignacionesComercial_(jugadoresPrograma, asignaciones) {
   };
 }
 
+// Suma lo FACTURADO a un jugador (Valor EUR de sus filas "Reserva" y "Pago
+// Final" en la hoja Pagos — el tiquete aéreo tiene su propia fila con
+// concepto "Tiquete" y queda fuera a propósito) sin importar el estado del
+// pago (Completo/Parcial/Pendiente) — es lo que se le facturó, no solo lo ya
+// cobrado. Mismo patrón de agrupación por nombre que usa el resto del
+// archivo (registrarPago, getAbonosValidados_, etc.).
+function montoFacturadoJugadorSinTiquete_(pagosSheet, pc, nombreJugador) {
+  const nombreNorm = normText_(nombreJugador);
+  const startRow = 6;
+  const lastRow = pagosSheet.getLastRow();
+  if (lastRow < startRow) return 0;
+  const readWidth = Math.max(pc.nombre_familia, pc.notas, pc.valor_eur);
+  const data = pagosSheet.getRange(startRow, 1, lastRow - startRow + 1, readWidth).getValues();
+  let currentNombreNorm = '';
+  let total = 0;
+  for (let i = 0; i < data.length; i++) {
+    const cellB = String(data[i][pc.nombre_familia - 1] || '').trim();
+    if (cellB) {
+      if (cellB.toLowerCase().indexOf('total') >= 0) { currentNombreNorm = ''; continue; }
+      currentNombreNorm = normText_(cellB);
+    }
+    if (currentNombreNorm !== nombreNorm) continue;
+    const concepto = String(data[i][pc.notas - 1] || '').toLowerCase().trim();
+    if (concepto !== 'reserva' && concepto !== 'pago final') continue; // excluye "tiquete" a propósito
+    total += parseFloat(data[i][pc.valor_eur - 1]) || 0;
+  }
+  return total;
+}
+
+// Comisión promedio por jugador de un comercial: 10% de la SUMA de lo
+// facturado (sin tiquete) a TODOS sus jugadores asignados, dividido entre el
+// total de jugadores asignados (no solo los que ya tienen algo facturado) —
+// así avg × conteo (lo que escribe actualizarConteoJugadoresComercial_ en
+// D6) da exactamente el 10% real de todo lo facturado a ese comercial, sin
+// inflarlo con jugadores que aún no tienen nada registrado en Pagos.
+function calcularComisionPromedioJugadores_(pagosSheet, pc, jugadores) {
+  if (!jugadores.length) return 0;
+  let sumaFacturado = 0;
+  jugadores.forEach(function(j) {
+    sumaFacturado += montoFacturadoJugadorSinTiquete_(pagosSheet, pc, j.nombre);
+  });
+  const comisionPromedio = (sumaFacturado * 0.10) / jugadores.length;
+  return Math.round(comisionPromedio * 100) / 100;
+}
+
 // Recorre la sección "jugadores" de Comisiones buscando la fila de
-// `nombreComercial` y sobrescribe columna C (Nº de jugadores) con `conteo` y
-// columna D (Total) con comisionPorJugador × conteo. Si el comercial todavía
-// no tiene fila en Comisiones, no hace nada — debe crearse primero desde la
-// pestaña "Comisiones" existente (con su comisión por jugador y estado).
-function actualizarConteoJugadoresComercial_(comSheet, nombreComercial, conteo) {
+// `nombreComercial` y sobrescribe:
+//  - columna B (comisión por jugador) con el 10% PROMEDIO de lo facturado
+//    (Reserva + Pago Final, sin tiquete) a sus jugadores asignados
+//  - columna C (Nº de jugadores) con `jugadores.length`
+//  - columna D (Total) con B × C — que por construcción es el 10% exacto de
+//    TODO lo facturado a ese comercial (ver calcularComisionPromedioJugadores_)
+// Si el comercial todavía no tiene fila en Comisiones, no hace nada — debe
+// crearse primero desde la pestaña "Comisiones" existente.
+// `pagosSheet`/`pc` pueden venir null (hoja Pagos no encontrada) — en ese
+// caso se conserva el valor de comisión ya escrito en B, en vez de borrarlo.
+function actualizarConteoJugadoresComercial_(comSheet, pagosSheet, pc, nombreComercial, jugadores) {
   const lastRow = comSheet.getLastRow();
   if (lastRow < 6) return;
   const data = comSheet.getRange('A6:F' + lastRow).getValues();
@@ -4393,10 +4463,42 @@ function actualizarConteoJugadoresComercial_(comSheet, nombreComercial, conteo) 
     if (colALow === 'comercial') continue;
     if (seccion !== 'jugadores' || colALow !== nombreLower) continue;
     const fila = 6 + i;
-    const comisionJugador = parseFloat(data[i][1]) || 0;
+    const conteo = jugadores.length;
+    const comisionPromedio = (pagosSheet && pc)
+      ? calcularComisionPromedioJugadores_(pagosSheet, pc, jugadores)
+      : (parseFloat(data[i][1]) || 0);
+    comSheet.getRange(fila, 2).setValue(comisionPromedio);
     comSheet.getRange(fila, 3).setValue(conteo);
-    comSheet.getRange(fila, 4).setValue(comisionJugador * conteo);
+    comSheet.getRange(fila, 4).setValue(comisionPromedio * conteo);
     return;
+  }
+}
+
+// Recalcula y reescribe en Comisiones (B/C/D) la comisión de TODOS los
+// comerciales de un programa, a partir de sus asignaciones actuales en
+// AsignacionesComercial y lo REALMENTE facturado en Pagos. Se llama después
+// de registrar/actualizar cualquier pago de Reserva o Pago Final — si no, la
+// comisión (basada en lo facturado) solo se refrescaba cuando cambiaba una
+// asignación en la pestaña "Comerciales", y quedaba desactualizada en cuanto
+// alguien pagaba. Envuelto en su propio try/catch: un fallo aquí nunca debe
+// impedir que el pago en sí quede registrado — la comisión es secundaria.
+function recalcularComisionesComerciales_(programa) {
+  try {
+    const fuente = resolverSheets_(programa);
+    const asignaciones = leerAsignacionesComercial_(fuente.budgetSheetId);
+    if (!asignaciones.length) return; // nadie tiene reglas de asignación — nada que recalcular
+    const jugadoresPrograma = leerJugadoresPrograma_(fuente.sheetId);
+    const resuelto = resolverAsignacionesComercial_(jugadoresPrograma, asignaciones);
+    const ssBudget = SpreadsheetApp.openById(fuente.budgetSheetId);
+    const comSheet = getSheetCI(ssBudget, 'Comisiones');
+    if (!comSheet) return;
+    const pagosSheet = getSheetCI(ssBudget, 'Pagos');
+    const pc = pagosSheet ? getPagosColMap_(pagosSheet) : null;
+    Object.keys(resuelto.porComercial).forEach(function(nombreCom) {
+      actualizarConteoJugadoresComercial_(comSheet, pagosSheet, pc, nombreCom, resuelto.porComercial[nombreCom]);
+    });
+  } catch (err) {
+    Logger.log('recalcularComisionesComerciales_ error: ' + err);
   }
 }
 
@@ -4531,10 +4633,13 @@ function adminComercialAsignar(data) {
 
       const asignacionesFinal = leerAsignacionesComercial_(fuente.budgetSheetId);
       const resuelto = resolverAsignacionesComercial_(jugadoresPrograma, asignacionesFinal);
-      const comSheet = getSheetCI(SpreadsheetApp.openById(fuente.budgetSheetId), 'Comisiones');
+      const ssBudget = SpreadsheetApp.openById(fuente.budgetSheetId);
+      const comSheet = getSheetCI(ssBudget, 'Comisiones');
+      const pagosSheet = getSheetCI(ssBudget, 'Pagos');
+      const pc = pagosSheet ? getPagosColMap_(pagosSheet) : null;
       if (comSheet) {
         Object.keys(resuelto.porComercial).forEach(function(nombreCom) {
-          actualizarConteoJugadoresComercial_(comSheet, nombreCom, resuelto.porComercial[nombreCom].length);
+          actualizarConteoJugadoresComercial_(comSheet, pagosSheet, pc, nombreCom, resuelto.porComercial[nombreCom]);
         });
       }
 
