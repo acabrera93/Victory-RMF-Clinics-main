@@ -4085,8 +4085,8 @@ function getComercialData(email) {
     let acompanantes = [];
     encontrados.forEach(function(e) {
       const datos = leerComisionesDeHoja_(e.comSheet, e.nombre);
-      jugadores = jugadores.concat(datos.jugadores);
-      acompanantes = acompanantes.concat(datos.acompanantes);
+      jugadores = jugadores.concat(datos.jugadores.map(function(r) { r.programa = e.programKey; return r; }));
+      acompanantes = acompanantes.concat(datos.acompanantes.map(function(r) { r.programa = e.programKey; return r; }));
     });
 
     return ContentService.createTextOutput(JSON.stringify({

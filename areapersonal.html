@@ -5015,27 +5015,42 @@ function showComercialOnly(data) {
   }
 }
 
+let comercialProgramaActivo = null; // 'clinic' | 'world_challenge' — pestaña activa en Mis Comisiones
+const COMERCIAL_PROGRAMA_LABEL = { clinic: '🏟️ Clinic 2026', world_challenge: '🏆 World Challenge 2027' };
+
+function selComercialPrograma(p) {
+  comercialProgramaActivo = p;
+  renderComercialPanel();
+}
+
 function renderComercialPanel() {
   const data = window._comercialData;
   if (!data || !data.found) return;
-  const jugs   = data.jugadores    || [];
-  const acomps = data.acompanantes || [];
-  const totalJugs   = jugs.reduce(function(s,r){ return s+(r.total||0); }, 0);
-  const totalAcomps = acomps.reduce(function(s,r){ return s+(r.total||0); }, 0);
-  const totalGlobal = totalJugs + totalAcomps;
+  const jugsAll = data.jugadores || [];
+  // Cada comercial puede vender ambos programas con la misma cuenta — se
+  // separan en pestañas para no mezclar comisiones de Clinic y World Challenge.
+  const programasConDatos = Object.keys(COMERCIAL_PROGRAMA_LABEL).filter(function(p){ return jugsAll.some(function(r){ return r.programa === p; }); });
+  if (!comercialProgramaActivo || programasConDatos.indexOf(comercialProgramaActivo) < 0) {
+    comercialProgramaActivo = programasConDatos[0] || 'clinic';
+  }
+  const jugs = jugsAll.filter(function(r){ return r.programa === comercialProgramaActivo; });
+  const totalJugs = jugs.reduce(function(s,r){ return s+(r.total||0); }, 0);
   function fmt(n){ return (n||0).toLocaleString('es-CO')+' €'; }
   function statusBadge(e){ var cls=(e||'').toLowerCase().includes('pag')?'com-status-pag':'com-status-pend'; return '<span class="com-status '+cls+'">'+(e||'Pendiente')+'</span>'; }
 
   var jugSubLabel = jugs.length ? jugs.map(function(r){ return r.jugadores+' jug. × '+fmt(r.comision_jugador); }).join(' · ') : 'Sin jugadores aún';
-  var activeAcomps = acomps.filter(function(r){ return r.acomp_doble>0||r.acomp_sencilla>0; });
-  var acompSubLabel = activeAcomps.length ? activeAcomps.map(function(r){ var p=[]; if(r.acomp_doble>0)p.push(r.acomp_doble+' doble'); if(r.acomp_sencilla>0)p.push(r.acomp_sencilla+' sencilla'); return p.join(', '); }).join(' · ') : 'Sin acompañantes aún';
 
   var html = '';
-  // KPI row
+  // Pestañas por programa (solo si vende en más de uno)
+  if (programasConDatos.length > 1) {
+    html += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">' + programasConDatos.map(function(p){
+      var activo = p === comercialProgramaActivo;
+      return '<button onclick="selComercialPrograma(\''+p+'\')" style="padding:8px 18px;border-radius:20px;border:1.5px solid '+(activo?'var(--navy)':'var(--border)')+';background:'+(activo?'var(--navy)':'#fff')+';color:'+(activo?'#fff':'var(--navy)')+';font-family:\'DM Sans\',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s">'+COMERCIAL_PROGRAMA_LABEL[p]+'</button>';
+    }).join('') + '</div>';
+  }
+  // KPI row — los acompañantes no son comisionables, solo se muestran jugadores
   html += '<div class="com-kpi-row">'
-    +'<div class="card"><div class="ctitle">Jugadores</div><div class="com-kpi-val">'+fmt(totalJugs)+'</div><div class="com-kpi-label">Total comisiones jugadores</div><div class="com-kpi-sub">'+jugSubLabel+'</div></div>'
-    +'<div class="card"><div class="ctitle">Acompañantes</div><div class="com-kpi-val">'+fmt(totalAcomps)+'</div><div class="com-kpi-label">Total comisiones acompañantes</div><div class="com-kpi-sub">'+acompSubLabel+'</div></div>'
-    +'<div class="card" style="border:2px solid var(--blue)"><div class="ctitle" style="color:var(--blue)">Total Global</div><div class="com-kpi-val blue">'+fmt(totalGlobal)+'</div><div class="com-kpi-label">Suma total de comisiones</div></div>'
+    +'<div class="card" style="border:2px solid var(--blue)"><div class="ctitle" style="color:var(--blue)">Jugadores · '+(COMERCIAL_PROGRAMA_LABEL[comercialProgramaActivo]||'')+'</div><div class="com-kpi-val blue">'+fmt(totalJugs)+'</div><div class="com-kpi-label">Total comisiones jugadores</div><div class="com-kpi-sub">'+jugSubLabel+'</div></div>'
     +'</div>';
 
   // Jugadores detail
@@ -5048,18 +5063,6 @@ function renderComercialPanel() {
     if (jugs.length > 1) html += '<tr class="com-total-row"><td colspan="3">Total jugadores</td><td>'+fmt(totalJugs)+'</td></tr>';
     html += '</tbody></table>';
   } else { html += '<p style="color:var(--muted);font-size:14px">Sin datos de jugadores.</p>'; }
-  html += '</div>';
-
-  // Acompañantes detail
-  html += '<div class="card"><div class="ctitle">Detalle — Acompañantes</div>';
-  if (activeAcomps.length) {
-    html += '<table class="com-table"><thead><tr><th>Com. Doble</th><th>Com. Sencilla</th><th>Hab. Doble</th><th>Hab. Sencilla</th><th>Subtotal</th></tr></thead><tbody>';
-    activeAcomps.forEach(function(r){
-      html += '<tr><td>'+fmt(r.com_doble)+'</td><td>'+fmt(r.com_sencilla)+'</td><td>'+r.acomp_doble+'</td><td>'+r.acomp_sencilla+'</td><td><strong>'+fmt(r.total)+'</strong></td></tr>';
-    });
-    if (activeAcomps.length > 1) html += '<tr class="com-total-row"><td colspan="4">Total acompañantes</td><td>'+fmt(totalAcomps)+'</td></tr>';
-    html += '</tbody></table>';
-  } else { html += '<p style="color:var(--muted);font-size:14px">Sin acompañantes asignados.</p>'; }
   html += '</div>';
 
   // Cambiar contraseña
