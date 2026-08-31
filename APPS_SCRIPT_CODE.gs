@@ -4223,6 +4223,28 @@ function leerAsignacionesComercial_(budgetSheetId) {
   return out;
 }
 
+// Clave única de un jugador: EMAIL + NOMBRE normalizados, no solo el email.
+// El email solo no basta — hermanos inscritos como jugadores separados suelen
+// compartir el correo del mismo acudiente, y con email solo como clave, el
+// segundo hermano quedaba marcado como "ya reclamado" por el primero y
+// desaparecía en silencio de todo conteo de comisiones (bug real: Rhiana
+// Ortiz Balanta y sus hermanos, mismo correo). Nombres duplicados sin
+// compartir email (el bug original que motivó dejar de usar solo el nombre)
+// tampoco colisionan, porque aquí también se exige que el email coincida.
+function claveJugador_(email, nombre) {
+  return normText_(email) + '|||' + normText_(nombre);
+}
+
+// El valor guardado de una regla "individual" viene como "email|||nombre"
+// (ver ac-valor-individual en areapersonal.html) — se normaliza cada parte
+// por separado y se rejuntan, para que el resultado sea comparable 1:1 contra
+// claveJugador_(email, nombre) sin depender de que el string completo se
+// comporte igual bajo normText_ (que solo garantiza normalizar, no separar).
+function claveDesdeValorIndividual_(valor) {
+  const partes = String(valor || '').split('|||');
+  return claveJugador_(partes[0] || '', partes[1] || '');
+}
+
 // Lee y parsea la sección de jugadores de la hoja de Inscripciones de UN
 // programa — separado de resolverAsignacionesComercial_ para poder reutilizar
 // una misma lectura varias veces dentro de una sola request. Antes,
@@ -4280,7 +4302,7 @@ function leerJugadoresPrograma_(sheetId) {
       fecha_nacimiento: fechaNacVal,
       tiquete_aereo: tiqueteCol >= 0 ? String(row[tiqueteCol] || '') : '',
       paso_actual: (pv != null && pv !== '') ? String(pv) : '1',
-      _norm: normText_(email)
+      _norm: claveJugador_(email, nombre)
     });
   }
 
@@ -4300,14 +4322,31 @@ function leerJugadoresPrograma_(sheetId) {
 function resolverAsignacionesComercial_(jugadoresPrograma, asignaciones) {
   const jugadores = jugadoresPrograma.jugadores;
   const porComercial = {};
-  const claimedBy = {}; // emailNorm -> comercial que ya lo reclamó
+  const claimedBy = {}; // claveJugador_ (email+nombre) -> comercial que ya lo reclamó
+
+  // Exclusiones ("excluir"): un jugador puede calzar con una regla amplia de
+  // colegio/redcol de un comercial pero en realidad no ser suyo (ej. llegó
+  // por otro canal) — se resuelven ANTES que el resto de reglas, para que la
+  // exclusión gane sin importar en qué orden se guardaron las reglas. Son
+  // por comercial, no globales: el jugador queda libre para que otro
+  // comercial lo reclame (individual, colegio o redcol) si corresponde.
+  const excluidosPorComercial = {};
+  asignaciones.forEach(function(a) {
+    if (a.tipo !== 'excluir') return;
+    if (!excluidosPorComercial[a.comercial]) excluidosPorComercial[a.comercial] = {};
+    excluidosPorComercial[a.comercial][claveDesdeValorIndividual_(a.valor)] = true;
+  });
+
   asignaciones.forEach(function(a) { if (!porComercial[a.comercial]) porComercial[a.comercial] = []; });
   asignaciones.forEach(function(a) {
+    if (a.tipo === 'excluir') return; // no suma jugadores, solo filtra abajo
     let matches = [];
     if (a.tipo === 'individual') {
-      // El valor de una regla individual es el EMAIL del jugador (ver
-      // ac-valor-individual en areapersonal.html) — nunca su nombre.
-      const norm = normText_(a.valor);
+      // El valor de una regla individual es "email|||nombre" del jugador
+      // (ver ac-valor-individual en areapersonal.html) — el email solo no
+      // basta para identificar a una persona única (hermanos pueden compartir
+      // el correo del acudiente), así que se exige también el nombre.
+      const norm = claveDesdeValorIndividual_(a.valor);
       matches = jugadores.filter(function(j) { return j._norm === norm; });
     } else if (a.tipo === 'colegio') {
       const normCol = normText_(a.valor);
@@ -4315,7 +4354,9 @@ function resolverAsignacionesComercial_(jugadoresPrograma, asignaciones) {
     } else if (a.tipo === 'redcol') {
       matches = jugadores.filter(function(j) { return esColegioRedcol_(j.colegio); });
     }
+    const excluidos = excluidosPorComercial[a.comercial] || {};
     matches.forEach(function(j) {
+      if (excluidos[j._norm]) return; // excluido explícitamente de la lista de ESTE comercial
       if (claimedBy[j._norm]) return; // ya reclamado (por este mismo comercial u otro) — nunca duplicar
       claimedBy[j._norm] = a.comercial;
       porComercial[a.comercial].push({
@@ -4449,7 +4490,7 @@ function adminComercialAsignar(data) {
         if (filaActual.comercial !== comercial) return sendResponse(409, { ok: false, error: 'La fila cambió mientras tanto — refresca e intenta de nuevo.' });
         asigSheet.deleteRow(rowNum);
       } else {
-        if (['individual', 'colegio', 'redcol'].indexOf(tipo) < 0) return sendResponse(400, { ok: false, error: 'Tipo inválido' });
+        if (['individual', 'colegio', 'redcol', 'excluir'].indexOf(tipo) < 0) return sendResponse(400, { ok: false, error: 'Tipo inválido' });
         if (tipo !== 'redcol' && !valor) return sendResponse(400, { ok: false, error: 'Valor requerido' });
 
         const yaExiste = asignacionesActuales.some(function(a) {
@@ -4457,26 +4498,33 @@ function adminComercialAsignar(data) {
         });
         if (yaExiste) return sendResponse(400, { ok: false, error: 'Esta regla ya existe para este comercial.' });
 
-        // Verificar conflictos: ¿algún jugador que esta nueva regla reclamaría
-        // ya pertenece a OTRO comercial? Se resuelve el estado ANTES de sumar
-        // la regla nueva, y por separado qué jugadores reclamaría la regla
-        // nueva por sí sola, para poder listar los nombres en conflicto.
-        // Se compara por EMAIL (identificador único del jugador), no por
-        // nombre — dos jugadores distintos pueden compartir nombre completo.
-        const resueltoActual = resolverAsignacionesComercial_(jugadoresPrograma, asignacionesActuales);
-        const resueltoSoloNueva = resolverAsignacionesComercial_(jugadoresPrograma, [{ comercial: comercial, tipo: tipo, valor: valor }]);
-        const jugadoresPropuestos = resueltoSoloNueva.porComercial[comercial] || [];
+        // "excluir" nunca reclama a nadie (solo saca a un jugador puntual de
+        // la lista de ESTE comercial) — no puede generar conflicto con otro
+        // comercial, así que se salta toda la verificación de abajo.
+        if (tipo !== 'excluir') {
+          // Verificar conflictos: ¿algún jugador que esta nueva regla reclamaría
+          // ya pertenece a OTRO comercial? Se resuelve el estado ANTES de sumar
+          // la regla nueva, y por separado qué jugadores reclamaría la regla
+          // nueva por sí sola, para poder listar los nombres en conflicto.
+          // Se compara por EMAIL+NOMBRE (identificador único del jugador) —
+          // el email solo no basta (hermanos pueden compartir el correo del
+          // acudiente), y el nombre solo tampoco (dos jugadores distintos
+          // pueden compartir nombre completo).
+          const resueltoActual = resolverAsignacionesComercial_(jugadoresPrograma, asignacionesActuales);
+          const resueltoSoloNueva = resolverAsignacionesComercial_(jugadoresPrograma, [{ comercial: comercial, tipo: tipo, valor: valor }]);
+          const jugadoresPropuestos = resueltoSoloNueva.porComercial[comercial] || [];
 
-        const conflictos = [];
-        Object.keys(resueltoActual.porComercial).forEach(function(otroComercial) {
-          if (otroComercial === comercial) return;
-          resueltoActual.porComercial[otroComercial].forEach(function(j) {
-            if (jugadoresPropuestos.some(function(p) { return normText_(p.email) === normText_(j.email); })) {
-              conflictos.push(j.nombre + ' (ya asignado a ' + otroComercial + ')');
-            }
+          const conflictos = [];
+          Object.keys(resueltoActual.porComercial).forEach(function(otroComercial) {
+            if (otroComercial === comercial) return;
+            resueltoActual.porComercial[otroComercial].forEach(function(j) {
+              if (jugadoresPropuestos.some(function(p) { return claveJugador_(p.email, p.nombre) === claveJugador_(j.email, j.nombre); })) {
+                conflictos.push(j.nombre + ' (ya asignado a ' + otroComercial + ')');
+              }
+            });
           });
-        });
-        if (conflictos.length) return sendResponse(409, { ok: false, error: 'Conflicto — ya asignado a otro comercial: ' + conflictos.join(', ') });
+          if (conflictos.length) return sendResponse(409, { ok: false, error: 'Conflicto — ya asignado a otro comercial: ' + conflictos.join(', ') });
+        }
 
         asigSheet.appendRow([comercial, tipo, valor, new Date().toISOString()]);
       }
