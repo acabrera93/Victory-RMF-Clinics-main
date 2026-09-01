@@ -255,6 +255,8 @@ function doGet(e) {
     if (action === 'buscar') return buscarParticipantes(params.email || '', params.login === '1');
     if (action === 'mis_pagos') return getMisPagos(params.nombre || '', params.programa || '');
     if (action === 'cupos_tiquete_wc') return getCuposTiqueteWC_();
+    if (action === 'validar_promo') return validarCodigoReferido_(params.codigo || '', params.programa || '', params.email || '');
+    if (action === 'referido_login') return getReferidoData_(params.email || '');
     if (action === 'tasa_wise') return getTasaWise_();
     if (action === 'admin_participantes') return getAdminParticipantes(params);
     if (action === 'admin_financiero') return getAdminFinanciero(params);
@@ -488,6 +490,9 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
       participant['abono_reserva_estado'] = abonos.reserva_estado;
       participant['abono_tiquete_estado'] = abonos.tiquete_estado;
       participant['abono_final_estado'] = abonos.final_estado;
+      // Descuento de referido (3% fijo, solo tiene efecto de precio para
+      // Jugador — ver montoReservaFinalParticipante_ en areapersonal.html).
+      participant['referido_descuento_pct'] = String(descuentoReferidoDeEmail_(emailNorm, fuente.programKey));
       out.push(participant);
     }
   } catch (err) {
@@ -1032,6 +1037,7 @@ function doPost(e) {
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
         if (parsed.action === 'eliminar_foto_drive') return eliminarFotoDrive(parsed);
         if (parsed.action === 'agregar_participante') return agregarParticipante(parsed);
+        if (parsed.action === 'registrar_referido') return registrarReferido_(parsed);
         if (parsed.action === 'contacto_institucional') return contactoInstitucional(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
       } catch (_) {}
@@ -1628,6 +1634,11 @@ function getAdminParticipantes(params) {
     const data = sheet.getDataRange().getValues();
     if (data.length < 2) return sendResponse(200, []);
     const headers = data[0];
+    let emailColAdmin = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailColAdmin = j; break; }
+    }
     const result = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -1648,6 +1659,11 @@ function getAdminParticipantes(params) {
         const pv = row[20];
         if (pv != null && pv !== '') obj['paso_actual'] = String(pv);
       }
+      // Descuento de referido — MISMO flag que buscarParticipantesEnHoja_
+      // (login del participante), para que admin y participante vean
+      // siempre el mismo monto esperado en Pago Final.
+      const emailValAdmin = emailColAdmin >= 0 ? String(row[emailColAdmin] || '').toLowerCase().trim() : '';
+      obj['referido_descuento_pct'] = String(descuentoReferidoDeEmail_(emailValAdmin, fuente.programKey));
       result.push(obj);
     }
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
@@ -2381,6 +2397,12 @@ function registrarPago(data) {
       }
     }
 
+    if (tipoLower === 'pago final' && targetSheetRow > 0) {
+      var creditoAjuste = aplicarCreditoAPagoFinal_(pagosSheet, pc, targetSheetRow, eur, cop);
+      eur = creditoAjuste.eur;
+      cop = creditoAjuste.cop;
+    }
+
     var writeWidth = Math.max(pc.jugador_acompanante, pc.nombre_familia, pc.fecha_pago, pc.valor_cop, pc.valor_eur, pc.estado, pc.paquete, pc.notas, pc.metodo_de_pago || 0);
     var newRow = new Array(writeWidth).fill('');
     newRow[pc.jugador_acompanante - 1] = tipoParticipante;
@@ -2450,6 +2472,11 @@ function registrarPago(data) {
 
     if (estado.toLowerCase().trim() === 'completo' || estado.toLowerCase().trim() === 'parcial') {
       notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa, metodoPago, parseFloat(data.esperado_eur));
+    }
+
+    if (estado.toLowerCase().trim() === 'completo' && tipoLower === 'pago final') {
+      var emailPF = buscarEmailPorNombre_(nombre, data.programa);
+      if (emailPF) procesarReferidoExitoso_(emailPF, data.programa);
     }
 
     actualizarResumenPagos(pagosSheet);
@@ -2995,6 +3022,12 @@ function confirmarPagoPendiente(data) {
     }
     if (targetSheetRow < 0) return sendResponse(404, { ok: false, error: 'No se encontró el pago a confirmar' });
 
+    if (tipoLower === 'pago final') {
+      var creditoAjusteC = aplicarCreditoAPagoFinal_(pagosSheet, pc, targetSheetRow, eur, cop);
+      eur = creditoAjusteC.eur;
+      cop = creditoAjusteC.cop;
+    }
+
     var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
     if (historialActual.length > 1) {
       // El modal ya muestra (y por tanto envía) el TOTAL acumulado — suma de
@@ -3028,6 +3061,11 @@ function confirmarPagoPendiente(data) {
 
     if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
       notificarPagoConfirmado(nombre, tipo, sumaEur, sumaCop, estado, data.programa, metodoPago, esperadoEur, historialActual);
+    }
+
+    if (estado.toLowerCase() === 'completo' && tipoLower === 'pago final') {
+      var emailPF2 = buscarEmailPorNombre_(nombre, data.programa);
+      if (emailPF2) procesarReferidoExitoso_(emailPF2, data.programa);
     }
 
     actualizarResumenPagos(pagosSheet);
@@ -3091,6 +3129,11 @@ function actualizarEstadoPago(data) {
     var historialActual = parseHistorialAbonos_(pagosSheet.getRange(targetSheetRow, pc.historial_de_abonos).getValue());
     if (estado.toLowerCase() === 'completo' || estado.toLowerCase() === 'parcial') {
       notificarPagoConfirmado(nombre, tipo, eur, cop, estado, data.programa, metodoPagoActual, esperadoEur, historialActual);
+    }
+
+    if (estado.toLowerCase() === 'completo' && tipoLower === 'pago final') {
+      var emailPF3 = buscarEmailPorNombre_(nombre, data.programa);
+      if (emailPF3) procesarReferidoExitoso_(emailPF3, data.programa);
     }
 
     actualizarResumenPagos(pagosSheet);
@@ -4757,6 +4800,483 @@ function getLeadsSheet_() {
   return sheet;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// PROGRAMA DE REFERIDOS — "Embajador RMF International Programs"
+// ═══════════════════════════════════════════════════════════════════════
+// Pestaña "Referidos" en el spreadsheet de Leads (headers en FILA 1, a
+// diferencia de "Pagos" que usa fila 5). Tipo ∈ {Alta Referidor, Referido
+// Registrado, Beneficio Aplicado}. Siempre se lee/escribe por nombre de
+// encabezado (getReferidosColMap_), nunca por índice fijo — mismo criterio
+// que getPagosColMap_.
+function getReferidosSheet_() {
+  const ss = SpreadsheetApp.openById(LEADS_SHEET_ID);
+  const sheet = ss.getSheetByName('Referidos');
+  if (!sheet) throw new Error('Falta crear la pestaña "Referidos" en el Sheet de Leads (ver plan de despliegue del programa de referidos).');
+  return sheet;
+}
+
+function getReferidosColMap_(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var map = {};
+  headers.forEach(function(h, idx) { map[normPagosHeaderKey_(h)] = idx + 1; });
+  return map;
+}
+
+// Inverso de buscarEmailPorNombre_ (más arriba): dado un email, devuelve el
+// nombre completo en la hoja de Inscripciones del programa. Mismo criterio
+// de columnas.
+function buscarNombrePorEmail_(email, programa) {
+  const emailNorm = String(email || '').toLowerCase().trim();
+  if (!emailNorm) return '';
+  const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  let emailCol = -1, nombreCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = String(headers[j]).toLowerCase().trim();
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+    if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
+  }
+  if (emailCol < 0 || nombreCol < 0) return '';
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) return String(data[i][nombreCol] || '').trim();
+  }
+  return '';
+}
+
+// ── Generación de código: núcleo compartido por el trigger onEdit (Caso 1:
+// el Referidor ya estaba inscrito) y la revisión retroactiva (Caso 2: se
+// agregó antes de inscribirse). No revalida nada — el llamador ya confirmó
+// el match contra Inscripciones.
+function generarCodigoParaFila_(sheet, rc, row, programKey) {
+  const prefijo = programKey === 'world_challenge' ? 'WC27' : 'RMF26';
+  const lastRow = sheet.getLastRow();
+  const codigosExistentes = {};
+  if (lastRow >= 2) {
+    sheet.getRange(2, rc.codigo, lastRow - 1, 1).getValues()
+      .forEach(function(r) { if (r[0]) codigosExistentes[String(r[0]).toUpperCase()] = true; });
+  }
+  let codigo;
+  do { codigo = prefijo + '-' + String(Math.floor(1000 + Math.random() * 9000)); }
+  while (codigosExistentes[codigo]);
+
+  sheet.getRange(row, rc.codigo).setValue(codigo);
+  sheet.getRange(row, rc.programa).setValue(
+    programKey === 'world_challenge' ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic'
+  );
+  sheet.getRange(row, rc.estado).setValue('Activo');
+}
+
+// Trigger onEdit instalable sobre la pestaña Referidos (Caso 1). Se activa
+// solo si la fila editada es "Alta Referidor" con Nombre/Correo llenos y sin
+// Código todavía (idempotente).
+function generarCodigoOnEdit_(e) {
+  try {
+    if (!e || !e.range) return;
+    const sheet = e.range.getSheet();
+    if (sheet.getName() !== 'Referidos') return;
+    const row = e.range.getRow();
+    if (row < 2) return;
+
+    const rc = getReferidosColMap_(sheet);
+    const rowVals = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const tipo = String(rowVals[rc.tipo - 1] || '').trim();
+    const nombre = String(rowVals[rc.nombre - 1] || '').trim();
+    const correo = String(rowVals[rc.correo - 1] || '').trim().toLowerCase();
+    const codigoActual = String(rowVals[rc.codigo - 1] || '').trim();
+    if (tipo !== 'Alta Referidor' || !nombre || !correo || codigoActual) return; // idempotente
+
+    let programaDetectado = null;
+    if (emailEsParticipante_(correo, 'clinic')) programaDetectado = 'clinic';
+    else if (emailEsParticipante_(correo, 'world_challenge')) programaDetectado = 'world_challenge';
+
+    if (!programaDetectado) {
+      sheet.getRange(row, rc.estado).setValue('Sin match - verificar');
+      return;
+    }
+    generarCodigoParaFila_(sheet, rc, row, programaDetectado);
+  } catch (err) {
+    Logger.log('generarCodigoOnEdit_ error: ' + err);
+  }
+}
+
+// Ejecutar UNA VEZ desde el editor de Apps Script para instalar el trigger.
+function crearTriggerReferidos() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'generarCodigoOnEdit_') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('generarCodigoOnEdit_').forSpreadsheet(LEADS_SHEET_ID).onEdit().create();
+  Logger.log('Trigger de generación de código de Referidos creado correctamente.');
+}
+
+// Caso 2: el Referidor se agregó ANTES de inscribirse (quedó "Sin match -
+// verificar"). Se llama desde onChangeInscripciones/onChangeInscripcionesWorldChallenge
+// (ya instalados sobre las hojas de Inscripciones) cada vez que Make.com
+// agrega una inscripción nueva, para que el código aparezca automáticamente
+// sin necesidad de re-editar la fila a mano.
+function revisarReferidoresPendientes_(programKey) {
+  try {
+    const sheet = getReferidosSheet_();
+    const rc = getReferidosColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    for (let i = 0; i < data.length; i++) {
+      const tipo = String(data[i][rc.tipo - 1] || '').trim();
+      const estado = String(data[i][rc.estado - 1] || '').trim();
+      if (tipo !== 'Alta Referidor' || estado !== 'Sin match - verificar') continue;
+      const correo = String(data[i][rc.correo - 1] || '').trim().toLowerCase();
+      if (!correo || !emailEsParticipante_(correo, programKey)) continue;
+      generarCodigoParaFila_(sheet, rc, i + 2, programKey);
+    }
+  } catch (err) {
+    Logger.log('revisarReferidoresPendientes_ error: ' + err);
+  }
+}
+
+// ── Validación (GET, pública) y registro (POST, público) del código ────────
+// resolverCodigoReferido_ es el núcleo COMPARTIDO entre ambas — el registro
+// nunca confía en el booleano que manda el cliente, siempre revalida aquí.
+function resolverCodigoReferido_(codigoRaw, programa, emailReferido) {
+  const codigo = String(codigoRaw || '').trim().toUpperCase();
+  const emailReferidoNorm = String(emailReferido || '').toLowerCase().trim();
+  const out = { valido: false };
+  if (!codigo) return out;
+  const sheet = getReferidosSheet_();
+  const rc = getReferidosColMap_(sheet);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return out;
+  const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+  const programKeyDestino = resolverSheets_(programa).programKey;
+
+  for (let i = 0; i < data.length; i++) {
+    const r = data[i];
+    if (String(r[rc.tipo - 1] || '').trim() !== 'Alta Referidor') continue;
+    if (String(r[rc.codigo - 1] || '').trim().toUpperCase() !== codigo) continue;
+    if (String(r[rc.estado - 1] || '').trim() !== 'Activo') break;
+    const correoReferidor = String(r[rc.correo - 1] || '').toLowerCase().trim();
+    if (resolverSheets_(String(r[rc.programa - 1] || '')).programKey !== programKeyDestino) break; // programa no coincide
+    if (emailReferidoNorm && correoReferidor === emailReferidoNorm) break; // anti-autoreferido
+    const yaRegistrado = data.some(function(r2) {
+      return String(r2[rc.tipo - 1] || '').trim() === 'Referido Registrado'
+        && String(r2[rc.correo - 1] || '').toLowerCase().trim() === emailReferidoNorm;
+    });
+    if (yaRegistrado) break;
+    out.valido = true;
+    out.descuentoPorcentaje = 3;
+    out.correoReferidor = correoReferidor;
+    break;
+  }
+  return out;
+}
+
+// doGet ?action=validar_promo
+function validarCodigoReferido_(codigoRaw, programa, emailReferido) {
+  try {
+    const r = resolverCodigoReferido_(codigoRaw, programa, emailReferido);
+    return ContentService.createTextOutput(JSON.stringify({ valido: !!r.valido, descuentoPorcentaje: r.descuentoPorcentaje || 0 }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('validarCodigoReferido_ error: ' + err);
+    return ContentService.createTextOutput(JSON.stringify({ valido: false })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// doPost action=registrar_referido — PÚBLICA (sin autorizar()/token, se llama
+// desde inscripcion.html sin login). Revalida el código server-side en vez de
+// confiar en el `codigoPromoValido` del cliente. Registro plano con
+// appendRow: a diferencia de Pagos, Referidos no agrupa filas por
+// participante ni tiene placeholders que proteger.
+function registrarReferido_(data) {
+  try {
+    const codigo = String(data.codigoPromo || '').trim();
+    const programa = String(data.programa || '').trim();
+    const emailReferido = String(data.email || '').toLowerCase().trim();
+    const nombreReferido = String(data.nombre || '').trim();
+    if (!codigo || !emailReferido) return sendResponse(400, { ok: false, error: 'codigo y email requeridos' });
+
+    const check = resolverCodigoReferido_(codigo, programa, emailReferido);
+    if (!check.valido) return sendResponse(200, { ok: false, motivo: 'codigo_invalido' }); // nunca bloquea el flujo de inscripción
+
+    const sheet = getReferidosSheet_();
+    const rc = getReferidosColMap_(sheet);
+    const newRow = new Array(sheet.getLastColumn()).fill('');
+    newRow[rc.timestamp - 1] = new Date();
+    newRow[rc.tipo - 1] = 'Referido Registrado';
+    newRow[rc.nombre - 1] = nombreReferido;
+    newRow[rc.correo - 1] = emailReferido;
+    newRow[rc.programa - 1] = programa;
+    newRow[rc.codigo - 1] = codigo.toUpperCase();
+    newRow[rc.estado - 1] = 'Pendiente pago';
+    newRow[rc.referidor_vinculado_correo - 1] = check.correoReferidor;
+    newRow[rc.descuento_referido_aplicado - 1] = 3;
+    sheet.appendRow(newRow);
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('registrarReferido_ error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// Helper compartido: 3 si el email tiene una fila "Referido Registrado" con
+// Estado != "Rechazado" para el programa dado (Jugador o Acompañante — el
+// registro se guarda igual para ambos), si no 0. El AJUSTE de precio real
+// solo ocurre en frontend y solo para Jugador (ver montoReservaFinalParticipante_
+// en areapersonal.html).
+function descuentoReferidoDeEmail_(emailNorm, programKey) {
+  try {
+    const sheet = getReferidosSheet_();
+    const rc = getReferidosColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return 0;
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    const fila = data.find(function(r) {
+      return String(r[rc.tipo - 1] || '').trim() === 'Referido Registrado'
+        && String(r[rc.correo - 1] || '').toLowerCase().trim() === emailNorm
+        && String(r[rc.estado - 1] || '').trim() !== 'Rechazado'
+        && resolverSheets_(String(r[rc.programa - 1] || '')).programKey === programKey;
+    });
+    return fila ? (parseFloat(fila[rc.descuento_referido_aplicado - 1]) || 0) : 0;
+  } catch (err) {
+    Logger.log('descuentoReferidoDeEmail_ error: ' + err);
+    return 0;
+  }
+}
+
+// Localiza (solo lectura, sin crear placeholder) la fila "Pago Final" de un
+// participante en Pagos por nombre — usada por getReferidoData_ para leer el
+// crédito acumulado sin efectos secundarios.
+function ubicarFilaPagoFinalSiExiste_(pagosSheet, pc, nombre) {
+  const nombreNorm = normText_(nombre);
+  const startRow = 6;
+  const lastRow = pagosSheet.getLastRow();
+  if (lastRow < startRow) return -1;
+  const readWidth = Math.max(pc.nombre_familia, pc.notas);
+  const data = pagosSheet.getRange(startRow, 1, lastRow - startRow + 1, readWidth).getValues();
+  let currentNombreNorm = '';
+  let filaPagoFinal = -1;
+  for (let i = 0; i < data.length; i++) {
+    const cellNombre = String(data[i][pc.nombre_familia - 1] || '').trim();
+    if (cellNombre) currentNombreNorm = normText_(cellNombre);
+    if (currentNombreNorm === nombreNorm && String(data[i][pc.notas - 1] || '').trim().toLowerCase() === 'pago final') {
+      filaPagoFinal = startRow + i;
+    }
+  }
+  return filaPagoFinal;
+}
+
+// doGet ?action=referido_login — alimenta la sección "Refiere y gana" de
+// areapersonal.html.
+function getReferidoData_(email) {
+  try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    const out = { found: false };
+    if (!emailNorm) return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+    const sheet = getReferidosSheet_();
+    const rc = getReferidosColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+      const fila = data.find(function(r) {
+        return String(r[rc.tipo - 1] || '').trim() === 'Alta Referidor'
+          && String(r[rc.correo - 1] || '').toLowerCase().trim() === emailNorm
+          && String(r[rc.estado - 1] || '').trim() === 'Activo';
+      });
+      if (fila) {
+        out.found = true;
+        out.codigo = String(fila[rc.codigo - 1] || '');
+        out.programa = String(fila[rc.programa - 1] || '');
+        out.referidosExitosos = parseInt(fila[rc.n_referidos_exitosos_acumulados - 1]) || 0;
+        out.tramoPct = parseInt(fila[rc.tramo_descuento_referidor - 1]) || 0;
+        out.creditoPendienteEur = 0;
+        const fuente = resolverSheets_(out.programa);
+        const nombre = buscarNombrePorEmail_(emailNorm, out.programa);
+        if (nombre) {
+          const pagosSheet = getSheetCI(SpreadsheetApp.openById(fuente.budgetSheetId), 'Pagos');
+          const pc = pagosSheet ? getPagosColMap_(pagosSheet) : {};
+          if (pagosSheet && pc.credito_por_referidos_eur) {
+            const filaPF = ubicarFilaPagoFinalSiExiste_(pagosSheet, pc, nombre);
+            if (filaPF > 0) out.creditoPendienteEur = parseFloat(pagosSheet.getRange(filaPF, pc.credito_por_referidos_eur).getValue()) || 0;
+          }
+        }
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    Logger.log('getReferidoData_ error: ' + err);
+    return ContentService.createTextOutput(JSON.stringify({ found: false })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Encuentra la fila "Pago Final" de un participante en Pagos; si no existe
+// (caso raro — sincronizarParticipantes ya crea el placeholder al ingresar el
+// participante), la crea igual que ese placeholder (Estado vacío, Valor EUR
+// 0), insertada justo debajo de la última fila propia del participante si
+// tiene alguna, o al final de la hoja si no.
+function ubicarOFallbackFilaPagoFinal_(pagosSheet, pc, nombre) {
+  const nombreNorm = normText_(nombre);
+  const startRow = 6;
+  const lastRow = pagosSheet.getLastRow();
+  const readWidth = Math.max(pc.nombre_familia, pc.notas);
+  const numRows = lastRow - startRow + 1;
+  const data = numRows > 0 ? pagosSheet.getRange(startRow, 1, numRows, readWidth).getValues() : [];
+  let currentNombreNorm = '';
+  let filaPagoFinal = -1;
+  let lastOwnRow = -1;
+  for (let i = 0; i < data.length; i++) {
+    const cellNombre = String(data[i][pc.nombre_familia - 1] || '').trim();
+    if (cellNombre) currentNombreNorm = normText_(cellNombre);
+    if (currentNombreNorm === nombreNorm) {
+      lastOwnRow = startRow + i;
+      if (String(data[i][pc.notas - 1] || '').trim().toLowerCase() === 'pago final') filaPagoFinal = startRow + i;
+    }
+  }
+  if (filaPagoFinal > 0) return filaPagoFinal;
+
+  const writeWidth = Math.max(pc.nombre_familia, pc.notas, pc.estado, pc.valor_eur);
+  const placeholder = new Array(writeWidth).fill('');
+  placeholder[pc.nombre_familia - 1] = nombre;
+  placeholder[pc.notas - 1] = 'Pago Final';
+  placeholder[pc.valor_eur - 1] = 0;
+  const insertRow = lastOwnRow > 0 ? lastOwnRow + 1 : lastRow + 1;
+  pagosSheet.insertRowsBefore(insertRow, 1);
+  pagosSheet.getRange(insertRow, 1, 1, writeWidth).setValues([placeholder]);
+  return insertRow;
+}
+
+// Construye la fila "Beneficio Aplicado" para Referidos a partir del mapa rc.
+function buildFilaBeneficioAplicado_(rc, width, info) {
+  const row = new Array(width).fill('');
+  row[rc.timestamp - 1] = new Date();
+  row[rc.tipo - 1] = 'Beneficio Aplicado';
+  row[rc.nombre - 1] = info.nombreReferidor;
+  row[rc.correo - 1] = info.correoReferidor;
+  row[rc.programa - 1] = info.programaReferidor;
+  row[rc.tramo_descuento_referidor - 1] = info.tramoPct;
+  row[rc.valor_descuento_eur - 1] = info.creditoEur;
+  row[rc.forma_de_aplicacion - 1] = 'Devolución solicitada';
+  row[rc.trm_usada - 1] = info.trmUsada || '';
+  row[rc.valor_devolucion_cop - 1] = info.valorDevolucionCop || '';
+  row[rc.estado_devolucion - 1] = 'Pendiente';
+  return row;
+}
+
+// Se dispara cuando un Referido queda con su Pago Final en "Completo"
+// (enganchado en registrarPago/confirmarPagoPendiente/actualizarEstadoPago
+// — los únicos 3 puntos donde un concepto puede quedar en ese estado). Marca
+// el referido como Exitoso, actualiza el tramo del Referidor (tope 20% de
+// descuento — el CONTADOR de referidos exitosos no tiene tope) y
+// acumula/devuelve el crédito correspondiente.
+function procesarReferidoExitoso_(emailReferido, programaReferido) {
+  try {
+    const sheet = getReferidosSheet_();
+    const rc = getReferidosColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    const emailNorm = String(emailReferido || '').toLowerCase().trim();
+
+    let idxReferido = -1;
+    for (let i = 0; i < data.length; i++) {
+      const tipo = String(data[i][rc.tipo - 1] || '').trim();
+      const estado = String(data[i][rc.estado - 1] || '').trim();
+      if (tipo === 'Referido Registrado' && String(data[i][rc.correo - 1] || '').toLowerCase().trim() === emailNorm
+          && estado !== 'Rechazado' && estado !== 'Exitoso') { idxReferido = i; break; }
+    }
+    if (idxReferido < 0) return; // no es un referido pendiente — no hace nada
+
+    const correoReferidor = String(data[idxReferido][rc.referidor_vinculado_correo - 1] || '').toLowerCase().trim();
+    sheet.getRange(idxReferido + 2, rc.estado).setValue('Exitoso');
+
+    // Cuenta TODOS los referidos "Exitoso" de este referidor (incluyendo el
+    // que se acaba de cerrar). El contador se guarda SIN tope; el tramo de
+    // descuento sí queda topado en 20% (4 referidos × 5%).
+    const exitosos = data.filter(function(r, idx) {
+      return (idx === idxReferido || String(r[rc.tipo - 1] || '').trim() === 'Referido Registrado')
+        && String(r[rc.referidor_vinculado_correo - 1] || '').toLowerCase().trim() === correoReferidor
+        && (idx === idxReferido || String(r[rc.estado - 1] || '').trim() === 'Exitoso');
+    }).length;
+    const tramoPct = Math.min(exitosos, 4) * 5;
+
+    const idxAlta = data.findIndex(function(r) {
+      return String(r[rc.tipo - 1] || '').trim() === 'Alta Referidor'
+        && String(r[rc.correo - 1] || '').toLowerCase().trim() === correoReferidor;
+    });
+    if (idxAlta < 0) return;
+    const programaReferidor = String(data[idxAlta][rc.programa - 1] || '');
+    sheet.getRange(idxAlta + 2, rc.n_referidos_exitosos_acumulados).setValue(exitosos);
+    sheet.getRange(idxAlta + 2, rc.tramo_descuento_referidor).setValue(tramoPct);
+
+    // precioBase debe coincidir con el hardcodeado en montoReservaFinalParticipante_
+    // (areapersonal.html) — actualizar ambos si el precio del programa cambia.
+    const precioBase = esWorldChallenge_(programaReferidor) ? 2890 : 2790;
+    const creditoEur = Math.round(precioBase * (tramoPct / 100) * 100) / 100;
+    const nombreReferidor = buscarNombrePorEmail_(correoReferidor, programaReferidor);
+    if (!nombreReferidor) { Logger.log('procesarReferidoExitoso_: no se encontró nombre para ' + correoReferidor); return; }
+
+    const fuente = resolverSheets_(programaReferidor);
+    const pagosSheet = getSheetCI(SpreadsheetApp.openById(fuente.budgetSheetId), 'Pagos');
+    const pc = getPagosColMap_(pagosSheet);
+    if (!pc.credito_por_referidos_eur) { Logger.log('procesarReferidoExitoso_: falta la columna "Credito por Referidos (EUR)" en Pagos.'); return; }
+
+    const filaPagoFinal = ubicarOFallbackFilaPagoFinal_(pagosSheet, pc, nombreReferidor);
+    const creditoActual = parseFloat(pagosSheet.getRange(filaPagoFinal, pc.credito_por_referidos_eur).getValue()) || 0;
+    const creditoAcumulado = Math.round((creditoActual + creditoEur) * 100) / 100;
+    pagosSheet.getRange(filaPagoFinal, pc.credito_por_referidos_eur).setValue(creditoAcumulado);
+
+    // ¿El Referidor ya completó su propio Pago Final? Si sí, el crédito se
+    // devuelve por transferencia (no queda pendiente de aplicar a un pago
+    // futuro que ya no existe). Si no, se queda acumulado en la columna de
+    // Pagos hasta que aplicarCreditoAPagoFinal_ lo use en su Pago Final.
+    const abonosReferidor = getAbonosValidados_(nombreReferidor, fuente.budgetSheetId);
+    if (abonosReferidor.final_estado === 'completo') {
+      const historial = parseHistorialAbonos_(pagosSheet.getRange(filaPagoFinal, pc.historial_de_abonos).getValue());
+      const ultima = historial[historial.length - 1];
+      const trmUsada = (ultima && ultima.eur > 0) ? Math.round(ultima.cop / ultima.eur) : null;
+      const valorDevolucionCop = trmUsada ? Math.round(creditoAcumulado * trmUsada) : null;
+
+      const width = sheet.getLastColumn();
+      sheet.appendRow(buildFilaBeneficioAplicado_(rc, width, {
+        nombreReferidor: nombreReferidor, correoReferidor: correoReferidor, programaReferidor: programaReferidor,
+        tramoPct: tramoPct, creditoEur: creditoAcumulado, trmUsada: trmUsada, valorDevolucionCop: valorDevolucionCop
+      }));
+
+      GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+        '[Referidos] Devolución solicitada — ' + nombreReferidor,
+        'Familia: ' + nombreReferidor + ' (' + correoReferidor + ')\n' +
+        'Programa: ' + programaReferidor + '\n' +
+        'Tramo actual: ' + tramoPct + '%\n' +
+        'Monto a devolver: ' + creditoAcumulado + ' EUR' +
+        (valorDevolucionCop ? (' · $' + valorDevolucionCop + ' COP (TRM ' + trmUsada + ')') : ' (TRM no disponible — revisar manualmente)') + '\n' +
+        'Acción requerida: procesar transferencia y marcar "Estado Devolución" = Realizada en la pestaña Referidos.',
+        { name: 'Real Madrid Foundation Referidos' });
+
+      pagosSheet.getRange(filaPagoFinal, pc.credito_por_referidos_eur).setValue(0);
+    }
+  } catch (err) {
+    Logger.log('procesarReferidoExitoso_ error: ' + err);
+  }
+}
+
+// Se invoca dentro de registrarPago/confirmarPagoPendiente, ANTES de escribir
+// el monto definitivo, únicamente cuando tipo === 'Pago Final'. Resta el
+// crédito acumulado (columna "Credito por Referidos (EUR)", separada de J)
+// del monto EUR a cobrar en ESTA transacción y ajusta el COP proporcionalmente
+// con la tasa (cop/eur) de ese mismo pago. Deja el remanente en la columna si
+// el crédito era mayor al pago (caso extremo — el crédito máximo, 20% del
+// precio base, normalmente es menor que el Pago Final completo).
+function aplicarCreditoAPagoFinal_(pagosSheet, pc, filaPagoFinal, eurOriginal, copOriginal) {
+  if (!pc.credito_por_referidos_eur || !filaPagoFinal || filaPagoFinal <= 0) return { eur: eurOriginal, cop: copOriginal };
+  const creditoDisponible = parseFloat(pagosSheet.getRange(filaPagoFinal, pc.credito_por_referidos_eur).getValue()) || 0;
+  if (creditoDisponible <= 0) return { eur: eurOriginal, cop: copOriginal };
+  const creditoAplicado = Math.min(creditoDisponible, eurOriginal);
+  const trmUsada = (eurOriginal > 0 && copOriginal > 0) ? (copOriginal / eurOriginal) : null;
+  const eurAjustado = Math.max(0, Math.round((eurOriginal - creditoAplicado) * 100) / 100);
+  const copAjustado = trmUsada ? Math.round(copOriginal - creditoAplicado * trmUsada) : copOriginal;
+  pagosSheet.getRange(filaPagoFinal, pc.credito_por_referidos_eur).setValue(Math.round((creditoDisponible - creditoAplicado) * 100) / 100);
+  return { eur: eurAjustado, cop: copAjustado };
+}
+
 // ── Trigger onChange: dispara con cada fila nueva agregada a Inscripciones ──
 // Función compartida por ambos programas — sourceSheetId indica de qué sheet
 // de inscripción leer, propKey es la clave de PropertiesService donde se
@@ -4860,10 +5380,12 @@ function sincronizarLeadsDesdeInscripciones_(e, sourceSheetId, propKey) {
 
 function onChangeInscripciones(e) {
   sincronizarLeadsDesdeInscripciones_(e, SHEET_ID, 'leads_last_synced_row');
+  revisarReferidoresPendientes_('clinic');
 }
 
 function onChangeInscripcionesWorldChallenge(e) {
   sincronizarLeadsDesdeInscripciones_(e, SHEET_ID_WORLD_CHALLENGE, 'leads_last_synced_row_wc');
+  revisarReferidoresPendientes_('world_challenge');
 }
 
 // ── Ejecutar UNA VEZ desde el editor para instalar el trigger (Clinic) ─────
