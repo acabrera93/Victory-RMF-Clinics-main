@@ -50,6 +50,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .btn-submit:hover:not(:disabled){background:#1a50a0;transform:translateY(-1px);box-shadow:0 6px 20px rgba(30,91,168,.3)}
 .btn-submit:disabled{background:var(--muted);cursor:not-allowed;transform:none;box-shadow:none}
 .err-msg{display:none;background:var(--rbg);border:1px solid var(--rborder);border-radius:8px;padding:12px 15px;font-size:13px;color:var(--red);margin-top:14px;line-height:1.6}
+.ok-msg{background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--green);margin-top:8px;line-height:1.5}
 .info-note{background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:8px;padding:13px 16px;font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:18px}
 .info-note strong{color:var(--navy)}
 .success-screen{display:none;text-align:center;background:#fff;border:1px solid var(--gborder);border-radius:12px;padding:56px 32px;margin-bottom:18px}
@@ -241,6 +242,13 @@ img, video, iframe, table {
       </label>
     </div>
 
+    <div class="ctitle" style="margin-top:4px">Código de Promoción</div>
+    <div>
+      <label class="flabel" data-es="Código de promoción (opcional)" data-en="Promo code (optional)">Código de promoción (opcional)</label>
+      <input class="finput" id="j-codigo-promo" type="text" placeholder="Ej: RMF26-4821" style="text-transform:uppercase" onblur="validarCodigoPromo('jugador')">
+      <div class="info-note" id="j-codigo-promo-msg" style="display:none;margin-top:8px"></div>
+    </div>
+
     <div class="err-msg" id="j-err">Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.</div>
     <button class="btn-submit" id="j-btn" onclick="submitForm('jugador')">Enviar inscripción del jugador →</button>
   </div>
@@ -335,6 +343,13 @@ img, video, iframe, table {
       </label>
     </div>
 
+    <div class="ctitle" style="margin-top:4px">Código de Promoción</div>
+    <div>
+      <label class="flabel" data-es="Código de promoción (opcional)" data-en="Promo code (optional)">Código de promoción (opcional)</label>
+      <input class="finput" id="a-codigo-promo" type="text" placeholder="Ej: RMF26-4821" style="text-transform:uppercase" onblur="validarCodigoPromo('acompanante')">
+      <div class="info-note" id="a-codigo-promo-msg" style="display:none;margin-top:8px"></div>
+    </div>
+
     <div class="err-msg" id="a-err">Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.</div>
     <button class="btn-submit" id="a-btn" onclick="submitForm('acompanante')">Enviar inscripción del acompañante →</button>
   </div>
@@ -398,6 +413,38 @@ function firmaPayloadPrincipal_(p) {
 // consultar cupos, no para escribir (la inscripción sigue yendo por el
 // webhook de Make, ver WEBHOOK_PREINSCRIPCION).
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
+
+// ── CÓDIGO DE PROMOCIÓN (Programa de Referidos) ─────────────────────────────
+// Validación en vivo por GET (permite leer la respuesta JSON, a diferencia
+// del webhook de Make que es no-cors/opaco) — mismo patrón que la consulta
+// de cupos de arriba. Nunca bloquea el envío del formulario: cualquier
+// código inválido o fallo de red simplemente no aplica descuento.
+let codigoPromoValidado = { jugador: null, acompanante: null };
+
+async function validarCodigoPromo(tipo) {
+  const pfx = tipo === 'jugador' ? 'j' : 'a';
+  const input = document.getElementById(pfx + '-codigo-promo');
+  const msg = document.getElementById(pfx + '-codigo-promo-msg');
+  const codigo = input.value.trim();
+  codigoPromoValidado[tipo] = null;
+  if (!codigo) { msg.style.display = 'none'; return; }
+  const emailInput = document.getElementById(pfx + '-email');
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+  try {
+    const r = await fetch(APPS_SCRIPT_URL + '?action=validar_promo&codigo=' + encodeURIComponent(codigo)
+      + '&programa=' + encodeURIComponent(selectedPrograma) + '&email=' + encodeURIComponent(email)
+      + '&_t=' + Date.now(), { redirect: 'follow' }).then(res => res.json());
+    codigoPromoValidado[tipo] = r;
+    msg.className = r.valido ? 'ok-msg' : 'info-note';
+    msg.textContent = r.valido
+      ? '✅ Código válido — tendrás un ' + r.descuentoPorcentaje + '% de descuento.'
+      : 'Código no válido o no aplicable — puedes continuar sin problema.';
+    msg.style.display = 'block';
+  } catch (e) {
+    codigoPromoValidado[tipo] = null;
+    msg.style.display = 'none';
+  }
+}
 
 // ── CUPOS TIQUETE AÉREO — World Challenge (vuelo grupal, asientos limitados) ──
 let cuposTiqueteWC = null; // null = aún no consultado
@@ -646,7 +693,10 @@ async function submitForm(tipo) {
     relacion: document.getElementById('j-relacion').value,
     tiquete_aereo: tiqJugador === 'si' ? 'Con tiquete' : 'Sin tiquete',
     programa: selectedPrograma, habitacion: '', jugador_acompana: '',
-    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web'
+    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web',
+    codigoPromo: document.getElementById('j-codigo-promo').value.trim().toUpperCase(),
+    codigoPromoValido: !!(codigoPromoValidado.jugador && codigoPromoValidado.jugador.valido),
+    descuentoPorcentaje: (codigoPromoValidado.jugador && codigoPromoValidado.jugador.valido) ? codigoPromoValidado.jugador.descuentoPorcentaje : 0
   } : {
     action: 'preinscripcion',
     timestamp: ts, tipo: 'Acompañante',
@@ -665,7 +715,10 @@ async function submitForm(tipo) {
     jugador_acompana: document.getElementById('a-jugador').value.trim(),
     nombre_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-nombre').value.trim() : '',
     pasaporte_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-pasaporte').value.trim() : '',
-    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web'
+    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web',
+    codigoPromo: document.getElementById('a-codigo-promo').value.trim().toUpperCase(),
+    codigoPromoValido: !!(codigoPromoValidado.acompanante && codigoPromoValidado.acompanante.valido),
+    descuentoPorcentaje: (codigoPromoValidado.acompanante && codigoPromoValidado.acompanante.valido) ? codigoPromoValidado.acompanante.descuentoPorcentaje : 0
   };
 
   // Habitación doble: el compañero/a de habitación (P2) también debe quedar
@@ -690,7 +743,10 @@ async function submitForm(tipo) {
     jugador_acompana: payload.jugador_acompana,
     nombre_p2: payload.nombre,
     pasaporte_p2: payload.pasaporte,
-    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web'
+    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web',
+    codigoPromo: payload.codigoPromo,
+    codigoPromoValido: payload.codigoPromoValido,
+    descuentoPorcentaje: payload.descuentoPorcentaje
   } : null;
 
   try {
@@ -704,6 +760,20 @@ async function submitForm(tipo) {
       if (firmaActual) acompanantePrincipalEnviado = firmaActual;
     }
     if (payload2) await postMakeWebhook(WEBHOOK_PREINSCRIPCION, payload2);
+
+    // Registro del Referido — fetch directo a Apps Script, independiente del
+    // webhook de Make (que no pasa por este backend). Fire-and-forget: nunca
+    // debe retrasar ni condicionar la pantalla de éxito.
+    [payload, payload2].filter(Boolean).forEach(function(p) {
+      if (p.codigoPromoValido) {
+        fetch(APPS_SCRIPT_URL, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+          body: JSON.stringify({ action: 'registrar_referido', nombre: p.nombre, email: p.email, programa: p.programa, codigoPromo: p.codigoPromo })
+        }).catch(function() {});
+      }
+    });
+
     acompanantePrincipalEnviado = null;
     if (window.victoryTrack) window.victoryTrack('formulario_enviado', { tipo: tipo });
     // Descuento optimista del contador de cupos — el conteo real (desde la

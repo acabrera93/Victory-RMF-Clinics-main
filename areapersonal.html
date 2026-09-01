@@ -646,6 +646,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Mensajes</button>
     <button class="stab" id="stab-admin" data-section="admin" onclick="switchSection('admin')" style="display:none;background:var(--navy);color:#fff">⚙ Admin</button>
     <button class="stab" id="stab-comercial" data-section="comercial" onclick="switchSection('comercial')" style="display:none">💼 Mis Comisiones</button>
+    <button class="stab" id="stab-referidos" data-section="referidos" onclick="switchSection('referidos')" style="display:none" data-es="🎁 Refiere y Gana" data-en="🎁 Refer &amp; Earn">🎁 Refiere y Gana</button>
   </div>
 
   <div class="steps-wrap" id="steps-wrap">
@@ -1023,6 +1024,14 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <!-- PANEL COMERCIAL -->
   <div class="panel section-anchor" id="panel-comercial">
     <div id="comercial-content"><p style="color:var(--muted);font-size:14px;padding:20px 0">Cargando comisiones...</p></div>
+  </div>
+
+  <!-- PANEL REFIERE Y GANA -->
+  <div class="panel section-anchor" id="panel-referidos">
+    <div class="card">
+      <div class="ctitle" data-es="Refiere y Gana" data-en="Refer &amp; Earn">Refiere y Gana</div>
+      <div id="referidos-content"><p style="color:var(--muted);font-size:14px;padding:20px 0">Cargando...</p></div>
+    </div>
   </div>
 
   <!-- FOTOS DEL VIAJE -->
@@ -2230,6 +2239,11 @@ function normalizeParticipant(raw) {
     abono_reserva_estado: (rowVal(raw, 'abono_reserva_estado') || '').toLowerCase(),
     abono_tiquete_estado: (rowVal(raw, 'abono_tiquete_estado') || '').toLowerCase(),
     abono_final_estado: (rowVal(raw, 'abono_final_estado') || '').toLowerCase(),
+    // Programa de Referidos: 3 si este email tiene un código de referido
+    // aplicado (ver descuentoReferidoDeEmail_ en el backend) — sin este
+    // campo en el whitelist, montoReservaFinalParticipante_ nunca vería el
+    // descuento aunque el backend sí lo mande.
+    referido_descuento_pct: parseFloat(rowVal(raw, 'referido_descuento_pct')) || 0,
   };
 }
 
@@ -2587,10 +2601,11 @@ async function doLogin() {
   btn.textContent = 'Buscando...';
   errEl.style.display = 'none';
   try {
-    // Buscar participante y comercial en paralelo
-    const [rawText, comercialJson] = await Promise.all([
+    // Buscar participante, comercial y referidor en paralelo
+    const [rawText, comercialJson, referidoJson] = await Promise.all([
       fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email) + '&login=1&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.text()),
-      fetch(APPS_SCRIPT_URL + '?action=comercial_login&email=' + encodeURIComponent(email) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json()).catch(() => ({ found: false }))
+      fetch(APPS_SCRIPT_URL + '?action=comercial_login&email=' + encodeURIComponent(email) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json()).catch(() => ({ found: false })),
+      fetch(APPS_SCRIPT_URL + '?action=referido_login&email=' + encodeURIComponent(email) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json()).catch(() => ({ found: false }))
     ]);
 
     let data; try { data = JSON.parse(rawText); } catch(e2) { data = null; }
@@ -2632,9 +2647,14 @@ async function doLogin() {
       window._comercialData = comercialJson;
       document.getElementById('stab-comercial').style.display = '';
     }
+    // Si tiene un código de Referidor activo, mostrar tab "Refiere y Gana"
+    if (referidoJson && referidoJson.found) {
+      window._referidoData = referidoJson;
+      document.getElementById('stab-referidos').style.display = '';
+    }
     checkNuevosComunicados();
     const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam && ['fotos','comunicaciones','saber','admin','comercial'].includes(tabParam)) {
+    if (tabParam && ['fotos','comunicaciones','saber','admin','comercial','referidos'].includes(tabParam)) {
       setTimeout(() => switchSection(tabParam, true), 150); // no scroll en restauración por URL
     }
     // Link directo desde el correo de "proceso completado" — solo navega si
@@ -3060,7 +3080,7 @@ function tiqueteUnitEur_() {
 // y el programa activo. Única fuente de verdad compartida por
 // calcPaymentTotals() y buildBreakdown() — evita que ambos queden
 // desincronizados si se ajusta un precio más adelante.
-function montoReservaFinalParticipante_(p, esWC) {
+function montoReservaFinalParticipante_base_(p, esWC) {
   const esJug = (p.tipo || '').toLowerCase().includes('jug');
   const hab = (p.habitacion || '').toLowerCase();
   if (esWC) {
@@ -3079,6 +3099,27 @@ function montoReservaFinalParticipante_(p, esWC) {
   }
   if (hab.includes('doble')) return { reserva: 1000, final: 1190, sub: 'Acompañante · hab. doble' };
   return { reserva: 1000, final: 1510, sub: 'Acompañante · hab. sencilla' };
+}
+
+// Programa de Referidos: envuelve montoReservaFinalParticipante_base_ (sin
+// tocar su lógica) para restar el 3% de descuento del Pago Final — SOLO
+// cuando el participante es Jugador (decisión de producto: los Acompañantes
+// pueden registrarse con un código válido, pero no reciben ajuste de
+// precio). precioBase debe coincidir con el hardcodeado en
+// procesarReferidoExitoso_ (APPS_SCRIPT_CODE.gs) — actualizar ambos si el
+// precio del programa cambia. Como todos los call-sites de
+// montoReservaFinalParticipante_ pasan por aquí, quedan cubiertos
+// automáticamente (login normal y panel admin) sin tocarlos uno por uno.
+function montoReservaFinalParticipante_(p, esWC) {
+  const m = montoReservaFinalParticipante_base_(p, esWC);
+  const esJug = (p.tipo || '').toLowerCase().includes('jug');
+  const descuentoPct = esJug ? (parseFloat(p.referido_descuento_pct) || 0) : 0;
+  if (descuentoPct > 0 && m.final > 0) {
+    const precioBase = esWC ? 2890 : 2790;
+    const descuentoEur = Math.round(precioBase * (descuentoPct / 100) * 100) / 100;
+    m.final = Math.max(0, Math.round((m.final - descuentoEur) * 100) / 100);
+  }
+  return m;
 }
 
 // Fechas límite de pago y texto de mecánica de tasa — World Challenge usa
@@ -3940,6 +3981,43 @@ function copiarMontoBold() {
   if (!montoEl) return;
   const soloNumero = montoEl.textContent.replace(/[^\d]/g, '');
   navigator.clipboard.writeText(soloNumero).then(() => {
+    if (!btn) return;
+    const original = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  }).catch(() => {});
+}
+
+// ── PROGRAMA DE REFERIDOS — "Refiere y Gana" ────────────────────────────────
+// Se alimenta de window._referidoData (poblado en doLogin(), fetch paralelo
+// ?action=referido_login), igual patrón que window._comercialData — no
+// requiere estar dentro de loadParticipant() porque no depende del
+// participante activo, sino del email logueado.
+function renderReferidosPanel() {
+  const el = document.getElementById('referidos-content');
+  const r = window._referidoData;
+  if (!el) return;
+  if (!r || !r.found) { el.innerHTML = '<p style="color:var(--muted)">No tienes un código de referido activo.</p>'; return; }
+  const creditoEurNum = r.creditoPendienteEur || 0;
+  const creditoCopEstimado = Math.round(creditoEurNum * (tasa || TASA_FALLBACK));
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap">
+      <div id="referido-codigo-valor" style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--navy)">${escapeHtml(r.codigo)}</div>
+      <button id="referido-copiar-btn" onclick="copiarCodigoReferido()" style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">📋 Copiar código</button>
+    </div>
+    <div class="bkrow"><span>Referidos exitosos</span><span class="bk-amt">${r.referidosExitosos} / 4</span></div>
+    <div class="bkrow"><span>Descuento acumulado</span><span class="bk-amt">${r.tramoPct}%</span></div>
+    <div class="bkrow"><span>Crédito pendiente</span><span class="bk-amt">${creditoEurNum.toLocaleString('es-CO')} EUR · ${fmt(creditoCopEstimado)}</span></div>
+  `;
+}
+
+// Clon de copiarMontoBold() — mismo patrón exacto, sin el .replace(/[^\d]/g,'')
+// porque el código es alfanumérico, no un monto.
+function copiarCodigoReferido() {
+  const el = document.getElementById('referido-codigo-valor');
+  const btn = document.getElementById('referido-copiar-btn');
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
     if (!btn) return;
     const original = btn.textContent;
     btn.textContent = '✓ Copiado';
@@ -4817,6 +4895,7 @@ function switchSection(section, noScroll) {
     if (section === 'saber') loadClima();
     if (section === 'admin' && !adminLoaded) loadAdmin();
     if (section === 'comercial') renderComercialPanel();
+    if (section === 'referidos') renderReferidosPanel();
   }
 }
 
