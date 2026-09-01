@@ -646,7 +646,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Mensajes</button>
     <button class="stab" id="stab-admin" data-section="admin" onclick="switchSection('admin')" style="display:none;background:var(--navy);color:#fff">⚙ Admin</button>
     <button class="stab" id="stab-comercial" data-section="comercial" onclick="switchSection('comercial')" style="display:none">💼 Mis Comisiones</button>
-    <button class="stab" id="stab-referidos" data-section="referidos" onclick="switchSection('referidos')" style="display:none" data-es="🎁 Refiere y Gana" data-en="🎁 Refer &amp; Earn">🎁 Refiere y Gana</button>
+    <button class="stab" id="stab-referidos" data-section="referidos" onclick="switchSection('referidos')" style="display:none" data-es="&#x1F381; Refiere y Gana" data-en="&#x1F381; Refer &amp; Earn">&#x1F381; Refiere y Gana</button>
   </div>
 
   <div class="steps-wrap" id="steps-wrap">
@@ -4003,7 +4003,7 @@ function renderReferidosPanel() {
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap">
       <div id="referido-codigo-valor" style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--navy)">${escapeHtml(r.codigo)}</div>
-      <button id="referido-copiar-btn" onclick="copiarCodigoReferido()" style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">📋 Copiar código</button>
+      <button id="referido-copiar-btn" onclick="copiarCodigoReferido()" style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap">${String.fromCodePoint(0x1F4CB)} Copiar código</button>
     </div>
     <div class="bkrow"><span>Referidos exitosos</span><span class="bk-amt">${r.referidosExitosos} / 4</span></div>
     <div class="bkrow"><span>Descuento acumulado</span><span class="bk-amt">${r.tramoPct}%</span></div>
