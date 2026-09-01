@@ -253,6 +253,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 @keyframes badge-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
 /* COMERCIAL DASHBOARD */
 .com-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.com-kpi-row .card:only-child{grid-column:1/-1}
 .com-kpi-val{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--navy);line-height:1}
 .com-kpi-val.blue{color:var(--blue)}
 .com-kpi-label{font-size:13px;color:var(--muted);margin-top:5px}
@@ -5072,6 +5073,12 @@ function showComercialOnly(data) {
   document.getElementById('section-tabs').style.display = 'none';
   esComercialOnly = true;
   window._comercialData = data;
+  // Sin esto el countdown ("Faltan Xd Xh...") nunca arrancaba para un login
+  // comercial puro — iniciarCountdownViaje() solo se llamaba desde
+  // loadParticipant() (participantes) y showAdminOnly(), así que la pastilla
+  // se quedaba fija en "Calculando..." indefinidamente. programKeyActivo ya
+  // tiene 'clinic' como valor por defecto, así que cuenta hacia ese programa.
+  iniciarCountdownViaje();
   if (sessionStorage.getItem('auth_comercial')) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.getElementById('panel-comercial').classList.add('active');
@@ -5123,12 +5130,12 @@ function renderComercialPanel() {
   // Jugadores detail
   html += '<div class="card" style="margin-bottom:16px"><div class="ctitle">Detalle — Jugadores</div>';
   if (jugs.length) {
-    html += '<table class="com-table"><thead><tr><th>Jugadores</th><th>Com./Jugador</th><th>Estado</th><th>Total</th></tr></thead><tbody>';
+    html += '<div class="com-table-wrap"><table class="com-table"><thead><tr><th>Jugadores</th><th>Com./Jugador</th><th>Estado</th><th>Total</th></tr></thead><tbody>';
     jugs.forEach(function(r){
       html += '<tr><td>'+r.jugadores+'</td><td>'+fmt(r.comision_jugador)+'</td><td>'+statusBadge(r.estado)+'</td><td><strong>'+fmt(r.total)+'</strong></td></tr>';
     });
     if (jugs.length > 1) html += '<tr class="com-total-row"><td colspan="3">Total jugadores</td><td>'+fmt(totalJugs)+'</td></tr>';
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
   } else { html += '<p style="color:var(--muted);font-size:14px">Sin datos de jugadores.</p>'; }
   html += '</div>';
 
@@ -5138,12 +5145,16 @@ function renderComercialPanel() {
   var misJugadores = misJugadoresAll.filter(function(j){ return j.programa === comercialProgramaActivo; });
   html += '<div class="card" style="margin-bottom:16px"><div class="ctitle">Mis jugadores (' + misJugadores.length + ')</div>';
   if (misJugadores.length) {
-    html += '<table class="com-table"><thead><tr><th>Nombre</th><th>Colegio</th><th>Tiquete</th></tr></thead><tbody>';
+    html += '<input type="text" id="com-buscar-jugador" placeholder="🔍 Buscar por nombre o colegio..." oninput="filtrarMisJugadores()" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-family:\'DM Sans\',sans-serif;font-size:13px;margin-bottom:10px;box-sizing:border-box">';
+    html += '<div class="com-table-wrap"><table class="com-table"><thead><tr><th>Nombre</th><th>Colegio</th><th>Tiquete</th></tr></thead><tbody id="mis-jugadores-tbody">';
     misJugadores.forEach(function(j){
       var tieneTiq = (j.tiquete_aereo || '').toLowerCase().indexOf('con') >= 0;
-      html += '<tr><td>' + j.nombre + '</td><td>' + (j.colegio || '—') + '</td><td>' + (tieneTiq ? '✈ Sí' : '—') + '</td></tr>';
+      var dataNombre = normNombre(j.nombre || '');
+      var dataColegio = normNombre(j.colegio || '');
+      html += '<tr data-nombre="' + dataNombre + '" data-colegio="' + dataColegio + '"><td>' + j.nombre + '</td><td>' + (j.colegio || '—') + '</td><td>' + (tieneTiq ? '✈ Sí' : '—') + '</td></tr>';
     });
-    html += '</tbody></table>';
+    html += '<tr id="mis-jugadores-sin-resultados" style="display:none"><td colspan="3" style="text-align:center;color:var(--muted)">Sin coincidencias.</td></tr>';
+    html += '</tbody></table></div>';
   } else { html += '<p style="color:var(--muted);font-size:14px">Aún no tienes jugadores asignados por nombre.</p>'; }
   html += '</div>';
 
@@ -5160,6 +5171,25 @@ function renderComercialPanel() {
     + '</div></div>';
 
   document.getElementById('comercial-content').innerHTML = html;
+}
+
+// Filtra en vivo la tabla "Mis jugadores" del área comercial por nombre o
+// colegio — coincidencia parcial, sin distinguir mayúsculas/tildes (mismo
+// normNombre que usa el resto del panel). Oculta/muestra filas por DOM en
+// vez de re-renderizar toda la tabla, para no perder el foco del input
+// mientras se escribe.
+function filtrarMisJugadores() {
+  var q = normNombre((document.getElementById('com-buscar-jugador') || {}).value || '');
+  var tbody = document.getElementById('mis-jugadores-tbody');
+  if (!tbody) return;
+  var visibles = 0;
+  tbody.querySelectorAll('tr[data-nombre]').forEach(function(tr) {
+    var match = !q || tr.dataset.nombre.indexOf(q) >= 0 || tr.dataset.colegio.indexOf(q) >= 0;
+    tr.style.display = match ? '' : 'none';
+    if (match) visibles++;
+  });
+  var sinResultados = document.getElementById('mis-jugadores-sin-resultados');
+  if (sinResultados) sinResultados.style.display = visibles ? 'none' : '';
 }
 
 async function cambiarPasswordComercial(btn) {
@@ -8501,6 +8531,14 @@ function adminHandleFotoUpload(files) {
 @media (max-width: 768px) {
   .com-table-wrap { display: none; }
   .com-mobile-section { display: block; }
+  /* El panel comercial (renderComercialPanel) nunca generó los elementos
+     .com-mobile-card/.com-mobile-section de este bloque "COMISIONES MÓVIL"
+     — solo usa .com-table-wrap con las tablas normales. La regla de arriba
+     (display:none) las dejaba invisibles en móvil sin nada que las
+     reemplazara. Se restauran solo dentro de #panel-comercial, apoyándose
+     en el overflow-x:auto que ya trae .com-table-wrap para el scroll
+     horizontal en vez del diseño de tarjetas que nunca se implementó. */
+  #panel-comercial .com-table-wrap { display: block; }
 
   .com-header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .com-total-pill { align-self: flex-start; }
