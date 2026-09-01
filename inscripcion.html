@@ -438,7 +438,9 @@ async function validarCodigoPromo(tipo) {
     msg.className = r.valido ? 'ok-msg' : 'info-note';
     msg.textContent = r.valido
       ? '✅ Código válido — tendrás un ' + r.descuentoPorcentaje + '% de descuento.'
-      : 'Código no válido o no aplicable — puedes continuar sin problema.';
+      : (r.motivo === 'limite_alcanzado'
+          ? 'Este código ya alcanzó el límite de referidos.'
+          : 'Código no válido o no aplicable — puedes continuar sin problema.');
     msg.style.display = 'block';
   } catch (e) {
     codigoPromoValidado[tipo] = null;
