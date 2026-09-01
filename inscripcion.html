@@ -437,7 +437,7 @@ async function validarCodigoPromo(tipo) {
     codigoPromoValidado[tipo] = r;
     msg.className = r.valido ? 'ok-msg' : 'info-note';
     msg.textContent = r.valido
-      ? '✅ Código válido — tendrás un ' + r.descuentoPorcentaje + '% de descuento.'
+      ? String.fromCodePoint(0x2705) + ' Código válido — tendrás un ' + r.descuentoPorcentaje + '% de descuento.'
       : (r.motivo === 'limite_alcanzado'
           ? 'Este código ya alcanzó el límite de referidos.'
           : 'Código no válido o no aplicable — puedes continuar sin problema.');

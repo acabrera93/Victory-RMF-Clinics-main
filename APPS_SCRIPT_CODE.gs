@@ -4848,7 +4848,7 @@ function buscarNombrePorEmail_(email, programa) {
 // el Referidor ya estaba inscrito) y la revisión retroactiva (Caso 2: se
 // agregó antes de inscribirse). No revalida nada — el llamador ya confirmó
 // el match contra Inscripciones.
-function generarCodigoParaFila_(sheet, rc, row, programKey) {
+function generarCodigoParaFila_(sheet, rc, row, programKey, nombre, correo) {
   const prefijo = programKey === 'world_challenge' ? 'WC27' : 'RMF26';
   const lastRow = sheet.getLastRow();
   const codigosExistentes = {};
@@ -4865,6 +4865,97 @@ function generarCodigoParaFila_(sheet, rc, row, programKey) {
     programKey === 'world_challenge' ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic'
   );
   sheet.getRange(row, rc.estado).setValue('Activo');
+
+  if (correo) enviarCorreoNuevoEmbajador_(correo, nombre, programKey, codigo);
+}
+
+// Plantilla del correo "Nuevo Embajador" — diseño aprobado por el usuario.
+// Mismo patrón de 3 logos (Victory/RMF/Revel) ya usado en
+// buildProcesoCompletadoHtml_/buildCumpleanosHtml_.
+function buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo) {
+  const esWC = programKey === 'world_challenge';
+  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+  const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto || '';
+  const areaPersonalUrl = 'https://victory.com.es/areapersonal.html';
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f5;padding:32px 0;font-family:Arial,Helvetica,sans-serif">
+  <tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+      <tr><td style="background-color:#0b1f3a;padding:28px 24px 24px 24px;text-align:center">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px auto"><tr>
+          <td style="padding:0 8px"><img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory" height="34" style="display:block;height:34px;width:auto"></td>
+          <td style="padding:0 8px"><img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="34" style="display:block;height:34px;width:auto"></td>
+          <td style="padding:0 8px"><img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundacion Revel" height="34" style="display:block;height:34px;width:auto"></td>
+        </tr></table>
+        <div style="font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:1px;color:#d4a017;font-size:14px;margin-bottom:6px">\u{1F389} EMBAJADOR RMF INTERNATIONAL PROGRAMS</div>
+        <div style="font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:1px;color:#ffffff;font-size:32px;line-height:1.1">
+          ¡YA ERES EMBAJADOR<br>${esWC ? 'REAL MADRID FOUNDATION WORLD CHALLENGE' : 'REAL MADRID FOUNDATION CLINIC'}!
+        </div>
+      </td></tr>
+      <tr><td style="padding:32px 32px 8px 32px">
+        <p style="font-size:16px;color:#0b1f3a;margin:0 0 16px 0">Hola <strong>${primerNombre}</strong>,</p>
+        <p style="font-size:15px;color:#334155;line-height:1.6;margin:0 0 20px 0">
+          Queremos reconocerte: a partir de hoy formas parte del programa de <strong>Embajadores RMF International Programs</strong>. Vas a poder invitar a otras familias a vivir la experiencia ${nombrePrograma}, y cada vez que lo hagas, ambos ganan.
+        </p>
+      </td></tr>
+      <tr><td style="padding:0 32px 24px 32px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;border:2px dashed #d4a017;border-radius:10px"><tr>
+          <td style="padding:20px 24px;text-align:center">
+            <div style="font-size:11px;letter-spacing:2px;color:#64748b;font-family:Arial,sans-serif;margin-bottom:6px">TU CÓDIGO DE EMBAJADOR</div>
+            <div style="font-family:'Bebas Neue',Arial,sans-serif;font-size:36px;letter-spacing:3px;color:#0b1f3a">${codigo}</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px">Mantén presionado sobre el código para copiarlo, y compártelo por WhatsApp o correo</div>
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:0 32px 8px 32px">
+        <p style="font-size:15px;color:#0b1f3a;font-weight:bold;margin:0 0 14px 0">¿Cómo funciona?</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px">
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">\u{1F4E4}</span></td>
+            <td style="font-size:14px;color:#334155;line-height:1.5;padding-bottom:14px"><strong>Comparte tu código</strong> con la familia que quieras invitar al programa.</td></tr>
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">\u{1F381}</span></td>
+            <td style="font-size:14px;color:#334155;line-height:1.5;padding-bottom:14px">La familia que se inscriba con tu código recibe <strong>3% de descuento</strong> automático.</td></tr>
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">\u{1F4C8}</span></td>
+            <td style="font-size:14px;color:#334155;line-height:1.5;padding-bottom:14px">Por cada referido que complete su inscripción y pago al 100%, tú acumulas <strong>5% de crédito</strong> — hasta un máximo de 4 referidos exitosos (<strong>20% en total</strong>).</td></tr>
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">${String.fromCodePoint(0x2705)}</span></td>
+            <td style="font-size:14px;color:#334155;line-height:1.5">Ese crédito se aplica automáticamente a tu <strong>Pago Final</strong>. Si ya pagaste el 100%, nuestro equipo gestiona la devolución por transferencia.</td></tr>
+        </table>
+        <p style="font-size:12px;color:#94a3b8;line-height:1.5;margin:4px 0 0 0">*Aplica para familias nuevas en nuestros programas. No aplica si la persona referida ya participa o ha participado antes en el Educational Football Program de la Fundación Real Madrid, o en programas anteriores de Fundación Revel.</p>
+      </td></tr>
+      <tr><td style="padding:8px 32px 24px 32px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:3px solid #1e5ba8;background:#f8fafc"><tr>
+          <td style="padding:14px 18px;font-style:italic;color:#475569;font-size:14px">"Las mejores experiencias se disfrutan más cuando se comparten."</td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:0 32px 32px 32px;text-align:center">
+        <a href="${areaPersonalUrl}" style="display:inline-block;background-color:#1e5ba8;color:#ffffff;text-decoration:none;font-size:15px;font-weight:bold;padding:14px 32px;border-radius:8px">Ver mi Área Personal →</a>
+        <p style="font-size:12px;color:#94a3b8;margin:12px 0 0 0">Ahí encontrarás la pestaña <strong>\u{1F381} Refiere y Gana</strong> con tu progreso.</p>
+      </td></tr>
+      <tr><td style="background-color:#f4f7fb;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0">
+        <p style="font-size:12px;color:#64748b;margin:0 0 4px 0">Equipo Victory Sports · Fundación Revel</p>
+        <p style="font-size:12px;color:#64748b;margin:0 0 8px 0">${nombrePrograma}</p>
+        <p style="font-size:11px;color:#94a3b8;margin:0">¿Dudas? Escríbenos a alejandro.cabrera@fundacionrevel.net · WhatsApp +34 620 301 690</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>`;
+}
+
+// Envía el correo "Nuevo Embajador" al Referidor apenas su código queda
+// generado y Activo (llamado desde generarCodigoParaFila_, tanto en el caso
+// onEdit como en el retroactivo al inscribirse).
+function enviarCorreoNuevoEmbajador_(email, nombreCompleto, programKey, codigo) {
+  try {
+    if (!email || !codigo) return;
+    const esWC = programKey === 'world_challenge';
+    const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    const asunto = String.fromCodePoint(0x1F389) + ' ¡Ya eres Embajador ' + nombreProgramaCorto + '!';
+    const htmlBody = buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo);
+    GmailApp.sendEmail(email, asunto,
+      'Ya eres Embajador RMF International Programs. Tu código: ' + codigo + '. Ingresa a tu área personal para ver tu progreso: https://victory.com.es/areapersonal.html',
+      { htmlBody: htmlBody, name: nombreProgramaCorto });
+  } catch (err) {
+    Logger.log('enviarCorreoNuevoEmbajador_ error: ' + err);
+  }
 }
 
 // Trigger onEdit instalable sobre la pestaña Referidos (Caso 1). Se activa
@@ -4894,7 +4985,7 @@ function generarCodigoOnEdit_(e) {
       sheet.getRange(row, rc.estado).setValue('Sin match - verificar');
       return;
     }
-    generarCodigoParaFila_(sheet, rc, row, programaDetectado);
+    generarCodigoParaFila_(sheet, rc, row, programaDetectado, nombre, correo);
   } catch (err) {
     Logger.log('generarCodigoOnEdit_ error: ' + err);
   }
@@ -4927,7 +5018,8 @@ function revisarReferidoresPendientes_(programKey) {
       if (tipo !== 'Alta Referidor' || estado !== 'Sin match - verificar') continue;
       const correo = String(data[i][rc.correo - 1] || '').trim().toLowerCase();
       if (!correo || !emailEsParticipante_(correo, programKey)) continue;
-      generarCodigoParaFila_(sheet, rc, i + 2, programKey);
+      const nombre = String(data[i][rc.nombre - 1] || '').trim();
+      generarCodigoParaFila_(sheet, rc, i + 2, programKey, nombre, correo);
     }
   } catch (err) {
     Logger.log('revisarReferidoresPendientes_ error: ' + err);
