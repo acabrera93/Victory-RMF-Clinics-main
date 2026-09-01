@@ -4955,8 +4955,17 @@ function resolverCodigoReferido_(codigoRaw, programa, emailReferido) {
     if (String(r[rc.codigo - 1] || '').trim().toUpperCase() !== codigo) continue;
     if (String(r[rc.estado - 1] || '').trim() !== 'Activo') break;
     const correoReferidor = String(r[rc.correo - 1] || '').toLowerCase().trim();
+    out.correoReferidor = correoReferidor; // disponible aunque el resto de checks rechacen el código (usado en el aviso de uso indebido)
     if (resolverSheets_(String(r[rc.programa - 1] || '')).programKey !== programKeyDestino) break; // programa no coincide
     if (emailReferidoNorm && correoReferidor === emailReferidoNorm) break; // anti-autoreferido
+    // El Referido ya tenía su propia inscripción ANTES de este código — no es
+    // un referido genuino (evita reclamar crédito por alguien que ya iba a
+    // inscribirse de todos modos). Mensaje deliberadamente genérico
+    // ("límite alcanzado") en vez de revelar la razón real de rechazo.
+    if (emailReferidoNorm && emailEsParticipante_(emailReferidoNorm, programKeyDestino)) {
+      out.motivo = 'limite_alcanzado';
+      break;
+    }
     const yaRegistrado = data.some(function(r2) {
       return String(r2[rc.tipo - 1] || '').trim() === 'Referido Registrado'
         && String(r2[rc.correo - 1] || '').toLowerCase().trim() === emailReferidoNorm;
@@ -4964,7 +4973,6 @@ function resolverCodigoReferido_(codigoRaw, programa, emailReferido) {
     if (yaRegistrado) break;
     out.valido = true;
     out.descuentoPorcentaje = 3;
-    out.correoReferidor = correoReferidor;
     break;
   }
   return out;
@@ -4974,7 +4982,7 @@ function resolverCodigoReferido_(codigoRaw, programa, emailReferido) {
 function validarCodigoReferido_(codigoRaw, programa, emailReferido) {
   try {
     const r = resolverCodigoReferido_(codigoRaw, programa, emailReferido);
-    return ContentService.createTextOutput(JSON.stringify({ valido: !!r.valido, descuentoPorcentaje: r.descuentoPorcentaje || 0 }))
+    return ContentService.createTextOutput(JSON.stringify({ valido: !!r.valido, descuentoPorcentaje: r.descuentoPorcentaje || 0, motivo: r.motivo || '' }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     Logger.log('validarCodigoReferido_ error: ' + err);
@@ -4996,7 +5004,28 @@ function registrarReferido_(data) {
     if (!codigo || !emailReferido) return sendResponse(400, { ok: false, error: 'codigo y email requeridos' });
 
     const check = resolverCodigoReferido_(codigo, programa, emailReferido);
-    if (!check.valido) return sendResponse(200, { ok: false, motivo: 'codigo_invalido' }); // nunca bloquea el flujo de inscripción
+    if (!check.valido) {
+      // Aviso al admin solo para el caso de uso indebido (Referido ya
+      // inscrito) — se dispara únicamente en el envío real del formulario,
+      // no en cada validación de blur, para no saturar el correo.
+      if (check.motivo === 'limite_alcanzado') {
+        try {
+          GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+            '[Referidos] Intento de uso indebido — código con Referido ya inscrito',
+            'Se intentó usar un código de referido para alguien que YA TENÍA una inscripción propia en ese programa — posible intento de reclamar crédito por un referido no genuino.\n\n' +
+            'Código usado: ' + codigo + '\n' +
+            'Programa: ' + programa + '\n' +
+            'Nombre indicado: ' + nombreReferido + '\n' +
+            'Email del "Referido": ' + emailReferido + '\n' +
+            'Correo del Referidor (dueño del código): ' + (check.correoReferidor || 'desconocido') + '\n\n' +
+            'No se registró nada en Referidos — al usuario se le mostró el mensaje genérico "código alcanzó el límite de referidos".',
+            { name: 'Real Madrid Foundation Referidos' });
+        } catch (mailErr) {
+          Logger.log('registrarReferido_: error enviando aviso de uso indebido: ' + mailErr);
+        }
+      }
+      return sendResponse(200, { ok: false, motivo: check.motivo || 'codigo_invalido' }); // nunca bloquea el flujo de inscripción
+    }
 
     const sheet = getReferidosSheet_();
     const rc = getReferidosColMap_(sheet);
@@ -5011,6 +5040,21 @@ function registrarReferido_(data) {
     newRow[rc.referidor_vinculado_correo - 1] = check.correoReferidor;
     newRow[rc.descuento_referido_aplicado - 1] = 3;
     sheet.appendRow(newRow);
+
+    try {
+      GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+        '[Referidos] Código aceptado — ' + nombreReferido,
+        'Se registró un nuevo Referido con un código válido.\n\n' +
+        'Referido: ' + nombreReferido + ' (' + emailReferido + ')\n' +
+        'Programa: ' + programa + '\n' +
+        'Código usado: ' + codigo.toUpperCase() + '\n' +
+        'Referidor (dueño del código): ' + check.correoReferidor + '\n\n' +
+        'Estado: Pendiente pago — quedará "Exitoso" automáticamente cuando el Referido complete su Pago Final.',
+        { name: 'Real Madrid Foundation Referidos' });
+    } catch (mailErr) {
+      Logger.log('registrarReferido_: error enviando aviso de código aceptado: ' + mailErr);
+    }
+
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('registrarReferido_ error: ' + err);
