@@ -4948,7 +4948,7 @@ function enviarCorreoNuevoEmbajador_(email, nombreCompleto, programKey, codigo) 
     if (!email || !codigo) return;
     const esWC = programKey === 'world_challenge';
     const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
-    const asunto = String.fromCodePoint(0x1F389) + ' ¡Ya eres Embajador ' + nombreProgramaCorto + '!';
+    const asunto = String.fromCodePoint(0x2705) + ' ¡Ya eres Embajador ' + nombreProgramaCorto + '!';
     const htmlBody = buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo);
     GmailApp.sendEmail(email, asunto,
       'Ya eres Embajador RMF International Programs. Tu código: ' + codigo + '. Ingresa a tu área personal para ver tu progreso: https://victory.com.es/areapersonal.html',
