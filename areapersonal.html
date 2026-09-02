@@ -1581,10 +1581,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="ptable-wrap">
             <table class="ptable" id="admin-ptable">
               <thead>
-                <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Colegio / Club</th><th>Tiquete</th><th>Habitación</th><th>Paso</th><th></th></tr>
+                <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Colegio / Club</th><th>Tiquete</th><th>Habitación</th><th>Alianza</th><th>Paso</th><th></th></tr>
               </thead>
               <tbody id="admin-ptable-body">
-                <tr><td colspan="10" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+                <tr><td colspan="11" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2244,6 +2244,11 @@ function normalizeParticipant(raw) {
     // campo en el whitelist, montoReservaFinalParticipante_ nunca vería el
     // descuento aunque el backend sí lo mande.
     referido_descuento_pct: parseFloat(rowVal(raw, 'referido_descuento_pct')) || 0,
+    // Alianza/promoción con precio total fijo (ver alianzaPorNombre_ en el
+    // backend) — invalida el descuento de referido de arriba cuando está
+    // presente. Mismo motivo de whitelist que referido_descuento_pct.
+    alianza_nombre: rowVal(raw, 'alianza_nombre', 'Alianza', 'alianza') || '',
+    alianza_precio_total: parseFloat(rowVal(raw, 'alianza_precio_total')) || 0,
   };
 }
 
@@ -3113,6 +3118,15 @@ function montoReservaFinalParticipante_base_(p, esWC) {
 function montoReservaFinalParticipante_(p, esWC) {
   const m = montoReservaFinalParticipante_base_(p, esWC);
   const esJug = (p.tipo || '').toLowerCase().includes('jug');
+  // Alianza/promoción: precio total fijo acordado (catálogo "Alianzas" en el
+  // Sheet de Leads, ver alianzaPorNombre_ en el backend). Reemplaza el Pago
+  // Final calculado arriba y es EXCLUYENTE con el descuento de referido de
+  // abajo — un jugador con alianza nunca recibe también el 3% de referidos.
+  const precioAlianza = esJug ? (parseFloat(p.alianza_precio_total) || 0) : 0;
+  if (precioAlianza > 0) {
+    m.final = Math.max(0, Math.round((precioAlianza - m.reserva) * 100) / 100);
+    return m;
+  }
   const descuentoPct = esJug ? (parseFloat(p.referido_descuento_pct) || 0) : 0;
   if (descuentoPct > 0 && m.final > 0) {
     const precioBase = esWC ? 2890 : 2790;
@@ -5482,6 +5496,32 @@ function ocultarErrorAdmin() {
   if (banner) banner.style.display = 'none';
 }
 
+// Deep link desde el correo de notificación de inscripción pendiente
+// (?tab=admin&admin_open=<email>&admin_programa=<clinic|world_challenge>):
+// cambia de programa si hace falta y deja la pestaña Participantes con ese
+// email ya buscado, listo para asignar la alianza (o "Precio base") desde
+// ahí. Se ejecuta cada vez que loadAdmin() termina — si el programa activo
+// no es el correcto, cambiarProgramaAdmin dispara un loadAdmin(true) nuevo
+// y esta misma función se vuelve a llamar cuando ese termine.
+let _deepLinkAdminHandled = false;
+function manejarDeepLinkAdminParticipante_() {
+  if (_deepLinkAdminHandled) return;
+  const params = new URLSearchParams(window.location.search);
+  const email = params.get('admin_open');
+  if (!email) { _deepLinkAdminHandled = true; return; }
+  const programa = params.get('admin_programa');
+  if (programa && programa !== adminProgramaActivo) {
+    cambiarProgramaAdmin(programa);
+    return;
+  }
+  _deepLinkAdminHandled = true;
+  adminSection('participantes');
+  setTimeout(() => {
+    const input = document.getElementById('admin-search');
+    if (input) { input.value = email; filterAdminTable(); input.focus(); }
+  }, 150);
+}
+
 // Cambia qué programa ve el admin (Clinic / World Challenge) y refresca todo
 // el panel — los datos de un programa nunca se mezclan con los del otro.
 function cambiarProgramaAdmin(key) {
@@ -5558,6 +5598,8 @@ function loadAdmin(force, intento) {
     adminFinData = fin && !fin.error ? fin : null;
     adminAccesoList = Array.isArray(acceso) ? acceso : [];
     adminLastLoaded = Date.now();
+    cargarAlianzasCatalogo();
+    manejarDeepLinkAdminParticipante_();
     renderAdminDashboard(adminData, adminFinData);
     filterAdminTable();
     renderParticipantesKPIs(adminData);
@@ -6158,7 +6200,7 @@ function renderAdminPagos(fin) {
     const colegioKey = normNombre(adRow.club_colegio || '');
     return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-colegio="${escapeHtml(colegioKey)}" data-revisar="${tieneRevisar ? '1' : '0'}" data-resumen="${resumenPagoParticipante_(key)}">
       <td>${tipoBadge}</td>
-      <td style="font-weight:500">${escapeHtml(nombre)}</td>
+      <td style="font-weight:500">${escapeHtml(nombre)}${adRow.alianza_nombre ? `<div style="font-size:11px;font-weight:400;color:var(--blue)">🤝 ${escapeHtml(adRow.alianza_nombre)}</div>` : ''}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
       <td>${conTiq ? fmtPago(tiquete) : '<span style="color:var(--muted);font-size:12px">—</span>'}</td>
       <td>${fmtPago(pagoFinal)}</td>
@@ -6698,7 +6740,7 @@ async function refrescarComercialesTrasCambio() {
 function renderAdminTable(rows) {
   const tbody = document.getElementById('admin-ptable-body');
   if (!rows || !rows.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
     return;
   }
   // Orden fijo: Jugadores → Acompañantes → Staff (sort estable: dentro de
@@ -6734,6 +6776,7 @@ function renderAdminTable(rows) {
       <td style="font-size:12px;color:var(--muted)">${escapeHtml(club) || '—'}</td>
       <td style="text-align:center">${tiq}</td>
       <td style="font-size:12px">${escapeHtml(hab)}</td>
+      <td style="font-size:12px">${n.alianza_nombre ? `<span style="color:var(--blue)">🤝 ${escapeHtml(n.alianza_nombre)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="${cls}">${escapeHtml(paso)}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="event.stopPropagation();openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
     </tr>`;
@@ -6769,6 +6812,29 @@ function filterAdminTable() {
   if (countEl) countEl.textContent = filtrados.length + (filtrados.length === 1 ? ' resultado' : ' resultados');
 }
 
+// Catálogo de alianzas activas del programa actual (nombre + precio total),
+// cargado en loadAdmin() vía ?action=listar_alianzas. adminAlianzasOptions
+// es el mismo array por referencia que usa el select "Alianza" del modal de
+// edición (EDIT_FIELDS_JUGADOR) — se muta in-place para no romper esa referencia.
+// Mismo texto literal que ALIANZA_SIN_ALIANZA en APPS_SCRIPT_CODE.gs — se
+// guarda tal cual en la columna "Alianza" cuando el admin confirma que un
+// inscrito NO tiene alianza (precio base), a diferencia de dejarla vacía
+// (= aún sin revisar). Esa distinción es la que dispara (o no) el correo de
+// aceptación en actualizarParticipante — ver esa función en el backend.
+const ALIANZA_SIN_ALIANZA = 'Precio base (sin alianza)';
+let adminAlianzasCatalogo = [];
+let adminAlianzasOptions = [''];
+async function cargarAlianzasCatalogo() {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=listar_alianzas&programa=' + encodeURIComponent(adminProgramaActivo) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json());
+    adminAlianzasCatalogo = Array.isArray(res) ? res : [];
+  } catch (err) {
+    adminAlianzasCatalogo = [];
+  }
+  adminAlianzasOptions.length = 0;
+  adminAlianzasOptions.push('', ALIANZA_SIN_ALIANZA, ...adminAlianzasCatalogo.map(a => a.nombre));
+}
+
 // Base fields shared by all participants
 const EDIT_FIELDS_BASE = [
   {key:'nombre',label:'Nombre',type:'text'},{key:'email',label:'Email',type:'email'},
@@ -6785,6 +6851,7 @@ const EDIT_FIELDS_JUGADOR = [
   {key:'club_colegio',label:'Club / Colegio',type:'text'},
   {key:'acudiente',label:'Nombre del acudiente',type:'text'},
   {key:'relacion',label:'Relación con el acudiente',type:'text'},
+  {key:'alianza',label:'Alianza',type:'select',options:adminAlianzasOptions,emptyLabel:'Sin alianza'},
 ];
 // Extra fields only for acompañantes
 const EDIT_FIELDS_ACOMP = [
@@ -6812,7 +6879,7 @@ function openEditModal(idx) {
     const val = n[f.key] != null ? n[f.key] : (row[f.key] || '');
     const cls = 'mfield' + (f.full ? ' full' : '');
     if (f.type === 'select') {
-      const opts = f.options.map(o => `<option value="${o}"${o===val?' selected':''}>${o||'Solo actividades'}</option>`).join('');
+      const opts = f.options.map(o => `<option value="${o}"${o===val?' selected':''}>${o||(f.emptyLabel||'Solo actividades')}</option>`).join('');
       return `<div class="${cls}"><label>${f.label}</label><select id="ef-${f.key}">${opts}</select></div>`;
     }
     return `<div class="${cls}"><label>${f.label}</label><input type="${f.type}" id="ef-${f.key}" value="${String(val).replace(/"/g,'&quot;')}"></div>`;
@@ -7723,6 +7790,15 @@ function saveEditModal() {
             }
           });
         });
+        // Resolver alianza_nombre/alianza_precio_total localmente contra el
+        // catálogo ya cargado, para que la tabla y el Pago Final reflejen el
+        // cambio de inmediato sin esperar a un loadAdmin(true).
+        const alianzaEl2 = document.getElementById('ef-alianza');
+        if (alianzaEl2) {
+          const infoAlianza = adminAlianzasCatalogo.find(a => a.nombre === alianzaEl2.value);
+          editedRow.alianza_nombre = infoAlianza ? infoAlianza.nombre : '';
+          editedRow.alianza_precio_total = infoAlianza ? String(infoAlianza.precioTotal) : '';
+        }
         filterAdminTable();
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
         if (typeof renderAdminPagos === 'function' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
