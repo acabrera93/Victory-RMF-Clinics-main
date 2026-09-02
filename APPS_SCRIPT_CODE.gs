@@ -935,7 +935,7 @@ function buildProcesoCompletadoHtml_(nombreCompleto, programa) {
       <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:34px;margin:0 8px;">
     </div>
     <div style="background:#0b1f3a;padding:0 30px 40px;text-align:center;">
-      <div style="font-size:52px;line-height:1;margin-bottom:6px;">${String.fromCodePoint(0x1F389)}${String.fromCodePoint(0x2705)}</div>
+      <div style="font-size:52px;line-height:1;margin-bottom:6px;">&#127881;&#9989;</div>
       <h1 style="font-family:'Bebas Neue',sans-serif;color:#fff;font-size:32px;letter-spacing:1px;margin:0 0 6px;line-height:1.2;">¡Todo listo, ${primerNombre}!</h1>
       <div style="color:rgba(255,255,255,.75);font-size:14px;">Tu proceso de inscripción está 100% completo</div>
     </div>
@@ -943,10 +943,10 @@ function buildProcesoCompletadoHtml_(nombreCompleto, programa) {
       <p style="font-size:18px;font-weight:500;color:#0b1f3a;margin:0 0 18px;">Ya completaste cada paso del proceso — pagos, documentos, todo en orden.</p>
       <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">${parrafoIntro}</p>
       <div style="background:#f4f7fb;border-radius:10px;padding:18px 20px;margin:22px 0;">
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Términos y condiciones aceptados</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Pago de reserva confirmado</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Pago final confirmado</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">✓</span> Documentación validada</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Términos y condiciones aceptados</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Pago de reserva confirmado</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Pago final confirmado</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Documentación validada</div>
       </div>
       <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">${parrafoComunicados}</p>
       <div style="text-align:center;margin:28px 0 8px;">
@@ -4887,7 +4887,7 @@ function buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo) {
           <td style="padding:0 8px"><img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="34" style="display:block;height:34px;width:auto"></td>
           <td style="padding:0 8px"><img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundacion Revel" height="34" style="display:block;height:34px;width:auto"></td>
         </tr></table>
-        <div style="font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:1px;color:#d4a017;font-size:14px;margin-bottom:6px">${String.fromCodePoint(0x1F389)} EMBAJADOR RMF INTERNATIONAL PROGRAMS</div>
+        <div style="font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:1px;color:#d4a017;font-size:14px;margin-bottom:6px">&#127881; EMBAJADOR RMF INTERNATIONAL PROGRAMS</div>
         <div style="font-family:'Bebas Neue',Arial,sans-serif;letter-spacing:1px;color:#ffffff;font-size:32px;line-height:1.1">
           ¡YA ERES EMBAJADOR<br>${esWC ? 'REAL MADRID FOUNDATION WORLD CHALLENGE' : 'REAL MADRID FOUNDATION CLINIC'}!
         </div>
@@ -4910,13 +4910,13 @@ function buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo) {
       <tr><td style="padding:0 32px 8px 32px">
         <p style="font-size:15px;color:#0b1f3a;font-weight:bold;margin:0 0 14px 0">¿Cómo funciona?</p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px">
-          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">${String.fromCodePoint(0x1F4E4)}</span></td>
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">&#128228;</span></td>
             <td style="font-size:14px;color:#334155;line-height:1.5;padding-bottom:14px"><strong>Comparte tu código</strong> con la familia que quieras invitar al programa.</td></tr>
-          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">${String.fromCodePoint(0x1F381)}</span></td>
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">&#127873;</span></td>
             <td style="font-size:14px;color:#334155;line-height:1.5;padding-bottom:14px">La familia que se inscriba con tu código recibe <strong>3% de descuento</strong> automático.</td></tr>
-          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">${String.fromCodePoint(0x1F4C8)}</span></td>
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">&#128200;</span></td>
             <td style="font-size:14px;color:#334155;line-height:1.5;padding-bottom:14px">Por cada referido que complete su inscripción y pago al 100%, tú acumulas <strong>5% de crédito</strong> — hasta un máximo de 4 referidos exitosos (<strong>20% en total</strong>).</td></tr>
-          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">${String.fromCodePoint(0x2705)}</span></td>
+          <tr><td width="36" style="vertical-align:top;padding-top:2px"><span style="font-size:20px">&#9989;</span></td>
             <td style="font-size:14px;color:#334155;line-height:1.5">Ese crédito se aplica automáticamente a tu <strong>Pago Final</strong>. Si ya pagaste el 100%, nuestro equipo gestiona la devolución por transferencia.</td></tr>
         </table>
         <p style="font-size:12px;color:#94a3b8;line-height:1.5;margin:4px 0 0 0">*Aplica para familias nuevas en nuestros programas. No aplica si la persona referida ya participa o ha participado antes en el Educational Football Program de la Fundación Real Madrid, o en programas anteriores de Fundación Revel.</p>
@@ -4928,7 +4928,7 @@ function buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo) {
       </td></tr>
       <tr><td style="padding:0 32px 32px 32px;text-align:center">
         <a href="${areaPersonalUrl}" style="display:inline-block;background-color:#1e5ba8;color:#ffffff;text-decoration:none;font-size:15px;font-weight:bold;padding:14px 32px;border-radius:8px">Ver mi Área Personal →</a>
-        <p style="font-size:12px;color:#94a3b8;margin:12px 0 0 0">Ahí encontrarás la pestaña <strong>${String.fromCodePoint(0x1F381)} Refiere y Gana</strong> con tu progreso.</p>
+        <p style="font-size:12px;color:#94a3b8;margin:12px 0 0 0">Ahí encontrarás la pestaña <strong>&#127873; Refiere y Gana</strong> con tu progreso.</p>
       </td></tr>
       <tr><td style="background-color:#f4f7fb;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0">
         <p style="font-size:12px;color:#64748b;margin:0 0 4px 0">Equipo Victory Sports · Fundación Revel</p>
@@ -5822,7 +5822,7 @@ function enviarSeguimientoLeads_() {
 
     const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">'
       + '<div style="background:#92400e;padding:18px 24px;border-radius:8px 8px 0 0">'
-      + '<h2 style="color:#fff;margin:0;font-size:17px">⏰ Seguimiento pendiente — 1 semana sin avanzar</h2></div>'
+      + '<h2 style="color:#fff;margin:0;font-size:17px">&#9200; Seguimiento pendiente — 1 semana sin avanzar</h2></div>'
       + '<div style="background:#f8fafc;padding:22px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
       + '<p style="color:#334155;margin-top:0">Estos leads/inscripciones llevan <strong>7 días</strong> desde su primer contacto sin completar el proceso:</p>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13px;color:#334155"><thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">'
@@ -6011,7 +6011,7 @@ function enviarRecordatorioPagosVencidos_() {
 
     const htmlBody = '<div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto">'
       + '<div style="background:#991b1b;padding:18px 24px;border-radius:8px 8px 0 0">'
-      + '<h2 style="color:#fff;margin:0;font-size:17px">🚨 Pagos vencidos sin completar</h2></div>'
+      + '<h2 style="color:#fff;margin:0;font-size:17px">&#128680; Pagos vencidos sin completar</h2></div>'
       + '<div style="background:#f8fafc;padding:22px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
       + '<p style="color:#334155;margin-top:0">Estos participantes ya pasaron su fecha límite de pago y todavía no tienen el concepto marcado como <strong>Completo</strong>:</p>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13px;color:#334155"><thead><tr style="text-align:left;color:#94a3b8;font-size:11px;text-transform:uppercase">'
@@ -6067,7 +6067,7 @@ function buildCumpleanosHtml_(nombreCompleto, edad, programa) {
       <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:34px;margin:0 8px;">
     </div>
     <div style="background:#0b1f3a;padding:0 30px 40px;text-align:center;">
-      <div style="font-size:52px;line-height:1;margin-bottom:6px;">${String.fromCodePoint(0x1F389)}${String.fromCodePoint(0x26BD)}</div>
+      <div style="font-size:52px;line-height:1;margin-bottom:6px;">&#127881;&#9917;</div>
       <h1 style="font-family:'Bebas Neue',sans-serif;color:#fff;font-size:38px;letter-spacing:1px;margin:0 0 6px;">¡Feliz cumpleaños, ${primerNombre}!</h1>
       <span style="display:inline-block;background:#d4a017;color:#0b1f3a;font-weight:700;font-size:16px;padding:6px 18px;border-radius:30px;margin-top:6px;">Hoy cumples ${edad} años</span>
     </div>
@@ -6078,7 +6078,7 @@ function buildCumpleanosHtml_(nombreCompleto, edad, programa) {
         "Los sueños no son lo que ves mientras duermes, son las cosas que no te dejan dormir." — Cristiano Ronaldo
       </div>
       <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">Que este nuevo año esté lleno de goles, aprendizajes y momentos inolvidables junto a tu familia y tus compañeros de equipo, dentro y fuera del fútbol. Sigue soñando en grande, ${primerNombre} — nosotros seguimos aquí para acompañarte en cada paso del camino.</p>
-      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">¡Feliz cumpleaños, campeón! ${String.fromCodePoint(0x1F382)}${String.fromCodePoint(0x26BD)}</p>
+      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">¡Feliz cumpleaños, campeón! &#127874;&#9917;</p>
     </div>
     <div style="padding:0 34px 30px;color:#1a2c4a;">
       <p style="margin:2px 0;font-size:14px;font-weight:700;color:#0b1f3a;margin-top:14px;">Con cariño,</p>
