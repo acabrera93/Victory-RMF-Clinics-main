@@ -358,7 +358,7 @@ img, video, iframe, table {
   <div class="success-screen" id="success">
     <div class="scheck">✅</div>
     <h2>¡Inscripción recibida!</h2>
-    <p id="success-msg">Hemos recibido tu inscripción. Te enviamos un correo con las instrucciones para acceder a tu Área Personal, donde podrás gestionar pagos y documentos.</p>
+    <p id="success-msg">Hemos recibido tu inscripción. Te enviamos un correo con la confirmación y los siguientes pasos.</p>
 
     <div style="display:flex;align-items:flex-start;gap:14px;background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:18px 20px;margin:0 auto 28px;max-width:480px;text-align:left;">
       <span style="font-size:26px;flex-shrink:0;line-height:1;">📬</span>
@@ -376,12 +376,19 @@ img, video, iframe, table {
 </div>
 
 <script>
-const WEBHOOK_PREINSCRIPCION = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
+// Antes apuntaba al webhook de Make ("Preinscripcion - Area personal
+// Webhooks", desactivado ahí); la inscripción ahora la procesa Apps Script
+// directamente (doPost ?action=preinscripcion → registrarInscripcionWeb_),
+// que escribe la fila y decide el correo de aceptación/pendiente de
+// revisión ahí mismo. Se mantiene el mismo nombre de constante y el mismo
+// helper de POST (no-cors, text/plain) para no tocar la lógica de reintento
+// de más abajo (acompanantePrincipalEnviado).
+const WEBHOOK_PREINSCRIPCION = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
 
 /**
- * POST al webhook de Make desde el navegador (p. ej. GitHub Pages).
- * application/json dispara preflight OPTIONS; muchos webhooks de Make no responden CORS y el navegador bloquea el POST.
- * text/plain + cuerpo JSON suele enviarse como "simple request" sin preflight; Make sigue parseando el JSON en el bundle.
+ * POST no-cors + text/plain — evita el preflight OPTIONS que bloquearía el
+ * envío directo application/json (patrón necesario tanto para el webhook de
+ * Make de antes como para Apps Script ahora).
  */
 function postMakeWebhook(baseUrl, payload) {
   return fetch(baseUrl, {
@@ -409,9 +416,10 @@ function firmaPayloadPrincipal_(p) {
   return [p.nombre, p.email, p.habitacion].join('|').toLowerCase();
 }
 
-// Mismo endpoint de Apps Script usado en areapersonal.html — aquí solo para
-// consultar cupos, no para escribir (la inscripción sigue yendo por el
-// webhook de Make, ver WEBHOOK_PREINSCRIPCION).
+// Mismo endpoint de Apps Script usado en areapersonal.html y en
+// WEBHOOK_PREINSCRIPCION de arriba (misma URL, dos constantes por claridad:
+// esta se usa con fetch normal para lecturas — cupos, validar_promo —, la
+// otra con el helper no-cors para el envío del formulario).
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfAUKebw0pH5pM7UbIkez0r-ExYCttHSINEN4PXOIMsO8SBe3AZ4Tnvcw/exec";
 
 // ── CÓDIGO DE PROMOCIÓN (Programa de Referidos) ─────────────────────────────
@@ -788,9 +796,13 @@ async function submitForm(tipo) {
     }
     document.getElementById('type-grid').style.display = 'none';
     document.getElementById('form-' + tipo).style.display = 'none';
+    // Texto neutral a propósito: según el Colegio del Jugador, el correo que
+    // llega puede ser el de acceso inmediato al Área Personal O el de
+    // "en revisión" (ver registrarInscripcionWeb_ en el backend) — no
+    // prometer aquí un acceso que todavía no está garantizado.
     document.getElementById('success-msg').innerHTML = payload2
-      ? `Recibimos la inscripción de <strong>${payload.nombre}</strong> y de su compañero/a de habitación <strong>${payload2.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con las instrucciones para acceder a tu <strong>Área Personal</strong>.`
-      : `Recibimos la inscripción de <strong>${payload.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con las instrucciones para acceder a tu <strong>Área Personal</strong>.`;
+      ? `Recibimos la inscripción de <strong>${payload.nombre}</strong> y de su compañero/a de habitación <strong>${payload2.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con la confirmación y los siguientes pasos.`
+      : `Recibimos la inscripción de <strong>${payload.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con la confirmación y los siguientes pasos.`;
     document.getElementById('success').classList.add('active');
     window.scrollTo({top:0, behavior:'smooth'});
     let cuenta = 4;

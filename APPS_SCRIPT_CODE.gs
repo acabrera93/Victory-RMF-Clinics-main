@@ -259,6 +259,7 @@ function doGet(e) {
     if (action === 'referido_login') return getReferidoData_(params.email || '');
     if (action === 'tasa_wise') return getTasaWise_();
     if (action === 'admin_participantes') return getAdminParticipantes(params);
+    if (action === 'listar_alianzas') return listarAlianzas_(params.programa || '');
     if (action === 'admin_financiero') return getAdminFinanciero(params);
     if (action === 'admin_categorias') return getAdminCategorias(params);
     if (action === 'admin_acceso') return getAdminAcceso(params);
@@ -493,6 +494,12 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
       // Descuento de referido (3% fijo, solo tiene efecto de precio para
       // Jugador — ver montoReservaFinalParticipante_ en areapersonal.html).
       participant['referido_descuento_pct'] = String(descuentoReferidoDeEmail_(emailNorm, fuente.programKey));
+      // Alianza/promoción con precio total fijo (columna "Alianza" ya viene
+      // en participant[] por el loop genérico de headers de arriba). Resolver
+      // contra el catálogo invalida el descuento de referido en el frontend.
+      const alianzaInfo = participant['Alianza'] ? alianzaPorNombre_(participant['Alianza'], fuente.programKey) : null;
+      participant['alianza_nombre'] = alianzaInfo ? alianzaInfo.nombre : '';
+      participant['alianza_precio_total'] = alianzaInfo ? String(alianzaInfo.precioTotal) : '';
       out.push(participant);
     }
   } catch (err) {
@@ -1038,6 +1045,7 @@ function doPost(e) {
         if (parsed.action === 'eliminar_foto_drive') return eliminarFotoDrive(parsed);
         if (parsed.action === 'agregar_participante') return agregarParticipante(parsed);
         if (parsed.action === 'registrar_referido') return registrarReferido_(parsed);
+        if (parsed.action === 'preinscripcion') return registrarInscripcionWeb_(parsed);
         if (parsed.action === 'contacto_institucional') return contactoInstitucional(parsed);
         if (parsed.base64 || parsed.email) return handleJsonUpload(e);
       } catch (_) {}
@@ -1664,6 +1672,12 @@ function getAdminParticipantes(params) {
       // siempre el mismo monto esperado en Pago Final.
       const emailValAdmin = emailColAdmin >= 0 ? String(row[emailColAdmin] || '').toLowerCase().trim() : '';
       obj['referido_descuento_pct'] = String(descuentoReferidoDeEmail_(emailValAdmin, fuente.programKey));
+      // Alianza/promoción — MISMO flag que buscarParticipantesEnHoja_ (login
+      // del participante), para que admin y participante vean siempre el
+      // mismo Pago Final esperado.
+      const alianzaInfoAdmin = obj['Alianza'] ? alianzaPorNombre_(obj['Alianza'], fuente.programKey) : null;
+      obj['alianza_nombre'] = alianzaInfoAdmin ? alianzaInfoAdmin.nombre : '';
+      obj['alianza_precio_total'] = alianzaInfoAdmin ? String(alianzaInfoAdmin.precioTotal) : '';
       result.push(obj);
     }
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
@@ -1824,7 +1838,8 @@ function eliminarComunicado(data) {
 function actualizarParticipante(data) {
   try {
     if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    const sheet = SpreadsheetApp.openById(resolverSheets_(data.programa).sheetId).getSheets()[0];
+    const fuente = resolverSheets_(data.programa);
+    const sheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
     const rowNum = parseInt(data._row);
     if (!rowNum || rowNum < 2) return sendResponse(400, { ok: false, error: 'Fila invalida: ' + data._row });
     // Mapeo posicional SOLO para campos donde la cabecera del Sheet no coincide
@@ -1844,6 +1859,12 @@ function actualizarParticipante(data) {
     Object.keys(data).forEach(function(k) { dataByNorm[normFieldKey(k)] = data[k]; });
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    // Valor de "Alianza" ANTES de escribir — para detectar la transición
+    // vacío → asignado (real o "Precio base (sin alianza)") y disparar el
+    // correo de aceptación al final, solo la primera vez que se revisa.
+    const alianzaColIdx = headers.findIndex(function(h) { return normFieldKey(h) === 'alianza'; });
+    const alianzaAntes = alianzaColIdx >= 0 ? String(sheet.getRange(rowNum, alianzaColIdx + 1).getValue() || '').trim() : '';
+
     let updated = 0;
     for (let j = 0; j < headers.length; j++) {
       const h = String(headers[j]);
@@ -1863,6 +1884,22 @@ function actualizarParticipante(data) {
         updated++;
       }
     }
+
+    const alianzaDespues = String(dataByNorm['alianza'] || '').trim();
+    if (!alianzaAntes && alianzaDespues) {
+      const emailPart = String(dataByNorm['email'] || data.email || '').trim();
+      if (emailPart) {
+        enviarCorreoAceptacionInscripcion_({
+          nombre: String(dataByNorm['nombre'] || data.nombre || '').trim(),
+          tipo: String(dataByNorm['tipo'] || '').trim(),
+          email: emailPart,
+          acudiente: String(dataByNorm['acudiente'] || '').trim(),
+          tiquete_aereo: String(dataByNorm['tiquete_aereo'] || '').trim(),
+          programKey: fuente.programKey
+        });
+      }
+    }
+
     return sendResponse(200, { ok: true, updated: updated });
   } catch (err) {
     Logger.log('actualizarParticipante error: ' + err);
@@ -4822,6 +4859,474 @@ function getReferidosColMap_(sheet) {
   return map;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ALIANZAS Y PROMOCIONES — precio total fijo por jugador
+// ═══════════════════════════════════════════════════════════════════════
+// Pestaña "Alianzas" dentro del MISMO spreadsheet de Inscripciones de cada
+// programa (SHEET_ID / SHEET_ID_WORLD_CHALLENGE, resuelto vía
+// resolverSheets_) — no en el de Leads. Mismo criterio de columnas por
+// nombre de encabezado que Referidos (getAlianzasColMap_), pero al vivir
+// dentro del sheet propio de cada programa no necesita columna "Programa":
+// Nombre, Precio Total, Activo. Un jugador con la columna "Alianza" llena en
+// su propia hoja de inscripción paga ese Precio Total en vez del
+// hardcodeado, y eso invalida su descuento de referido y la comisión del
+// referidor — ver montoReservaFinalParticipante_ (areapersonal.html) y
+// procesarReferidoExitoso_ (más abajo).
+function getAlianzasSheet_(programa) {
+  const fuente = resolverSheets_(programa);
+  const ss = SpreadsheetApp.openById(fuente.sheetId);
+  const sheet = ss.getSheetByName('Alianzas');
+  if (!sheet) throw new Error('Falta crear la pestaña "Alianzas" en el Sheet de Inscripciones (' + fuente.programKey + ').');
+  return sheet;
+}
+
+function getAlianzasColMap_(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var map = {};
+  headers.forEach(function(h, idx) { map[normPagosHeaderKey_(h)] = idx + 1; });
+  return map;
+}
+
+function alianzaActiva_(valorCelda) {
+  var s = String(valorCelda || '').trim().toLowerCase();
+  return s === 'si' || s === 'sí' || s === 'true' || s === 'x' || s === '1';
+}
+
+// Busca una alianza ACTIVA por nombre en el catálogo "Alianzas" del sheet de
+// Inscripciones del programa dado (programa acepta texto libre o programKey,
+// igual que resolverSheets_). Devuelve {nombre, precioTotal} o null.
+function alianzaPorNombre_(nombre, programa) {
+  const nombreNorm = normText_(nombre);
+  if (!nombreNorm) return null;
+  try {
+    const sheet = getAlianzasSheet_(programa);
+    const ac = getAlianzasColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2 || !ac.nombre || !ac.precio_total || !ac.activo) return null;
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    const fila = data.find(function(r) {
+      return normText_(r[ac.nombre - 1]) === nombreNorm && alianzaActiva_(r[ac.activo - 1]);
+    });
+    if (!fila) return null;
+    return { nombre: String(fila[ac.nombre - 1]).trim(), precioTotal: parseFloat(fila[ac.precio_total - 1]) || 0 };
+  } catch (err) {
+    Logger.log('alianzaPorNombre_ error: ' + err);
+    return null;
+  }
+}
+
+// Catálogo de alianzas activas del sheet de Inscripciones del programa dado
+// — usado para poblar el dropdown de asignación en el panel admin
+// (doGet ?action=listar_alianzas).
+function listarAlianzasActivas_(programa) {
+  try {
+    const sheet = getAlianzasSheet_(programa);
+    const ac = getAlianzasColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2 || !ac.nombre || !ac.precio_total || !ac.activo) return [];
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    return data.filter(function(r) {
+      return alianzaActiva_(r[ac.activo - 1]);
+    }).map(function(r) {
+      return { nombre: String(r[ac.nombre - 1]).trim(), precioTotal: parseFloat(r[ac.precio_total - 1]) || 0 };
+    }).filter(function(a) { return a.nombre; });
+  } catch (err) {
+    Logger.log('listarAlianzasActivas_ error: ' + err);
+    return [];
+  }
+}
+
+function listarAlianzas_(programa) {
+  return ContentService.createTextOutput(JSON.stringify(listarAlianzasActivas_(programa)))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Dado un email, busca el valor de su columna "Alianza" en la hoja de
+// inscripción del programa dado — usado por procesarReferidoExitoso_ para
+// invalidar la comisión del referidor si el referido tiene alianza asignada.
+function alianzaAsignadaDeEmail_(email, programKey) {
+  const emailNorm = String(email || '').toLowerCase().trim();
+  if (!emailNorm) return '';
+  try {
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programKey).sheetId).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    let emailCol = -1, alianzaCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+      if (h === 'alianza') alianzaCol = j;
+    }
+    if (emailCol < 0 || alianzaCol < 0) return '';
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) return String(data[i][alianzaCol] || '').trim();
+    }
+  } catch (err) {
+    Logger.log('alianzaAsignadaDeEmail_ error: ' + err);
+  }
+  return '';
+}
+
+// Valor guardado literal en la columna "Alianza" de un participante cuando
+// un admin revisó su inscripción y confirmó explícitamente que NO tiene
+// ninguna alianza (paga precio base). Distinto de la celda vacía (= aún sin
+// revisar) — alianzaPorNombre_ nunca encuentra este texto en el catálogo,
+// así que el precio simplemente cae al hardcodeado, que es lo que se quiere.
+const ALIANZA_SIN_ALIANZA = 'Precio base (sin alianza)';
+
+// Columnas EXTRA del catálogo "Alianzas" (además de Nombre/Precio Total/
+// Activo): "Colegios" y "Emails", cada una con varios valores separados por
+// coma. Se usan SOLO al recibir una inscripción nueva, para autoasignar la
+// alianza sin intervención del admin cuando el Colegio o el email del
+// inscrito ya están en la lista de alguna alianza activa. Devuelve
+// {nombre, precioTotal} o null si no hay coincidencia.
+function alianzaPorColegioOEmail_(colegio, email, programa) {
+  const colegioNorm = normText_(colegio);
+  const emailNorm = String(email || '').toLowerCase().trim();
+  if (!colegioNorm && !emailNorm) return null;
+  try {
+    const sheet = getAlianzasSheet_(programa);
+    const ac = getAlianzasColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2 || !ac.nombre || !ac.precio_total || !ac.activo) return null;
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    const fila = data.find(function(r) {
+      if (!alianzaActiva_(r[ac.activo - 1])) return false;
+      if (emailNorm && ac.emails) {
+        const emails = String(r[ac.emails - 1] || '').split(',').map(function(s) { return s.trim().toLowerCase(); }).filter(Boolean);
+        if (emails.indexOf(emailNorm) >= 0) return true;
+      }
+      if (colegioNorm && ac.colegios) {
+        const colegios = String(r[ac.colegios - 1] || '').split(',').map(normText_).filter(Boolean);
+        if (colegios.indexOf(colegioNorm) >= 0) return true;
+      }
+      return false;
+    });
+    if (!fila) return null;
+    return { nombre: String(fila[ac.nombre - 1]).trim(), precioTotal: parseFloat(fila[ac.precio_total - 1]) || 0 };
+  } catch (err) {
+    Logger.log('alianzaPorColegioOEmail_ error: ' + err);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CORREOS DE INSCRIPCIÓN — aceptación / pendiente de revisión / admin
+// ═══════════════════════════════════════════════════════════════════════
+// Migrados desde el escenario de Make "Preinscripcion - Area personal
+// Webhooks" (módulos 31 y 32, ahora desactivados ahí — ver
+// make-blueprints/Preinscripcion - Area personal Webhooks.blueprint.json).
+// El diseño/HTML es el mismo que usaba Make; solo cambia CUÁNDO se dispara
+// cada uno: antes salía siempre e incondicional al recibir el webhook,
+// ahora depende de si el Colegio/email del inscrito coincide con una
+// alianza activa (ver registrarInscripcionWeb_ y actualizarParticipante).
+//
+// `datos` en todas estas funciones es un objeto plano con los mismos campos
+// que traía el webhook de Make: nombre, tipo, email, phone, pais, ciudad,
+// pasaporte, fecha_nacimiento, posicion, club_colegio, acudiente, relacion,
+// tiquete_aereo, habitacion, jugador_que_acompana, salud_alergias, fuente,
+// timestamp, programKey.
+
+function buildAceptacionInscripcionHtml_(datos) {
+  const esWC = datos.programKey === 'world_challenge';
+  const d = function(k) { return datos[k] || ''; };
+  const linkPresentacion = esWC
+    ? 'https://drive.google.com/file/d/18-8t9vBa_kaauFgHOKTgxU3wjKXNv_wC/view?usp=sharing'
+    : 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing';
+  return '<!DOCTYPE html>' +
+'<html lang="es">' +
+'<head>' +
+'<meta charset="UTF-8">' +
+'<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+'<title>' + (esWC ? 'Confirmación RMF World Challenge 2027' : 'Confirmación RMF Clinic 2026') + '</title>' +
+'</head>' +
+'<body style="margin:0;padding:0;background:#f4f7fb;font-family:\'Helvetica Neue\',Helvetica,Arial,sans-serif;">' +
+'<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f7fb;">' +
+'  <tr>' +
+'    <td align="center" style="padding:40px 20px;">' +
+'      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.10);">' +
+'        <tr>' +
+'          <td style="background:#0b1f3a;padding:36px 40px;text-align:center;">' +
+'            <table cellpadding="0" cellspacing="0" style="margin:0 auto 20px auto;">' +
+'              <tr>' +
+'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundación Revel" height="48" style="display:block; height:48px; width:auto;"></td>' +
+'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="60" style="display:block; height:60px; width:auto;"></td>' +
+'              </tr>' +
+'            </table>' +
+'            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.45);">' + (esWC ? 'Real Madrid Foundation World Challenge 2027 · MADRID, ESPAÑA' : 'Real Madrid Foundation Clinic 2026 · MADRID, ESPAÑA') + '</p>' +
+'            <h1 style="margin:10px 0 0;font-size:26px;font-weight:700;color:#ffffff;">¡Inscripción Recibida!</h1>' +
+'          </td>' +
+'        </tr>' +
+'        <tr>' +
+'          <td style="background:#ffffff;padding:40px 40px 36px;">' +
+'            <p style="margin:0 0 18px;font-size:16px;color:#1a2e46;line-height:1.6;">Hola, <strong>' + d('nombre') + '</strong> 👋</p>' +
+'            <p style="margin:0 0 28px;font-size:14px;color:#4a6080;line-height:1.8;">Hemos recibido exitosamente tu pre-inscripción para el <strong style="color:#1a2e46;">' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026') + '</strong>. A continuación encontrarás el resumen de tu registro y los próximos pasos a seguir.</p>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f5ff;border:1px solid rgba(30,91,168,0.2);border-radius:10px;margin-bottom:30px;">' +
+'              <tr>' +
+'                <td style="padding:24px 28px;">' +
+'                  <p style="margin:0 0 16px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1e5ba8;">Resumen de tu pre-inscripción</p>' +
+'                  <table width="100%" cellpadding="0" cellspacing="0" border="0">' +
+'                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;width:50%;">Nombre</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('nombre') + '</strong></td></tr>' +
+'                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;">Tipo de participante</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('tipo') + '</strong></td></tr>' +
+'                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;">Acudiente / Contacto</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('acudiente') + '</strong></td></tr>' +
+'                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;">Tiquete aéreo</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('tiquete_aereo') + '</strong></td></tr>' +
+'                    <tr><td style="padding:8px 0;font-size:13px;color:#4a6080;">Correo electrónico</td><td style="padding:8px 0;text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('email') + '</strong></td></tr>' +
+'                  </table>' +
+'                </td>' +
+'              </tr>' +
+'            </table>' +
+'            <p style="margin:0 0 18px;font-size:14px;font-weight:600;color:#1a2e46;">Próximos pasos:</p>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">' +
+'              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">1</div></td><td style="padding-left:12px;padding-bottom:16px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Accede a tu Área Personal</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Usa tu correo electrónico para ingresar y gestionar tu inscripción.</p></td></tr>' +
+'              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">2</div></td><td style="padding-left:12px;padding-bottom:16px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Acepta los Términos y Condiciones</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Revisa y acepta el contrato de participación del ' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026') + '.</p></td></tr>' +
+'              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">3</div></td><td style="padding-left:12px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Realiza el pago de reserva</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Completa el pago para asegurar tu cupo en el programa.</p></td></tr>' +
+'            </table>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;"><tr><td align="center"><a href="' + linkPresentacion + '" style="display:inline-block;padding:15px 44px;background:#1e5ba8;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">Ver presentación del programa</a></td></tr></table>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;"><tr><td align="center"><a href="https://victory.com.es/areapersonal.html" style="display:inline-block;padding:15px 44px;background:#0b1f3a;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">Ir al Área Personal →</a></td></tr></table>' +
+'            <p style="margin:0;font-size:13px;color:#4a6080;line-height:1.8;">¿Tienes alguna duda? Responde a este correo o contáctanos directamente. ¡Nos vemos en Madrid!</p>' +
+'          </td>' +
+'        </tr>' +
+'        <tr>' +
+'          <td style="background:#0b1f3a;padding:24px 40px;text-align:center;">' +
+'            <p style="margin:0 0 4px;font-size:12px;color:rgba(255,255,255,0.45);">' + (esWC ? 'RMF World Challenge 2027 · 19–27 Marzo · Madrid, España' : 'RMF Clinic 2026 · 2 al 10 Octubre · Madrid, España') + '</p>' +
+'            <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.25);">Organizado por Victory Sports &amp; Revel Fundación</p>' +
+'          </td>' +
+'        </tr>' +
+'      </table>' +
+'    </td>' +
+'  </tr>' +
+'</table>' +
+'</body>' +
+'</html>';
+}
+
+function enviarCorreoAceptacionInscripcion_(datos) {
+  try {
+    if (!datos || !datos.email) return;
+    const esWC = datos.programKey === 'world_challenge';
+    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    GmailApp.sendEmail(datos.email, (datos.nombre || '') + ' ¡Bienvenido al ' + nombrePrograma + '!',
+      'Hemos confirmado tu inscripción. Ingresa a tu área personal: https://victory.com.es/areapersonal.html',
+      { name: nombrePrograma, htmlBody: buildAceptacionInscripcionHtml_(datos) });
+  } catch (err) {
+    Logger.log('enviarCorreoAceptacionInscripcion_ error: ' + err);
+  }
+}
+
+// TODO: reemplazar por el diseño real que el usuario va a enviar aparte.
+// Placeholder funcional mientras tanto — el resto de la lógica (disparo,
+// destinatario, asunto) ya queda operativo.
+function buildPendienteRevisionHtml_(datos) {
+  const esWC = datos.programKey === 'world_challenge';
+  const nombrePrograma = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
+  return '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1a1a2e">' +
+    '<p>Hola ' + (datos.nombre || '') + ',</p>' +
+    '<p>Hemos recibido tu inscripción a ' + nombrePrograma + '. Nuestro equipo la está revisando y te confirmaremos muy pronto por este mismo correo.</p>' +
+    '</div>';
+}
+
+function enviarCorreoPendienteRevision_(datos) {
+  try {
+    if (!datos || !datos.email) return;
+    const esWC = datos.programKey === 'world_challenge';
+    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    GmailApp.sendEmail(datos.email, 'Inscripción recibida — ' + nombrePrograma,
+      'Hemos recibido tu inscripción. Nuestro equipo la revisará y te confirmaremos en breve.',
+      { name: nombrePrograma, htmlBody: buildPendienteRevisionHtml_(datos) });
+  } catch (err) {
+    Logger.log('enviarCorreoPendienteRevision_ error: ' + err);
+  }
+}
+
+// Notificación de "nueva inscripción" al admin — mismo diseño que el correo
+// que hoy manda Make en TODA inscripción (módulo 32, ahora desactivado ahí).
+// Sigue saliendo siempre, coincida o no con una alianza ("proceso normal").
+// Cuando NO coincide con ninguna alianza (opts.esMatch = false), se agrega
+// arriba una franja de aviso con el link directo al panel admin
+// (?tab=admin&admin_open=...&admin_programa=...) para asignarla — al
+// guardarla desde ahí, actualizarParticipante dispara el correo de
+// aceptación al inscrito automáticamente.
+function buildNotificacionAdminInscripcionHtml_(datos, opts) {
+  const esWC = datos.programKey === 'world_challenge';
+  const d = function(k) { return datos[k] || ''; };
+  const linkSheets = esWC
+    ? 'https://docs.google.com/spreadsheets/d/1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg'
+    : 'https://docs.google.com/spreadsheets/d/1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss';
+  const avisoAlianza = (opts && !opts.esMatch && opts.linkAsignar)
+    ? '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;margin-bottom:24px;"><tr><td style="padding:18px 22px;">' +
+      '<p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#9a3412;">⚠️ No coincide con ninguna alianza activa — requiere asignar manualmente</p>' +
+      '<a href="' + opts.linkAsignar + '" style="display:inline-block;padding:10px 22px;background:#ea580c;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;font-weight:600;">Asignar alianza en el panel admin →</a>' +
+      '</td></tr></table>'
+    : '';
+  return '<!DOCTYPE html>' +
+'<html lang="es">' +
+'<head>' +
+'<meta charset="UTF-8">' +
+'<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+'<title>' + (esWC ? 'Nueva Inscripción — RMF World Challenge 2027' : 'Nueva Inscripción — RMF Clinic 2026') + '</title>' +
+'</head>' +
+'<body style="margin:0;padding:0;background:#f4f7fb;font-family:\'Helvetica Neue\',Helvetica,Arial,sans-serif;">' +
+'<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f7fb;">' +
+'  <tr>' +
+'    <td align="center" style="padding:40px 20px;">' +
+'      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.10);">' +
+'        <tr>' +
+'          <td style="background:#0b1f3a;padding:32px 40px;text-align:center;">' +
+'            <table cellpadding="0" cellspacing="0" style="margin:0 auto 18px auto;">' +
+'              <tr>' +
+'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundación Revel" height="44" style="display:block; height:44px; width:auto;"></td>' +
+'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="56" style="display:block; height:56px; width:auto;"></td>' +
+'              </tr>' +
+'            </table>' +
+'            <span style="display:inline-block;padding:5px 16px;background:rgba(90,157,224,0.2);border:1px solid rgba(90,157,224,0.4);border-radius:20px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#5a9de0;">NUEVA INSCRIPCIÓN</span>' +
+'            <h1 style="margin:12px 0 4px;font-size:22px;font-weight:700;color:#ffffff;">' + d('nombre') + '</h1>' +
+'            <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.45);">' + d('tipo') + ' · ' + d('timestamp') + '</p>' +
+'          </td>' +
+'        </tr>' +
+'        <tr>' +
+'          <td style="background:#ffffff;padding:36px 40px;">' +
+avisoAlianza +
+'            <p style="margin:0 0 14px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1e5ba8;border-bottom:1px solid rgba(30,91,168,0.15);padding-bottom:10px;">Datos del participante</p>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;width:45%;">Nombre completo</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('nombre') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Tipo</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('tipo') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Email</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('email') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">WhatsApp / Teléfono</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('phone') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">País</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('pais') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Ciudad</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('ciudad') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Pasaporte</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('pasaporte') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Fecha de nacimiento</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('fecha_nacimiento') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Posición</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('posicion') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Club / Colegio</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('club_colegio') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Acudiente</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('acudiente') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Tiquete aéreo</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('tiquete_aereo') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Programa</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('programa') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Habitación</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('habitacion') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Jugador que acompaña</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('jugador_que_acompana') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Salud / Alergias</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('salud_alergias') + '</strong></td></tr>' +
+'              <tr><td style="padding:8px 0;font-size:12px;color:#4a6080;">Fuente</td><td style="padding:8px 0;"><strong style="font-size:13px;color:#1a2e46;">' + d('fuente') + '</strong></td></tr>' +
+'            </table>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center"><a href="' + linkSheets + '" style="display:inline-block;padding:13px 36px;background:#0b1f3a;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Ver en Google Sheets →</a></td></tr></table>' +
+'          </td>' +
+'        </tr>' +
+'        <tr>' +
+'          <td style="background:#0b1f3a;padding:22px 40px;text-align:center;">' +
+'            <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.35);">' + (esWC ? 'Notificación automática · RMF World Challenge 2027 · Victory Sports &amp; Revel Fundación' : 'Notificación automática · RMF Clinic 2026 · Victory Sports &amp; Revel Fundación') + '</p>' +
+'          </td>' +
+'        </tr>' +
+'      </table>' +
+'    </td>' +
+'  </tr>' +
+'</table>' +
+'</body>' +
+'</html>';
+}
+
+// datos: ver comentario arriba de buildAceptacionInscripcionHtml_.
+// opts: { esMatch: boolean, linkAsignar?: string } — linkAsignar solo se usa
+// cuando esMatch es false (deep link al panel admin, ver areapersonal.html).
+function enviarNotificacionAdminInscripcion_(datos, opts) {
+  try {
+    const esWC = datos.programKey === 'world_challenge';
+    const sufijoAsunto = (opts && !opts.esMatch) ? ' — Requiere revisión' : '';
+    GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+      'Nueva Pre-Inscripción ' + (esWC ? 'RMF World Challenge' : 'RMFC') + sufijoAsunto,
+      'Nombre: ' + (datos.nombre || '') + '\nEmail: ' + (datos.email || '') + '\nColegio: ' + (datos.club_colegio || '(sin colegio)') +
+        ((opts && !opts.esMatch && opts.linkAsignar) ? '\n\nNo coincide con ninguna alianza activa. Asignar aquí:\n' + opts.linkAsignar : ''),
+      { name: 'Real Madrid Foundation Admin', htmlBody: buildNotificacionAdminInscripcionHtml_(datos, opts) });
+  } catch (err) {
+    Logger.log('enviarNotificacionAdminInscripcion_ error: ' + err);
+  }
+}
+
+// Registro público de inscripción (doPost ?action=preinscripcion) — sin
+// autorizar() porque es una acción pública (mismo criterio que
+// registrarReferido_): cualquiera se inscribe desde inscripcion.html sin
+// sesión. Reemplaza lo que hacía el escenario de Make "Preinscripcion - Area
+// personal Webhooks" (módulos 29/54 "addRow", ahora desactivados ahí):
+// agrega la fila a la hoja de Inscripciones del programa correspondiente,
+// mapeando cada campo del payload a su columna por NOMBRE de encabezado
+// (mismo criterio que agregarParticipante) — Timestamp/Tipo/Nombre/Fecha
+// Nacimiento/Acudiente/WhatsApp/Pasaporte/Tiquete Aereo/Email/Posicion/Club
+// Colegio/Relacion/Salud Alergias/Programa/Habitacion/Nombre P2/Pasaporte
+// P2/WhatsApp P2/Email P2/Jugador que acompana/Fuente/Pais/Ciudad — el resto
+// de columnas (Paso Actual, Tiquete Actualizado, TC Aceptado, Alianza, etc.)
+// quedan vacías al insertar, igual que hacía Make.
+//
+// A diferencia de Make, aquí mismo (síncrono, sin esperar un trigger
+// onChange) se decide y envía el correo correspondiente: si es Jugador y su
+// Colegio/email coincide con una alianza activa, se autoasigna y sale el
+// correo de aceptación; si no coincide, sale el de "pendiente de revisión" +
+// notificación al admin con el link para asignarla. Los Acompañantes no
+// tienen concepto de alianza — siguen el "proceso normal" de siempre
+// (correo de aceptación + notificación admin, sin filtro).
+function registrarInscripcionWeb_(data) {
+  try {
+    const fuente = resolverSheets_(data.programa);
+    const sheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    const dataByNorm = {
+      timestamp: data.timestamp || new Date().toISOString(),
+      tipo: data.tipo || '', nombre: data.nombre || '',
+      fecha_nacimiento: data.fecha_nacimiento || '', acudiente: data.acudiente || '',
+      whatsapp: data.phone || '', pasaporte: data.pasaporte || '',
+      tiquete_aereo: data.tiquete_aereo || '', email: data.email || '',
+      posicion: data.posicion || '', club_colegio: data.club_colegio || '',
+      relacion: data.relacion || '', salud_alergias: data.salud_alergias || '',
+      programa: data.programa || '', habitacion: data.habitacion || '',
+      nombre_p2: data.nombre_p2 || '', pasaporte_p2: data.pasaporte_p2 || '',
+      whatsapp_p2: data.phone || '', email_p2: data.email || '',
+      jugador_que_acompana: data.jugador_acompana || '',
+      fuente: data.fuente || 'Preinscripcion Web', pais: data.pais || '', ciudad: data.ciudad || ''
+    };
+
+    const newRow = headers.map(function(h) {
+      const norm = normHeaderKey_(h);
+      return dataByNorm[norm] !== undefined ? dataByNorm[norm] : '';
+    });
+    sheet.appendRow(newRow);
+
+    const email = String(data.email || '').trim().toLowerCase();
+    const nombre = String(data.nombre || '').trim();
+    if (!email || !nombre) return sendResponse(200, { ok: true });
+
+    const datosCorreo = {
+      nombre: nombre, tipo: data.tipo || '', email: email,
+      phone: data.phone || '', pais: data.pais || '', ciudad: data.ciudad || '',
+      pasaporte: data.pasaporte || '', fecha_nacimiento: data.fecha_nacimiento || '',
+      posicion: data.posicion || '', club_colegio: data.club_colegio || '',
+      acudiente: data.acudiente || '', tiquete_aereo: data.tiquete_aereo || '',
+      programa: data.programa || '', habitacion: data.habitacion || '',
+      jugador_que_acompana: data.jugador_acompana || '', salud_alergias: data.salud_alergias || '',
+      fuente: dataByNorm.fuente, timestamp: String(dataByNorm.timestamp), programKey: fuente.programKey
+    };
+
+    const esJugador = normText_(data.tipo || '').includes('jugador');
+    if (esJugador) {
+      const match = alianzaPorColegioOEmail_(data.club_colegio, email, data.programa);
+      if (match) {
+        const alianzaColIdx = headers.findIndex(function(h) { return normHeaderKey_(h) === 'alianza'; });
+        if (alianzaColIdx >= 0) sheet.getRange(sheet.getLastRow(), alianzaColIdx + 1).setValue(match.nombre);
+        enviarCorreoAceptacionInscripcion_(datosCorreo);
+        enviarNotificacionAdminInscripcion_(datosCorreo, { esMatch: true });
+      } else {
+        enviarCorreoPendienteRevision_(datosCorreo);
+        const linkAdmin = 'https://victory.com.es/areapersonal.html?tab=admin&admin_open=' + encodeURIComponent(email) + '&admin_programa=' + fuente.programKey;
+        enviarNotificacionAdminInscripcion_(datosCorreo, { esMatch: false, linkAsignar: linkAdmin });
+      }
+    } else {
+      enviarCorreoAceptacionInscripcion_(datosCorreo);
+      enviarNotificacionAdminInscripcion_(datosCorreo, { esMatch: true });
+    }
+
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('registrarInscripcionWeb_ error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
 // Inverso de buscarEmailPorNombre_ (más arriba): dado un email, devuelve el
 // nombre completo en la hoja de Inscripciones del programa. Mismo criterio
 // de columnas.
@@ -5305,6 +5810,11 @@ function buildFilaBeneficioAplicado_(rc, width, info) {
 // acumula/devuelve el crédito correspondiente.
 function procesarReferidoExitoso_(emailReferido, programaReferido) {
   try {
+    // Si el referido tiene una Alianza/promoción asignada, su precio ya no
+    // sale del list price y no debe generar comisión para el referidor.
+    const programKeyReferido = resolverSheets_(programaReferido).programKey;
+    if (alianzaAsignadaDeEmail_(emailReferido, programKeyReferido)) return;
+
     const sheet = getReferidosSheet_();
     const rc = getReferidosColMap_(sheet);
     const lastRow = sheet.getLastRow();
