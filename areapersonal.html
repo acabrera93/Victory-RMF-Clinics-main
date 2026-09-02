@@ -1328,7 +1328,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
       <div class="admin-subnav">
         <button class="asnav-btn active" data-asec="dashboard" onclick="adminSection('dashboard')">Dashboard</button>
-        <button class="asnav-btn" data-asec="participantes" onclick="adminSection('participantes')">Participantes</button>
+        <button class="asnav-btn" data-asec="participantes" onclick="adminSection('participantes')" style="position:relative">Participantes<span id="alianza-pendientes-badge" style="display:none;position:absolute;top:-7px;right:-7px;background:#ea580c;color:#fff;font-size:10px;font-weight:700;line-height:1;padding:3px 5px;border-radius:9px;min-width:16px;text-align:center"></span></button>
         <button class="asnav-btn" data-asec="pagos" onclick="adminSection('pagos')" style="position:relative">Pagos<span id="pagos-pendientes-badge" style="display:none;position:absolute;top:-7px;right:-7px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;line-height:1;padding:3px 5px;border-radius:9px;min-width:16px;text-align:center"></span></button>
         <button class="asnav-btn" data-asec="comisiones" onclick="adminSection('comisiones')">Comisiones</button>
         <button class="asnav-btn" data-asec="comunicados" onclick="adminSection('comunicados')">Comunicados</button>
@@ -1557,6 +1557,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="card" style="flex:1;min-width:90px;padding:14px 16px;text-align:center">
           <div style="font-size:26px;font-weight:700;color:#7c3aed" id="kpi-p-staff">—</div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px">Staff</div>
+        </div>
+        <div class="card" id="kpi-p-alianza-card" onclick="toggleFiltroAlianzaPendiente()" style="flex:1;min-width:120px;padding:14px 16px;text-align:center;cursor:pointer;border:1px solid transparent">
+          <div style="font-size:26px;font-weight:700;color:#ea580c" id="kpi-p-alianza-pendiente">—</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px">Alianza pendiente</div>
         </div>
       </div>
       <!-- Sub-tabs -->
@@ -6797,13 +6801,20 @@ function formatFechaNac(v) {
 function filterAdminTable() {
   const q = (document.getElementById('admin-search').value || '').toLowerCase();
   const countEl = document.getElementById('admin-search-count');
+  let base = adminData;
+  if (filtroSoloAlianzaPendiente) {
+    base = base.filter(row => {
+      const n = normalizeParticipant(row) || {};
+      return (n.tipo || '').toLowerCase().includes('jug') && !n.alianza_nombre;
+    });
+  }
   if (!q) {
-    renderAdminTable(adminData);
-    if (countEl) countEl.textContent = adminData.length + (adminData.length === 1 ? ' participante' : ' participantes');
+    renderAdminTable(base);
+    if (countEl) countEl.textContent = base.length + (base.length === 1 ? ' participante' : ' participantes');
     return;
   }
   const esBusquedaRedcol = q.includes('redcol');
-  const filtrados = adminData.filter(row => {
+  const filtrados = base.filter(row => {
     const n = normalizeParticipant(row) || {};
     if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
     return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.acudiente || '').toLowerCase().includes(q);
@@ -7837,10 +7848,17 @@ function calcEdadRefFront(f) {
 
 function renderParticipantesKPIs(data) {
   if (!data) return;
-  let jugs = 0, acomps = 0, staff = 0;
+  let jugs = 0, acomps = 0, staff = 0, alianzaPendiente = 0;
   data.forEach(row => {
-    const t = ((normalizeParticipant(row) || {}).tipo || '').toLowerCase();
-    if (t.includes('jug')) jugs++;
+    const n = normalizeParticipant(row) || {};
+    const t = (n.tipo || '').toLowerCase();
+    if (t.includes('jug')) {
+      jugs++;
+      // Pendiente = Jugador cuya columna Alianza sigue vacía (nunca revisado
+      // — ni asignado a una alianza real ni marcado "Precio base"). Ver
+      // ALIANZA_SIN_ALIANZA en el backend: esa marca SÍ cuenta como revisado.
+      if (!n.alianza_nombre) alianzaPendiente++;
+    }
     else if (t.includes('staff')) staff++;
     else acomps++;
   });
@@ -7848,6 +7866,20 @@ function renderParticipantesKPIs(data) {
   set('kpi-p-jugadores', jugs);
   set('kpi-p-acompanantes', acomps);
   set('kpi-p-staff', staff);
+  set('kpi-p-alianza-pendiente', alianzaPendiente);
+  const badge = document.getElementById('alianza-pendientes-badge');
+  if (badge) { badge.textContent = alianzaPendiente; badge.style.display = alianzaPendiente > 0 ? 'block' : 'none'; }
+}
+
+// Filtro "Alianza pendiente" en la tabla de Participantes — clic en la KPI
+// naranja alterna entre mostrar solo Jugadores sin revisar y quitar el
+// filtro. Se combina con el buscador de texto (filterAdminTable).
+let filtroSoloAlianzaPendiente = false;
+function toggleFiltroAlianzaPendiente() {
+  filtroSoloAlianzaPendiente = !filtroSoloAlianzaPendiente;
+  const card = document.getElementById('kpi-p-alianza-card');
+  if (card) card.style.borderColor = filtroSoloAlianzaPendiente ? '#ea580c' : 'transparent';
+  filterAdminTable();
 }
 
 function buildCategorias() {

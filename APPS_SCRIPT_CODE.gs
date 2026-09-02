@@ -4978,8 +4978,13 @@ const ALIANZA_SIN_ALIANZA = 'Precio base (sin alianza)';
 // Activo): "Colegios" y "Emails", cada una con varios valores separados por
 // coma. Se usan SOLO al recibir una inscripción nueva, para autoasignar la
 // alianza sin intervención del admin cuando el Colegio o el email del
-// inscrito ya están en la lista de alguna alianza activa. Devuelve
-// {nombre, precioTotal} o null si no hay coincidencia.
+// inscrito ya están en la lista de alguna alianza activa. El match de
+// Colegios es EXACTO (no "contiene") — a propósito: hay colegios con
+// nombres parecidos que NO son parte de la alianza, y una coincidencia
+// parcial los habría capturado por error. Cada entrada de la columna
+// Colegios debe ser el nombre completo tal como la gente lo escribe en el
+// formulario de inscripción. Devuelve {nombre, precioTotal} o null si no
+// hay coincidencia.
 function alianzaPorColegioOEmail_(colegio, email, programa) {
   const colegioNorm = normText_(colegio);
   const emailNorm = String(email || '').toLowerCase().trim();
