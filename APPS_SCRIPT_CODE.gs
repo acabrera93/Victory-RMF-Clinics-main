@@ -5159,7 +5159,8 @@ function buildNotificacionAdminInscripcionHtml_(datos, opts) {
     : 'https://docs.google.com/spreadsheets/d/1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss';
   const avisoAlianza = (opts && !opts.esMatch && opts.linkAsignar)
     ? '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;margin-bottom:24px;"><tr><td style="padding:18px 22px;">' +
-      '<p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#9a3412;">⚠️ No coincide con ninguna alianza activa — requiere asignar manualmente</p>' +
+      '<p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#9a3412;">⚠️ Pendiente de asignar alianza o precio base' +
+      (opts.sugerencia ? ' — sugerencia automática: <strong>' + opts.sugerencia + '</strong>' : '') + '</p>' +
       '<a href="' + opts.linkAsignar + '" style="display:inline-block;padding:10px 22px;background:#ea580c;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;font-weight:600;">Asignar alianza en el panel admin →</a>' +
       '</td></tr></table>'
     : '';
@@ -5237,7 +5238,9 @@ function enviarNotificacionAdminInscripcion_(datos, opts) {
     GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
       'Nueva Pre-Inscripción ' + (esWC ? 'RMF World Challenge' : 'RMFC') + sufijoAsunto,
       'Nombre: ' + (datos.nombre || '') + '\nEmail: ' + (datos.email || '') + '\nColegio: ' + (datos.club_colegio || '(sin colegio)') +
-        ((opts && !opts.esMatch && opts.linkAsignar) ? '\n\nNo coincide con ninguna alianza activa. Asignar aquí:\n' + opts.linkAsignar : ''),
+        ((opts && !opts.esMatch && opts.linkAsignar)
+          ? '\n\nPendiente de asignar alianza o precio base' + (opts.sugerencia ? ' — sugerencia automática: ' + opts.sugerencia : '') + '. Asignar aquí:\n' + opts.linkAsignar
+          : ''),
       { name: 'Real Madrid Foundation Admin', htmlBody: buildNotificacionAdminInscripcionHtml_(datos, opts) });
   } catch (err) {
     Logger.log('enviarNotificacionAdminInscripcion_ error: ' + err);
@@ -5309,17 +5312,18 @@ function registrarInscripcionWeb_(data) {
 
     const esJugador = normText_(data.tipo || '').includes('jugador');
     if (esJugador) {
+      // Flujo confirmado con el usuario: TODO Jugador queda "pendiente de
+      // revisión" al inscribirse, sin excepción — el correo de aceptación
+      // SOLO sale cuando el admin confirma la alianza (o "Precio base") a
+      // mano en el panel (ver actualizarParticipante, que dispara ese
+      // correo al detectar la transición Alianza vacía → asignada). El
+      // match automático por Colegio/email (alianzaPorColegioOEmail_) ya NO
+      // autoasigna ni salta este paso — solo se menciona como sugerencia en
+      // la notificación al admin, para que decida más rápido.
       const match = alianzaPorColegioOEmail_(data.club_colegio, email, data.programa);
-      if (match) {
-        const alianzaColIdx = headers.findIndex(function(h) { return normHeaderKey_(h) === 'alianza'; });
-        if (alianzaColIdx >= 0) sheet.getRange(sheet.getLastRow(), alianzaColIdx + 1).setValue(match.nombre);
-        enviarCorreoAceptacionInscripcion_(datosCorreo);
-        enviarNotificacionAdminInscripcion_(datosCorreo, { esMatch: true });
-      } else {
-        enviarCorreoPendienteRevision_(datosCorreo);
-        const linkAdmin = 'https://victory.com.es/areapersonal.html?tab=admin&admin_open=' + encodeURIComponent(email) + '&admin_programa=' + fuente.programKey;
-        enviarNotificacionAdminInscripcion_(datosCorreo, { esMatch: false, linkAsignar: linkAdmin });
-      }
+      enviarCorreoPendienteRevision_(datosCorreo);
+      const linkAdmin = 'https://victory.com.es/areapersonal.html?tab=admin&admin_open=' + encodeURIComponent(email) + '&admin_programa=' + fuente.programKey;
+      enviarNotificacionAdminInscripcion_(datosCorreo, { esMatch: false, linkAsignar: linkAdmin, sugerencia: match ? match.nombre : '' });
     } else {
       enviarCorreoAceptacionInscripcion_(datosCorreo);
       enviarNotificacionAdminInscripcion_(datosCorreo, { esMatch: true });
