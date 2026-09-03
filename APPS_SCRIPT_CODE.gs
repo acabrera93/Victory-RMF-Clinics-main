@@ -5533,9 +5533,38 @@ function generarCodigoParaFila_(sheet, rc, row, programKey, nombre, correo) {
   sheet.getRange(row, rc.programa).setValue(
     programKey === 'world_challenge' ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic'
   );
-  sheet.getRange(row, rc.estado).setValue('Activo');
+  // El código queda generado pero SIN activar — antes se activaba y se
+  // enviaban los correos (Embajador + aviso admin) de inmediato al
+  // generarse; ahora el Estado nace en "Desactivado" con un desplegable
+  // (Desactivado/Activo) para que el admin lo revise y lo active a mano. Los
+  // correos de activación solo salen cuando ese cambio manual ocurre — ver
+  // el Caso 2 de generarCodigoOnEdit_ más abajo.
+  const estadoCell = sheet.getRange(row, rc.estado);
+  estadoCell.setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(['Desactivado', 'Activo'], true).setAllowInvalid(false).build()
+  );
+  estadoCell.setValue('Desactivado');
+}
 
-  if (correo) enviarCorreoNuevoEmbajador_(correo, nombre, programKey, codigo);
+// Aviso interno cada vez que un Referidor queda activado (código generado y
+// Estado = Activo) — antes este flujo solo avisaba al propio Referidor
+// (enviarCorreoNuevoEmbajador_), sin dejar constancia para el admin salvo
+// revisando el Log de ejecuciones. En try/catch propio para no afectar el
+// correo de bienvenida al Referidor si este aviso llegara a fallar.
+function notificarAdminNuevoReferidor_(nombre, correo, programKey, codigo) {
+  try {
+    const nombrePrograma = programKey === 'world_challenge' ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+      '[Referidos] Nuevo Embajador activado — ' + nombre,
+      'Se activó un nuevo Referidor (Embajador).\n\n' +
+      'Nombre: ' + nombre + '\n' +
+      'Correo: ' + correo + '\n' +
+      'Programa: ' + nombrePrograma + '\n' +
+      'Código asignado: ' + codigo,
+      { name: 'Real Madrid Foundation Referidos' });
+  } catch (err) {
+    Logger.log('notificarAdminNuevoReferidor_ error: ' + err);
+  }
 }
 
 // Plantilla del correo "Nuevo Embajador" — diseño aprobado por el usuario.
@@ -5641,10 +5670,29 @@ function generarCodigoOnEdit_(e) {
     const rc = getReferidosColMap_(sheet);
     const rowVals = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
     const tipo = String(rowVals[rc.tipo - 1] || '').trim();
+    if (tipo !== 'Alta Referidor') return;
+
     const nombre = String(rowVals[rc.nombre - 1] || '').trim();
     const correo = String(rowVals[rc.correo - 1] || '').trim().toLowerCase();
     const codigoActual = String(rowVals[rc.codigo - 1] || '').trim();
-    if (tipo !== 'Alta Referidor' || !nombre || !correo || codigoActual) return; // idempotente
+    const estadoActual = String(rowVals[rc.estado - 1] || '').trim();
+
+    // Caso 2: activación manual — el propio admin cambió el desplegable de
+    // Estado a "Activo" en una fila que YA tenía código generado (si aún no
+    // tiene código, este edit no puede ser el desplegable, que solo existe
+    // una vez generado). Recién aquí salen el correo de bienvenida al
+    // Referidor y el aviso interno — nunca al generarse el código.
+    if (codigoActual && e.range.getColumn() === rc.estado && estadoActual === 'Activo') {
+      const valorAnterior = String(e.oldValue || '').trim();
+      if (valorAnterior !== 'Activo' && correo) {
+        const programKeyFila = resolverSheets_(String(rowVals[rc.programa - 1] || '')).programKey;
+        enviarCorreoNuevoEmbajador_(correo, nombre, programKeyFila, codigoActual);
+        notificarAdminNuevoReferidor_(nombre, correo, programKeyFila, codigoActual);
+      }
+      return;
+    }
+
+    if (!nombre || !correo || codigoActual) return; // idempotente — el código ya existe, nada que generar
 
     let programaDetectado = null;
     if (emailEsParticipante_(correo, 'clinic')) programaDetectado = 'clinic';
