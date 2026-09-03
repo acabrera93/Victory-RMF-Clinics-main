@@ -245,7 +245,7 @@ img, video, iframe, table {
     <div class="ctitle" style="margin-top:4px">Código de Promoción</div>
     <div>
       <label class="flabel" data-es="Código de promoción (opcional)" data-en="Promo code (optional)">Código de promoción (opcional)</label>
-      <input class="finput" id="j-codigo-promo" type="text" placeholder="Ej: RMF26-4821" style="text-transform:uppercase" onblur="validarCodigoPromo('jugador')">
+      <input class="finput" id="j-codigo-promo" type="text" placeholder="Código de referido (si tienes uno)" style="text-transform:uppercase" onblur="validarCodigoPromo('jugador')">
       <div class="info-note" id="j-codigo-promo-msg" style="display:none;margin-top:8px"></div>
     </div>
 
@@ -343,13 +343,6 @@ img, video, iframe, table {
       </label>
     </div>
 
-    <div class="ctitle" style="margin-top:4px">Código de Promoción</div>
-    <div>
-      <label class="flabel" data-es="Código de promoción (opcional)" data-en="Promo code (optional)">Código de promoción (opcional)</label>
-      <input class="finput" id="a-codigo-promo" type="text" placeholder="Ej: RMF26-4821" style="text-transform:uppercase" onblur="validarCodigoPromo('acompanante')">
-      <div class="info-note" id="a-codigo-promo-msg" style="display:none;margin-top:8px"></div>
-    </div>
-
     <div class="err-msg" id="a-err">Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.</div>
     <button class="btn-submit" id="a-btn" onclick="submitForm('acompanante')">Enviar inscripción del acompañante →</button>
   </div>
@@ -427,7 +420,9 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0JetnREOTgwfA
 // del webhook de Make que es no-cors/opaco) — mismo patrón que la consulta
 // de cupos de arriba. Nunca bloquea el envío del formulario: cualquier
 // código inválido o fallo de red simplemente no aplica descuento.
-let codigoPromoValidado = { jugador: null, acompanante: null };
+// Solo Jugador — el código de referido/promoción no aplica a Acompañantes
+// (ni descuento de precio ni crédito de referido para quien lo comparta).
+let codigoPromoValidado = { jugador: null };
 
 async function validarCodigoPromo(tipo) {
   const pfx = tipo === 'jugador' ? 'j' : 'a';
@@ -726,9 +721,9 @@ async function submitForm(tipo) {
     nombre_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-nombre').value.trim() : '',
     pasaporte_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-pasaporte').value.trim() : '',
     paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web',
-    codigoPromo: document.getElementById('a-codigo-promo').value.trim().toUpperCase(),
-    codigoPromoValido: !!(codigoPromoValidado.acompanante && codigoPromoValidado.acompanante.valido),
-    descuentoPorcentaje: (codigoPromoValidado.acompanante && codigoPromoValidado.acompanante.valido) ? codigoPromoValidado.acompanante.descuentoPorcentaje : 0
+    // Acompañantes no tienen código de referido/promoción — ver comentario en
+    // codigoPromoValidado más arriba.
+    codigoPromo: '', codigoPromoValido: false, descuentoPorcentaje: 0
   };
 
   // Habitación doble: el compañero/a de habitación (P2) también debe quedar
