@@ -3156,9 +3156,12 @@ function montoReservaFinalParticipante_base_(p, esWC) {
 
 // Programa de Referidos: envuelve montoReservaFinalParticipante_base_ (sin
 // tocar su lógica) para restar el 3% de descuento del Pago Final — SOLO
-// cuando el participante es Jugador (decisión de producto: los Acompañantes
-// pueden registrarse con un código válido, pero no reciben ajuste de
-// precio). precioBase debe coincidir con el hardcodeado en
+// cuando el participante es Jugador. Los Acompañantes no participan del
+// programa de referidos en absoluto (ya no pueden ni registrar un código en
+// inscripcion.html — ver comentario junto a codigoPromoValidado ahí), así
+// que esta rama nunca debería activarse para ellos; el guard esJug queda de
+// todos modos como protección ante datos históricos/edición manual.
+// precioBase debe coincidir con el hardcodeado en
 // procesarReferidoExitoso_ (APPS_SCRIPT_CODE.gs) — actualizar ambos si el
 // precio del programa cambia. Como todos los call-sites de
 // montoReservaFinalParticipante_ pasan por aquí, quedan cubiertos
