@@ -1889,14 +1889,16 @@ function actualizarParticipante(data) {
     if (!alianzaAntes && alianzaDespues) {
       const emailPart = String(dataByNorm['email'] || data.email || '').trim();
       if (emailPart) {
-        enviarCorreoAceptacionInscripcion_({
+        const datosAceptacionJugador = {
           nombre: String(dataByNorm['nombre'] || data.nombre || '').trim(),
           tipo: String(dataByNorm['tipo'] || '').trim(),
           email: emailPart,
           acudiente: String(dataByNorm['acudiente'] || '').trim(),
           tiquete_aereo: String(dataByNorm['tiquete_aereo'] || '').trim(),
           programKey: fuente.programKey
-        });
+        };
+        enviarCorreoAceptacionInscripcion_(datosAceptacionJugador);
+        enviarNotificacionAdminAceptacion_(datosAceptacionJugador);
       }
     }
 
@@ -5035,15 +5037,18 @@ function alianzaPorColegioOEmail_(colegio, email, programa) {
 function buildAceptacionInscripcionHtml_(datos) {
   const esWC = datos.programKey === 'world_challenge';
   const d = function(k) { return datos[k] || ''; };
+  const nombrePrograma = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
+  const fechas = esWC ? '19&ndash;27 Marzo &middot; Madrid, Espa&ntilde;a' : '2 al 10 Octubre &middot; Madrid, Espa&ntilde;a';
   const linkPresentacion = esWC
     ? 'https://drive.google.com/file/d/18-8t9vBa_kaauFgHOKTgxU3wjKXNv_wC/view?usp=sharing'
     : 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing';
+
   return '<!DOCTYPE html>' +
 '<html lang="es">' +
 '<head>' +
 '<meta charset="UTF-8">' +
 '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-'<title>' + (esWC ? 'Confirmación RMF World Challenge 2027' : 'Confirmación RMF Clinic 2026') + '</title>' +
+'<title>' + (esWC ? 'Confirmaci&oacute;n RMF World Challenge 2027' : 'Confirmaci&oacute;n RMF Clinic 2026') + '</title>' +
 '</head>' +
 '<body style="margin:0;padding:0;background:#f4f7fb;font-family:\'Helvetica Neue\',Helvetica,Arial,sans-serif;">' +
 '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f7fb;">' +
@@ -5051,50 +5056,51 @@ function buildAceptacionInscripcionHtml_(datos) {
 '    <td align="center" style="padding:40px 20px;">' +
 '      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.10);">' +
 '        <tr>' +
-'          <td style="background:#0b1f3a;padding:36px 40px;text-align:center;">' +
+'          <td style="background:#0b1f3a;padding:32px 40px 30px;text-align:center;">' +
 '            <table cellpadding="0" cellspacing="0" style="margin:0 auto 20px auto;">' +
 '              <tr>' +
-'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundación Revel" height="48" style="display:block; height:48px; width:auto;"></td>' +
-'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="60" style="display:block; height:60px; width:auto;"></td>' +
+'                <td style="padding:0 12px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory Sports" height="30" style="display:block; height:30px; width:auto;"></td>' +
+'                <td style="padding:0 12px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="30" style="display:block; height:30px; width:auto;"></td>' +
+'                <td style="padding:0 12px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundaci&oacute;n Revel" height="30" style="display:block; height:30px; width:auto;"></td>' +
 '              </tr>' +
 '            </table>' +
-'            <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.45);">' + (esWC ? 'Real Madrid Foundation World Challenge 2027 · MADRID, ESPAÑA' : 'Real Madrid Foundation Clinic 2026 · MADRID, ESPAÑA') + '</p>' +
-'            <h1 style="margin:10px 0 0;font-size:26px;font-weight:700;color:#ffffff;">¡Inscripción Recibida!</h1>' +
+'            <h1 style="margin:0 0 10px;font-family:\'Bebas Neue\',Arial,sans-serif;font-size:30px;letter-spacing:1px;font-weight:400;color:#ffffff;">INSCRIPCION ACEPTADA</h1>' +
+'            <span style="display:inline-block;background:#d4a017;color:#0b1f3a;font-weight:700;font-size:12px;padding:5px 16px;border-radius:30px;">' + nombrePrograma + ' &middot; ' + fechas + '</span>' +
 '          </td>' +
 '        </tr>' +
 '        <tr>' +
 '          <td style="background:#ffffff;padding:40px 40px 36px;">' +
-'            <p style="margin:0 0 18px;font-size:16px;color:#1a2e46;line-height:1.6;">Hola, <strong>' + d('nombre') + '</strong> 👋</p>' +
-'            <p style="margin:0 0 28px;font-size:14px;color:#4a6080;line-height:1.8;">Hemos recibido exitosamente tu pre-inscripción para el <strong style="color:#1a2e46;">' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026') + '</strong>. A continuación encontrarás el resumen de tu registro y los próximos pasos a seguir.</p>' +
+'            <p style="margin:0 0 18px;font-size:16px;color:#1a2e46;line-height:1.6;">Hola, <strong>' + d('nombre') + '</strong></p>' +
+'            <p style="margin:0 0 28px;font-size:14px;color:#4a6080;line-height:1.8;">Hemos confirmado tu cupo en el <strong style="color:#1a2e46;">' + nombrePrograma + '</strong>. A continuaci&oacute;n encontrar&aacute;s el resumen de tu registro y los pr&oacute;ximos pasos a seguir.</p>' +
 '            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f5ff;border:1px solid rgba(30,91,168,0.2);border-radius:10px;margin-bottom:30px;">' +
 '              <tr>' +
 '                <td style="padding:24px 28px;">' +
-'                  <p style="margin:0 0 16px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1e5ba8;">Resumen de tu pre-inscripción</p>' +
+'                  <p style="margin:0 0 16px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1e5ba8;">Resumen de tu inscripci&oacute;n</p>' +
 '                  <table width="100%" cellpadding="0" cellspacing="0" border="0">' +
 '                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;width:50%;">Nombre</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('nombre') + '</strong></td></tr>' +
 '                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;">Tipo de participante</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('tipo') + '</strong></td></tr>' +
 '                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;">Acudiente / Contacto</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('acudiente') + '</strong></td></tr>' +
-'                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;">Tiquete aéreo</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('tiquete_aereo') + '</strong></td></tr>' +
-'                    <tr><td style="padding:8px 0;font-size:13px;color:#4a6080;">Correo electrónico</td><td style="padding:8px 0;text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('email') + '</strong></td></tr>' +
+'                    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);font-size:13px;color:#4a6080;">Tiquete a&eacute;reo</td><td style="padding:8px 0;border-bottom:1px solid rgba(30,91,168,0.1);text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('tiquete_aereo') + '</strong></td></tr>' +
+'                    <tr><td style="padding:8px 0;font-size:13px;color:#4a6080;">Correo electr&oacute;nico</td><td style="padding:8px 0;text-align:right;"><strong style="font-size:13px;color:#1a2e46;">' + d('email') + '</strong></td></tr>' +
 '                  </table>' +
 '                </td>' +
 '              </tr>' +
 '            </table>' +
-'            <p style="margin:0 0 18px;font-size:14px;font-weight:600;color:#1a2e46;">Próximos pasos:</p>' +
+'            <p style="margin:0 0 18px;font-size:14px;font-weight:600;color:#1a2e46;">Pr&oacute;ximos pasos:</p>' +
 '            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">' +
-'              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">1</div></td><td style="padding-left:12px;padding-bottom:16px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Accede a tu Área Personal</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Usa tu correo electrónico para ingresar y gestionar tu inscripción.</p></td></tr>' +
-'              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">2</div></td><td style="padding-left:12px;padding-bottom:16px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Acepta los Términos y Condiciones</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Revisa y acepta el contrato de participación del ' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026') + '.</p></td></tr>' +
+'              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">1</div></td><td style="padding-left:12px;padding-bottom:16px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Accede a tu &Aacute;rea Personal</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Usa tu correo electr&oacute;nico para ingresar y gestionar tu inscripci&oacute;n.</p></td></tr>' +
+'              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">2</div></td><td style="padding-left:12px;padding-bottom:16px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Acepta los T&eacute;rminos y Condiciones</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Revisa y acepta el contrato de participaci&oacute;n del ' + nombrePrograma + '.</p></td></tr>' +
 '              <tr><td width="32" valign="top" style="padding-top:1px;"><div style="width:26px;height:26px;background:#1e5ba8;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff;display:inline-block;">3</div></td><td style="padding-left:12px;"><p style="margin:0;font-size:14px;color:#1a2e46;font-weight:500;">Realiza el pago de reserva</p><p style="margin:4px 0 0;font-size:13px;color:#4a6080;">Completa el pago para asegurar tu cupo en el programa.</p></td></tr>' +
 '            </table>' +
-'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;"><tr><td align="center"><a href="' + linkPresentacion + '" style="display:inline-block;padding:15px 44px;background:#1e5ba8;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">Ver presentación del programa</a></td></tr></table>' +
-'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;"><tr><td align="center"><a href="https://victory.com.es/areapersonal.html" style="display:inline-block;padding:15px 44px;background:#0b1f3a;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">Ir al Área Personal →</a></td></tr></table>' +
-'            <p style="margin:0;font-size:13px;color:#4a6080;line-height:1.8;">¿Tienes alguna duda? Responde a este correo o contáctanos directamente. ¡Nos vemos en Madrid!</p>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;"><tr><td align="center"><a href="' + linkPresentacion + '" style="display:inline-block;padding:15px 44px;background:#1e5ba8;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">Ver presentaci&oacute;n del programa</a></td></tr></table>' +
+'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;"><tr><td align="center"><a href="https://victory.com.es/areapersonal.html" style="display:inline-block;padding:15px 44px;background:#0b1f3a;color:#ffffff;text-decoration:none;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">Ir al &Aacute;rea Personal &#8594;</a></td></tr></table>' +
+'            <p style="margin:0;font-size:13px;color:#4a6080;line-height:1.8;">&iquest;Tienes alguna duda? Responde a este correo o cont&aacute;ctanos directamente. &iexcl;Nos vemos en Madrid!</p>' +
 '          </td>' +
 '        </tr>' +
 '        <tr>' +
 '          <td style="background:#0b1f3a;padding:24px 40px;text-align:center;">' +
-'            <p style="margin:0 0 4px;font-size:12px;color:rgba(255,255,255,0.45);">' + (esWC ? 'RMF World Challenge 2027 · 19–27 Marzo · Madrid, España' : 'RMF Clinic 2026 · 2 al 10 Octubre · Madrid, España') + '</p>' +
-'            <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.25);">Organizado por Victory Sports &amp; Revel Fundación</p>' +
+'            <p style="margin:0 0 4px;font-size:12px;color:rgba(255,255,255,0.45);">' + nombrePrograma + ' &middot; ' + fechas + '</p>' +
+'            <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.25);">Organizado por Victory Sports &amp; Revel Fundaci&oacute;n</p>' +
 '          </td>' +
 '        </tr>' +
 '      </table>' +
@@ -5118,16 +5124,120 @@ function enviarCorreoAceptacionInscripcion_(datos) {
   }
 }
 
-// TODO: reemplazar por el diseño real que el usuario va a enviar aparte.
-// Placeholder funcional mientras tanto — el resto de la lógica (disparo,
-// destinatario, asunto) ya queda operativo.
-function buildPendienteRevisionHtml_(datos) {
+// Notificación al admin confirmando que el correo de aceptación ya salió
+// hacia un Jugador — se dispara SOLO desde actualizarParticipante, justo
+// cuando el admin asigna la alianza (transición Alianza vacía → asignada) y
+// por tanto enviarCorreoAceptacionInscripcion_ recién se ejecutó para ese
+// Jugador. Los Acompañantes NO pasan por aquí: ya tienen su propio aviso al
+// admin en el momento de inscribirse (enviarNotificacionAdminInscripcion_
+// con esMatch:true, dentro de registrarInscripcionWeb_) — duplicarlo aquí
+// sería un segundo correo redundante para el mismo evento.
+//
+// `datos` trae SOLO los campos que actualizarParticipante tiene a mano en
+// ese punto: nombre, tipo, email, acudiente, tiquete_aereo, programKey — no
+// el objeto completo de inscripción (fecha_nacimiento, club_colegio, etc. no
+// están disponibles aquí).
+//
+// Aviso interno corto: confirma que el correo de aceptación ya salió hacia
+// el Jugador tras asignarle la alianza. Solo constancia — sin botones ni
+// pasos a seguir. Campos disponibles: nombre, tipo, email, acudiente,
+// tiquete_aereo, programKey.
+function buildNotificacionAdminAceptacionHtml_(datos) {
   const esWC = datos.programKey === 'world_challenge';
   const nombrePrograma = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
-  return '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1a1a2e">' +
-    '<p>Hola ' + (datos.nombre || '') + ',</p>' +
-    '<p>Hemos recibido tu inscripción a ' + nombrePrograma + '. Nuestro equipo la está revisando y te confirmaremos muy pronto por este mismo correo.</p>' +
-    '</div>';
+  const d = function(k) { return datos[k] || ''; };
+
+  return `
+<div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;">
+    <div style="background:#0b1f3a;padding:20px 28px;text-align:center;">
+      <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory" style="height:22px;margin:0 5px;">
+      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF" style="height:22px;margin:0 5px;">
+      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:22px;margin:0 5px;">
+    </div>
+    <div style="padding:22px 28px 20px;">
+      <div style="display:inline-block;background:#e7f4ea;color:#2f7d43;font-weight:700;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:14px;">Correo de aceptacion enviado</div>
+      <table style="width:100%;border-collapse:collapse;margin:6px 0 0;">
+        <tr style="background:#f4f7fb;"><td style="padding:7px 10px;color:#6b7c93;width:38%;font-size:13px;">Nombre</td><td style="padding:7px 10px;color:#1a2e46;font-weight:600;font-size:13px;">${d('nombre')}</td></tr>
+        <tr><td style="padding:7px 10px;color:#6b7c93;font-size:13px;">Correo</td><td style="padding:7px 10px;color:#1a2e46;font-size:13px;">${d('email')}</td></tr>
+        <tr style="background:#f4f7fb;"><td style="padding:7px 10px;color:#6b7c93;font-size:13px;">Tipo</td><td style="padding:7px 10px;color:#1a2e46;font-size:13px;">${d('tipo')}</td></tr>
+        <tr><td style="padding:7px 10px;color:#6b7c93;font-size:13px;">Programa</td><td style="padding:7px 10px;color:#1a2e46;font-size:13px;">${nombrePrograma}</td></tr>
+        <tr style="background:#f4f7fb;"><td style="padding:7px 10px;color:#6b7c93;font-size:13px;">Acudiente</td><td style="padding:7px 10px;color:#1a2e46;font-size:13px;">${d('acudiente')}</td></tr>
+        <tr><td style="padding:7px 10px;color:#6b7c93;font-size:13px;">Tiquete aereo</td><td style="padding:7px 10px;color:#1a2e46;font-size:13px;">${d('tiquete_aereo')}</td></tr>
+      </table>
+      <p style="font-size:12px;color:#8a93a6;margin:16px 0 0;">Alianza asignada, proceso de inscripcion confirmado.</p>
+    </div>
+  </div>
+</div>`;
+}
+
+function enviarNotificacionAdminAceptacion_(datos) {
+  try {
+    if (!datos || !datos.email) return;
+    GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
+      'Correo de aceptación enviado — ' + (datos.nombre || ''),
+      'Se envió el correo de aceptación a ' + (datos.nombre || '') + ' (' + (datos.email || '') + ') tras asignarle la alianza.',
+      { name: 'Real Madrid Foundation Admin', htmlBody: buildNotificacionAdminAceptacionHtml_(datos) });
+  } catch (err) {
+    Logger.log('enviarNotificacionAdminAceptacion_ error: ' + err);
+  }
+}
+
+// Correo "Inscripción recibida — pendiente de revisión"
+// Se envía a TODO Jugador apenas se inscribe, antes de cualquier revisión de
+// alianza. No promete acceso inmediato ni pasos concretos — solo confirma
+// recepción y explica que el equipo está evaluando la inscripción.
+function buildPendienteRevisionHtml_(datos) {
+  const esWC = datos.programKey === 'world_challenge';
+  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+  const nombreCorto = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
+  const fechas = esWC ? '19–27 marzo · Madrid' : '2–10 octubre · Madrid';
+  const primerNombre = (String(datos.nombre || '').trim().split(/\s+/)[0]) || '';
+  const tipo = datos.tipo ? (datos.tipo.charAt(0).toUpperCase() + datos.tipo.slice(1).toLowerCase()) : '';
+
+  const filaColegio = datos.club_colegio
+    ? '<div style="font-size:14px;color:#1a2e46;padding:4px 0;"><strong>Colegio / Club:</strong> ' + datos.club_colegio + '</div>'
+    : '';
+
+  return `
+<div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+
+    <div style="background:#0b1f3a;padding:30px 30px 24px;text-align:center;">
+      <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory" style="height:30px;margin:0 8px;">
+      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF" style="height:30px;margin:0 8px;">
+      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:30px;margin:0 8px;">
+    </div>
+
+    <div style="background:#0b1f3a;padding:0 30px 34px;text-align:center;">
+      <h1 style="font-family:'Bebas Neue',sans-serif;color:#fff;font-size:32px;letter-spacing:1px;margin:0 0 6px;">INSCRIPCION RECIBIDA</h1>
+      <span style="display:inline-block;background:#d4a017;color:#0b1f3a;font-weight:700;font-size:13px;padding:5px 16px;border-radius:30px;">${nombreCorto} &middot; ${fechas}</span>
+    </div>
+
+    <div style="padding:32px 34px 8px;color:#1a2e46;">
+      <p style="font-size:17px;font-weight:500;color:#0b1f3a;margin:0 0 16px;">Hola ${primerNombre}, &iexcl;gracias por inscribirte!</p>
+      <p style="font-size:15px;line-height:1.7;color:#4a6080;margin:0 0 18px;">Hemos recibido correctamente tu inscripci&oacute;n a ${nombrePrograma}. Nuestro equipo va a revisar tu informaci&oacute;n con cuidado, y en cuanto quede confirmada te escribiremos por este mismo correo con los siguientes pasos.</p>
+
+      <div style="background:#eef4fb;border-radius:10px;padding:18px 20px;margin:0 0 20px;">
+        <div style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:#1e5ba8;font-weight:700;margin-bottom:10px;">Resumen de tu pre-inscripci&oacute;n</div>
+        <div style="font-size:14px;color:#1a2e46;padding:4px 0;"><strong>Nombre:</strong> ${datos.nombre || ''}</div>
+        <div style="font-size:14px;color:#1a2e46;padding:4px 0;"><strong>Tipo:</strong> ${tipo}</div>
+        ${filaColegio}
+        <div style="font-size:14px;color:#1a2e46;padding:4px 0;"><strong>Correo:</strong> ${datos.email || ''}</div>
+      </div>
+
+      <div style="border-left:4px solid #1e5ba8;background:#f4f7fb;border-radius:0 10px 10px 0;padding:14px 18px;margin:0 0 24px;">
+        <p style="font-size:13px;color:#1a2e46;margin:0;line-height:1.6;"><strong>&iquest;Qu&eacute; sigue?</strong> No necesitas hacer nada m&aacute;s por ahora. En los pr&oacute;ximos d&iacute;as te confirmaremos tu cupo y te compartiremos el acceso a tu &aacute;rea personal con el paso a paso completo.</p>
+      </div>
+    </div>
+
+    <div style="background:#0b1f3a;padding:24px 30px;text-align:center;">
+      <p style="margin:2px 0;font-size:13px;color:#c9d6e8;">&iquest;Tienes dudas? Escr&iacute;benos a</p>
+      <p style="margin:2px 0;font-size:13px;color:#fff;font-weight:600;">alejandro.cabrera@fundacionrevel.net</p>
+    </div>
+
+  </div>
+</div>`;
 }
 
 function enviarCorreoPendienteRevision_(datos) {
@@ -5152,80 +5262,94 @@ function enviarCorreoPendienteRevision_(datos) {
 // guardarla desde ahí, actualizarParticipante dispara el correo de
 // aceptación al inscrito automáticamente.
 function buildNotificacionAdminInscripcionHtml_(datos, opts) {
+  opts = opts || {};
   const esWC = datos.programKey === 'world_challenge';
-  const d = function(k) { return datos[k] || ''; };
-  const linkSheets = esWC
-    ? 'https://docs.google.com/spreadsheets/d/1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg'
-    : 'https://docs.google.com/spreadsheets/d/1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss';
-  const avisoAlianza = (opts && !opts.esMatch && opts.linkAsignar)
-    ? '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;margin-bottom:24px;"><tr><td style="padding:18px 22px;">' +
-      '<p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#9a3412;">⚠️ Pendiente de asignar alianza o precio base' +
-      (opts.sugerencia ? ' — sugerencia automática: <strong>' + opts.sugerencia + '</strong>' : '') + '</p>' +
-      '<a href="' + opts.linkAsignar + '" style="display:inline-block;padding:10px 22px;background:#ea580c;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;font-weight:600;">Asignar alianza en el panel admin →</a>' +
-      '</td></tr></table>'
-    : '';
-  return '<!DOCTYPE html>' +
-'<html lang="es">' +
-'<head>' +
-'<meta charset="UTF-8">' +
-'<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-'<title>' + (esWC ? 'Nueva Inscripción — RMF World Challenge 2027' : 'Nueva Inscripción — RMF Clinic 2026') + '</title>' +
-'</head>' +
-'<body style="margin:0;padding:0;background:#f4f7fb;font-family:\'Helvetica Neue\',Helvetica,Arial,sans-serif;">' +
-'<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f7fb;">' +
-'  <tr>' +
-'    <td align="center" style="padding:40px 20px;">' +
-'      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.10);">' +
-'        <tr>' +
-'          <td style="background:#0b1f3a;padding:32px 40px;text-align:center;">' +
-'            <table cellpadding="0" cellspacing="0" style="margin:0 auto 18px auto;">' +
-'              <tr>' +
-'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Fundación Revel" height="44" style="display:block; height:44px; width:auto;"></td>' +
-'                <td style="padding:0 14px; vertical-align:middle;"><img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="Real Madrid Foundation" height="56" style="display:block; height:56px; width:auto;"></td>' +
-'              </tr>' +
-'            </table>' +
-'            <span style="display:inline-block;padding:5px 16px;background:rgba(90,157,224,0.2);border:1px solid rgba(90,157,224,0.4);border-radius:20px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#5a9de0;">NUEVA INSCRIPCIÓN</span>' +
-'            <h1 style="margin:12px 0 4px;font-size:22px;font-weight:700;color:#ffffff;">' + d('nombre') + '</h1>' +
-'            <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.45);">' + d('tipo') + ' · ' + d('timestamp') + '</p>' +
-'          </td>' +
-'        </tr>' +
-'        <tr>' +
-'          <td style="background:#ffffff;padding:36px 40px;">' +
-avisoAlianza +
-'            <p style="margin:0 0 14px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1e5ba8;border-bottom:1px solid rgba(30,91,168,0.15);padding-bottom:10px;">Datos del participante</p>' +
-'            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;width:45%;">Nombre completo</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('nombre') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Tipo</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('tipo') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Email</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('email') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">WhatsApp / Teléfono</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('phone') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">País</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('pais') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Ciudad</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('ciudad') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Pasaporte</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('pasaporte') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Fecha de nacimiento</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('fecha_nacimiento') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Posición</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('posicion') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Club / Colegio</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('club_colegio') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Acudiente</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('acudiente') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Tiquete aéreo</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('tiquete_aereo') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Programa</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('programa') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Habitación</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('habitacion') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Jugador que acompaña</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('jugador_que_acompana') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;color:#4a6080;">Salud / Alergias</td><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><strong style="font-size:13px;color:#1a2e46;">' + d('salud_alergias') + '</strong></td></tr>' +
-'              <tr><td style="padding:8px 0;font-size:12px;color:#4a6080;">Fuente</td><td style="padding:8px 0;"><strong style="font-size:13px;color:#1a2e46;">' + d('fuente') + '</strong></td></tr>' +
-'            </table>' +
-'            <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center"><a href="' + linkSheets + '" style="display:inline-block;padding:13px 36px;background:#0b1f3a;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Ver en Google Sheets →</a></td></tr></table>' +
-'          </td>' +
-'        </tr>' +
-'        <tr>' +
-'          <td style="background:#0b1f3a;padding:22px 40px;text-align:center;">' +
-'            <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.35);">' + (esWC ? 'Notificación automática · RMF World Challenge 2027 · Victory Sports &amp; Revel Fundación' : 'Notificación automática · RMF Clinic 2026 · Victory Sports &amp; Revel Fundación') + '</p>' +
-'          </td>' +
-'        </tr>' +
-'      </table>' +
-'    </td>' +
-'  </tr>' +
-'</table>' +
-'</body>' +
-'</html>';
+  const nombreCorto = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
+  const tipo = datos.tipo ? (datos.tipo.charAt(0).toUpperCase() + datos.tipo.slice(1).toLowerCase()) : '';
+
+  const SHEET_ID_CLINIC = '1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss';
+  const SHEET_ID_WC = '1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg';
+  const linkSheets = 'https://docs.google.com/spreadsheets/d/' + (esWC ? SHEET_ID_WC : SHEET_ID_CLINIC) + '/edit';
+
+  const filas = [
+    ['Nombre', datos.nombre],
+    ['Tipo', tipo],
+    ['Correo', datos.email],
+    ['Telefono', datos.phone],
+    ['Pais / Ciudad', [datos.pais, datos.ciudad].filter(Boolean).join(' / ')],
+    ['Pasaporte', datos.pasaporte],
+    ['Fecha de nacimiento', datos.fecha_nacimiento],
+    ['Posicion', datos.posicion],
+    ['Colegio / Club', datos.club_colegio],
+    ['Acudiente', datos.acudiente],
+    ['Tiquete aereo', datos.tiquete_aereo],
+    ['Programa', datos.programa],
+    ['Habitacion', datos.habitacion],
+    ['Jugador que acompana', datos.jugador_que_acompana],
+    ['Salud / Alergias', datos.salud_alergias],
+    ['Fuente', datos.fuente]
+  ].filter(function(f) { return f[1]; });
+
+  const filasHtml = filas.map(function(f, i) {
+    const bg = i % 2 === 0 ? '#f4f7fb' : '#ffffff';
+    return '<tr style="background:' + bg + ';"><td style="padding:7px 10px;color:#6b7c93;width:38%;font-size:13px;">' + f[0] + '</td><td style="padding:7px 10px;color:#1a2e46;font-weight:600;font-size:13px;">' + f[1] + '</td></tr>';
+  }).join('');
+
+  let franjaAviso = '';
+  if (opts.esMatch === false) {
+    const sugerenciaHtml = opts.sugerencia
+      ? '<p style="font-size:14px;color:#0b1f3a;font-weight:700;margin:0 0 12px;">' + opts.sugerencia + '</p>'
+      : '<p style="font-size:13px;color:#5c4a1f;margin:0 0 12px;font-style:italic;">Sin sugerencia automatica &mdash; no hubo match de colegio ni correo.</p>';
+    const botonAsignar = opts.linkAsignar
+      ? '<a href="' + opts.linkAsignar + '" style="display:inline-block;background:#1e5ba8;color:#fff;text-decoration:none;font-weight:600;font-size:13px;padding:9px 20px;border-radius:7px;">Asignar alianza en el panel &#8594;</a>'
+      : '';
+    franjaAviso = `
+      <div style="background:#fdf3e3;border:1px solid #eecd8c;border-left:5px solid #d4a017;border-radius:8px;padding:16px 18px;margin:0 0 22px;">
+        <div style="font-size:13px;font-weight:700;color:#8a6404;margin-bottom:6px;">FALTA ASIGNAR ALIANZA</div>
+        <p style="font-size:13px;color:#5c4a1f;line-height:1.6;margin:0 0 4px;">Este jugador aun no tiene alianza ni precio asignado. Sugerencia automatica por colegio/correo:</p>
+        ${sugerenciaHtml}
+        ${botonAsignar}
+      </div>`;
+  } else if (opts.esMatch === true) {
+    // Rama de respaldo — hoy no se usa (Acompañante no pasa por esta función).
+    franjaAviso = `
+      <div style="background:#eef4fb;border-left:5px solid #1e5ba8;border-radius:0 8px 8px 0;padding:14px 18px;margin:0 0 22px;">
+        <p style="font-size:13px;color:#1a2e46;margin:0;">Proceso normal, no requiere asignacion de alianza.</p>
+      </div>`;
+  }
+
+  return `
+<div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
+
+    <div style="background:#0b1f3a;padding:26px 30px 20px;text-align:center;">
+      <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory" style="height:26px;margin:0 6px;">
+      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF" style="height:26px;margin:0 6px;">
+      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:26px;margin:0 6px;">
+    </div>
+    <div style="background:#0b1f3a;padding:0 30px 26px;text-align:center;">
+      <h1 style="font-family:'Bebas Neue',sans-serif;color:#fff;font-size:26px;letter-spacing:1px;margin:0 0 4px;">NUEVA INSCRIPCION</h1>
+      <span style="font-size:12px;color:#8fb0d8;">${nombreCorto} &middot; ${tipo}</span>
+    </div>
+
+    <div style="padding:24px 28px 6px;">
+      ${franjaAviso}
+
+      <div style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:#1e5ba8;font-weight:700;margin:0 0 10px;">Datos del participante</div>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 22px;">
+        ${filasHtml}
+      </table>
+
+      <div style="text-align:center;margin:0 0 26px;">
+        <a href="${linkSheets}" style="display:inline-block;background:#0b1f3a;color:#fff;text-decoration:none;font-weight:600;font-size:13px;padding:11px 24px;border-radius:7px;">Ver fila completa en Google Sheets &#8594;</a>
+      </div>
+    </div>
+
+    <div style="background:#0b1f3a;padding:16px 30px;text-align:center;font-size:11px;color:#8fb0d8;">
+      Notificacion automatica &middot; ${datos.timestamp || ''}
+    </div>
+  </div>
+</div>`;
 }
 
 // datos: ver comentario arriba de buildAceptacionInscripcionHtml_.

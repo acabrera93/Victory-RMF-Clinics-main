@@ -1334,6 +1334,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <button class="asnav-btn" data-asec="comunicados" onclick="adminSection('comunicados')">Comunicados</button>
         <button class="asnav-btn" data-asec="galeria" onclick="adminSection('galeria')">Galería</button>
         <button class="asnav-btn" data-asec="comerciales" onclick="adminSection('comerciales')">Comerciales</button>
+        <button class="asnav-btn" data-asec="alianzas" onclick="adminSection('alianzas')" style="position:relative">Alianzas<span id="alianzas-nav-badge" style="display:none;position:absolute;top:-7px;right:-7px;background:#ea580c;color:#fff;font-size:10px;font-weight:700;line-height:1;padding:3px 5px;border-radius:9px;min-width:16px;text-align:center"></span></button>
         <button class="asnav-btn" data-asec="analytics" onclick="adminSection('analytics')">Analytics</button>
         <button class="asnav-btn" id="stab-acceso" data-asec="acceso" onclick="adminSection('acceso')" style="display:none;margin-left:auto;border-color:var(--navy);color:var(--navy)">🔐 Acceso</button>
       </div>
@@ -1784,6 +1785,33 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
               <tbody id="ac-jugadores-tbody"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALIANZAS -->
+    <div id="admin-sec-alianzas" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <div class="ctitle" style="margin-bottom:0;flex:1">Alianzas y precio especial</div>
+          <input id="alianzas-search" type="text" placeholder="Buscar nombre o email..."
+                 style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px"
+                 oninput="renderAdminAlianzasTab()">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap">
+            <input type="checkbox" id="alianzas-solo-pendientes" onchange="renderAdminAlianzasTab()"> Solo pendientes
+          </label>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
+          Asigna aquí la alianza (o "Precio base") de cada Jugador. Al confirmarla se dispara automáticamente el correo de aceptación al inscrito.
+          Los jugadores ya inscritos <strong>antes</strong> de esta función y que quedan sin alianza asignada simplemente pagan el precio estándar — no hace falta revisarlos uno por uno.
+        </p>
+        <div style="overflow-x:auto">
+          <table class="ptable">
+            <thead><tr><th>Nombre</th><th>Colegio / Club</th><th>Email</th><th>Alianza</th><th>Estado</th></tr></thead>
+            <tbody id="alianzas-tbody">
+              <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -5449,6 +5477,7 @@ function adminSection(section) {
   if (section === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
   if (section === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
   if (section === 'participantes' && adminData && adminData.length) { renderParticipantesKPIs(adminData); filterAdminTable(); }
+  if (section === 'alianzas' && adminData && adminData.length) renderAdminAlianzasTab();
   // Recargas específicas por sección
   if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
@@ -5464,7 +5493,7 @@ function adminSection(section) {
   if (section === 'pagos' || section === 'dashboard') {
     loadAdmin(true);
   } else {
-    const DATA_SECTIONS = ['participantes', 'comisiones'];
+    const DATA_SECTIONS = ['participantes', 'comisiones', 'alianzas'];
     if (DATA_SECTIONS.includes(section) && Date.now() - adminLastLoaded > 30000) {
       loadAdmin(true);
     }
@@ -5502,11 +5531,11 @@ function ocultarErrorAdmin() {
 
 // Deep link desde el correo de notificación de inscripción pendiente
 // (?tab=admin&admin_open=<email>&admin_programa=<clinic|world_challenge>):
-// cambia de programa si hace falta y deja la pestaña Participantes con ese
-// email ya buscado, listo para asignar la alianza (o "Precio base") desde
-// ahí. Se ejecuta cada vez que loadAdmin() termina — si el programa activo
-// no es el correcto, cambiarProgramaAdmin dispara un loadAdmin(true) nuevo
-// y esta misma función se vuelve a llamar cuando ese termine.
+// cambia de programa si hace falta y deja la pestaña Alianzas con ese email
+// ya buscado, listo para asignar la alianza (o "Precio base") desde ahí. Se
+// ejecuta cada vez que loadAdmin() termina — si el programa activo no es el
+// correcto, cambiarProgramaAdmin dispara un loadAdmin(true) nuevo y esta
+// misma función se vuelve a llamar cuando ese termine.
 let _deepLinkAdminHandled = false;
 function manejarDeepLinkAdminParticipante_() {
   if (_deepLinkAdminHandled) return;
@@ -5519,10 +5548,10 @@ function manejarDeepLinkAdminParticipante_() {
     return;
   }
   _deepLinkAdminHandled = true;
-  adminSection('participantes');
+  adminSection('alianzas');
   setTimeout(() => {
-    const input = document.getElementById('admin-search');
-    if (input) { input.value = email; filterAdminTable(); input.focus(); }
+    const input = document.getElementById('alianzas-search');
+    if (input) { input.value = email; renderAdminAlianzasTab(); input.focus(); }
   }, 150);
 }
 
@@ -6844,6 +6873,100 @@ async function cargarAlianzasCatalogo() {
   }
   adminAlianzasOptions.length = 0;
   adminAlianzasOptions.push('', ALIANZA_SIN_ALIANZA, ...adminAlianzasCatalogo.map(a => a.nombre));
+  if (typeof renderAdminAlianzasTab === 'function') renderAdminAlianzasTab();
+}
+
+// ── PESTAÑA "ALIANZAS" ──────────────────────────────────────────────────────
+// Tabla independiente (fuera del modal de edición general) donde el admin
+// asigna la alianza de cada Jugador. Solo lista Jugadores — Acompañantes no
+// tienen concepto de alianza. Un Jugador ya inscrito antes de esta función,
+// sin alianza asignada, sigue pagando el precio estándar automáticamente
+// (montoReservaFinalParticipante_ solo aplica el precio de alianza cuando
+// alianza_precio_total > 0) — no es obligatorio revisarlo aquí.
+function renderAdminAlianzasTab() {
+  const tbody = document.getElementById('alianzas-tbody');
+  if (!tbody) return;
+  if (!adminData || !adminData.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>';
+    return;
+  }
+  const qEl = document.getElementById('alianzas-search');
+  const q = ((qEl && qEl.value) || '').toLowerCase().trim();
+  const esBusquedaRedcol = q.includes('redcol');
+  const soloPendientes = !!(document.getElementById('alianzas-solo-pendientes') || {}).checked;
+  const filas = adminData
+    .map((row, idx) => ({ row, idx, n: normalizeParticipant(row) || {} }))
+    .filter(({ n }) => (n.tipo || '').toLowerCase().includes('jug'))
+    .filter(({ n }) => !soloPendientes || !n.alianza_nombre)
+    .filter(({ n }) => {
+      if (!q) return true;
+      if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
+      return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.club_colegio || '').toLowerCase().includes(q);
+    })
+    .sort((a, b) => (a.n.nombre || '').localeCompare(b.n.nombre || ''));
+  if (!filas.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Sin resultados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filas.map(({ row, idx, n }) => {
+    const actual = n.alianza_nombre || '';
+    const opts = adminAlianzasOptions.map(o =>
+      `<option value="${escapeHtml(o)}"${o === actual ? ' selected' : ''}>${o ? escapeHtml(o) : 'Sin asignar'}</option>`
+    ).join('');
+    return `<tr>
+      <td>${escapeHtml(n.nombre || '')}</td>
+      <td>${escapeHtml(n.club_colegio || '—')}</td>
+      <td>${escapeHtml(n.email || '')}</td>
+      <td><select id="al-sel-${idx}" onchange="guardarAlianzaFila_(${idx})" style="width:100%;min-width:170px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fff">${opts}</select></td>
+      <td id="al-estado-${idx}" style="font-size:12px">${estadoAlianzaHtml_(actual)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function estadoAlianzaHtml_(nombreAlianza) {
+  return nombreAlianza
+    ? `<span style="color:var(--green)">✓ ${escapeHtml(nombreAlianza)}</span>`
+    : '<span style="color:#ea580c">Pendiente</span>';
+}
+
+// Guarda la alianza de UNA fila — reusa el mismo endpoint actualizar_participante
+// que el modal de edición general, enviando también el resto de campos ya
+// presentes en la fila (nombre/tipo/email/acudiente/tiquete_aereo) porque
+// actualizarParticipante() los necesita para armar el correo de aceptación
+// cuando detecta la transición Alianza vacía → asignada.
+function guardarAlianzaFila_(idx) {
+  const row = adminData[idx];
+  if (!row) return;
+  const sel = document.getElementById('al-sel-' + idx);
+  const estadoEl = document.getElementById('al-estado-' + idx);
+  if (!sel) return;
+  const nuevaAlianza = sel.value;
+  if (estadoEl) estadoEl.innerHTML = '<span style="color:var(--blue)">Guardando...</span>';
+  sel.disabled = true;
+  const payload = { action: 'actualizar_participante', _row: row._row, programa: row._program_key || adminProgramaActivo, token: adminSessionToken };
+  Object.keys(row).forEach(k => { if (k !== '_idx') payload[k] = row[k]; });
+  payload.alianza = nuevaAlianza;
+  fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), redirect: 'follow' })
+    .then(r => r.json())
+    .then(res => {
+      sel.disabled = false;
+      if (res.ok) {
+        row['Alianza'] = nuevaAlianza;
+        const info = adminAlianzasCatalogo.find(a => a.nombre === nuevaAlianza);
+        row.alianza_nombre = info ? info.nombre : (nuevaAlianza || '');
+        row.alianza_precio_total = info ? String(info.precioTotal) : '';
+        if (estadoEl) estadoEl.innerHTML = estadoAlianzaHtml_(row.alianza_nombre);
+        renderParticipantesKPIs(adminData);
+        if (typeof filterAdminTable === 'function') filterAdminTable();
+        if ((document.getElementById('alianzas-solo-pendientes') || {}).checked) renderAdminAlianzasTab();
+      } else if (estadoEl) {
+        estadoEl.innerHTML = `<span style="color:#dc2626">Error: ${escapeHtml(res.error || 'desconocido')}</span>`;
+      }
+    })
+    .catch(() => {
+      sel.disabled = false;
+      if (estadoEl) estadoEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>';
+    });
 }
 
 // Base fields shared by all participants
@@ -6856,13 +6979,16 @@ const EDIT_FIELDS_BASE = [
   {key:'paso_actual',label:'Paso actual',type:'text'}
 ];
 // Extra fields only for jugadores
+// La Alianza NO se edita aquí — tiene su propia pestaña independiente
+// ("Alianzas", ver admin-sec-alianzas / renderAdminAlianzasTab) para no
+// mezclar ese flujo (que dispara el correo de aceptación) con la edición
+// general de datos del participante.
 const EDIT_FIELDS_JUGADOR = [
   {key:'fecha_nacimiento',label:'Fecha de nacimiento',type:'text'},
   {key:'posicion',label:'Posición',type:'text'},
   {key:'club_colegio',label:'Club / Colegio',type:'text'},
   {key:'acudiente',label:'Nombre del acudiente',type:'text'},
   {key:'relacion',label:'Relación con el acudiente',type:'text'},
-  {key:'alianza',label:'Alianza',type:'select',options:adminAlianzasOptions,emptyLabel:'Sin alianza'},
 ];
 // Extra fields only for acompañantes
 const EDIT_FIELDS_ACOMP = [
@@ -7801,15 +7927,9 @@ function saveEditModal() {
             }
           });
         });
-        // Resolver alianza_nombre/alianza_precio_total localmente contra el
-        // catálogo ya cargado, para que la tabla y el Pago Final reflejen el
-        // cambio de inmediato sin esperar a un loadAdmin(true).
-        const alianzaEl2 = document.getElementById('ef-alianza');
-        if (alianzaEl2) {
-          const infoAlianza = adminAlianzasCatalogo.find(a => a.nombre === alianzaEl2.value);
-          editedRow.alianza_nombre = infoAlianza ? infoAlianza.nombre : '';
-          editedRow.alianza_precio_total = infoAlianza ? String(infoAlianza.precioTotal) : '';
-        }
+        // La Alianza ya no se edita desde este modal (ver pestaña
+        // "Alianzas" / guardarAlianzaFila_), así que no hay nada que
+        // resolver aquí.
         filterAdminTable();
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
         if (typeof renderAdminPagos === 'function' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
@@ -7869,6 +7989,8 @@ function renderParticipantesKPIs(data) {
   set('kpi-p-alianza-pendiente', alianzaPendiente);
   const badge = document.getElementById('alianza-pendientes-badge');
   if (badge) { badge.textContent = alianzaPendiente; badge.style.display = alianzaPendiente > 0 ? 'block' : 'none'; }
+  const navBadge = document.getElementById('alianzas-nav-badge');
+  if (navBadge) { navBadge.textContent = alianzaPendiente; navBadge.style.display = alianzaPendiente > 0 ? 'block' : 'none'; }
 }
 
 // Filtro "Alianza pendiente" en la tabla de Participantes — clic en la KPI
