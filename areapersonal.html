@@ -2071,6 +2071,14 @@ let adminLoaded = false;
 let adminLastLoaded = 0;
 let adminData = [];
 let adminProgramaActivo = 'clinic'; // 'clinic' | 'world_challenge' — qué programa está viendo el admin
+// Snapshot en memoria de los últimos datos admin_participantes/admin_financiero
+// por programa — al alternar entre Clinic/World Challenge, si hay un snapshot
+// reciente se muestra de inmediato (sin el parpadeo de "…") mientras loadAdmin
+// refresca en segundo plano. Evita releer ambos Sheets completos en cada clic
+// cuando el admin va y vuelve entre los dos programas, que es el caso de uso
+// que seguía sintiéndose lento tras las optimizaciones del backend.
+let adminCacheByPrograma = {};
+const ADMIN_CACHE_TTL_MS = 5 * 60 * 1000;
 let pagoCurrentProgramKey = 'clinic'; // programa del participante cuyo modal de pagos está abierto
 let adminSessionToken = sessionStorage.getItem('admin_token') || '';
 let comercialSessionToken = sessionStorage.getItem('comercial_token') || '';
@@ -5582,13 +5590,58 @@ function cambiarProgramaAdmin(key) {
   }
 }
 
+// Aplica un juego de datos (parts/fin/acceso) al estado admin en memoria y
+// re-renderiza — extraído de loadAdmin() para poder reusarlo tanto con datos
+// recién llegados del servidor como con un snapshot cacheado por programa
+// (ver adminCacheByPrograma), sin duplicar la lógica de render.
+function aplicarDatosAdmin(parts, fin, acceso) {
+  adminLoaded = true;
+  adminData = Array.isArray(parts) ? parts : [];
+  adminFinData = fin && !fin.error ? fin : null;
+  adminAccesoList = Array.isArray(acceso) ? acceso : [];
+  adminLastLoaded = Date.now();
+  cargarAlianzasCatalogo();
+  manejarDeepLinkAdminParticipante_();
+  renderAdminDashboard(adminData, adminFinData);
+  filterAdminTable();
+  renderParticipantesKPIs(adminData);
+  applyAdminPermissions();
+  const stabAcceso = document.getElementById('stab-acceso');
+  if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
+  actualizarBadgePagosPendientes(adminFinData);
+  const activeAsec = (document.querySelector('.asnav-btn.active') || {}).dataset?.asec;
+  if (activeAsec === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
+  if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
+}
+
+// Actualiza (si existe) el snapshot cacheado de admin_financiero de un
+// programa — llamado desde los refrescos puntuales de solo-financiero
+// (refreshAdminPagos, guardarComercial, refrescarFinDataYReabrirPagosModal_)
+// para que un cambio de programa posterior no muestre por un instante el
+// estado financiero previo al refresco.
+function actualizarCacheAdminFin_(programa, fin) {
+  const cache = adminCacheByPrograma[programa];
+  if (cache && fin) cache.fin = fin;
+}
+
 function loadAdmin(force, intento) {
   intento = intento || 1;
   if (adminLoaded && !force) return;
-  document.getElementById('kpi-participantes').textContent = '…';
+  // Snapshot reciente en memoria de este programa (ver adminCacheByPrograma)
+  // — se muestra de inmediato, sin el parpadeo de "…", mientras esta misma
+  // llamada refresca en segundo plano. Así alternar entre Clinic/World
+  // Challenge se siente instantáneo salvo la primera vez que se visita cada uno.
+  const cacheHit = adminCacheByPrograma[adminProgramaActivo];
+  const cacheVigente = cacheHit && (Date.now() - cacheHit.ts) < ADMIN_CACHE_TTL_MS;
+  if (cacheVigente) aplicarDatosAdmin(cacheHit.parts, cacheHit.fin, cacheHit.acceso);
+  else document.getElementById('kpi-participantes').textContent = '…';
   ocultarErrorAdmin();
   const t = Date.now();
-  const progQS = '&programa=' + encodeURIComponent(adminProgramaActivo);
+  // Programa vigente al momento de disparar la solicitud — si el admin
+  // cambia de programa de nuevo antes de que esta responda, la respuesta ya
+  // no corresponde a lo que se está viendo y no debe pisar la pantalla.
+  const progAlSolicitar = adminProgramaActivo;
+  const progQS = '&programa=' + encodeURIComponent(progAlSolicitar);
   let errorParticipantes = null, errorFinanciero = null, errorAcceso = null;
   let sesionExpirada = false;
   Promise.all([
@@ -5603,6 +5656,8 @@ function loadAdmin(force, intento) {
       .catch(e => { errorAcceso = e.message || String(e); return []; })
   ])
   .then(([parts, fin, acceso]) => {
+    if (adminProgramaActivo !== progAlSolicitar) return; // el admin ya cambió de programa — respuesta obsoleta
+
     [parts, fin, acceso].forEach(r => {
       if (r && !Array.isArray(r) && r.error) {
         sesionExpirada = true;
@@ -5628,35 +5683,28 @@ function loadAdmin(force, intento) {
         setTimeout(() => loadAdmin(true, intento + 1), 1500);
         return;
       }
-      adminLoaded = false;
-      mostrarErrorAdmin([errorParticipantes, errorFinanciero, errorAcceso], false);
-      document.getElementById('kpi-participantes').textContent = 'Error';
+      // Con un snapshot cacheado ya en pantalla, un refresco fallido no debe
+      // borrar lo que se ve (que sigue siendo dato real, solo desactualizado)
+      // ni marcar adminLoaded=false — se deja como está y listo.
+      if (!cacheVigente) {
+        adminLoaded = false;
+        mostrarErrorAdmin([errorParticipantes, errorFinanciero, errorAcceso], false);
+        document.getElementById('kpi-participantes').textContent = 'Error';
+      }
       return;
     }
 
-    adminLoaded = true;
-    adminData = Array.isArray(parts) ? parts : [];
-    adminFinData = fin && !fin.error ? fin : null;
-    adminAccesoList = Array.isArray(acceso) ? acceso : [];
-    adminLastLoaded = Date.now();
-    cargarAlianzasCatalogo();
-    manejarDeepLinkAdminParticipante_();
-    renderAdminDashboard(adminData, adminFinData);
-    filterAdminTable();
-    renderParticipantesKPIs(adminData);
-    applyAdminPermissions();
-    const stabAcceso = document.getElementById('stab-acceso');
-    if (stabAcceso) stabAcceso.style.display = participantEmail === SUPER_ADMIN ? '' : 'none';
-    actualizarBadgePagosPendientes(adminFinData);
-    const activeAsec = (document.querySelector('.asnav-btn.active') || {}).dataset?.asec;
-    if (activeAsec === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
-    if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
+    aplicarDatosAdmin(parts, fin, acceso);
+    adminCacheByPrograma[progAlSolicitar] = { parts, fin, acceso, ts: Date.now() };
   })
   .catch(err => {
+    if (adminProgramaActivo !== progAlSolicitar) return;
     console.error('loadAdmin error:', err);
-    adminLoaded = false;
-    mostrarErrorAdmin([err.message || String(err)], false);
-    document.getElementById('kpi-participantes').textContent = 'Error';
+    if (!cacheVigente) {
+      adminLoaded = false;
+      mostrarErrorAdmin([err.message || String(err)], false);
+      document.getElementById('kpi-participantes').textContent = 'Error';
+    }
   });
 }
 
@@ -5676,6 +5724,7 @@ function refreshAdminPagos(btn) {
       if (fin && !fin.error) {
         adminFinData = fin;
         adminLastLoaded = Date.now();
+        actualizarCacheAdminFin_(adminProgramaActivo, fin);
         renderAdminPagos(adminFinData);
         reapplyPagosFilter();
         if (typeof renderAdminDashboard === 'function') renderAdminDashboard(adminData, adminFinData);
@@ -7267,6 +7316,7 @@ function saveComercialModal() {
           .then(fin => {
             adminFinData = fin && !fin.error ? fin : null;
             if (adminFinData) {
+              actualizarCacheAdminFin_(adminProgramaActivo, adminFinData);
               renderAdminComisiones(adminFinData);
               renderAdminDashboard(adminData, adminFinData);
             }
@@ -7297,7 +7347,7 @@ function refrescarFinDataYReabrirPagosModal_() {
   const programa = pagoCurrentProgramKey || adminProgramaActivo;
   fetch(APPS_SCRIPT_URL + '?action=admin_financiero&token=' + encodeURIComponent(adminSessionToken) + '&programa=' + encodeURIComponent(programa) + '&_t=' + Date.now(), { redirect: 'follow' })
     .then(r => r.json())
-    .then(fin => { if (fin && !fin.error) adminFinData = fin; })
+    .then(fin => { if (fin && !fin.error) { adminFinData = fin; actualizarCacheAdminFin_(programa, fin); } })
     .catch(() => {})
     .finally(() => { openPagosModal(idxAbrir, nombreAbrir); });
 }

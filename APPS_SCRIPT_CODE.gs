@@ -626,7 +626,7 @@ function getMisPagos(nombre, programa) {
 // getDocumentosRequeridos/sincronizarPaqueteSegunTiquete). inscripcion.html
 // consulta este endpoint para mostrar "quedan X cupos" y bloquear la opción
 // cuando se agotan.
-const CUPOS_TIQUETE_WC_TOTAL = 9;
+const CUPOS_TIQUETE_WC_TOTAL = 20;
 function getCuposTiqueteWC_() {
   try {
     const sheet = SpreadsheetApp.openById(SHEET_ID_WORLD_CHALLENGE).getSheets()[0];
