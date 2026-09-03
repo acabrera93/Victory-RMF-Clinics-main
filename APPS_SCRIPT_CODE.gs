@@ -1647,6 +1647,11 @@ function getAdminParticipantes(params) {
       const h = String(headers[j]).toLowerCase().trim();
       if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailColAdmin = j; break; }
     }
+    // Leídos UNA sola vez fuera del loop — antes cada fila reabría los
+    // Sheets de Referidos y Alianzas por su cuenta (ver
+    // construirMapaDescuentosReferido_/construirMapaAlianzasPorNombre_).
+    const mapaDescuentos = construirMapaDescuentosReferido_(fuente.programKey);
+    const mapaAlianzas = construirMapaAlianzasPorNombre_(params.programa);
     const result = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -1669,13 +1674,14 @@ function getAdminParticipantes(params) {
       }
       // Descuento de referido — MISMO flag que buscarParticipantesEnHoja_
       // (login del participante), para que admin y participante vean
-      // siempre el mismo monto esperado en Pago Final.
+      // siempre el mismo monto esperado en Pago Final. Lookup en el mapa
+      // precalculado, no una relectura del Sheet por fila.
       const emailValAdmin = emailColAdmin >= 0 ? String(row[emailColAdmin] || '').toLowerCase().trim() : '';
-      obj['referido_descuento_pct'] = String(descuentoReferidoDeEmail_(emailValAdmin, fuente.programKey));
+      obj['referido_descuento_pct'] = String(mapaDescuentos[emailValAdmin] || 0);
       // Alianza/promoción — MISMO flag que buscarParticipantesEnHoja_ (login
       // del participante), para que admin y participante vean siempre el
-      // mismo Pago Final esperado.
-      const alianzaInfoAdmin = obj['Alianza'] ? alianzaPorNombre_(obj['Alianza'], fuente.programKey) : null;
+      // mismo Pago Final esperado. Lookup en el mapa precalculado.
+      const alianzaInfoAdmin = obj['Alianza'] ? mapaAlianzas[normText_(obj['Alianza'])] : null;
       obj['alianza_nombre'] = alianzaInfoAdmin ? alianzaInfoAdmin.nombre : '';
       obj['alianza_precio_total'] = alianzaInfoAdmin ? String(alianzaInfoAdmin.precioTotal) : '';
       result.push(obj);
@@ -2109,19 +2115,21 @@ function getAdminFinanciero(params) {
       if (sn.indexOf('acomp') === 0) { acompSheet = allSheets[si]; break; }
     }
     result.kpis.jugadores    = jugSheet   ? num(jugSheet.getRange('B6').getValue())   : 0;
-    result.kpis.acompanantes = acompSheet ? (num(acompSheet.getRange('B6').getValue())
-                                           + num(acompSheet.getRange('C6').getValue())
-                                           + num(acompSheet.getRange('D6').getValue())) : 0;
+    // Una sola lectura B6:D6 en vez de 3 getValue() sueltos — cada llamada
+    // .getRange().getValue() es un round-trip aparte.
+    result.kpis.acompanantes = acompSheet ? acompSheet.getRange('B6:D6').getValues()[0].reduce(function(s, v) { return s + num(v); }, 0) : 0;
 
     // ── Pagos recibidos + pagos individuales — hoja "Pagos"
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (pagosSheet) {
       var pc = getPagosColMap_(pagosSheet);
+      // D32:G33 en una sola lectura en vez de 4 getValue() sueltos.
+      var resumenPagosCeldas = pagosSheet.getRange('D32:G33').getValues();
       result.pagos_recibidos = {
-        total_eur:  num(pagosSheet.getRange('E32').getValue()),
-        total_cop:  num(pagosSheet.getRange('D32').getValue()),
-        completos:  num(pagosSheet.getRange('G32').getValue()),
-        parciales:  num(pagosSheet.getRange('G33').getValue())
+        total_eur:  num(resumenPagosCeldas[0][1]), // E32
+        total_cop:  num(resumenPagosCeldas[0][0]), // D32
+        completos:  num(resumenPagosCeldas[0][3]), // G32
+        parciales:  num(resumenPagosCeldas[1][3])  // G33
       };
       var lastPagRow = pagosSheet.getLastRow();
       var pagData = [];
@@ -2259,8 +2267,16 @@ function getAdminFinanciero(params) {
       }
     }
 
-    // ── Paquetes — buscar filas Redcol/Paquete en todas las hojas
+    // ── Paquetes — buscar filas Redcol/Paquete en todas las hojas, EXCEPTO
+    // las que ya sabemos que nunca las tienen y son costosas de releer
+    // completas. Pagos puede tener cientos de filas (con el historial de
+    // abonos como texto) y ya se leyó más arriba en esta misma función para
+    // otra cosa — releerla entera aquí, en CADA carga del panel admin y
+    // CADA cambio de programa, era el cuello de botella real detrás de la
+    // lentitud general del panel (no solo de la pestaña Alianzas).
+    var HOJAS_SIN_PAQUETES_ = { 'pagos': true, 'asignacionescomercial': true };
     ss.getSheets().forEach(function(sh) {
+      if (HOJAS_SIN_PAQUETES_[sh.getName().toLowerCase()]) return;
       var sv = sh.getDataRange().getValues();
       sv.forEach(function(row) {
         for (var j = 0; j < row.length; j++) {
@@ -4938,6 +4954,21 @@ function listarAlianzasActivas_(programa) {
   }
 }
 
+// Versión "batch" de alianzaPorNombre_: reusa listarAlianzasActivas_ (que ya
+// lee la pestaña Alianzas UNA sola vez) y arma un mapa nombre_normalizado ->
+// {nombre, precioTotal}. getAdminParticipantes() antes llamaba a
+// alianzaPorNombre_ UNA VEZ POR CADA PARTICIPANTE CON ALIANZA ASIGNADA —
+// cada llamada reabre el spreadsheet de Inscripciones y relee la pestaña
+// Alianzas, multiplicando el tiempo de carga del panel admin según cuántos
+// jugadores ya tuvieran alianza confirmada.
+function construirMapaAlianzasPorNombre_(programa) {
+  const mapa = {};
+  listarAlianzasActivas_(programa).forEach(function(a) {
+    mapa[normText_(a.nombre)] = a;
+  });
+  return mapa;
+}
+
 function listarAlianzas_(programa) {
   return ContentService.createTextOutput(JSON.stringify(listarAlianzasActivas_(programa)))
     .setMimeType(ContentService.MimeType.JSON);
@@ -5815,6 +5846,37 @@ function descuentoReferidoDeEmail_(emailNorm, programKey) {
     Logger.log('descuentoReferidoDeEmail_ error: ' + err);
     return 0;
   }
+}
+
+// Versión "batch" de descuentoReferidoDeEmail_: lee la pestaña Referidos UNA
+// sola vez y devuelve un mapa email_normalizado -> % descuento (solo del
+// programKey dado). getAdminParticipantes() antes llamaba a
+// descuentoReferidoDeEmail_ UNA VEZ POR CADA PARTICIPANTE listado — cada
+// llamada reabre el spreadsheet de Leads y relee toda la pestaña, así que
+// listar 100 participantes significaba 100 aperturas completas del Sheet
+// (el cuello de botella real detrás de la carga lenta del panel admin).
+// Con este mapa, la lectura pasa a ser una sola, sin importar cuántos
+// participantes haya.
+function construirMapaDescuentosReferido_(programKey) {
+  const mapa = {};
+  try {
+    const sheet = getReferidosSheet_();
+    const rc = getReferidosColMap_(sheet);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return mapa;
+    const data = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    data.forEach(function(r) {
+      if (String(r[rc.tipo - 1] || '').trim() !== 'Referido Registrado') return;
+      if (String(r[rc.estado - 1] || '').trim() === 'Rechazado') return;
+      if (resolverSheets_(String(r[rc.programa - 1] || '')).programKey !== programKey) return;
+      const email = String(r[rc.correo - 1] || '').toLowerCase().trim();
+      if (!email || mapa[email] !== undefined) return; // .find() original se quedaba con la primera coincidencia
+      mapa[email] = parseFloat(r[rc.descuento_referido_aplicado - 1]) || 0;
+    });
+  } catch (err) {
+    Logger.log('construirMapaDescuentosReferido_ error: ' + err);
+  }
+  return mapa;
 }
 
 // Localiza (solo lectura, sin crear placeholder) la fila "Pago Final" de un

@@ -2019,6 +2019,18 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   </div>
 </div>
 
+<!-- MODAL CONFIRMAR ALIANZA (pestaña Alianzas) — confirma antes de guardar,
+     porque guardar dispara el correo de aceptación al inscrito. -->
+<div class="modal-overlay" id="confirm-alianza-modal" onclick="if(event.target===this)cancelarAlianzaSeleccionada_()">
+  <div class="modal-box" style="max-width:400px;text-align:center">
+    <div style="font-size:36px;margin-bottom:6px">🤝</div>
+    <div style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:10px">Confirmar alianza</div>
+    <p id="confirm-alianza-texto" style="color:var(--muted);font-size:14px;margin:0 0 22px;line-height:1.5"></p>
+    <button onclick="confirmarAlianzaSeleccionada_()" style="width:100%;padding:12px 22px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer">Aceptar</button>
+    <button onclick="cancelarAlianzaSeleccionada_()" style="width:100%;margin-top:8px;padding:10px 22px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;color:var(--muted)">Cancelar</button>
+  </div>
+</div>
+
 <script src="config.js"></script>
 <script>
 // ── CONFIG (mismo webhook que inscripción; Make filtra por body.action) ───
@@ -6917,7 +6929,7 @@ function renderAdminAlianzasTab() {
       <td>${escapeHtml(n.nombre || '')}</td>
       <td>${escapeHtml(n.club_colegio || '—')}</td>
       <td>${escapeHtml(n.email || '')}</td>
-      <td><select id="al-sel-${idx}" onchange="guardarAlianzaFila_(${idx})" style="width:100%;min-width:170px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fff">${opts}</select></td>
+      <td><select id="al-sel-${idx}" data-prev="${escapeHtml(actual)}" onchange="onCambioAlianzaSelect_(${idx})" style="width:100%;min-width:170px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fff">${opts}</select></td>
       <td id="al-estado-${idx}" style="font-size:12px">${estadoAlianzaHtml_(actual)}</td>
     </tr>`;
   }).join('');
@@ -6929,11 +6941,53 @@ function estadoAlianzaHtml_(nombreAlianza) {
     : '<span style="color:#ea580c">Pendiente</span>';
 }
 
+// Cambiar el desplegable NO guarda de inmediato — primero pide confirmación
+// (confirm-alianza-modal), porque guardar puede disparar el correo de
+// aceptación al inscrito y un clic accidental no debe enviarlo sin avisar.
+let _alianzaConfirmIdx = null;
+function onCambioAlianzaSelect_(idx) {
+  const sel = document.getElementById('al-sel-' + idx);
+  if (!sel) return;
+  const prev = sel.dataset.prev || '';
+  const nuevo = sel.value;
+  if (nuevo === prev) return; // re-seleccionó lo mismo — nada que confirmar
+  _alianzaConfirmIdx = idx;
+  const n = normalizeParticipant(adminData[idx]) || {};
+  const textoEl = document.getElementById('confirm-alianza-texto');
+  if (textoEl) {
+    textoEl.innerHTML = nuevo
+      ? `¿Aplicar la alianza <strong>"${escapeHtml(nuevo)}"</strong> a <strong>${escapeHtml(n.nombre || '')}</strong>? Si es la primera vez que se le asigna alianza o precio base, se le enviará de inmediato el correo de aceptación.`
+      : `¿Dejar sin asignar la alianza de <strong>${escapeHtml(n.nombre || '')}</strong>?`;
+  }
+  const modal = document.getElementById('confirm-alianza-modal');
+  if (modal) modal.classList.add('open');
+}
+
+function cancelarAlianzaSeleccionada_() {
+  const modal = document.getElementById('confirm-alianza-modal');
+  if (modal) modal.classList.remove('open');
+  if (_alianzaConfirmIdx != null) {
+    const sel = document.getElementById('al-sel-' + _alianzaConfirmIdx);
+    if (sel) sel.value = sel.dataset.prev || '';
+  }
+  _alianzaConfirmIdx = null;
+}
+
+function confirmarAlianzaSeleccionada_() {
+  const modal = document.getElementById('confirm-alianza-modal');
+  if (modal) modal.classList.remove('open');
+  if (_alianzaConfirmIdx == null) return;
+  const idx = _alianzaConfirmIdx;
+  _alianzaConfirmIdx = null;
+  guardarAlianzaFila_(idx);
+}
+
 // Guarda la alianza de UNA fila — reusa el mismo endpoint actualizar_participante
 // que el modal de edición general, enviando también el resto de campos ya
 // presentes en la fila (nombre/tipo/email/acudiente/tiquete_aereo) porque
 // actualizarParticipante() los necesita para armar el correo de aceptación
-// cuando detecta la transición Alianza vacía → asignada.
+// cuando detecta la transición Alianza vacía → asignada. Se llama solo tras
+// confirmar en confirm-alianza-modal (ver onCambioAlianzaSelect_ arriba).
 function guardarAlianzaFila_(idx) {
   const row = adminData[idx];
   if (!row) return;
@@ -6955,16 +7009,19 @@ function guardarAlianzaFila_(idx) {
         const info = adminAlianzasCatalogo.find(a => a.nombre === nuevaAlianza);
         row.alianza_nombre = info ? info.nombre : (nuevaAlianza || '');
         row.alianza_precio_total = info ? String(info.precioTotal) : '';
+        sel.dataset.prev = nuevaAlianza;
         if (estadoEl) estadoEl.innerHTML = estadoAlianzaHtml_(row.alianza_nombre);
         renderParticipantesKPIs(adminData);
         if (typeof filterAdminTable === 'function') filterAdminTable();
         if ((document.getElementById('alianzas-solo-pendientes') || {}).checked) renderAdminAlianzasTab();
-      } else if (estadoEl) {
-        estadoEl.innerHTML = `<span style="color:#dc2626">Error: ${escapeHtml(res.error || 'desconocido')}</span>`;
+      } else {
+        sel.value = sel.dataset.prev || '';
+        if (estadoEl) estadoEl.innerHTML = `<span style="color:#dc2626">Error: ${escapeHtml(res.error || 'desconocido')}</span>`;
       }
     })
     .catch(() => {
       sel.disabled = false;
+      sel.value = sel.dataset.prev || '';
       if (estadoEl) estadoEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>';
     });
 }
