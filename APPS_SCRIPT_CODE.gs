@@ -1036,9 +1036,11 @@ function doPost(e) {
         if (parsed.action === 'admin_comercial_asignar') return adminComercialAsignar(parsed);
         if (parsed.action === 'eliminar_comercial') return eliminarComercial(parsed);
         if (parsed.action === 'check_admin_password') return checkAdminPassword(parsed);
+        if (parsed.action === 'admin_device_login') return adminDeviceLogin(parsed);
         if (parsed.action === 'set_admin_password') return setAdminPassword(parsed);
         if (parsed.action === 'forgot_admin_password') return forgotAdminPassword(parsed);
         if (parsed.action === 'check_comercial_password') return checkComercialPassword(parsed);
+        if (parsed.action === 'comercial_device_login') return comercialDeviceLogin_(parsed);
         if (parsed.action === 'set_comercial_password') return setComercialPassword(parsed);
         if (parsed.action === 'forgot_comercial_password') return forgotComercialPassword(parsed);
         if (parsed.action === 'subir_foto_drive') return subirFotoDrive(parsed);
@@ -3857,12 +3859,87 @@ function checkAdminPassword(data) {
     if (!ok) return sendResponse(200, { ok: false });
     const rol = resolverRolAdmin(data.email || '');
     if (!rol) return sendResponse(200, { ok: false, error: 'Tu correo no tiene acceso registrado al panel de administración.' });
-    return sendResponse(200, {
+    const respuesta = {
       ok: true,
       rol: rol,
       must_change: !!defaultPwd && passwordMatches_(defaultPwd, stored),
       token: generarSesionToken(data.email, rol)
-    });
+    };
+    // Token de dispositivo de confianza — SOLO se genera si el usuario marcó
+    // "Recordar este dispositivo" en el login (remember_device === true). El
+    // frontend lo guarda en localStorage (no sessionStorage, para que
+    // sobreviva a cerrar el navegador) y lo usa en logins futuros DESDE ESE
+    // MISMO NAVEGADOR para saltarse la contraseña (ver adminDeviceLogin). Sin
+    // ese checkbox marcado (ej. un computador ajeno/prestado) no se emite
+    // ningún token, así que ese navegador nunca queda recordado. Admin: sin
+    // expiración — se revoca solo borrando la propiedad a mano.
+    if (data.remember_device === true) respuesta.device_token = generarDeviceToken_('admin', data.email);
+    return sendResponse(200, respuesta);
+  } catch(err) {
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// ───── DISPOSITIVOS DE CONFIANZA (saltar contraseña en logins posteriores) ────
+// Compartido por admin y comercial. Formato guardado en PropertiesService:
+// 'device_trust_<token>' = '<tipo>|<email>|<expiraEpochMs o vacío>'. `ttlMs`
+// omitido/0 = sin expiración (caso admin); con valor (ej. comercial, 14
+// días) el token deja de servir pasado ese tiempo y hay que volver a meter
+// la contraseña — ver resolverDeviceToken_.
+function generarDeviceToken_(tipo, email, ttlMs) {
+  const token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  const expira = ttlMs ? (Date.now() + ttlMs) : '';
+  PropertiesService.getScriptProperties().setProperty('device_trust_' + token, tipo + '|' + String(email || '').toLowerCase().trim() + '|' + expira);
+  return token;
+}
+
+// Resuelve un device_token contra el `tipoEsperado` ('admin'|'comercial').
+// Devuelve el email si es válido y no expiró, o null (y borra la propiedad
+// si había expirado, para no dejar basura acumulándose en ScriptProperties).
+function resolverDeviceToken_(token, tipoEsperado) {
+  const props = PropertiesService.getScriptProperties();
+  const key = 'device_trust_' + token;
+  const raw = props.getProperty(key);
+  if (!raw) return null;
+  const parts = raw.split('|');
+  const tipo = parts[0], email = parts[1], expira = parts[2];
+  if (tipo !== tipoEsperado) return null;
+  if (expira && Date.now() > parseInt(expira)) { props.deleteProperty(key); return null; }
+  return email;
+}
+
+// Cambia un device_token de confianza por un token de sesión normal (mismo
+// formato/duración que generarSesionToken), SIN pedir contraseña — es el
+// reemplazo de checkAdminPassword para logins posteriores desde un
+// navegador ya reconocido. Revalida el rol en cada uso (por si el acceso del
+// admin fue revocado en AdminAcceso después de emitirse el device_token).
+function adminDeviceLogin(data) {
+  try {
+    const token = String(data.device_token || '').trim();
+    if (!token) return sendResponse(200, { ok: false });
+    const email = resolverDeviceToken_(token, 'admin');
+    if (!email) return sendResponse(200, { ok: false }); // token desconocido, revocado o de otro tipo
+    const rol = resolverRolAdmin(email);
+    if (!rol) return sendResponse(200, { ok: false });
+    return sendResponse(200, { ok: true, email: email, rol: rol, token: generarSesionToken(email, rol) });
+  } catch(err) {
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// Equivalente a adminDeviceLogin pero para el área comercial — ver
+// checkComercialPassword (donde se emite el device_token, con expiración de
+// COMERCIAL_DEVICE_TRUST_TTL_MS) y comercial_device_login en doPost.
+const COMERCIAL_DEVICE_TRUST_TTL_MS = 14 * 24 * 3600000; // 14 días — vuelve a pedir contraseña cada 2 semanas
+function comercialDeviceLogin_(data) {
+  try {
+    const token = String(data.device_token || '').trim();
+    if (!token) return sendResponse(200, { ok: false });
+    const email = resolverDeviceToken_(token, 'comercial');
+    if (!email) return sendResponse(200, { ok: false }); // token desconocido, revocado, de otro tipo o expirado (14 días)
+    const encontrados = buscarComercialEnTodosLosProgramas_(email);
+    if (!encontrados.length) return sendResponse(200, { ok: false });
+    return sendResponse(200, { ok: true, email: email, token: generarSesionToken(email, 'comercial') });
   } catch(err) {
     return sendResponse(500, { ok: false, error: err.toString() });
   }
@@ -3993,7 +4070,13 @@ function checkComercialPassword(data) {
     if (!coincide) return sendResponse(200, { ok: false });
     const defaultPwd = getDefaultPassword();
     const mustChange = !!defaultPwd && passwordMatches_(defaultPwd, coincide.storedPwd);
-    return sendResponse(200, { ok: true, must_change: mustChange, token: generarSesionToken(emailNorm, 'comercial') });
+    const respuesta = { ok: true, must_change: mustChange, token: generarSesionToken(emailNorm, 'comercial') };
+    // Dispositivo de confianza — solo si marcó "Recordar este dispositivo".
+    // A diferencia del admin, expira a los 14 días (COMERCIAL_DEVICE_TRUST_TTL_MS):
+    // el comercial vuelve a necesitar la contraseña cada 2 semanas aunque el
+    // dispositivo siga "recordado" — ver comercialDeviceLogin_.
+    if (data.remember_device === true) respuesta.device_token = generarDeviceToken_('comercial', emailNorm, COMERCIAL_DEVICE_TRUST_TTL_MS);
+    return sendResponse(200, respuesta);
   } catch(err) {
     return sendResponse(500, { ok: false, error: err.toString() });
   }
