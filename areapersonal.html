@@ -2259,6 +2259,7 @@ function normalizeParticipant(raw) {
     ),
     pais: rowVal(raw, 'pais', 'país', 'País', 'country', 'país_residencia'),
     ciudad: rowVal(raw, 'ciudad', 'Ciudad', 'city', 'municipio', 'Municipio'),
+    pasaporte: rowVal(raw, 'pasaporte', 'Pasaporte', 'documento_pasaporte', 'No. Pasaporte', 'numero_pasaporte'),
     relacion: rowVal(raw, 'relacion', 'relación', 'Relación', 'Relacion', 'parentesco', 'Parentesco', 'vinculo', 'Vínculo'),
     paso_actual: rowVal(raw, 'paso_actual', 'Paso Actual', 'paso actual', 'step', 'paso'),
     abono_reserva: parseFloat(rowVal(raw, 'abono_reserva')) || 0,
