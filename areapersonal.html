@@ -4509,7 +4509,7 @@ let _bioSection = null;
 let _bioOfferShownThisSession = false;
 let _pendingBioCallback = null;
 
-function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLink }) {
+function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLink, rememberDevice }) {
   document.getElementById('pwd-title').textContent = title || 'Acceso restringido';
   document.getElementById('pwd-subtitle').textContent = subtitle || '';
   document.getElementById('pwd-confirm-wrap').style.display = confirm ? '' : 'none';
@@ -4526,9 +4526,56 @@ function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLin
   if (_bioOffer) _bioOffer.style.display = 'none';
   const _bioWrap = document.getElementById('pwd-biometric-wrap');
   if (_bioWrap) _bioWrap.style.display = 'none';
+  // "Recordar este dispositivo" — SIEMPRE arranca destapado/sin marcar en
+  // cada apertura del modal, para que un computador ajeno/prestado nunca
+  // quede recordado por descuido (el admin tiene que marcarlo a propósito
+  // cada vez que quiera confiar en ESE dispositivo).
+  const _rememberWrap = document.getElementById('pwd-remember-device-wrap');
+  const _rememberChk = document.getElementById('pwd-remember-device');
+  if (_rememberChk) _rememberChk.checked = false;
+  if (_rememberWrap) _rememberWrap.style.display = rememberDevice ? 'flex' : 'none';
 }
 
+// Config del dispositivo de confianza por sección — ver openPasswordGate y
+// submitPasswordGate. Admin: recordado indefinido. Comercial: la casilla
+// dice "por 14 días" porque el backend (COMERCIAL_DEVICE_TRUST_TTL_MS) hace
+// que el device_token expire a las 2 semanas y vuelva a pedir contraseña.
+const DEVICE_TRUST_CFG = {
+  admin:     { storageKey: 'admin_device_token',     action: 'admin_device_login',     label: 'Recordar este dispositivo (no pedir contraseña la próxima vez)' },
+  comercial: { storageKey: 'comercial_device_token',  action: 'comercial_device_login', label: 'Recordar este dispositivo (no pedir contraseña por 14 días)' }
+};
+
 async function openPasswordGate(section) {
+  // Dispositivo de confianza: si este navegador ya tiene un device_token
+  // guardado para el email actual (emitido tras una verificación de
+  // contraseña exitosa con la casilla "Recordar este dispositivo" marcada —
+  // ver submitPasswordGate), se cambia por un token de sesión nuevo sin
+  // mostrar el formulario de contraseña. Se revalida siempre contra el
+  // backend (adminDeviceLogin/comercial_device_login — este último también
+  // revisa expiración de 14 días), nunca se confía solo en que el token
+  // exista localmente.
+  const trustCfg = DEVICE_TRUST_CFG[section];
+  if (trustCfg) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(trustCfg.storageKey) || 'null');
+      if (stored && stored.token && stored.email && stored.email === (participantEmail || '').toLowerCase().trim()) {
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: trustCfg.action, device_token: stored.token }), redirect: 'follow'
+        }).then(r => r.json());
+        if (res.ok && res.token) {
+          if (section === 'admin') { adminSessionToken = res.token; sessionStorage.setItem('admin_token', res.token); }
+          else { comercialSessionToken = res.token; sessionStorage.setItem('comercial_token', res.token); }
+          sessionStorage.setItem('auth_' + section, '1');
+          _pwdPendingSection = null;
+          switchSection(section);
+          return;
+        }
+        localStorage.removeItem(trustCfg.storageKey); // token revocado/expirado/inválido — pedir contraseña normalmente
+      }
+    } catch (_) {}
+  }
+
   _pwdPendingSection = section;
   const cd = window._comercialData;
   const hasComercialPwd = !!(cd && cd.has_password);
@@ -4538,7 +4585,9 @@ async function openPasswordGate(section) {
     _pwdSetUI({ title: 'Área Comercial', subtitle: 'Primera vez: crea tu contraseña personal (mín. 6 caracteres).', confirm: true, submitText: 'Crear contraseña' });
   } else {
     _pwdMode = 'verify';
-    _pwdSetUI({ title: section === 'admin' ? 'Panel de Administración' : 'Área Comercial', subtitle: 'Introduce la contraseña para continuar.', forgotLink: true });
+    _pwdSetUI({ title: section === 'admin' ? 'Panel de Administración' : 'Área Comercial', subtitle: 'Introduce la contraseña para continuar.', forgotLink: true, rememberDevice: true });
+    const _rememberLabel = document.getElementById('pwd-remember-device-label');
+    if (_rememberLabel && trustCfg) _rememberLabel.textContent = trustCfg.label;
   }
   // Show gate immediately — before async biometric check
   const gateEl = document.getElementById('pwd-gate');
@@ -4848,12 +4897,18 @@ async function submitPasswordGate() {
   if (_pwdPendingSection === 'admin') {
     submitBtn.textContent = 'Verificando…'; submitBtn.disabled = true;
     try {
+      const rememberDeviceChk = document.getElementById('pwd-remember-device');
+      const rememberDevice = !!(rememberDeviceChk && rememberDeviceChk.checked);
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'check_admin_password', password: val, email: participantEmail }), redirect: 'follow'
+        body: JSON.stringify({ action: 'check_admin_password', password: val, email: participantEmail, remember_device: rememberDevice }), redirect: 'follow'
       }).then(r => r.json());
       if (res.ok) {
         if (res.token) { adminSessionToken = res.token; sessionStorage.setItem('admin_token', res.token); }
+        // Solo se guarda si el admin marcó "Recordar este dispositivo" — sin
+        // eso, el backend ni siquiera emite device_token (ver checkAdminPassword),
+        // así que un computador ajeno/prestado nunca queda recordado.
+        if (rememberDevice && res.device_token) localStorage.setItem(DEVICE_TRUST_CFG.admin.storageKey, JSON.stringify({ email: (participantEmail || '').toLowerCase().trim(), token: res.device_token }));
         if (res.must_change) { _openMustChange(); return; }
         sessionStorage.setItem('auth_admin', '1');
         const sec = _pwdPendingSection; _pwdPendingSection = null;
@@ -4871,12 +4926,17 @@ async function submitPasswordGate() {
   } else if (_pwdPendingSection === 'comercial') {
     submitBtn.textContent = 'Verificando…'; submitBtn.disabled = true;
     try {
+      const rememberDeviceChk = document.getElementById('pwd-remember-device');
+      const rememberDevice = !!(rememberDeviceChk && rememberDeviceChk.checked);
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'check_comercial_password', email: participantEmail, password: val }), redirect: 'follow'
+        body: JSON.stringify({ action: 'check_comercial_password', email: participantEmail, password: val, remember_device: rememberDevice }), redirect: 'follow'
       }).then(r => r.json());
       if (res.ok) {
         if (res.token) { comercialSessionToken = res.token; sessionStorage.setItem('comercial_token', res.token); }
+        // Solo se guarda si marcó "Recordar este dispositivo" — el backend
+        // además hace que este token expire a los 14 días (comercial_device_login).
+        if (rememberDevice && res.device_token) localStorage.setItem(DEVICE_TRUST_CFG.comercial.storageKey, JSON.stringify({ email: (participantEmail || '').toLowerCase().trim(), token: res.device_token }));
         if (res.must_change) { _openMustChange(); return; }
         sessionStorage.setItem('auth_comercial', '1');
         const sec = _pwdPendingSection; _pwdPendingSection = null;
@@ -8095,20 +8155,27 @@ function buildCategorias() {
   const el = document.getElementById('admin-categorias-content');
   if (!el || !adminData || !adminData.length) { if(el) el.innerHTML='<p style="color:var(--muted);font-size:13px;">Sin datos de participantes.</p>'; return; }
 
+  // World Challenge solo acepta categorías Sub 14 para abajo (sin Sub 18/
+  // Sub 16 — esas edades no aplican a este programa) y, a diferencia del
+  // Clinic, no se separa Gimnasio Moderno del resto de colegios — todos los
+  // jugadores van en una sola lista por categoría de edad.
+  const esWC = adminProgramaActivo === 'world_challenge';
   const yr = new Date().getFullYear();
-  const CATS = ['Sub 18','Sub 16','Sub 14','Sub 12','Sub 10'];
+  const CATS = esWC ? ['Sub 14','Sub 12','Sub 10'] : ['Sub 18','Sub 16','Sub 14','Sub 12','Sub 10'];
   const catColors = {'Sub 18':'#1e5ba8','Sub 16':'#0d9488','Sub 14':'#7c3aed','Sub 12':'#ea580c','Sub 10':'#dc2626'};
   // Cortes por año de nacimiento: Sub N cubre nacidos en (yr-N) y (yr-N+1)
   function catDesdeAnio(anio) {
-    if (anio === null) return 'Sub 18';
-    if (anio >= yr-18 && anio <= yr-17) return 'Sub 18';
-    if (anio >= yr-16 && anio <= yr-15) return 'Sub 16';
+    if (anio === null) return CATS[0];
+    if (!esWC) {
+      if (anio >= yr-18 && anio <= yr-17) return 'Sub 18';
+      if (anio >= yr-16 && anio <= yr-15) return 'Sub 16';
+    }
     if (anio >= yr-14 && anio <= yr-13) return 'Sub 14';
     if (anio >= yr-12 && anio <= yr-11) return 'Sub 12';
     if (anio >= yr-10 && anio <= yr-9)  return 'Sub 10';
-    return anio < yr-18 ? 'Sub 18' : 'Sub 10'; // fuera de rango → categoría más cercana
+    return anio < yr-(esWC?14:18) ? CATS[0] : 'Sub 10'; // fuera de rango → categoría más cercana
   }
-  const mkCatMap = () => ({'Sub 18':[],'Sub 16':[],'Sub 14':[],'Sub 12':[],'Sub 10':[]});
+  const mkCatMap = () => { const m = {}; CATS.forEach(c => m[c] = []); return m; };
   const catMapGM    = mkCatMap();
   const catMapOtros = mkCatMap();
 
@@ -8126,7 +8193,7 @@ function buildCategorias() {
 
     const cat = catDesdeAnio(fObj ? fObj.anio : null);
 
-    const esGM = club.toLowerCase().includes('gimnasio moderno');
+    const esGM = !esWC && club.toLowerCase().includes('gimnasio moderno');
     (esGM ? catMapGM : catMapOtros)[cat].push({nombre, fnDisp, edad, club, sort});
   });
 
@@ -8151,13 +8218,20 @@ function buildCategorias() {
     return html;
   }
 
-  const totalGM    = CATS.reduce((s,c)=>s+catMapGM[c].length, 0);
-  const totalOtros = CATS.reduce((s,c)=>s+catMapOtros[c].length, 0);
-  const total = totalGM + totalOtros;
-
-  let html = buildSchoolBlock(catMapGM, 'Gimnasio Moderno', '#0b1f3a');
-  html += buildSchoolBlock(catMapOtros, 'Otros colegios', '#475569');
-  html += `<p style="margin-top:4px;font-size:12px;color:var(--muted);text-align:right;">Total jugadores: <strong>${total}</strong></p>`;
+  let html;
+  if (esWC) {
+    // Una sola lista, sin dividir por colegio.
+    const total = CATS.reduce((s,c)=>s+catMapOtros[c].length, 0);
+    html = buildSchoolBlock(catMapOtros, 'Categorías', '#0b1f3a');
+    html += `<p style="margin-top:4px;font-size:12px;color:var(--muted);text-align:right;">Total jugadores: <strong>${total}</strong></p>`;
+  } else {
+    const totalGM    = CATS.reduce((s,c)=>s+catMapGM[c].length, 0);
+    const totalOtros = CATS.reduce((s,c)=>s+catMapOtros[c].length, 0);
+    const total = totalGM + totalOtros;
+    html = buildSchoolBlock(catMapGM, 'Gimnasio Moderno', '#0b1f3a');
+    html += buildSchoolBlock(catMapOtros, 'Otros colegios', '#475569');
+    html += `<p style="margin-top:4px;font-size:12px;color:var(--muted);text-align:right;">Total jugadores: <strong>${total}</strong></p>`;
+  }
   el.innerHTML = html;
 }
 
@@ -9326,6 +9400,10 @@ img, video, iframe, table { max-width: 100%; }
         <input class="pwd-input" type="password" id="pwd-confirm" placeholder="Repite la contraseña" maxlength="50"
                onkeydown="if(event.key==='Enter')submitPasswordGate()">
       </div>
+      <label id="pwd-remember-device-wrap" style="display:none;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="pwd-remember-device" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer">
+        <span id="pwd-remember-device-label">Recordar este dispositivo</span>
+      </label>
       <div class="pwd-err" id="pwd-err"></div>
       <div class="pwd-actions">
         <button class="pwd-cancel" id="pwd-cancel-btn" onclick="closePasswordGate()">Cancelar</button>
