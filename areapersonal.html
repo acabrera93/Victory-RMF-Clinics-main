@@ -1452,7 +1452,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
           <div class="ctitle" style="margin-bottom:0">Pagos por participante</div>
-          <input id="pagos-search" type="text" placeholder="Buscar por nombre o correo..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
+          <input id="pagos-search" type="text" placeholder="Buscar por nombre, correo o colegio..." oninput="filtrarTablaPagos(this.value)" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;width:220px">
           <span id="pagos-search-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
           <button id="btn-pagos-revisar" onclick="toggleSoloRevisarPagos()" style="padding:7px 14px;border:1px solid rgba(220,38,38,.4);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:#dc2626;font-weight:500">⚠ Solo por revisar</button>
           <button id="btn-pagos-actualizar" onclick="refreshAdminPagos(this)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">↻ Actualizar</button>
@@ -6379,7 +6379,7 @@ function filtrarTablaPagos(q) {
   let visibles = 0;
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
     const pasaRedcol = esBusquedaRedcol && esColegioRedcol_(tr.dataset.colegio || '');
-    const pasaTexto = !term || pasaRedcol || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term);
+    const pasaTexto = !term || pasaRedcol || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term) || (tr.dataset.colegio || '').includes(term);
     const pasaRevisar = !soloRevisarPagos || tr.dataset.revisar === '1';
     const pasaResumen = !filtroResumenPagos || tr.dataset.resumen === filtroResumenPagos;
     const visible = pasaTexto && pasaRevisar && pasaResumen;
