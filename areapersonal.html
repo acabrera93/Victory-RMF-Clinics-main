@@ -1564,6 +1564,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <button id="ptab-lista" onclick="switchParticipantesTab('lista')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--blue);background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">📋 Lista</button>
         <button id="ptab-categorias" onclick="switchParticipantesTab('categorias')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">🏅 Categorías</button>
+        <button id="ptab-documentos" onclick="switchParticipantesTab('documentos')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">📄 Documentos</button>
       </div>
 
       <!-- Vista Lista -->
@@ -1601,6 +1602,31 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           </div>
           <div id="admin-categorias-content">
             <p style="color:var(--muted);font-size:13px;">Cargando...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista Documentos -->
+      <div id="ptab-content-documentos" style="display:none">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+            <div class="ctitle" style="margin-bottom:0;flex:1">Documentos requeridos por participante</div>
+            <input id="admin-docs-search" type="text" placeholder="Buscar nombre o email..."
+                   style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px;transition:border-color .2s"
+                   onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
+                   oninput="filterAdminDocumentosTable()">
+            <span id="admin-docs-search-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Todos deben subir <strong>pasaporte</strong>. Los menores de edad con tiquete aéreo Victory también deben subir <strong>permiso de salida</strong> y <strong>registro civil</strong>.</p>
+          <div class="ptable-wrap">
+            <table class="ptable" id="admin-docs-table">
+              <thead>
+                <tr><th>Nombre</th><th>Tipo</th><th style="text-align:center">Pasaporte</th><th style="text-align:center">Permiso salida</th><th style="text-align:center">Registro civil</th><th style="text-align:center">Documentación completa</th></tr>
+              </thead>
+              <tbody id="admin-docs-body">
+                <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -5556,7 +5582,12 @@ function adminSection(section) {
   // Render con datos actuales inmediatamente
   if (section === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
   if (section === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
-  if (section === 'participantes' && adminData && adminData.length) { renderParticipantesKPIs(adminData); filterAdminTable(); }
+  if (section === 'participantes' && adminData && adminData.length) {
+    renderParticipantesKPIs(adminData);
+    filterAdminTable();
+    if (activeParticipantesSubtab === 'categorias') buildCategorias();
+    if (activeParticipantesSubtab === 'documentos') renderAdminDocumentosTab();
+  }
   if (section === 'alianzas' && adminData && adminData.length) renderAdminAlianzasTab();
   // Recargas específicas por sección
   if (section === 'comunicados') loadAdminComunicados();
@@ -5676,6 +5707,8 @@ function aplicarDatosAdmin(parts, fin, acceso) {
   const activeAsec = (document.querySelector('.asnav-btn.active') || {}).dataset?.asec;
   if (activeAsec === 'pagos' && adminFinData) { renderAdminPagos(adminFinData); reapplyPagosFilter(); }
   if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
+  if (activeAsec === 'participantes' && activeParticipantesSubtab === 'categorias') buildCategorias();
+  if (activeAsec === 'participantes' && activeParticipantesSubtab === 'documentos') renderAdminDocumentosTab();
 }
 
 // Actualiza (si existe) el snapshot cacheado de admin_financiero de un
@@ -8102,14 +8135,87 @@ function saveEditModal() {
     .catch(() => { statusEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>'; });
 }
 
+let activeParticipantesSubtab = 'lista';
 function switchParticipantesTab(tab) {
+  activeParticipantesSubtab = tab;
   document.getElementById('ptab-content-lista').style.display       = tab === 'lista'      ? '' : 'none';
   document.getElementById('ptab-content-categorias').style.display  = tab === 'categorias' ? '' : 'none';
+  document.getElementById('ptab-content-documentos').style.display  = tab === 'documentos' ? '' : 'none';
   const btnLista = document.getElementById('ptab-lista');
   const btnCat   = document.getElementById('ptab-categorias');
+  const btnDocs  = document.getElementById('ptab-documentos');
   if (btnLista) { btnLista.style.background = tab==='lista'?'var(--blue)':'#fff'; btnLista.style.color = tab==='lista'?'#fff':'var(--muted)'; btnLista.style.borderColor = tab==='lista'?'var(--blue)':'var(--border)'; }
   if (btnCat)   { btnCat.style.background   = tab==='categorias'?'var(--blue)':'#fff'; btnCat.style.color = tab==='categorias'?'#fff':'var(--muted)'; btnCat.style.borderColor = tab==='categorias'?'var(--blue)':'var(--border)'; }
+  if (btnDocs)  { btnDocs.style.background  = tab==='documentos'?'var(--blue)':'#fff'; btnDocs.style.color = tab==='documentos'?'#fff':'var(--muted)'; btnDocs.style.borderColor = tab==='documentos'?'var(--blue)':'var(--border)'; }
   if (tab === 'categorias') buildCategorias();
+  if (tab === 'documentos') renderAdminDocumentosTab();
+}
+
+// ── DOCUMENTOS (pestaña admin) ──────────────────────────────────────────────
+// Regla igual a getDocumentosRequeridos en el backend: se requieren pasaporte +
+// permiso de salida + registro civil solo si el participante tiene tiquete
+// aéreo Victory Y es menor de edad (edad de referencia al 2-oct-2026). En
+// cualquier otro caso solo se requiere pasaporte. El estado de subida
+// (_doc_pasaporte/_doc_permiso/_doc_registro_civil) viene calculado por el
+// backend a partir de la hoja "Documentos" (ver getAdminParticipantes).
+let adminDocsRows = [];
+
+function renderAdminDocumentosTab() {
+  const body = document.getElementById('admin-docs-body');
+  if (!body) return;
+  if (!adminData || !adminData.length) { body.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Sin datos de participantes.</td></tr>'; return; }
+
+  adminDocsRows = adminData.map(row => {
+    const n = normalizeParticipant(row) || {};
+    const fnRaw = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha nacimiento'] || row['fecha_nacimiento'] || '';
+    const fObj = parseFechaNacFront(fnRaw);
+    const edad = calcEdadRefFront(fObj);
+    const esMenor = edad !== null && edad < 18;
+    const tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
+    const requiere3 = tieneTiquete && esMenor;
+    const pasaporte = !!row['_doc_pasaporte'];
+    const permiso = requiere3 ? !!row['_doc_permiso'] : null;
+    const registroCivil = requiere3 ? !!row['_doc_registro_civil'] : null;
+    const completo = requiere3 ? (pasaporte && permiso && registroCivil) : pasaporte;
+    return {
+      nombre: n.nombre || '(sin nombre)',
+      email: n.email || '',
+      tipo: n.tipo || '',
+      pasaporte, permiso, registroCivil, completo
+    };
+  });
+
+  filterAdminDocumentosTable();
+}
+
+function docCheckCell(estado) {
+  if (estado === null) return '<span style="color:var(--muted);font-size:12px">No aplica</span>';
+  return `<input type="checkbox" disabled ${estado ? 'checked' : ''} style="width:18px;height:18px;accent-color:#059669;cursor:default">`;
+}
+
+function renderAdminDocumentosBody(rows) {
+  const body = document.getElementById('admin-docs-body');
+  if (!body) return;
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Sin resultados.</td></tr>'; return; }
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-weight:500">${escapeHtml(r.nombre)}</td>
+      <td>${escapeHtml(r.tipo)}</td>
+      <td style="text-align:center">${docCheckCell(r.pasaporte)}</td>
+      <td style="text-align:center">${docCheckCell(r.permiso)}</td>
+      <td style="text-align:center">${docCheckCell(r.registroCivil)}</td>
+      <td style="text-align:center"><input type="checkbox" disabled ${r.completo ? 'checked' : ''} style="width:20px;height:20px;accent-color:#1e5ba8;cursor:default"></td>
+    </tr>
+  `).join('');
+  const countEl = document.getElementById('admin-docs-search-count');
+  if (countEl) countEl.textContent = rows.length + (rows.length === 1 ? ' resultado' : ' resultados');
+}
+
+function filterAdminDocumentosTable() {
+  const searchEl = document.getElementById('admin-docs-search');
+  const term = (searchEl ? searchEl.value : '').toLowerCase().trim();
+  const filtrados = !term ? adminDocsRows : adminDocsRows.filter(r => r.nombre.toLowerCase().includes(term) || r.email.toLowerCase().includes(term));
+  renderAdminDocumentosBody(filtrados);
 }
 
 function parseFechaNacFront(v) {
