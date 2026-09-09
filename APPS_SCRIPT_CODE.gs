@@ -1471,11 +1471,31 @@ function notificarDocumentoSubido(email, tipoDoc, tipoPago, fileName, fileUrl, p
   }
 }
 
+// Devuelve la hoja "Documentos" del sheet de Inscripciones del programa dado,
+// creándola con sus cabeceras si aún no existe. Esta hoja se asumía ya
+// creada a mano en el Sheet — como nunca lo estuvo (ni en Clinic ni en World
+// Challenge), updateSheetWithUpload() salía en silencio en CADA subida
+// (if (!sheet) return;): los archivos sí llegaban a Drive, pero jamás
+// quedaban registrados en ningún Sheet. Resultado: la pestaña admin
+// "Documentos" no tenía nada que leer y todos los checkboxes aparecían sin
+// marcar, aunque el participante ya hubiera subido su documento.
+function getDocumentosSheet_(programa, create) {
+  const ss = SpreadsheetApp.openById(resolverSheets_(programa).sheetId);
+  let sheet = ss.getSheetByName('Documentos');
+  if (!sheet && create) {
+    sheet = ss.insertSheet('Documentos');
+    sheet.getRange(1, 1, 1, 7).setValues([[
+      'email', 'doc_pasaporte', 'doc_permiso', 'doc_registro_civil',
+      'comprobante_reserva', 'comprobante_tiquete', 'comprobante_final'
+    ]]);
+  }
+  return sheet;
+}
+
 // ───── ACTUALIZAR SHEETS ───────────────────────────────────────────────────────
 function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, fileId, programa) {
   try {
-    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheetByName('Documentos');
-    if (!sheet) return; // Si no existe la hoja, no falla
+    const sheet = getDocumentosSheet_(programa, true);
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0] || [];
@@ -1673,8 +1693,7 @@ function sincronizarDocumentosDesdeDriveParaPrograma_(fuente) {
   }
   if (!emails.length) { Logger.log('sincronizarDocumentosDesdeDriveParaPrograma_: ' + fuente.label + ' — sin participantes.'); return; }
 
-  const docsSheet = SpreadsheetApp.openById(fuente.sheetId).getSheetByName('Documentos');
-  if (!docsSheet) { Logger.log('sincronizarDocumentosDesdeDriveParaPrograma_: ' + fuente.label + ' — hoja Documentos no encontrada.'); return; }
+  const docsSheet = getDocumentosSheet_(fuente.key, true);
   const docsHeaders = docsSheet.getRange(1, 1, 1, docsSheet.getLastColumn()).getValues()[0];
   let emailColDocs = -1;
   for (let j = 0; j < docsHeaders.length; j++) {
@@ -1801,7 +1820,11 @@ function getAdminParticipantes(params) {
     if (docsSheet) {
       const docsData = docsSheet.getDataRange().getValues();
       const docsHeaders = (docsData[0] || []).map(function(h) { return String(h).toLowerCase().trim(); });
-      const dEmailCol = docsHeaders.indexOf('email');
+      let dEmailCol = -1;
+      for (let j = 0; j < docsHeaders.length; j++) {
+        const h = docsHeaders[j];
+        if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { dEmailCol = j; break; }
+      }
       const dPasCol = docsHeaders.indexOf('doc_pasaporte');
       const dPerCol = docsHeaders.indexOf('doc_permiso');
       const dRegCol = docsHeaders.indexOf('doc_registro_civil');
