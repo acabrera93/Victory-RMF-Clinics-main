@@ -1497,39 +1497,46 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
       }
     }
 
-    if (rowIndex > 0) {
-      // Encontrar columna según tipo de documento/pago
-      let colName = '';
-      if (tipoPago === 'reserva') colName = 'comprobante_reserva';
-      else if (tipoPago === 'tiquete') colName = 'comprobante_tiquete';
-      else if (tipoPago === 'final') colName = 'comprobante_final';
-      else if (tipoDoc === 'pasaporte') colName = 'doc_pasaporte';
-      else if (tipoDoc === 'permiso') colName = 'doc_permiso';
-      else if (tipoDoc === 'registro_civil') colName = 'doc_registro_civil';
+    // Si el participante aún no tiene fila en "Documentos" (primer documento o
+    // comprobante que sube), se crea aquí — antes esta función solo actualizaba
+    // filas ya existentes y el enlace se perdía en silencio (solo quedaba un
+    // Logger.log) si nadie había precargado la fila manualmente.
+    if (rowIndex < 0) {
+      const newRow = new Array(headers.length).fill('');
+      newRow[emailColDocs] = email;
+      sheet.appendRow(newRow);
+      rowIndex = sheet.getLastRow();
+    }
 
-      const colIndex = headers.indexOf(colName);
-      if (colIndex >= 0) {
-        const formula = `=HYPERLINK("${fileUrl}","${fileName}")`;
-        sheet.getRange(rowIndex, colIndex + 1).setValue(formula);
-      }
+    // Encontrar columna según tipo de documento/pago
+    let colName = '';
+    if (tipoPago === 'reserva') colName = 'comprobante_reserva';
+    else if (tipoPago === 'tiquete') colName = 'comprobante_tiquete';
+    else if (tipoPago === 'final') colName = 'comprobante_final';
+    else if (tipoDoc === 'pasaporte') colName = 'doc_pasaporte';
+    else if (tipoDoc === 'permiso') colName = 'doc_permiso';
+    else if (tipoDoc === 'registro_civil') colName = 'doc_registro_civil';
 
-      // Solo para documentos de identidad (pasaporte/permiso/registro_civil), no
-      // comprobantes de pago: recalcular y escribir el contador "X/Y" en Inscripciones.
-      if (!tipoPago) {
-        const rowValues = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
-        const requeridos = getDocumentosRequeridos(email, programa);
-        const colsRequeridas = requeridos === 3
-          ? ['doc_pasaporte', 'doc_permiso', 'doc_registro_civil']
-          : ['doc_pasaporte'];
-        let subidos = 0;
-        colsRequeridas.forEach(function (cn) {
-          const idx = headers.indexOf(cn);
-          if (idx >= 0 && rowValues[idx] !== '' && rowValues[idx] !== null) subidos++;
-        });
-        actualizarContadorDocumentos(email, subidos, requeridos, programa);
-      }
-    } else {
-      Logger.log('updateSheetWithUpload: email no encontrado en la hoja Documentos: ' + email);
+    const colIndex = headers.indexOf(colName);
+    if (colIndex >= 0) {
+      const formula = `=HYPERLINK("${fileUrl}","${fileName}")`;
+      sheet.getRange(rowIndex, colIndex + 1).setValue(formula);
+    }
+
+    // Solo para documentos de identidad (pasaporte/permiso/registro_civil), no
+    // comprobantes de pago: recalcular y escribir el contador "X/Y" en Inscripciones.
+    if (!tipoPago) {
+      const rowValues = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const requeridos = getDocumentosRequeridos(email, programa);
+      const colsRequeridas = requeridos === 3
+        ? ['doc_pasaporte', 'doc_permiso', 'doc_registro_civil']
+        : ['doc_pasaporte'];
+      let subidos = 0;
+      colsRequeridas.forEach(function (cn) {
+        const idx = headers.indexOf(cn);
+        if (idx >= 0 && rowValues[idx] !== '' && rowValues[idx] !== null) subidos++;
+      });
+      actualizarContadorDocumentos(email, subidos, requeridos, programa);
     }
   } catch (err) {
     Logger.log('Sheet update error: ' + err);
@@ -1640,7 +1647,8 @@ function getAdminParticipantes(params) {
   try {
     if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
     const fuente = resolverSheets_(params.programa);
-    const sheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
+    const ss = SpreadsheetApp.openById(fuente.sheetId);
+    const sheet = ss.getSheets()[0];
     const data = sheet.getDataRange().getValues();
     if (data.length < 2) return sendResponse(200, []);
     const headers = data[0];
@@ -1654,6 +1662,30 @@ function getAdminParticipantes(params) {
     // construirMapaDescuentosReferido_/construirMapaAlianzasPorNombre_).
     const mapaDescuentos = construirMapaDescuentosReferido_(fuente.programKey);
     const mapaAlianzas = construirMapaAlianzasPorNombre_(params.programa);
+    // Estado de documentos subidos (hoja "Documentos", mismas columnas que
+    // escribe updateSheetWithUpload) — usado por la pestaña admin
+    // "Documentos" para marcar qué le falta subir a cada participante.
+    const mapaDocumentos = {};
+    const docsSheet = ss.getSheetByName('Documentos');
+    if (docsSheet) {
+      const docsData = docsSheet.getDataRange().getValues();
+      const docsHeaders = (docsData[0] || []).map(function(h) { return String(h).toLowerCase().trim(); });
+      const dEmailCol = docsHeaders.indexOf('email');
+      const dPasCol = docsHeaders.indexOf('doc_pasaporte');
+      const dPerCol = docsHeaders.indexOf('doc_permiso');
+      const dRegCol = docsHeaders.indexOf('doc_registro_civil');
+      if (dEmailCol >= 0) {
+        for (let i = 1; i < docsData.length; i++) {
+          const em = String(docsData[i][dEmailCol] || '').toLowerCase().trim();
+          if (!em) continue;
+          mapaDocumentos[em] = {
+            pasaporte: dPasCol >= 0 && docsData[i][dPasCol] !== '' && docsData[i][dPasCol] != null,
+            permiso: dPerCol >= 0 && docsData[i][dPerCol] !== '' && docsData[i][dPerCol] != null,
+            registro_civil: dRegCol >= 0 && docsData[i][dRegCol] !== '' && docsData[i][dRegCol] != null
+          };
+        }
+      }
+    }
     const result = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -1686,6 +1718,10 @@ function getAdminParticipantes(params) {
       const alianzaInfoAdmin = obj['Alianza'] ? mapaAlianzas[normText_(obj['Alianza'])] : null;
       obj['alianza_nombre'] = alianzaInfoAdmin ? alianzaInfoAdmin.nombre : '';
       obj['alianza_precio_total'] = alianzaInfoAdmin ? String(alianzaInfoAdmin.precioTotal) : '';
+      const docsEstado = mapaDocumentos[emailValAdmin] || { pasaporte: false, permiso: false, registro_civil: false };
+      obj['_doc_pasaporte'] = docsEstado.pasaporte;
+      obj['_doc_permiso'] = docsEstado.permiso;
+      obj['_doc_registro_civil'] = docsEstado.registro_civil;
       result.push(obj);
     }
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
