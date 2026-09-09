@@ -1614,6 +1614,137 @@ function actualizarContadorDocumentos(email, subidos, requeridos, programa) {
   }
 }
 
+// ───── RECONCILIAR "Documentos" (Sheet) CONTRA LO REALMENTE SUBIDO A DRIVE ─────
+// La hoja "Documentos" (columnas doc_pasaporte/doc_permiso/doc_registro_civil)
+// es lo que alimenta los checkboxes de la pestaña admin "Documentos" (ver
+// getAdminParticipantes, _doc_pasaporte/_doc_permiso/_doc_registro_civil).
+// Antes de la corrección en updateSheetWithUpload (que ahora crea la fila del
+// participante si no existía), cualquier documento subido por alguien SIN
+// fila previa en "Documentos" se guardaba en Drive pero nunca quedaba
+// reflejado en el Sheet — el checkbox mostraba "Pendiente" para un documento
+// que en realidad ya se había subido. Esta función recorre las carpetas
+// reales de Drive (misma estructura que crea handleMultipartUpload/
+// handleJsonUpload: Participante_<email> → Documentos_<tipo>) y, para cada
+// participante y tipo de documento con al menos un archivo en Drive pero la
+// celda vacía en "Documentos", la rellena con el enlace al archivo más
+// reciente — sin pisar nada que ya tuviera un valor. Ejecutar UNA VEZ (o
+// cuando se sospeche de un desfase) desde el editor de Apps Script; revisa
+// ambos programas y deja en el Log cuántos documentos completó.
+function sincronizarDocumentosDesdeDrive() {
+  const programas = [
+    { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, key: 'clinic', label: 'Clinic' },
+    { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, key: 'world_challenge', label: 'World Challenge' }
+  ];
+  programas.forEach(function(fuente) {
+    try {
+      sincronizarDocumentosDesdeDriveParaPrograma_(fuente);
+    } catch (err) {
+      Logger.log('sincronizarDocumentosDesdeDrive: error en ' + fuente.label + ': ' + err);
+    }
+  });
+}
+
+function archivoMasRecienteEnCarpeta_(carpeta) {
+  const files = carpeta.getFiles();
+  let mejor = null;
+  while (files.hasNext()) {
+    const f = files.next();
+    if (!mejor || f.getDateCreated() > mejor.getDateCreated()) mejor = f;
+  }
+  return mejor;
+}
+
+function sincronizarDocumentosDesdeDriveParaPrograma_(fuente) {
+  const inscSheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
+  const inscData = inscSheet.getDataRange().getValues();
+  const inscHeaders = inscData[0] || [];
+  let emailCol = -1;
+  for (let j = 0; j < inscHeaders.length; j++) {
+    const h = String(inscHeaders[j]).toLowerCase().trim();
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailCol = j; break; }
+  }
+  if (emailCol < 0) { Logger.log('sincronizarDocumentosDesdeDriveParaPrograma_: ' + fuente.label + ' — columna Email no encontrada.'); return; }
+
+  const emails = [];
+  const seen = {};
+  for (let i = 1; i < inscData.length; i++) {
+    const email = String(inscData[i][emailCol] || '').toLowerCase().trim();
+    if (email && !seen[email]) { seen[email] = true; emails.push(email); }
+  }
+  if (!emails.length) { Logger.log('sincronizarDocumentosDesdeDriveParaPrograma_: ' + fuente.label + ' — sin participantes.'); return; }
+
+  const docsSheet = SpreadsheetApp.openById(fuente.sheetId).getSheetByName('Documentos');
+  if (!docsSheet) { Logger.log('sincronizarDocumentosDesdeDriveParaPrograma_: ' + fuente.label + ' — hoja Documentos no encontrada.'); return; }
+  const docsHeaders = docsSheet.getRange(1, 1, 1, docsSheet.getLastColumn()).getValues()[0];
+  let emailColDocs = -1;
+  for (let j = 0; j < docsHeaders.length; j++) {
+    const h = String(docsHeaders[j]).toLowerCase().trim();
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailColDocs = j; break; }
+  }
+  if (emailColDocs < 0) emailColDocs = 0;
+  const colPasaporte = docsHeaders.indexOf('doc_pasaporte');
+  const colPermiso = docsHeaders.indexOf('doc_permiso');
+  const colRegistro = docsHeaders.indexOf('doc_registro_civil');
+  const tiposDoc = [
+    { folder: 'Documentos_pasaporte', col: colPasaporte },
+    { folder: 'Documentos_permiso', col: colPermiso },
+    { folder: 'Documentos_registro_civil', col: colRegistro }
+  ].filter(function(t) { return t.col >= 0; });
+  if (!tiposDoc.length) { Logger.log('sincronizarDocumentosDesdeDriveParaPrograma_: ' + fuente.label + ' — sin columnas doc_* en Documentos.'); return; }
+
+  const parentFolder = DriveApp.getFolderById(resolverParentFolderId_(fuente.key));
+  let actualizados = 0;
+  let sinCarpeta = 0;
+
+  emails.forEach(function(email) {
+    const emailFolderName = 'Participante_' + email.replace('@', '_').replace(/\./g, '_');
+    const carpetas = parentFolder.getFoldersByName(emailFolderName);
+    if (!carpetas.hasNext()) { sinCarpeta++; return; }
+    const carpetaParticipante = carpetas.next();
+
+    // Localizar la fila de este email en "Documentos" — releída en vivo (no
+    // desde un snapshot en memoria) porque appendRow más abajo puede crearla
+    // a mitad de la corrida.
+    const docsData = docsSheet.getDataRange().getValues();
+    let rowIndex = -1;
+    for (let i = 1; i < docsData.length; i++) {
+      if (String(docsData[i][emailColDocs] || '').toLowerCase().trim() === email) { rowIndex = i + 1; break; }
+    }
+    if (rowIndex < 0) {
+      const newRow = new Array(docsHeaders.length).fill('');
+      newRow[emailColDocs] = email;
+      docsSheet.appendRow(newRow);
+      rowIndex = docsSheet.getLastRow();
+    }
+
+    tiposDoc.forEach(function(tipo) {
+      const yaTiene = docsSheet.getRange(rowIndex, tipo.col + 1).getValue();
+      if (yaTiene !== '' && yaTiene !== null) return; // no pisar lo que ya hay
+      const subcarpetas = carpetaParticipante.getFoldersByName(tipo.folder);
+      if (!subcarpetas.hasNext()) return;
+      const archivo = archivoMasRecienteEnCarpeta_(subcarpetas.next());
+      if (!archivo) return;
+      docsSheet.getRange(rowIndex, tipo.col + 1).setFormula('=HYPERLINK("' + archivo.getUrl() + '","' + archivo.getName() + '")');
+      actualizados++;
+    });
+
+    // Recalcular el contador "X/Y" en Inscripciones con el estado ya actualizado.
+    const rowValues = docsSheet.getRange(rowIndex, 1, 1, docsSheet.getLastColumn()).getValues()[0];
+    const requeridos = getDocumentosRequeridos(email, fuente.key);
+    const colsRequeridas = requeridos === 3
+      ? ['doc_pasaporte', 'doc_permiso', 'doc_registro_civil']
+      : ['doc_pasaporte'];
+    let subidos = 0;
+    colsRequeridas.forEach(function(cn) {
+      const idx = docsHeaders.indexOf(cn);
+      if (idx >= 0 && rowValues[idx] !== '' && rowValues[idx] !== null) subidos++;
+    });
+    actualizarContadorDocumentos(email, subidos, requeridos, fuente.key);
+  });
+
+  Logger.log('sincronizarDocumentosDesdeDriveParaPrograma_: ' + fuente.label + ' — ' + actualizados + ' documento(s) completado(s) desde Drive, ' + sinCarpeta + ' participante(s) sin carpeta en Drive.');
+}
+
 // ───── HELPER FUNCTIONS ────────────────────────────────────────────────────────
 function getExtension(fileName) {
   const match = fileName.match(/\.([^.]+)$/);
