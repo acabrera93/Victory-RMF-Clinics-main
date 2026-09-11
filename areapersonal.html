@@ -5777,6 +5777,27 @@ function actualizarCacheAdminFin_(programa, fin) {
   if (cache && fin) cache.fin = fin;
 }
 
+// Refresco liviano de SOLO admin_participantes — usado tras aprobar/rechazar
+// un documento (revisarDocumentoAdmin). Antes ese flujo llamaba a
+// loadAdmin(true), que además re-pide admin_financiero (recorre TODAS las
+// hojas del presupuesto buscando paquetes — con diferencia lo más pesado del
+// panel) y admin_acceso — de ahí la demora larga al aprobar/rechazar un solo
+// documento, cuando lo único que cambió es el estado de ese documento.
+function refrescarAdminDocumentosSolo_() {
+  const t = Date.now();
+  const progQS = '&programa=' + encodeURIComponent(adminProgramaActivo);
+  fetch(APPS_SCRIPT_URL + '?action=admin_participantes&token=' + encodeURIComponent(adminSessionToken) + progQS + '&_t=' + t, { redirect: 'follow' })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(parts => {
+      adminData = Array.isArray(parts) ? parts : [];
+      const cache = adminCacheByPrograma[adminProgramaActivo];
+      if (cache) cache.parts = adminData;
+      renderAdminDocumentosTab();
+      renderParticipantesKPIs(adminData);
+    })
+    .catch(err => console.error('refrescarAdminDocumentosSolo_ error:', err));
+}
+
 function loadAdmin(force, intento) {
   intento = intento || 1;
   if (adminLoaded && !force) return;
@@ -8218,6 +8239,9 @@ function switchParticipantesTab(tab) {
 // explícitamente. Subir un documento nuevo (o rechazarlo) lo vuelve a dejar
 // pendiente de revisión.
 let adminDocsRows = [];
+// "email|||tipo" -> true mientras esa aprobación/rechazo está en vuelo — ver
+// revisarDocumentoAdmin/docReviewCell.
+let adminDocsGuardando = {};
 
 function renderAdminDocumentosTab() {
   const body = document.getElementById('admin-docs-body');
@@ -8253,6 +8277,7 @@ function renderAdminDocumentosTab() {
 function docReviewCell(email, tipo, programa, doc) {
   if (doc === null) return '<span style="color:var(--muted);font-size:12px">No aplica</span>';
   if (!doc.url) return '<span style="color:var(--muted);font-size:12px">— Sin subir</span>';
+  if (adminDocsGuardando[email + '|||' + tipo]) return '<span style="color:var(--muted);font-size:12px">⏳ Guardando...</span>';
   const puedeEditar = isEditAdmin();
   const etiquetas = {
     aprobado: '<span style="color:#059669;font-weight:600;font-size:12px">✔ Aprobado</span>',
@@ -8282,7 +8307,7 @@ function renderAdminDocumentosBody(rows) {
       <td style="text-align:center">${docReviewCell(r.email, 'pasaporte', r.programa, r.pasaporte)}</td>
       <td style="text-align:center">${docReviewCell(r.email, 'permiso', r.programa, r.permiso)}</td>
       <td style="text-align:center">${docReviewCell(r.email, 'registro_civil', r.programa, r.registroCivil)}</td>
-      <td style="text-align:center"><input type="checkbox" disabled ${r.completo ? 'checked' : ''} style="width:20px;height:20px;accent-color:#1e5ba8;cursor:default"></td>
+      <td style="text-align:center">${r.completo ? '<span style="color:#059669;font-weight:700;font-size:13px">&#10003; Completo</span>' : '<span style="color:var(--muted);font-size:12px">— Pendiente</span>'}</td>
     </tr>
   `).join('');
   const countEl = document.getElementById('admin-docs-search-count');
@@ -8308,6 +8333,12 @@ function revisarDocumentoAdmin(email, tipo, decision, programa) {
     motivo = (prompt('Motivo del rechazo (el padre lo verá en su área personal):', '') || '').trim();
     if (!motivo) return;
   }
+  // Feedback inmediato en la celda — sin esto, el clic no muestra ningún
+  // cambio hasta que responde el backend (que además envía 1-2 correos antes
+  // de contestar), y se siente como si el panel se hubiera colgado.
+  const clave = email + '|||' + tipo;
+  adminDocsGuardando[clave] = true;
+  filterAdminDocumentosTable();
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
@@ -8315,15 +8346,18 @@ function revisarDocumentoAdmin(email, tipo, decision, programa) {
   })
     .then(r => r.json())
     .then(res => {
-      if (res && res.ok) {
-        loadAdmin(true);
-      } else {
-        alert('No se pudo actualizar el documento: ' + (res && res.error || 'error desconocido'));
-      }
+      if (!res || !res.ok) alert('No se pudo actualizar el documento: ' + (res && res.error || 'error desconocido'));
     })
     .catch(err => {
       console.error('revisarDocumentoAdmin error:', err);
       alert('Error de conexión al actualizar el documento.');
+    })
+    .finally(() => {
+      delete adminDocsGuardando[clave];
+      // Refresco liviano (solo admin_participantes) — no loadAdmin(true):
+      // ver refrescarAdminDocumentosSolo_ para por qué ese refresco completo
+      // era la causa real de la demora al aprobar/rechazar.
+      refrescarAdminDocumentosSolo_();
     });
 }
 
