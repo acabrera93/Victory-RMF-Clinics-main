@@ -8262,12 +8262,21 @@ function renderAdminDocumentosTab() {
     const completo = requiere3
       ? (pasaporte.estado === 'aprobado' && permiso.estado === 'aprobado' && registroCivil.estado === 'aprobado')
       : pasaporte.estado === 'aprobado';
+    const docsAplicables = [pasaporte, permiso, registroCivil].filter(d => d !== null);
+    // Orden: 0) tiene algo pendiente de aprobar (necesita acción del admin YA)
+    // 1) tiene algo rechazado pero nada pendiente (esperando que el padre
+    // vuelva a subir) 2) todo aprobado 3) nada subido todavía — así lo que
+    // requiere revisión sube siempre al principio de la lista.
+    const prioridad = docsAplicables.some(d => d.estado === 'pendiente') ? 0
+      : docsAplicables.some(d => d.estado === 'rechazado') ? 1
+      : completo ? 2
+      : 3;
     return {
       nombre: n.nombre || '(sin nombre)',
       email: n.email || '',
       tipo: n.tipo || '',
       programa: row['_program_key'] || '',
-      pasaporte, permiso, registroCivil, completo
+      pasaporte, permiso, registroCivil, completo, prioridad
     };
   });
 
@@ -8317,7 +8326,8 @@ function renderAdminDocumentosBody(rows) {
 function filterAdminDocumentosTable() {
   const searchEl = document.getElementById('admin-docs-search');
   const term = (searchEl ? searchEl.value : '').toLowerCase().trim();
-  const filtrados = !term ? adminDocsRows : adminDocsRows.filter(r => r.nombre.toLowerCase().includes(term) || r.email.toLowerCase().includes(term));
+  const filtrados = (!term ? adminDocsRows.slice() : adminDocsRows.filter(r => r.nombre.toLowerCase().includes(term) || r.email.toLowerCase().includes(term)));
+  filtrados.sort((a, b) => a.prioridad - b.prioridad); // pendientes de aprobar primero — ver prioridad en renderAdminDocumentosTab
   renderAdminDocumentosBody(filtrados);
 }
 
