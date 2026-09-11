@@ -2581,7 +2581,7 @@ function conceptoGrupoCompleto_(tipoPago) {
 function applyPaymentTotals(t) {
   // Reserva: input + título del card, usando lo restante si hay abono
   const e1 = document.getElementById('eur1');
-  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonosReservaDetalle, t.comisionReserva || 0, t.copBrutoReserva || 0);
+  const restanteReserva = mostrarAbonoYRestante('eur1', 'aviso-abono-reserva', '#pay-card1', null, t.reserva, t.abonoReserva || 0, 'la reserva', t.abonosReservaDetalle, t.comisionReserva || 0, t.copBrutoReserva || 0, conceptoGrupoCompleto_('reserva'));
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.reserva = restanteReserva;
   if (e1) { e1.value = restanteReserva; calc1(); }
@@ -2592,21 +2592,21 @@ function applyPaymentTotals(t) {
     if (h) h.childNodes[0].textContent = `Pago de reserva — ${t.reserva.toLocaleString('es-CO')} EUR `;
   }
   const idxR = STEP_DEFS.findIndex(s => s.panel === 'panel2');
-  if (idxR > -1) STEP_DEFS[idxR].done = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva && conceptoGrupoCompleto_('reserva');
+  if (idxR > -1) STEP_DEFS[idxR].done = t.reserva > 0 && conceptoGrupoCompleto_('reserva');
 
   // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
   const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
-  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle, t.comisionTiquete || 0, t.copBrutoTiquete || 0);
+  const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle, t.comisionTiquete || 0, t.copBrutoTiquete || 0, conceptoGrupoCompleto_('tiquete'));
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
   const idxT = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
-  if (idxT > -1) STEP_DEFS[idxT].done = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur && conceptoGrupoCompleto_('tiquete');
+  if (idxT > -1) STEP_DEFS[idxT].done = totalTiqueteEur > 0 && conceptoGrupoCompleto_('tiquete');
 
   // Pago final: input + subtítulo, usando lo restante si hay abono
   const e2 = document.getElementById('eur2');
-  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonosFinalDetalle, t.comisionFinal || 0, t.copBrutoFinal || 0);
+  const restanteFinal = mostrarAbonoYRestante('eur2', 'aviso-abono-final', '#panel3', null, t.final, t.abonoFinal || 0, 'el pago final', t.abonosFinalDetalle, t.comisionFinal || 0, t.copBrutoFinal || 0, conceptoGrupoCompleto_('final'));
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.final = restanteFinal;
   if (e2) { e2.value = restanteFinal; calc2(); }
@@ -2614,7 +2614,7 @@ function applyPaymentTotals(t) {
   const sub3 = document.getElementById('panel3-subtitle');
   if (sub3) sub3.textContent = `SEGUNDO PAGO — ${t.final.toLocaleString('es-CO')} EUR`;
   const idxF = STEP_DEFS.findIndex(s => s.panel === 'panel3');
-  if (idxF > -1) STEP_DEFS[idxF].done = t.final > 0 && (t.abonoFinal || 0) >= t.final && conceptoGrupoCompleto_('final');
+  if (idxF > -1) STEP_DEFS[idxF].done = t.final > 0 && conceptoGrupoCompleto_('final');
 
   buildSteps();
   buildBreakdown(t);
@@ -3061,25 +3061,29 @@ function applyPasoActual(paso, opts) {
   // donde el monto recién enviado aún no llegó a la hoja para reflejarse en
   // calcPaymentTotals(), así que ahí sí confiamos en el avance de `paso`.
   const t = calcPaymentTotals();
-  // "Cubierto" exige DOS cosas: que la suma del grupo alcance el total, Y que
-  // cada participante quede individualmente en Completo en su propia fila
-  // (conceptoGrupoCompleto_) — no basta con que el total cuadre, porque el
-  // dinero puede estar repartido pero alguna fila seguir "Pendiente de
-  // confirmar" sin que el admin la haya revisado todavía.
+  // "Cubierto" se basa SOLO en que cada participante que debía algo de este
+  // concepto quede individualmente en Completo en su propia fila
+  // (conceptoGrupoCompleto_) — ya NO se exige además que la suma del grupo
+  // alcance el precio de tabla del frontend: esa tabla es fija y no conoce
+  // descuentos/ajustes puntuales que el admin haya negociado y registrado
+  // directamente en Pagos, así que exigirlo dejaba a familias con un ajuste
+  // legítimo viendo un "saldo pendiente" que en realidad no existe. El
+  // estado "Completo" de cada fila (que sí puede quedar en "Pendiente de
+  // confirmar" hasta que el admin la revise) sigue siendo la fuente de verdad.
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
   if (idxReserva > -1) {
-    const cubierto = t.reserva > 0 && (t.abonoReserva || 0) >= t.reserva && conceptoGrupoCompleto_('reserva');
+    const cubierto = t.reserva > 0 && conceptoGrupoCompleto_('reserva');
     STEP_DEFS[idxReserva].done = cubierto || (opts.optimistic && paso >= 4);
   }
   const idxTiq = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
   if (idxTiq > -1) {
     const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
-    const cubierto = totalTiqueteEur > 0 && (t.abonoTiquete || 0) >= totalTiqueteEur && conceptoGrupoCompleto_('tiquete');
+    const cubierto = totalTiqueteEur > 0 && conceptoGrupoCompleto_('tiquete');
     STEP_DEFS[idxTiq].done = cubierto || (opts.optimistic && paso >= 5);
   }
   const idxFinal = STEP_DEFS.findIndex(s => s.panel === 'panel3');
   if (idxFinal > -1) {
-    const cubierto = t.final > 0 && (t.abonoFinal || 0) >= t.final && conceptoGrupoCompleto_('final');
+    const cubierto = t.final > 0 && conceptoGrupoCompleto_('final');
     STEP_DEFS[idxFinal].done = cubierto || (opts.optimistic && paso >= 6);
   }
   const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
@@ -3489,7 +3493,7 @@ function updatePayAmounts(tcTotalId, tcFeeId, trTotalId, base) {
   if (elTrT) elTrT.textContent = fmt(base);
 }
 
-function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, detalleAbonos, comision, copBruto) {
+function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, abono, labelConcepto, detalleAbonos, comision, copBruto, grupoCompletoIndividual) {
   const aviso = document.getElementById(idAviso);
   const input = document.getElementById(idInput);
   if (!aviso || !input) return 0;
@@ -3498,8 +3502,17 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
   // saldo pendiente se calcula siempre sobre el monto base, nunca se reduce
   // por la comisión pagada. `comision` (si > 0) solo se usa para mostrarle al
   // participante que lo que realmente salió de su bolsillo fue abono+comisión.
-  const restante = Math.max(0, total - abono);
-  const cubierto = restante <= 0;
+  //
+  // `grupoCompletoIndividual` (ver conceptoGrupoCompleto_) prevalece sobre la
+  // aritmética: la tabla de precios del frontend es fija y no sabe de
+  // descuentos/ajustes puntuales que el admin haya negociado y registrado
+  // directamente en Pagos — si el admin ya marcó "Completo" la fila de CADA
+  // participante para este concepto, el grupo está pagado aunque la suma no
+  // alcance el precio de tabla. Sin esto, un ajuste manual del admin dejaba
+  // al participante viendo un "saldo pendiente" que en realidad no existe.
+  const restanteBruto = Math.max(0, total - abono);
+  const cubierto = restanteBruto <= 0 || !!grupoCompletoIndividual;
+  const restante = cubierto ? 0 : restanteBruto;
   aviso.style.display = 'block';
   const detalles = Array.isArray(detalleAbonos) ? detalleAbonos : [];
   // Un solo abono: la fecha se muestra junto al total, como antes. Dos o más
