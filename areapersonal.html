@@ -2089,6 +2089,11 @@ let conTiq = false;
 let soloAct = false;
 let sinPagoFinal = false; // World Challenge: grupo cuyo Pago Final es 0 (Solo Actividades/Solo World Challenge) — oculta el paso "Pago final" del stepper
 let esStaffView = false;
+// Colegios Redcol pagan de forma centralizada al colegio, no cada familia por
+// su cuenta (ver esColegioRedcol_/REDCOL_COLEGIOS_KEYWORDS) — el propio
+// participante no debe ver ni gestionar los pasos de pago (Reserva/Tiquete/
+// Pago final) en su área personal.
+let esRedcolGrupo = false;
 let esComercialOnly = false;
 let _gatedOnlySession = false; // true cuando se entra directo a admin/comercial sin datos de participante real
 let grupoPaso = 1;
@@ -2873,6 +2878,20 @@ function activarPrograma(key, opts) {
   if (btnContinuar && soloAct) {
     btnContinuar.textContent = conTiq ? 'Continuar al pago del tiquete →' : 'Continuar al pago final →';
   }
+  // Redcol: el colegio paga de forma centralizada — el participante no debe
+  // ver ni gestionar los pasos de pago en su propia área personal (ver
+  // esColegioRedcol_ y REDCOL_COLEGIOS_KEYWORDS).
+  esRedcolGrupo = programParticipants.some(p => {
+    const n = normalizeParticipant(p) || p;
+    return (n.tipo || '').toLowerCase().includes('jug') && esColegioRedcol_(n.club_colegio);
+  });
+  // El colegio ya paga por ellos y firma en su nombre — no necesitan aceptar
+  // T&C individualmente ni pasar por Reserva/Tiquete/Pago final. Van directo
+  // a Documentación (esos 4 pasos quedan ocultos del stepper, ver
+  // STEP_DEFS/buildSteps).
+  if (esRedcolGrupo && grupoPaso < 6) {
+    actualizarPaso(6); // actualiza grupoPaso en memoria y persiste en la hoja (nunca retrocede)
+  }
   // Staff: saltar al paso de documentación directamente
   esStaffView = programParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
   if (esStaffView) { showStaffView(); return true; }
@@ -3086,10 +3105,10 @@ function applyPasoActual(paso, opts) {
 // ── STEPS ────────────────────────────────────────────────────────────────────
 const STEP_DEFS = [
   {title:'Inscripción', desc:'Completada', panel:null, done:true},
-  {title:'Términos y Condiciones', desc:'Lee y acepta los T&C', panel:'panel-tc', skipForStaff:true},
-  {title:'Pago de reserva', desc:'Fecha límite: 1 de junio 2026', panel:'panel2', skipIfSoloAct:true, skipForStaff:true},
-  {title:'Pago tiquete',    desc:'Fecha límite: 1 de junio 2026', panel:'panel-tiq', tiqOnly:true, skipForStaff:true},
-  {title:'Pago final',      desc:'Fecha límite: 30 de julio 2026', panel:'panel3', skipForStaff:true, skipIfSinPagoFinal:true},
+  {title:'Términos y Condiciones', desc:'Lee y acepta los T&C', panel:'panel-tc', skipForStaff:true, skipIfRedcol:true},
+  {title:'Pago de reserva', desc:'Fecha límite: 1 de junio 2026', panel:'panel2', skipIfSoloAct:true, skipForStaff:true, skipIfRedcol:true},
+  {title:'Pago tiquete',    desc:'Fecha límite: 1 de junio 2026', panel:'panel-tiq', tiqOnly:true, skipForStaff:true, skipIfRedcol:true},
+  {title:'Pago final',      desc:'Fecha límite: 30 de julio 2026', panel:'panel3', skipForStaff:true, skipIfSinPagoFinal:true, skipIfRedcol:true},
   {title:'Documentación',   desc:'Pasaporte vigente', panel:'panel4'},
   {title:'¡Bienvenido!',      desc:'¡Nos vemos en Madrid!', panel:'panel-done'},
 ];
@@ -3123,7 +3142,7 @@ function buildSteps() {
   const row = document.getElementById('steps-row');
   row.innerHTML = '';
   const bienvenidaBloqueada = grupoPaso < 7;
-  const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct) && (!s.skipIfSinPagoFinal || !sinPagoFinal) && (!s.skipForStaff || !esStaffView));
+  const visible = STEP_DEFS.filter(s => (!s.tiqOnly || conTiq) && (!s.skipIfSoloAct || !soloAct) && (!s.skipIfSinPagoFinal || !sinPagoFinal) && (!s.skipForStaff || !esStaffView) && (!s.skipIfRedcol || !esRedcolGrupo));
   visible.forEach((s, i) => {
     const bloqueado = s.panel === 'panel-done' && bienvenidaBloqueada;
     const d = document.createElement('div');
@@ -4531,6 +4550,13 @@ function actualizarPaso(nuevoPaso) {
 }
 
 function continuarAReserva() {
+  // Redcol: el colegio paga de forma centralizada — salta directo a
+  // Documentación, sin pasar por ningún panel de pago (ver esRedcolGrupo).
+  if (esRedcolGrupo) {
+    actualizarPaso(6);
+    goPanel('panel4');
+    return;
+  }
   if (soloAct) {
     if (conTiq) {
       actualizarPaso(4);
