@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#0b1f3a;--blue:#1e5ba8;--blue-light:#3b7fd4;--blue-bright:#5a9de0;--white:#fff;--off:#f4f7fb;--text:#1a2e46;--muted:#4a6080;--border:rgba(11,31,58,0.1);--green:#166534;--gbg:rgba(21,128,61,0.08);--gborder:rgba(21,128,61,0.2)}
+:root{--navy:#0b1f3a;--blue:#1e5ba8;--blue-light:#3b7fd4;--blue-bright:#5a9de0;--white:#fff;--off:#f4f7fb;--text:#1a2e46;--muted:#4a6080;--border:rgba(11,31,58,0.1);--green:#166534;--gbg:rgba(21,128,61,0.08);--gborder:rgba(21,128,61,0.2);--red:#b91c1c}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--text)}
 nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
@@ -111,6 +111,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .ddesc{font-size:14px;color:var(--muted);line-height:1.5}
 .dstatus{margin-top:6px;font-size:13px;font-weight:500;color:var(--muted)}
 .dstatus.ok{color:var(--green)}
+.dstatus.rejected{color:var(--red)}
 .upload{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;margin-top:8px}
 .upload:hover{border-color:var(--blue-light);background:rgba(30,91,168,.03)}
 .upload p{font-size:12px;color:var(--muted);margin-top:5px}
@@ -1572,7 +1573,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="card">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
             <div class="ctitle" style="margin-bottom:0;flex:1">Participantes</div>
-            <input id="admin-search" type="text" placeholder="Buscar nombre o email..."
+            <input id="admin-search" type="text" placeholder="Buscar nombre, email o colegio..."
                    style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px;transition:border-color .2s"
                    onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
                    oninput="filterAdminTable()">
@@ -2405,6 +2406,41 @@ function updatePermisoDoc(u) {
   if (elReg) elReg.style.display = requiereDocsExtra ? '' : 'none';
 }
 
+// Pinta en cada documento su estado real de revisión (aprobado/rechazado/en
+// revisión), tal como lo dejó el admin desde la pestaña Documentos (ver
+// revisarDocumento en el backend) — antes esto SIEMPRE mostraba "⏳ Pendiente"
+// al recargar la página, aunque el documento ya estuviera subido o aprobado,
+// porque nunca se leía el estado guardado. Recibe el objeto CRUDO del
+// backend (no el normalizado) porque normalizeParticipant no incluye estos
+// campos _doc_*.
+function renderDocEstados(raw) {
+  if (!raw) return;
+  [
+    { tipo: 'pasaporte', statusId: 'ds1' },
+    { tipo: 'permiso', statusId: 'ds2' },
+    { tipo: 'registro_civil', statusId: 'ds4' }
+  ].forEach(({ tipo, statusId }) => {
+    const el = document.getElementById(statusId);
+    if (!el) return;
+    const url = raw['_doc_' + tipo + '_url'] || '';
+    const estado = raw['_doc_' + tipo + '_estado'] || '';
+    const motivo = raw['_doc_' + tipo + '_motivo'] || '';
+    const verLink = url ? ` <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="margin-left:4px">Ver</a>` : '';
+    el.classList.remove('ok', 'rejected');
+    if (estado === 'aprobado') {
+      el.innerHTML = `✅ Documento aprobado${verLink}`;
+      el.classList.add('ok');
+    } else if (estado === 'rechazado') {
+      el.innerHTML = `❌ Rechazado${motivo ? ': ' + escapeHtml(motivo) : ''} — sube un documento nuevo${verLink}`;
+      el.classList.add('rejected');
+    } else if (estado === 'pendiente') {
+      el.innerHTML = `⏳ Subido — en revisión por el equipo${verLink} <button onclick="resetDocumento('${tipo}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
+    } else {
+      el.innerHTML = '⏳ Pendiente';
+    }
+  });
+}
+
 // ── CÁLCULO DE TOTALES POR GRUPO ──────────────────────────────────────────────
 // Filtra al programa ACTIVO (programKeyActivo) — un mismo email con
 // inscripción en Clinic Y World Challenge tiene dos grupos independientes;
@@ -2947,6 +2983,7 @@ function loadParticipant(p) {
 
   updateDatosResumen(participant);
   updatePermisoDoc(participant);
+  renderDocEstados(p);
 
   // Ocultar posición si el participante es acompañante
   const posicionItem = document.getElementById('d-posicion-item');
@@ -4177,9 +4214,9 @@ function uploadDocumento(inp, tipoDocumento) {
     })
       .then(() => {
         if (statusEl) {
-          statusEl.innerHTML = `✅ ${file.name} <button onclick="resetDocumento('${tipoDocumento}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
-          statusEl.classList.add('ok');
-          statusEl.style.color = 'var(--green)';
+          statusEl.innerHTML = `⏳ ${file.name} subido — en revisión por el equipo <button onclick="resetDocumento('${tipoDocumento}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
+          statusEl.classList.remove('ok', 'rejected');
+          statusEl.style.color = '';
         }
       })
       .catch(err => {
@@ -4508,11 +4545,30 @@ function continuarAReserva() {
   }
 }
 
+// El proceso ya NO se marca completo con este clic: el admin debe aprobar
+// cada documento requerido desde el panel Documentos (ver revisarDocumento en
+// el backend) — solo cuando TODOS quedan aprobados se avanza paso_actual a 7
+// y se dispara automáticamente el correo de "proceso completado". Aquí solo
+// se avisa al padre y se valida que no falte ningún documento por subir.
 function finalizarInscripcion() {
-  actualizarPaso(7);
-  const idxDocs = STEP_DEFS.findIndex(s => s.panel === 'panel4');
-  if (idxDocs > -1) STEP_DEFS[idxDocs].done = true;
-  goPanel('panel-done');
+  const requeridos = [
+    { statusId: 'ds1', wrapId: null },
+    { statusId: 'ds2', wrapId: 'permiso-doc' },
+    { statusId: 'ds4', wrapId: 'registro-civil-doc' }
+  ];
+  const faltaAlguno = requeridos.some(({ statusId, wrapId }) => {
+    if (wrapId) {
+      const wrapEl = document.getElementById(wrapId);
+      if (wrapEl && wrapEl.style.display === 'none') return false; // no aplica a este participante
+    }
+    const el = document.getElementById(statusId);
+    return el && el.textContent.trim().startsWith('⏳ Pendiente');
+  });
+  if (faltaAlguno) {
+    alert('Debes subir todos los documentos requeridos antes de continuar.');
+    return;
+  }
+  alert('¡Gracias! Nuestro equipo revisará tus documentos y te avisaremos por correo apenas tu proceso esté 100% completo.');
 }
 
 // ── GUIA BIENVENIDA — visible en cada sesión, se puede cerrar pero no se recuerda
@@ -6994,7 +7050,7 @@ function filterAdminTable() {
   const filtrados = base.filter(row => {
     const n = normalizeParticipant(row) || {};
     if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
-    return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.acudiente || '').toLowerCase().includes(q);
+    return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.acudiente || '').toLowerCase().includes(q) || (n.club_colegio || '').toLowerCase().includes(q);
   });
   renderAdminTable(filtrados);
   if (countEl) countEl.textContent = filtrados.length + (filtrados.length === 1 ? ' resultado' : ' resultados');
@@ -8155,9 +8211,12 @@ function switchParticipantesTab(tab) {
 // Regla igual a getDocumentosRequeridos en el backend: se requieren pasaporte +
 // permiso de salida + registro civil solo si el participante tiene tiquete
 // aéreo Victory Y es menor de edad (edad de referencia al 2-oct-2026). En
-// cualquier otro caso solo se requiere pasaporte. El estado de subida
-// (_doc_pasaporte/_doc_permiso/_doc_registro_civil) viene calculado por el
-// backend a partir de la hoja "Documentos" (ver getAdminParticipantes).
+// cualquier otro caso solo se requiere pasaporte. El estado de cada documento
+// (url/estado/motivo, calculado por el backend desde la hoja "Documentos" —
+// ver getAdminParticipantes y revisarDocumento) ya NO es un simple booleano
+// "subido": el checkbox solo aparece marcado cuando un admin lo aprobó
+// explícitamente. Subir un documento nuevo (o rechazarlo) lo vuelve a dejar
+// pendiente de revisión.
 let adminDocsRows = [];
 
 function renderAdminDocumentosTab() {
@@ -8173,14 +8232,17 @@ function renderAdminDocumentosTab() {
     const esMenor = edad !== null && edad < 18;
     const tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
     const requiere3 = tieneTiquete && esMenor;
-    const pasaporte = !!row['_doc_pasaporte'];
-    const permiso = requiere3 ? !!row['_doc_permiso'] : null;
-    const registroCivil = requiere3 ? !!row['_doc_registro_civil'] : null;
-    const completo = requiere3 ? (pasaporte && permiso && registroCivil) : pasaporte;
+    const pasaporte = { url: row['_doc_pasaporte_url'] || '', estado: row['_doc_pasaporte_estado'] || '', motivo: row['_doc_pasaporte_motivo'] || '' };
+    const permiso = requiere3 ? { url: row['_doc_permiso_url'] || '', estado: row['_doc_permiso_estado'] || '', motivo: row['_doc_permiso_motivo'] || '' } : null;
+    const registroCivil = requiere3 ? { url: row['_doc_registro_civil_url'] || '', estado: row['_doc_registro_civil_estado'] || '', motivo: row['_doc_registro_civil_motivo'] || '' } : null;
+    const completo = requiere3
+      ? (pasaporte.estado === 'aprobado' && permiso.estado === 'aprobado' && registroCivil.estado === 'aprobado')
+      : pasaporte.estado === 'aprobado';
     return {
       nombre: n.nombre || '(sin nombre)',
       email: n.email || '',
       tipo: n.tipo || '',
+      programa: row['_program_key'] || '',
       pasaporte, permiso, registroCivil, completo
     };
   });
@@ -8188,9 +8250,25 @@ function renderAdminDocumentosTab() {
   filterAdminDocumentosTable();
 }
 
-function docCheckCell(estado) {
-  if (estado === null) return '<span style="color:var(--muted);font-size:12px">No aplica</span>';
-  return `<input type="checkbox" disabled ${estado ? 'checked' : ''} style="width:18px;height:18px;accent-color:#059669;cursor:default">`;
+function docReviewCell(email, tipo, programa, doc) {
+  if (doc === null) return '<span style="color:var(--muted);font-size:12px">No aplica</span>';
+  if (!doc.url) return '<span style="color:var(--muted);font-size:12px">— Sin subir</span>';
+  const puedeEditar = isEditAdmin();
+  const etiquetas = {
+    aprobado: '<span style="color:#059669;font-weight:600;font-size:12px">✔ Aprobado</span>',
+    rechazado: '<span style="color:var(--red);font-weight:600;font-size:12px">✖ Rechazado</span>',
+    pendiente: '<span style="color:#b45309;font-weight:600;font-size:12px">⏳ En revisión</span>'
+  };
+  const etiqueta = etiquetas[doc.estado] || etiquetas.pendiente;
+  const motivo = doc.estado === 'rechazado' && doc.motivo ? `<div style="font-size:10px;color:var(--red);margin-top:2px;max-width:130px">${escapeHtml(doc.motivo)}</div>` : '';
+  const emailAttr = escapeHtml(email).replace(/'/g, "\\'");
+  const progAttr = escapeHtml(programa).replace(/'/g, "\\'");
+  const botones = puedeEditar ? `
+    <div style="display:flex;gap:4px;justify-content:center;margin-top:4px">
+      <button onclick="revisarDocumentoAdmin('${emailAttr}','${tipo}','aprobado','${progAttr}')" title="Aprobar" style="border:1px solid #059669;background:#fff;color:#059669;border-radius:5px;width:22px;height:22px;font-size:12px;cursor:pointer">✔</button>
+      <button onclick="revisarDocumentoAdmin('${emailAttr}','${tipo}','rechazado','${progAttr}')" title="Rechazar" style="border:1px solid var(--red);background:#fff;color:var(--red);border-radius:5px;width:22px;height:22px;font-size:12px;cursor:pointer">✖</button>
+    </div>` : '';
+  return `<div>${etiqueta}<div style="margin-top:3px"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" style="font-size:11px">Ver 📄</a></div>${motivo}${botones}</div>`;
 }
 
 function renderAdminDocumentosBody(rows) {
@@ -8201,9 +8279,9 @@ function renderAdminDocumentosBody(rows) {
     <tr>
       <td style="font-weight:500">${escapeHtml(r.nombre)}</td>
       <td>${escapeHtml(r.tipo)}</td>
-      <td style="text-align:center">${docCheckCell(r.pasaporte)}</td>
-      <td style="text-align:center">${docCheckCell(r.permiso)}</td>
-      <td style="text-align:center">${docCheckCell(r.registroCivil)}</td>
+      <td style="text-align:center">${docReviewCell(r.email, 'pasaporte', r.programa, r.pasaporte)}</td>
+      <td style="text-align:center">${docReviewCell(r.email, 'permiso', r.programa, r.permiso)}</td>
+      <td style="text-align:center">${docReviewCell(r.email, 'registro_civil', r.programa, r.registroCivil)}</td>
       <td style="text-align:center"><input type="checkbox" disabled ${r.completo ? 'checked' : ''} style="width:20px;height:20px;accent-color:#1e5ba8;cursor:default"></td>
     </tr>
   `).join('');
@@ -8216,6 +8294,37 @@ function filterAdminDocumentosTable() {
   const term = (searchEl ? searchEl.value : '').toLowerCase().trim();
   const filtrados = !term ? adminDocsRows : adminDocsRows.filter(r => r.nombre.toLowerCase().includes(term) || r.email.toLowerCase().includes(term));
   renderAdminDocumentosBody(filtrados);
+}
+
+// Aprueba o rechaza un documento desde la pestaña admin "Documentos". Al
+// rechazar, pide un motivo breve (obligatorio) que el padre verá en su área
+// personal. Al aprobar el último documento requerido de un participante, el
+// backend avanza su proceso a completado y dispara el correo final — sin
+// intervención manual (ver revisarDocumento en APPS_SCRIPT_CODE.gs).
+function revisarDocumentoAdmin(email, tipo, decision, programa) {
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  let motivo = '';
+  if (decision === 'rechazado') {
+    motivo = (prompt('Motivo del rechazo (el padre lo verá en su área personal):', '') || '').trim();
+    if (!motivo) return;
+  }
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify({ action: 'revisar_documento', email, tipo_documento: tipo, decision, motivo, programa, token: adminSessionToken })
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res && res.ok) {
+        loadAdmin(true);
+      } else {
+        alert('No se pudo actualizar el documento: ' + (res && res.error || 'error desconocido'));
+      }
+    })
+    .catch(err => {
+      console.error('revisarDocumentoAdmin error:', err);
+      alert('Error de conexión al actualizar el documento.');
+    });
 }
 
 function parseFechaNacFront(v) {
