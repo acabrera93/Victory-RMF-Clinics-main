@@ -436,6 +436,11 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
     // Fallback a columna D (índice 3) si no se encontró por cabecera
     if (emailCol < 0) emailCol = 3;
 
+    // Estado de revisión de documentos (hoja "Documentos") — para que el
+    // propio participante vea en su área personal si su documento sigue en
+    // revisión, fue aprobado, o fue rechazado (y por qué), ver revisarDocumento.
+    const mapaDocumentos = leerMapaDocumentos_(sheet.getParent());
+
     for (let i = 1; i < data.length; i++) {
       if (!data[i][emailCol]) continue;
       if (data[i][emailCol].toString().toLowerCase().trim() !== emailNorm) continue;
@@ -462,6 +467,17 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
       // rutear al área personal correcta y para saber a qué presupuesto
       // apuntar en las llamadas de pago (registrar_pago, etc.)
       participant['_program_key'] = fuente.programKey;
+      const docVacioP = { url: '', estado: '', motivo: '' };
+      const docsEstadoP = mapaDocumentos[emailNorm] || { pasaporte: docVacioP, permiso: docVacioP, registro_civil: docVacioP };
+      participant['_doc_pasaporte_url'] = docsEstadoP.pasaporte.url;
+      participant['_doc_pasaporte_estado'] = docsEstadoP.pasaporte.estado;
+      participant['_doc_pasaporte_motivo'] = docsEstadoP.pasaporte.motivo;
+      participant['_doc_permiso_url'] = docsEstadoP.permiso.url;
+      participant['_doc_permiso_estado'] = docsEstadoP.permiso.estado;
+      participant['_doc_permiso_motivo'] = docsEstadoP.permiso.motivo;
+      participant['_doc_registro_civil_url'] = docsEstadoP.registro_civil.url;
+      participant['_doc_registro_civil_estado'] = docsEstadoP.registro_civil.estado;
+      participant['_doc_registro_civil_motivo'] = docsEstadoP.registro_civil.motivo;
       // Adjuntar abonos validados (Completo/Parcial) por concepto, desde el
       // sheet de presupuesto del MISMO programa que este participante.
       const nombreParaAbonos = participant['Nombre completo'] || participant['nombre'] || participant['Nombre'] || '';
@@ -922,55 +938,137 @@ function actualizarPasoTodos(email, pasoActual, programa) {
   }
 }
 
-function buildProcesoCompletadoHtml_(nombreCompleto, programa) {
-  const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
-  const esWC = esWorldChallenge_(programa);
-  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
-  const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
-  const parrafoIntro = esWC
-    ? 'Ahora solo queda contar los días para vivir esta experiencia única en la Ciudad Deportiva del Real Madrid. Nuestro equipo ya tiene todo tu registro listo para el Real Madrid Foundation World Challenge 2027.'
-    : 'Ahora solo queda contar los días para vivir esta experiencia única en la Ciudad Deportiva del Real Madrid. Nuestro equipo ya tiene todo tu registro listo para el Real Madrid Foundation Clinic 2026.';
-  const parrafoComunicados = esWC
-    ? 'Puedes volver a tu área personal cuando quieras para ver los detalles de tu viaje, el álbum de fotos (disponible durante y después del programa), y cualquier comunicado que enviemos antes de marzo.'
-    : 'Puedes volver a tu área personal cuando quieras para ver los detalles de tu viaje, el álbum de fotos (disponible durante y después del programa), y cualquier comunicado que enviemos antes de octubre.';
+// Plantilla con tabla HTML (role="presentation") en vez de flexbox/divs —
+// mejor soporte en Outlook/clientes de correo legados que la versión
+// anterior. Ver documento de diseño con el resto del sistema visual
+// (buildDocumentoRechazadoHtml_ usa la misma base).
+function buildProcesoCompletadoHtml_(primerNombre, nombrePrograma, linkBienvenida) {
+  const hitos = [
+    'Términos y condiciones aceptados',
+    'Reserva confirmada',
+    'Pago final completado',
+    'Documentación validada'
+  ];
+  const filasHitos = hitos.map(function (texto) {
+    return `
+                <tr>
+                  <td style="padding:9px 0; border-bottom:1px solid #eef1f5;">
+                    <table role="presentation" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="24" valign="middle">
+                          <div style="width:22px; height:22px; line-height:22px; border-radius:50%; background-color:#1e5ba8; text-align:center; font-family:Arial, sans-serif; font-size:12px; color:#ffffff;">&#10003;</div>
+                        </td>
+                        <td style="padding-left:12px; font-family:'DM Sans', Arial, sans-serif; font-size:15px; color:#1a2c4a;">
+                          ${texto}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>`;
+  }).join('');
+
   return `
-<div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;">
-    <div style="background:#0b1f3a;padding:32px 30px 26px;text-align:center;">
-      <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" alt="Victory" style="height:34px;margin:0 8px;">
-      <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" alt="RMF" style="height:34px;margin:0 8px;">
-      <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel" style="height:34px;margin:0 8px;">
-    </div>
-    <div style="background:#0b1f3a;padding:0 30px 40px;text-align:center;">
-      <div style="font-size:52px;line-height:1;margin-bottom:6px;">&#127881;&#9989;</div>
-      <h1 style="font-family:'Bebas Neue',sans-serif;color:#fff;font-size:32px;letter-spacing:1px;margin:0 0 6px;line-height:1.2;">¡Todo listo, ${primerNombre}!</h1>
-      <div style="color:rgba(255,255,255,.75);font-size:14px;">Tu proceso de inscripción está 100% completo</div>
-    </div>
-    <div style="padding:34px 34px 10px;color:#1a2c4a;">
-      <p style="font-size:18px;font-weight:500;color:#0b1f3a;margin:0 0 18px;">Ya completaste cada paso del proceso — pagos, documentos, todo en orden.</p>
-      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">${parrafoIntro}</p>
-      <div style="background:#f4f7fb;border-radius:10px;padding:18px 20px;margin:22px 0;">
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Términos y condiciones aceptados</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Pago de reserva confirmado</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Pago final confirmado</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1a2c4a;padding:6px 0;"><span style="color:#00a86b;font-weight:700;">&#10003;</span> Documentación validada</div>
-      </div>
-      <p style="font-size:16px;line-height:1.7;margin:0 0 18px;">${parrafoComunicados}</p>
-      <div style="text-align:center;margin:28px 0 8px;">
-        <a href="https://victory.com.es/areapersonal.html?goto=done" style="display:inline-block;background:#1e5ba8;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 30px;border-radius:8px;">Ver mi Bienvenida →</a>
-      </div>
-      <p style="text-align:center;font-size:13px;color:#6b7688;margin-top:6px;">Te lleva directo a tu pantalla de bienvenida al programa.</p>
-    </div>
-    <div style="padding:10px 34px 30px;color:#1a2c4a;">
-      <p style="margin:2px 0;font-size:14px;font-weight:700;color:#0b1f3a;margin-top:14px;">Con emoción por lo que viene,</p>
-      <p style="margin:2px 0;font-size:14px;">Equipo Victory Sports · Fundación Revel</p>
-      <p style="margin:2px 0;font-size:14px;">${nombrePrograma}</p>
-    </div>
-    <div style="background:#f4f7fb;padding:20px 30px;text-align:center;font-size:12px;color:#8a93a6;">
-      ¿Dudas? Escríbenos por WhatsApp o a <a href="mailto:alejandro.cabrera@fundacionrevel.net" style="color:#1e5ba8;text-decoration:none;">alejandro.cabrera@fundacionrevel.net</a>
-    </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proceso completado</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef1f5;">
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#eef1f5;">
+    ¡Tu proceso para ${nombrePrograma} quedó 100% validado!
   </div>
-</div>`;
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f5; width:100%;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:14px; overflow:hidden;">
+
+          <tr>
+            <td style="background-color:#0b1f3a; padding:22px 20px;" align="center">
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+                <tr>
+                  <td style="padding:0 10px;">
+                    <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" width="90" alt="Victory Sports" style="display:block; height:auto; max-height:28px; width:auto; border:0;">
+                  </td>
+                  <td style="padding:0 10px; border-left:1px solid rgba(255,255,255,0.2); border-right:1px solid rgba(255,255,255,0.2);">
+                    <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" width="110" alt="Real Madrid Foundation" style="display:block; height:auto; max-height:28px; width:auto; border:0;">
+                  </td>
+                  <td style="padding:0 10px;">
+                    <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" width="90" alt="Fundación Revel" style="display:block; height:auto; max-height:28px; width:auto; border:0;">
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#1e5ba8; padding:10px 36px; text-align:center;">
+              <p style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:13px; font-weight:700; letter-spacing:0.4px; color:#ffffff; text-transform:uppercase;">
+                Proceso 100% completado
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:36px 36px 8px 36px;">
+              <h1 style="margin:0 0 18px 0; font-family:'Bebas Neue', Arial, sans-serif; font-size:30px; line-height:1.15; letter-spacing:0.5px; color:#0b1f3a; text-transform:uppercase;">
+                ¡Todo listo, ${primerNombre}!
+              </h1>
+              <p style="margin:0 0 22px 0; font-family:'DM Sans', Arial, sans-serif; font-size:15px; line-height:1.6; color:#1a2c4a;">
+                Completaste el 100% del proceso de inscripción para <strong>${nombrePrograma}</strong>. Este es tu resumen:
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                ${filasHitos}
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 36px 8px 36px;">
+              <p style="margin:0 0 24px 0; font-family:'DM Sans', Arial, sans-serif; font-size:14px; line-height:1.6; color:#8a93a6;">
+                Ya tienes todo listo para vivir esta experiencia. Ingresa a tu área personal para ver los próximos pasos y los detalles finales de tu viaje.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 36px 36px 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color:#1e5ba8; border-radius:8px;">
+                    <a href="${linkBienvenida}" style="display:inline-block; padding:14px 34px; font-family:'DM Sans', Arial, sans-serif; font-size:15px; font-weight:700; letter-spacing:0.3px; color:#ffffff; text-decoration:none; border-radius:8px;">
+                      VER MIS PRÓXIMOS PASOS
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#f4f7fb; padding:22px 36px; text-align:center;">
+              <p style="margin:0 0 4px 0; font-family:'DM Sans', Arial, sans-serif; font-size:13px; color:#1a2c4a;">
+                Alejandro Cabrera · Fundación Revel
+              </p>
+              <p style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:12px; color:#8a93a6;">
+                WhatsApp +34 620 301 690 · alejandro.cabrera@fundacionrevel.net
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 function enviarCorreoProcesoCompletado_(email, nombreCompleto, programa) {
@@ -978,9 +1076,10 @@ function enviarCorreoProcesoCompletado_(email, nombreCompleto, programa) {
     if (!email || !nombreCompleto) return;
     const esWC = esWorldChallenge_(programa);
     const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
     const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
     const asunto = String.fromCodePoint(0x2705) + ' ¡Todo listo, ' + primerNombre + '!';
-    const htmlBody = buildProcesoCompletadoHtml_(nombreCompleto, programa);
+    const htmlBody = buildProcesoCompletadoHtml_(primerNombre, nombrePrograma, 'https://victory.com.es/areapersonal.html?goto=done');
     GmailApp.sendEmail(email, asunto, 'Has completado tu proceso de inscripción. Ingresa a tu área personal para ver los detalles: https://victory.com.es/areapersonal.html?goto=done', {
       htmlBody: htmlBody,
       name: nombreProgramaCorto
@@ -1030,6 +1129,7 @@ function doPost(e) {
         if (parsed.action === 'agregar_abono_pago') return agregarAbonoPago(parsed);
         if (parsed.action === 'confirmar_pago_pendiente') return confirmarPagoPendiente(parsed);
         if (parsed.action === 'actualizar_estado_pago') return actualizarEstadoPago(parsed);
+        if (parsed.action === 'revisar_documento') return revisarDocumento(parsed);
         if (parsed.action === 'sincronizar_participantes') return sincronizarParticipantes(parsed);
         if (parsed.action === 'admin_acceso_guardar') return guardarAdminAcceso(parsed);
         if (parsed.action === 'guardar_comercial') return guardarComercial(parsed);
@@ -1489,7 +1589,26 @@ function getDocumentosSheet_(programa, create) {
       'comprobante_reserva', 'comprobante_tiquete', 'comprobante_final'
     ]]);
   }
+  if (sheet) ensureDocumentosHeaders_(sheet);
   return sheet;
+}
+
+// Agrega, sin pisar nada existente, las columnas de estado/motivo de revisión
+// (doc_<tipo>_estado, doc_<tipo>_motivo) que necesita el flujo de aprobación
+// de documentos (ver revisarDocumento) — hojas "Documentos" creadas antes de
+// este cambio no las tenían.
+function ensureDocumentosHeaders_(sheet) {
+  const requeridas = [
+    'doc_pasaporte_estado', 'doc_pasaporte_motivo',
+    'doc_permiso_estado', 'doc_permiso_motivo',
+    'doc_registro_civil_estado', 'doc_registro_civil_motivo'
+  ];
+  const lastCol = sheet.getLastColumn();
+  const headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); }) : [];
+  const faltantes = requeridas.filter(function (h) { return headers.indexOf(h) < 0; });
+  if (faltantes.length) {
+    sheet.getRange(1, lastCol + 1, 1, faltantes.length).setValues([faltantes]);
+  }
 }
 
 // ───── ACTUALIZAR SHEETS ───────────────────────────────────────────────────────
@@ -1541,6 +1660,16 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
     if (colIndex >= 0) {
       const formula = `=HYPERLINK("${fileUrl}","${fileName}")`;
       sheet.getRange(rowIndex, colIndex + 1).setValue(formula);
+      // Cada (re)subida reinicia la revisión: si el padre corrige un
+      // documento rechazado (o reemplaza uno ya aprobado), el check de
+      // "aprobado" desaparece hasta que el admin lo revise de nuevo — ver
+      // revisarDocumento().
+      if (!tipoPago) {
+        const colEstado = headers.indexOf(colName + '_estado');
+        const colMotivo = headers.indexOf(colName + '_motivo');
+        if (colEstado >= 0) sheet.getRange(rowIndex, colEstado + 1).setValue('pendiente');
+        if (colMotivo >= 0) sheet.getRange(rowIndex, colMotivo + 1).setValue('');
+      }
     }
 
     // Solo para documentos de identidad (pasaporte/permiso/registro_civil), no
@@ -1601,6 +1730,316 @@ function getDocumentosRequeridos(email, programa) {
     Logger.log('getDocumentosRequeridos error: ' + err);
     return 1;
   }
+}
+
+// ───── ESTADO DE REVISIÓN DE DOCUMENTOS (aprobación admin) ─────────────────────
+// Lee la hoja "Documentos" del spreadsheet ya abierto `ss` y arma, por email,
+// el estado de sus 3 documentos de identidad: { url, estado, motivo }.
+// - url: se extrae de la fórmula =HYPERLINK("url","nombre") que escribe
+//   updateSheetWithUpload (Sheets no expone el link de un HYPERLINK vía
+//   getValue(), solo el texto mostrado — hay que leer la fórmula).
+// - estado: 'aprobado' | 'rechazado' | 'pendiente' (subido, sin revisar aún)
+//   | '' (nada subido). Si la celda doc_<tipo>_estado está vacía pero SÍ hay
+//   url (documento subido antes de que existiera este flujo de revisión), se
+//   trata como 'pendiente' — nunca como 'aprobado': nada queda aprobado sin
+//   que un admin lo revise explícitamente.
+// - motivo: razón de rechazo escrita por el admin (vacío si no aplica).
+function leerMapaDocumentos_(ss) {
+  const mapa = {};
+  const docsSheet = ss.getSheetByName('Documentos');
+  if (!docsSheet) return mapa;
+  const numRows = docsSheet.getLastRow();
+  const numCols = docsSheet.getLastColumn();
+  if (numRows < 2 || numCols < 1) return mapa;
+  const range = docsSheet.getRange(1, 1, numRows, numCols);
+  const values = range.getValues();
+  const formulas = range.getFormulas();
+  const headers = values[0].map(function (h) { return String(h).toLowerCase().trim(); });
+  let emailCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = headers[j];
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailCol = j; break; }
+  }
+  if (emailCol < 0) return mapa;
+  const tipos = ['pasaporte', 'permiso', 'registro_civil'];
+  const cols = {};
+  tipos.forEach(function (t) {
+    cols[t] = {
+      doc: headers.indexOf('doc_' + t),
+      estado: headers.indexOf('doc_' + t + '_estado'),
+      motivo: headers.indexOf('doc_' + t + '_motivo')
+    };
+  });
+  for (let i = 1; i < values.length; i++) {
+    const email = String(values[i][emailCol] || '').toLowerCase().trim();
+    if (!email) continue;
+    const entry = {};
+    tipos.forEach(function (t) {
+      const c = cols[t];
+      let url = '';
+      const rawFormula = c.doc >= 0 ? formulas[i][c.doc] : '';
+      if (rawFormula) {
+        const m = /HYPERLINK\(\s*"([^"]+)"/i.exec(rawFormula);
+        if (m) url = m[1];
+      }
+      const rawVal = c.doc >= 0 ? values[i][c.doc] : '';
+      if (!url && rawVal && /^https?:\/\//i.test(String(rawVal))) url = String(rawVal);
+      const estadoGuardado = c.estado >= 0 ? String(values[i][c.estado] || '').toLowerCase().trim() : '';
+      const estado = estadoGuardado || (url ? 'pendiente' : '');
+      const motivo = c.motivo >= 0 ? String(values[i][c.motivo] || '') : '';
+      entry[t] = { url: url, estado: estado, motivo: motivo };
+    });
+    mapa[email] = entry;
+  }
+  return mapa;
+}
+
+// Devuelve true solo si TODOS los documentos requeridos (ver
+// getDocumentosRequeridos) de este participante están explícitamente
+// 'aprobado' — usada por revisarDocumento() para saber si ya puede disparar
+// el correo de proceso completado.
+function todosDocumentosAprobados_(email, programa) {
+  try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    const requeridos = getDocumentosRequeridos(emailNorm, programa);
+    const ss = SpreadsheetApp.openById(resolverSheets_(programa).sheetId);
+    const docs = leerMapaDocumentos_(ss)[emailNorm];
+    if (!docs) return false;
+    if (docs.pasaporte.estado !== 'aprobado') return false;
+    if (requeridos === 3 && (docs.permiso.estado !== 'aprobado' || docs.registro_civil.estado !== 'aprobado')) return false;
+    return true;
+  } catch (err) {
+    Logger.log('todosDocumentosAprobados_ error: ' + err);
+    return false;
+  }
+}
+
+// El admin aprueba o rechaza UN documento de identidad ya subido. Al aprobar
+// el último que faltaba, avanza paso_actual a 7 — lo que a su vez dispara
+// (dentro de actualizarPasoTodos) el correo de "proceso completado", sin que
+// el participante tenga que hacer nada más. Rechazar solo dejar el motivo
+// registrado; el participante lo ve al recargar su área personal y puede
+// volver a subir el documento (lo que reinicia el estado a 'pendiente', ver
+// updateSheetWithUpload).
+function revisarDocumento(data) {
+  try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
+    const email = String(data.email || '').toLowerCase().trim();
+    const tipo = String(data.tipo_documento || '').trim();
+    const decision = String(data.decision || '').trim();
+    const motivo = String(data.motivo || '').trim();
+    const programa = data.programa || '';
+    const tiposValidos = ['pasaporte', 'permiso', 'registro_civil'];
+    if (!email || tiposValidos.indexOf(tipo) < 0 || ['aprobado', 'rechazado'].indexOf(decision) < 0) {
+      return sendResponse(400, { ok: false, error: 'email, tipo_documento y decision son requeridos' });
+    }
+
+    const sheet = getDocumentosSheet_(programa, true);
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0] || [];
+    let emailCol = headers.indexOf('email');
+    if (emailCol < 0) emailCol = 0;
+    let rowIndex = -1;
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][emailCol] || '').toLowerCase().trim() === email) { rowIndex = i + 1; break; }
+    }
+    if (rowIndex < 0) return sendResponse(404, { ok: false, error: 'El participante no tiene documentos subidos' });
+
+    const colEstado = headers.indexOf('doc_' + tipo + '_estado');
+    const colMotivo = headers.indexOf('doc_' + tipo + '_motivo');
+    if (colEstado >= 0) sheet.getRange(rowIndex, colEstado + 1).setValue(decision);
+    if (colMotivo >= 0) sheet.getRange(rowIndex, colMotivo + 1).setValue(decision === 'rechazado' ? motivo : '');
+
+    if (decision === 'rechazado') {
+      try { notificarDocumentoRechazado_(email, tipo, motivo, programa); } catch (e3) { Logger.log('revisarDocumento -> notificarDocumentoRechazado_ error: ' + e3); }
+    }
+    if (decision === 'aprobado' && todosDocumentosAprobados_(email, programa)) {
+      try { actualizarPasoTodos(email, 7, programa); } catch (e2) { Logger.log('revisarDocumento -> actualizarPasoTodos error: ' + e2); }
+    }
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('revisarDocumento error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// Busca el nombre completo del participante en la hoja principal — mismo
+// patrón que notificarDocumentoSubido, extraído aquí porque
+// notificarDocumentoRechazado_ lo necesita igual.
+function buscarNombrePorEmail_(email, programa) {
+  try {
+    const mainSheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
+    const mainData = mainSheet.getDataRange().getValues();
+    const headers = mainData[0] || [];
+    let emailCol = -1, nombreCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase();
+      if (h === 'email' && emailCol < 0) emailCol = j;
+      if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
+    }
+    if (emailCol < 0) return '';
+    for (let i = 1; i < mainData.length; i++) {
+      if (String(mainData[i][emailCol] || '').toLowerCase().trim() === email) {
+        return nombreCol >= 0 ? String(mainData[i][nombreCol] || '') : '';
+      }
+    }
+  } catch (err) {
+    Logger.log('buscarNombrePorEmail_ error: ' + err);
+  }
+  return '';
+}
+
+// Correo de "documento rechazado". Se envía TAL CUAL (mismo asunto y mismo
+// htmlBody) al participante y, como copia de confirmación, al admin — con el
+// motivo del rechazo incluido en ambos, para que quede constancia de qué se
+// le pidió corregir a cada quien.
+function notificarDocumentoRechazado_(email, tipoDoc, motivo, programa) {
+  try {
+    const esWC = esWorldChallenge_(programa);
+    const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+    const nombre = buscarNombrePorEmail_(email, programa);
+    const primerNombre = obtenerNombrePila_(nombre) || nombre || '';
+    const etiquetasDoc = { pasaporte: 'pasaporte', permiso: 'permiso de salida del país', registro_civil: 'registro civil de nacimiento' };
+    const nombreDoc = etiquetasDoc[tipoDoc] || tipoDoc;
+    const htmlBody = buildDocumentoRechazadoHtml_(primerNombre, nombreDoc, motivo, 'https://victory.com.es/areapersonal.html', nombrePrograma);
+    const asunto = '❌ Debes volver a subir tu ' + nombreDoc + ' — ' + nombreProgramaCorto;
+    const textoPlano = 'Tu documento (' + nombreDoc + ') fue rechazado.\n\nMotivo: ' + motivo +
+      '\n\nIngresa a tu área personal para volver a subirlo: https://victory.com.es/areapersonal.html';
+
+    GmailApp.sendEmail(email, asunto, textoPlano, { htmlBody: htmlBody, name: nombreProgramaCorto });
+    GmailApp.sendEmail(
+      'alejandro.cabrera@fundacionrevel.net',
+      '[Admin] Copia — ' + asunto + ' (' + (nombre || email) + ')',
+      textoPlano,
+      { htmlBody: htmlBody, name: nombreProgramaCorto }
+    );
+  } catch (err) {
+    Logger.log('notificarDocumentoRechazado_ error: ' + err);
+  }
+}
+
+// Plantilla con tabla HTML (role="presentation") — mismo sistema visual que
+// buildProcesoCompletadoHtml_, mejor soporte en Outlook/clientes legados que
+// una versión con divs/flexbox. Tono: urgente pero no punitivo.
+function buildDocumentoRechazadoHtml_(primerNombre, nombreDocumento, motivoRechazo, linkAreaPersonal, nombrePrograma) {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documento por actualizar</title>
+</head>
+<body style="margin:0; padding:0; background-color:#eef1f5;">
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#eef1f5;">
+    Necesitamos que vuelvas a subir tu documento para continuar con el proceso de ${nombrePrograma}.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f5; width:100%;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:14px; overflow:hidden;">
+
+          <tr>
+            <td style="background-color:#0b1f3a; padding:22px 20px;" align="center">
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+                <tr>
+                  <td style="padding:0 10px;">
+                    <img src="https://lh3.googleusercontent.com/d/1Ve6IkxqSoXZWQM9triDoYm0FJ2aF4Ub6" width="90" alt="Victory Sports" style="display:block; height:auto; max-height:28px; width:auto; border:0;">
+                  </td>
+                  <td style="padding:0 10px; border-left:1px solid rgba(255,255,255,0.2); border-right:1px solid rgba(255,255,255,0.2);">
+                    <img src="https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ" width="110" alt="Real Madrid Foundation" style="display:block; height:auto; max-height:28px; width:auto; border:0;">
+                  </td>
+                  <td style="padding:0 10px;">
+                    <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" width="90" alt="Fundación Revel" style="display:block; height:auto; max-height:28px; width:auto; border:0;">
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:36px 36px 8px 36px;">
+              <p style="margin:0 0 6px 0; font-family:'DM Sans', Arial, sans-serif; font-size:13px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:#1e5ba8;">
+                ${nombrePrograma}
+              </p>
+              <h1 style="margin:0 0 18px 0; font-family:'Bebas Neue', Arial, sans-serif; font-size:28px; line-height:1.15; letter-spacing:0.5px; color:#0b1f3a; text-transform:uppercase;">
+                Ajustemos tu documento
+              </h1>
+              <p style="margin:0 0 16px 0; font-family:'DM Sans', Arial, sans-serif; font-size:15px; line-height:1.6; color:#1a2c4a;">
+                Hola ${primerNombre},
+              </p>
+              <p style="margin:0 0 20px 0; font-family:'DM Sans', Arial, sans-serif; font-size:15px; line-height:1.6; color:#1a2c4a;">
+                Revisamos el documento <strong>${nombreDocumento}</strong> que subiste y necesitamos que lo vuelvas a cargar antes de continuar con tu proceso.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color:#fef2f2; border-left:4px solid #b91c1c; border-radius:8px; padding:16px 20px;">
+                    <p style="margin:0 0 6px 0; font-family:'DM Sans', Arial, sans-serif; font-size:11px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:#b91c1c;">
+                      Motivo del ajuste
+                    </p>
+                    <p style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:15px; line-height:1.55; color:#1a2c4a;">
+                      ${motivoRechazo}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:22px 36px 8px 36px;">
+              <p style="margin:0 0 24px 0; font-family:'DM Sans', Arial, sans-serif; font-size:14px; line-height:1.6; color:#8a93a6;">
+                No te preocupes: la mayoría de las familias resuelven esto en menos de 5 minutos volviendo a subir el archivo correcto.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 36px 8px 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color:#1e5ba8; border-radius:8px;">
+                    <a href="${linkAreaPersonal}" style="display:inline-block; padding:14px 34px; font-family:'DM Sans', Arial, sans-serif; font-size:15px; font-weight:700; letter-spacing:0.3px; color:#ffffff; text-decoration:none; border-radius:8px;">
+                      SUBIR DOCUMENTO
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 36px 36px 36px;">
+              <p style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:13px; line-height:1.6; color:#8a93a6; text-align:center;">
+                ¿Dudas sobre qué documento subir? Responde a este correo o escríbenos por WhatsApp y te ayudamos enseguida.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#f4f7fb; padding:22px 36px; text-align:center;">
+              <p style="margin:0 0 4px 0; font-family:'DM Sans', Arial, sans-serif; font-size:13px; color:#1a2c4a;">
+                Alejandro Cabrera · Fundación Revel
+              </p>
+              <p style="margin:0; font-family:'DM Sans', Arial, sans-serif; font-size:12px; color:#8a93a6;">
+                WhatsApp +34 620 301 690 · alejandro.cabrera@fundacionrevel.net
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 // ───── ACTUALIZAR CONTADOR "X/Y" EN INSCRIPCIONES ──────────────────────────────
@@ -1812,34 +2251,11 @@ function getAdminParticipantes(params) {
     // construirMapaDescuentosReferido_/construirMapaAlianzasPorNombre_).
     const mapaDescuentos = construirMapaDescuentosReferido_(fuente.programKey);
     const mapaAlianzas = construirMapaAlianzasPorNombre_(params.programa);
-    // Estado de documentos subidos (hoja "Documentos", mismas columnas que
-    // escribe updateSheetWithUpload) — usado por la pestaña admin
-    // "Documentos" para marcar qué le falta subir a cada participante.
-    const mapaDocumentos = {};
-    const docsSheet = ss.getSheetByName('Documentos');
-    if (docsSheet) {
-      const docsData = docsSheet.getDataRange().getValues();
-      const docsHeaders = (docsData[0] || []).map(function(h) { return String(h).toLowerCase().trim(); });
-      let dEmailCol = -1;
-      for (let j = 0; j < docsHeaders.length; j++) {
-        const h = docsHeaders[j];
-        if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { dEmailCol = j; break; }
-      }
-      const dPasCol = docsHeaders.indexOf('doc_pasaporte');
-      const dPerCol = docsHeaders.indexOf('doc_permiso');
-      const dRegCol = docsHeaders.indexOf('doc_registro_civil');
-      if (dEmailCol >= 0) {
-        for (let i = 1; i < docsData.length; i++) {
-          const em = String(docsData[i][dEmailCol] || '').toLowerCase().trim();
-          if (!em) continue;
-          mapaDocumentos[em] = {
-            pasaporte: dPasCol >= 0 && docsData[i][dPasCol] !== '' && docsData[i][dPasCol] != null,
-            permiso: dPerCol >= 0 && docsData[i][dPerCol] !== '' && docsData[i][dPerCol] != null,
-            registro_civil: dRegCol >= 0 && docsData[i][dRegCol] !== '' && docsData[i][dRegCol] != null
-          };
-        }
-      }
-    }
+    // Estado de documentos subidos + revisados por el admin (hoja
+    // "Documentos") — usado por la pestaña admin "Documentos" para mostrar el
+    // enlace de cada archivo y permitir aprobar/rechazar (ver revisarDocumento
+    // y leerMapaDocumentos_).
+    const mapaDocumentos = leerMapaDocumentos_(ss);
     const result = [];
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -1872,10 +2288,17 @@ function getAdminParticipantes(params) {
       const alianzaInfoAdmin = obj['Alianza'] ? mapaAlianzas[normText_(obj['Alianza'])] : null;
       obj['alianza_nombre'] = alianzaInfoAdmin ? alianzaInfoAdmin.nombre : '';
       obj['alianza_precio_total'] = alianzaInfoAdmin ? String(alianzaInfoAdmin.precioTotal) : '';
-      const docsEstado = mapaDocumentos[emailValAdmin] || { pasaporte: false, permiso: false, registro_civil: false };
-      obj['_doc_pasaporte'] = docsEstado.pasaporte;
-      obj['_doc_permiso'] = docsEstado.permiso;
-      obj['_doc_registro_civil'] = docsEstado.registro_civil;
+      const docVacio = { url: '', estado: '', motivo: '' };
+      const docsEstado = mapaDocumentos[emailValAdmin] || { pasaporte: docVacio, permiso: docVacio, registro_civil: docVacio };
+      obj['_doc_pasaporte_url'] = docsEstado.pasaporte.url;
+      obj['_doc_pasaporte_estado'] = docsEstado.pasaporte.estado;
+      obj['_doc_pasaporte_motivo'] = docsEstado.pasaporte.motivo;
+      obj['_doc_permiso_url'] = docsEstado.permiso.url;
+      obj['_doc_permiso_estado'] = docsEstado.permiso.estado;
+      obj['_doc_permiso_motivo'] = docsEstado.permiso.motivo;
+      obj['_doc_registro_civil_url'] = docsEstado.registro_civil.url;
+      obj['_doc_registro_civil_estado'] = docsEstado.registro_civil.estado;
+      obj['_doc_registro_civil_motivo'] = docsEstado.registro_civil.motivo;
       result.push(obj);
     }
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
