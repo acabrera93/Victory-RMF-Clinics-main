@@ -1074,6 +1074,14 @@ function buildProcesoCompletadoHtml_(primerNombre, nombrePrograma, linkBienvenid
 function enviarCorreoProcesoCompletado_(email, nombreCompleto, programa) {
   try {
     if (!email || !nombreCompleto) return;
+    // Colegios Redcol pagan de forma centralizada — mismo criterio que
+    // notificarPagoConfirmado(): no se le envía a la familia (ni copia
+    // interna al admin) un correo de "proceso completado" atado a pagos que
+    // ella nunca hizo directamente.
+    if (participanteEsRedcol_(nombreCompleto, programa)) {
+      Logger.log('enviarCorreoProcesoCompletado_: omitido para ' + nombreCompleto + ' (colegio Redcol).');
+      return;
+    }
     const esWC = esWorldChallenge_(programa);
     const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
     const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
