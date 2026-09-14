@@ -4291,8 +4291,16 @@ function uploadDocumento(inp, tipoDocumento) {
         }
         // Confirmación explícita — antes el único indicio de que sí se subió
         // era este texto pequeño junto al recuadro, que varios padres no
-        // notaban y creían que el archivo no había llegado.
-        alert('✅ Tu documento "' + file.name + '" se subió correctamente.\n\nQuedará pendiente de aprobación por nuestro equipo — te avisaremos si necesitas corregir algo.');
+        // notaban y creían que el archivo no había llegado. El alert() se
+        // difiere un instante (setTimeout 0) para que el navegador alcance a
+        // PINTAR el cambio de arriba (de "⏳ Subiendo..." a "✅ subido") antes
+        // de que el diálogo bloqueante congele la página — si no, en algunos
+        // navegadores/WebViews móviles el alert() se dispara sobre el frame
+        // anterior sin repintar, y el padre ve el reloj "congelado" detrás
+        // del aviso, dando la impresión de que el documento nunca se subió.
+        setTimeout(() => {
+          alert('✅ Tu documento "' + file.name + '" se subió correctamente.\n\nQuedará pendiente de aprobación por nuestro equipo — te avisaremos si necesitas corregir algo.');
+        }, 0);
       })
       .catch(err => {
         console.error('Upload error:', err);
