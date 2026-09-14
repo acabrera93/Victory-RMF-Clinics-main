@@ -8404,7 +8404,7 @@ function docReviewCell(doc) {
   const etiquetas = {
     aprobado: '<span style="color:#059669;font-weight:600;font-size:12px">✓ Aprobado</span>',
     rechazado: '<span style="color:var(--red);font-weight:600;font-size:12px">✗ Rechazado</span>',
-    pendiente: '<span style="color:var(--muted);font-size:12px">— Pendiente</span>'
+    pendiente: '<span style="color:var(--red);font-weight:600;font-size:12px">⏳ Pendiente de aprobación</span>'
   };
   return etiquetas[doc.estado] || etiquetas.pendiente;
 }
