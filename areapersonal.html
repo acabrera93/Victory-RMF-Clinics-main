@@ -2330,6 +2330,21 @@ function normalizeParticipant(raw) {
     // presente. Mismo motivo de whitelist que referido_descuento_pct.
     alianza_nombre: rowVal(raw, 'alianza_nombre', 'Alianza', 'alianza') || '',
     alianza_precio_total: parseFloat(rowVal(raw, 'alianza_precio_total')) || 0,
+    // Estado de revisión de documentos (ver revisarDocumento/leerMapaDocumentos_
+    // en el backend) — sin estos en el whitelist, renderDocEstados() recibía
+    // (a través de loadParticipant, que usa el participante ya NORMALIZADO de
+    // allParticipants/programParticipants, no el objeto crudo) un objeto sin
+    // estos campos y siempre mostraba "Pendiente" aunque el documento ya
+    // estuviera aprobado o rechazado.
+    _doc_pasaporte_url: rowVal(raw, '_doc_pasaporte_url') || '',
+    _doc_pasaporte_estado: rowVal(raw, '_doc_pasaporte_estado') || '',
+    _doc_pasaporte_motivo: rowVal(raw, '_doc_pasaporte_motivo') || '',
+    _doc_permiso_url: rowVal(raw, '_doc_permiso_url') || '',
+    _doc_permiso_estado: rowVal(raw, '_doc_permiso_estado') || '',
+    _doc_permiso_motivo: rowVal(raw, '_doc_permiso_motivo') || '',
+    _doc_registro_civil_url: rowVal(raw, '_doc_registro_civil_url') || '',
+    _doc_registro_civil_estado: rowVal(raw, '_doc_registro_civil_estado') || '',
+    _doc_registro_civil_motivo: rowVal(raw, '_doc_registro_civil_motivo') || '',
   };
 }
 
