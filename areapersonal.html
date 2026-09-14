@@ -1619,10 +1619,16 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
             <span id="admin-docs-search-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
           </div>
           <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Todos deben subir <strong>pasaporte</strong>. Los menores de edad con tiquete aéreo Victory también deben subir <strong>permiso de salida</strong> y <strong>registro civil</strong>.</p>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <button id="doc-filtro-todos" onclick="setDocFiltroEstado('todos')" style="padding:7px 14px;border-radius:20px;border:1px solid var(--blue);background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Todos</button>
+            <button id="doc-filtro-pendientes" onclick="setDocFiltroEstado('pendientes')" style="padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Pendientes</button>
+            <button id="doc-filtro-rechazados" onclick="setDocFiltroEstado('rechazados')" style="padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Rechazados</button>
+            <button id="doc-filtro-completos" onclick="setDocFiltroEstado('completos')" style="padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Completos</button>
+          </div>
           <div class="ptable-wrap">
             <table class="ptable" id="admin-docs-table">
               <thead>
-                <tr><th>Nombre</th><th>Tipo</th><th style="text-align:center">Pasaporte</th><th style="text-align:center">Permiso salida</th><th style="text-align:center">Registro civil</th><th style="text-align:center">Documentación completa</th></tr>
+                <tr><th>Nombre</th><th>Tipo</th><th style="text-align:center">Pasaporte</th><th style="text-align:center">Permiso salida</th><th style="text-align:center">Registro civil</th><th style="text-align:center">Estado</th></tr>
               </thead>
               <tbody id="admin-docs-body">
                 <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
@@ -1997,6 +2003,17 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
     <div id="pagos-modal-body" style="max-height:68vh;overflow-y:auto;overflow-x:hidden;padding-right:4px"></div>
     <div id="pagos-modal-status" style="margin-top:12px;display:none;font-size:13px;padding:10px 14px;border-radius:8px;background:var(--off)"></div>
+  </div>
+</div>
+
+<!-- MODAL REVISIÓN DE DOCUMENTOS (pestaña admin Documentos) -->
+<div class="modal-overlay" id="doc-review-modal" onclick="if(event.target===this)closeDocReviewModal()">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-title">
+      <span>Documentos — <span id="doc-review-modal-nombre" style="color:var(--blue)"></span></span>
+      <button onclick="closeDocReviewModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px">×</button>
+    </div>
+    <div id="doc-review-modal-body" style="max-height:68vh;overflow-y:auto;overflow-x:hidden;padding-right:4px"></div>
   </div>
 </div>
 
@@ -8300,8 +8317,15 @@ function switchParticipantesTab(tab) {
 // pendiente de revisión.
 let adminDocsRows = [];
 // "email|||tipo" -> true mientras esa aprobación/rechazo está en vuelo — ver
-// revisarDocumentoAdmin/docReviewCell.
+// revisarDocumentoAdmin/renderDocReviewModalBody.
 let adminDocsGuardando = {};
+// Filtro activo de la tabla: 'todos' | 'pendientes' | 'rechazados' | 'completos'.
+let adminDocsFiltroEstado = 'todos';
+// Fila (de adminDocsRows) del participante cuyo modal de revisión está
+// abierto — null si el modal está cerrado. Se re-sincroniza en cada refresco
+// de datos (ver refrescarAdminDocumentosSolo_) para que el modal nunca quede
+// mostrando un estado desactualizado tras aprobar/rechazar.
+let docReviewModalRow = null;
 
 function renderAdminDocumentosTab() {
   const body = document.getElementById('admin-docs-body');
@@ -8323,14 +8347,15 @@ function renderAdminDocumentosTab() {
       ? (pasaporte.estado === 'aprobado' && permiso.estado === 'aprobado' && registroCivil.estado === 'aprobado')
       : pasaporte.estado === 'aprobado';
     const docsAplicables = [pasaporte, permiso, registroCivil].filter(d => d !== null);
-    // Orden: 0) tiene algo pendiente de aprobar (necesita acción del admin YA)
-    // 1) tiene algo rechazado pero nada pendiente (esperando que el padre
-    // vuelva a subir) 2) todo aprobado 3) nada subido todavía — así lo que
-    // requiere revisión sube siempre al principio de la lista.
+    // Prioridad para orden y filtros: 0) algo pendiente de aprobar (acción
+    // del admin YA) 1) algo rechazado sin nada pendiente (esperando que el
+    // padre vuelva a subir) 2) nada subido todavía (esperando al padre, sin
+    // acción del admin) 3) todo aprobado — así "Completos" siempre queda al
+    // final (ver filterAdminDocumentosTable/setDocFiltroEstado).
     const prioridad = docsAplicables.some(d => d.estado === 'pendiente') ? 0
       : docsAplicables.some(d => d.estado === 'rechazado') ? 1
-      : completo ? 2
-      : 3;
+      : completo ? 3
+      : 2;
     return {
       nombre: n.nombre || '(sin nombre)',
       email: n.email || '',
@@ -8340,62 +8365,186 @@ function renderAdminDocumentosTab() {
     };
   });
 
+  // Si el modal de revisión está abierto, re-sincronizar su fila con los
+  // datos recién cargados (o cerrarlo si ese participante ya no aparece —
+  // ej. cambió de programa o se filtró la búsqueda que armó adminData).
+  if (docReviewModalRow) {
+    const filaActualizada = adminDocsRows.find(r => r.email === docReviewModalRow.email);
+    if (filaActualizada) { docReviewModalRow = filaActualizada; renderDocReviewModalBody(); }
+    else closeDocReviewModal();
+  }
+
   filterAdminDocumentosTable();
 }
 
-function docReviewCell(email, tipo, programa, doc) {
+// Escapa para HTML y además neutraliza comillas simples — para insertar
+// valores dentro de un atributo onclick="...('valor')" sin romper el HTML.
+function jsAttr_(s) {
+  return escapeHtml(String(s || '')).replace(/'/g, "\\'");
+}
+
+// Celda compacta de una sola línea (sin link "Ver", sin motivo, sin botones
+// — todo eso vive ahora en el modal de revisión, ver abrirDocReviewModal).
+function docReviewCell(doc) {
   if (doc === null) return '<span style="color:var(--muted);font-size:12px">No aplica</span>';
-  if (!doc.url) return '<span style="color:var(--muted);font-size:12px">— Sin subir</span>';
-  if (adminDocsGuardando[email + '|||' + tipo]) return '<span style="color:var(--muted);font-size:12px">⏳ Guardando...</span>';
-  const puedeEditar = isEditAdmin();
+  if (!doc.url) return '<span style="color:var(--muted);font-size:12px">— Pendiente</span>';
   const etiquetas = {
-    aprobado: '<span style="color:#059669;font-weight:600;font-size:12px">✔ Aprobado</span>',
-    rechazado: '<span style="color:var(--red);font-weight:600;font-size:12px">✖ Rechazado</span>',
-    pendiente: '<span style="color:#b45309;font-weight:600;font-size:12px">⏳ En revisión</span>'
+    aprobado: '<span style="color:#059669;font-weight:600;font-size:12px">✓ Aprobado</span>',
+    rechazado: '<span style="color:var(--red);font-weight:600;font-size:12px">✗ Rechazado</span>',
+    pendiente: '<span style="color:var(--muted);font-size:12px">— Pendiente</span>'
   };
-  const etiqueta = etiquetas[doc.estado] || etiquetas.pendiente;
-  const motivo = doc.estado === 'rechazado' && doc.motivo ? `<div style="font-size:10px;color:var(--red);margin-top:2px;max-width:130px">${escapeHtml(doc.motivo)}</div>` : '';
-  const emailAttr = escapeHtml(email).replace(/'/g, "\\'");
-  const progAttr = escapeHtml(programa).replace(/'/g, "\\'");
-  const botones = puedeEditar ? `
-    <div style="display:flex;gap:4px;justify-content:center;margin-top:4px">
-      <button onclick="revisarDocumentoAdmin('${emailAttr}','${tipo}','aprobado','${progAttr}')" title="Aprobar" style="border:1px solid #059669;background:#fff;color:#059669;border-radius:5px;width:22px;height:22px;font-size:12px;cursor:pointer">✔</button>
-      <button onclick="revisarDocumentoAdmin('${emailAttr}','${tipo}','rechazado','${progAttr}')" title="Rechazar" style="border:1px solid var(--red);background:#fff;color:var(--red);border-radius:5px;width:22px;height:22px;font-size:12px;cursor:pointer">✖</button>
-    </div>` : '';
-  return `<div>${etiqueta}<div style="margin-top:3px"><a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" style="font-size:11px">Ver 📄</a></div>${motivo}${botones}</div>`;
+  return etiquetas[doc.estado] || etiquetas.pendiente;
 }
 
 function renderAdminDocumentosBody(rows) {
   const body = document.getElementById('admin-docs-body');
   if (!body) return;
   if (!rows.length) { body.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Sin resultados.</td></tr>'; return; }
-  body.innerHTML = rows.map(r => `
+  body.innerHTML = rows.map(r => {
+    // Estado (columna final): "Completo" si ya está todo aprobado; botón
+    // "Revisar" solo cuando hay algo que el admin puede efectivamente
+    // revisar ahora mismo (pendiente de aprobar o ya rechazado); si lo único
+    // que falta es que el padre suba el documento, no hay nada que revisar
+    // todavía, así que se muestra un texto plano sin acción.
+    const estadoCell = r.prioridad === 3
+      ? '<span style="color:#059669;font-weight:700;font-size:13px">&#10003; Completo</span>'
+      : (r.prioridad === 0 || r.prioridad === 1)
+        ? `<button onclick="abrirDocReviewModal('${jsAttr_(r.email)}')" style="padding:6px 16px;border-radius:7px;border:1px solid var(--blue);background:#fff;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Revisar</button>`
+        : '<span style="color:var(--muted);font-size:12px">— Pendiente</span>';
+    return `
     <tr>
       <td style="font-weight:500">${escapeHtml(r.nombre)}</td>
       <td>${escapeHtml(r.tipo)}</td>
-      <td style="text-align:center">${docReviewCell(r.email, 'pasaporte', r.programa, r.pasaporte)}</td>
-      <td style="text-align:center">${docReviewCell(r.email, 'permiso', r.programa, r.permiso)}</td>
-      <td style="text-align:center">${docReviewCell(r.email, 'registro_civil', r.programa, r.registroCivil)}</td>
-      <td style="text-align:center">${r.completo ? '<span style="color:#059669;font-weight:700;font-size:13px">&#10003; Completo</span>' : '<span style="color:var(--muted);font-size:12px">— Pendiente</span>'}</td>
-    </tr>
-  `).join('');
+      <td style="text-align:center">${docReviewCell(r.pasaporte)}</td>
+      <td style="text-align:center">${docReviewCell(r.permiso)}</td>
+      <td style="text-align:center">${docReviewCell(r.registroCivil)}</td>
+      <td style="text-align:center">${estadoCell}</td>
+    </tr>`;
+  }).join('');
   const countEl = document.getElementById('admin-docs-search-count');
   if (countEl) countEl.textContent = rows.length + (rows.length === 1 ? ' resultado' : ' resultados');
+}
+
+// Cambia el filtro rápido (Todos/Pendientes/Rechazados/Completos) de la
+// tabla — mantiene la barra de búsqueda existente intacta, ambos filtros se
+// aplican juntos en filterAdminDocumentosTable().
+function setDocFiltroEstado(filtro) {
+  adminDocsFiltroEstado = filtro;
+  ['todos', 'pendientes', 'rechazados', 'completos'].forEach(f => {
+    const btn = document.getElementById('doc-filtro-' + f);
+    if (!btn) return;
+    const activo = f === filtro;
+    btn.style.background = activo ? 'var(--blue)' : '#fff';
+    btn.style.color = activo ? '#fff' : 'var(--muted)';
+    btn.style.borderColor = activo ? 'var(--blue)' : 'var(--border)';
+  });
+  filterAdminDocumentosTable();
 }
 
 function filterAdminDocumentosTable() {
   const searchEl = document.getElementById('admin-docs-search');
   const term = (searchEl ? searchEl.value : '').toLowerCase().trim();
-  const filtrados = (!term ? adminDocsRows.slice() : adminDocsRows.filter(r => r.nombre.toLowerCase().includes(term) || r.email.toLowerCase().includes(term)));
-  filtrados.sort((a, b) => a.prioridad - b.prioridad); // pendientes de aprobar primero — ver prioridad en renderAdminDocumentosTab
+  let filtrados = !term ? adminDocsRows.slice() : adminDocsRows.filter(r => r.nombre.toLowerCase().includes(term) || r.email.toLowerCase().includes(term));
+  // "Pendientes" agrupa 0 (subido, esperando revisión) y 2 (nada subido
+  // todavía) — ambos son, en sentido amplio, "todavía no está resuelto".
+  if (adminDocsFiltroEstado === 'pendientes') filtrados = filtrados.filter(r => r.prioridad === 0 || r.prioridad === 2);
+  else if (adminDocsFiltroEstado === 'rechazados') filtrados = filtrados.filter(r => r.prioridad === 1);
+  else if (adminDocsFiltroEstado === 'completos') filtrados = filtrados.filter(r => r.prioridad === 3);
+  filtrados.sort((a, b) => a.prioridad - b.prioridad); // rechazados y pendientes primero, completos al final
   renderAdminDocumentosBody(filtrados);
 }
 
-// Aprueba o rechaza un documento desde la pestaña admin "Documentos". Al
-// rechazar, pide un motivo breve (obligatorio) que el padre verá en su área
-// personal. Al aprobar el último documento requerido de un participante, el
-// backend avanza su proceso a completado y dispara el correo final — sin
-// intervención manual (ver revisarDocumento en APPS_SCRIPT_CODE.gs).
+const DOC_REVIEW_LABELS_ = { pasaporte: 'Pasaporte', permiso: 'Permiso de salida del país', registro_civil: 'Registro civil de nacimiento' };
+
+// Convierte un link "view" de Drive (.../file/d/<id>/view...) a su versión
+// embebible en iframe (.../preview) — si la URL no calza ese patrón (ej. no
+// es de Drive), se usa tal cual y el iframe intentará cargarla igual.
+function previewUrlDoc_(url) {
+  const m = /\/file\/d\/([^/]+)\//.exec(url || '');
+  return m ? `https://drive.google.com/file/d/${m[1]}/preview` : url;
+}
+
+// Abre el modal de revisión con TODOS los documentos aplicables de este
+// participante (no solo uno) — un jugador menor de edad con tiquete puede
+// tener, por ejemplo, el pasaporte aprobado y el permiso rechazado a la vez,
+// y el admin necesita ver y actuar sobre ambos sin cerrar y reabrir nada.
+function abrirDocReviewModal(email) {
+  const row = adminDocsRows.find(r => r.email === email);
+  if (!row) return;
+  docReviewModalRow = row;
+  const nombreEl = document.getElementById('doc-review-modal-nombre');
+  if (nombreEl) nombreEl.textContent = row.nombre;
+  renderDocReviewModalBody();
+  const modal = document.getElementById('doc-review-modal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeDocReviewModal() {
+  const modal = document.getElementById('doc-review-modal');
+  if (modal) modal.classList.remove('open');
+  docReviewModalRow = null;
+}
+
+function renderDocReviewModalBody() {
+  const body = document.getElementById('doc-review-modal-body');
+  if (!body || !docReviewModalRow) return;
+  const row = docReviewModalRow;
+  const puedeEditar = isEditAdmin();
+  const tipos = [
+    { tipo: 'pasaporte', doc: row.pasaporte },
+    { tipo: 'permiso', doc: row.permiso },
+    { tipo: 'registro_civil', doc: row.registroCivil }
+  ].filter(t => t.doc !== null);
+
+  body.innerHTML = tipos.map(({ tipo, doc }) => {
+    const guardando = adminDocsGuardando[row.email + '|||' + tipo];
+    const etiquetaEstado = guardando
+      ? '<span style="color:var(--muted);font-size:12px">⏳ Guardando...</span>'
+      : ({
+          aprobado: '<span style="color:#059669;font-weight:600;font-size:12px">✓ Aprobado</span>',
+          rechazado: '<span style="color:var(--red);font-weight:600;font-size:12px">✗ Rechazado</span>',
+          pendiente: '<span style="color:#b45309;font-weight:600;font-size:12px">⏳ En revisión</span>'
+        }[doc.estado] || '<span style="color:var(--muted);font-size:12px">— Sin subir</span>');
+
+    const preview = doc.url ? `
+        <div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <iframe src="${escapeHtml(previewUrlDoc_(doc.url))}" style="width:100%;height:280px;border:0;display:block" title="Vista previa de ${escapeHtml(DOC_REVIEW_LABELS_[tipo])}"></iframe>
+        </div>
+        <a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:12px">Abrir en pestaña nueva ↗</a>`
+      : `<p style="font-size:13px;color:var(--muted);margin:8px 0 0">Aún no ha subido este documento.</p>`;
+
+    const motivoBox = doc.estado === 'rechazado' && doc.motivo ? `
+        <div style="margin-top:10px;background:#fef2f2;border:1px solid rgba(185,28,28,.2);border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--red);font-weight:700;margin-bottom:3px">Motivo del rechazo</div>
+          <div style="font-size:13px;color:var(--text)">${escapeHtml(doc.motivo)}</div>
+        </div>` : '';
+
+    const botones = (puedeEditar && doc.url && !guardando) ? `
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button onclick="revisarDocumentoAdmin('${jsAttr_(row.email)}','${tipo}','aprobado','${jsAttr_(row.programa)}')" style="flex:1;padding:9px;border:1px solid #059669;background:#fff;color:#059669;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">✓ Aprobar</button>
+          <button onclick="revisarDocumentoAdmin('${jsAttr_(row.email)}','${tipo}','rechazado','${jsAttr_(row.programa)}')" style="flex:1;padding:9px;border:1px solid var(--red);background:#fff;color:var(--red);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">✗ Rechazar</button>
+        </div>` : '';
+
+    return `
+      <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="font-weight:600;color:var(--navy);font-family:'DM Sans',sans-serif">${escapeHtml(DOC_REVIEW_LABELS_[tipo])}</div>
+          ${etiquetaEstado}
+        </div>
+        ${preview}
+        ${motivoBox}
+        ${botones}
+      </div>`;
+  }).join('');
+}
+
+// Aprueba o rechaza un documento desde el modal de revisión de la pestaña
+// admin "Documentos". Al rechazar, pide un motivo breve (obligatorio) que el
+// padre verá en su área personal. Al aprobar el último documento requerido
+// de un participante, el backend avanza su proceso a completado y dispara
+// el correo final — sin intervención manual (ver revisarDocumento en
+// APPS_SCRIPT_CODE.gs) — esta función solo llama a ese mismo endpoint, la
+// lógica de aprobación vive enteramente en el backend.
 function revisarDocumentoAdmin(email, tipo, decision, programa) {
   if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
   let motivo = '';
@@ -8403,12 +8552,13 @@ function revisarDocumentoAdmin(email, tipo, decision, programa) {
     motivo = (prompt('Motivo del rechazo (el padre lo verá en su área personal):', '') || '').trim();
     if (!motivo) return;
   }
-  // Feedback inmediato en la celda — sin esto, el clic no muestra ningún
-  // cambio hasta que responde el backend (que además envía 1-2 correos antes
-  // de contestar), y se siente como si el panel se hubiera colgado.
+  // Feedback inmediato — sin esto, el clic no muestra ningún cambio hasta
+  // que responde el backend (que además envía 1-2 correos antes de
+  // contestar), y se siente como si el panel se hubiera colgado.
   const clave = email + '|||' + tipo;
   adminDocsGuardando[clave] = true;
   filterAdminDocumentosTable();
+  if (docReviewModalRow && docReviewModalRow.email === email) renderDocReviewModalBody();
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
@@ -8426,7 +8576,8 @@ function revisarDocumentoAdmin(email, tipo, decision, programa) {
       delete adminDocsGuardando[clave];
       // Refresco liviano (solo admin_participantes) — no loadAdmin(true):
       // ver refrescarAdminDocumentosSolo_ para por qué ese refresco completo
-      // era la causa real de la demora al aprobar/rechazar.
+      // era la causa real de la demora al aprobar/rechazar. Ese refresco ya
+      // se encarga de re-sincronizar y re-pintar el modal si sigue abierto.
       refrescarAdminDocumentosSolo_();
     });
 }
