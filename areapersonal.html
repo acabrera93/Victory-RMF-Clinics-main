@@ -2439,7 +2439,8 @@ function renderDocEstados(raw) {
       el.innerHTML = `❌ Rechazado${motivo ? ': ' + escapeHtml(motivo) : ''} — sube un documento nuevo${verLink}`;
       el.classList.add('rejected');
     } else if (estado === 'pendiente') {
-      el.innerHTML = `⏳ Subido — en revisión por el equipo${verLink} <button onclick="resetDocumento('${tipo}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
+      el.innerHTML = `✅ Documento subido correctamente — pendiente de aprobación${verLink} <button onclick="resetDocumento('${tipo}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
+      el.classList.add('ok');
     } else {
       el.innerHTML = '⏳ Pendiente';
     }
@@ -4246,10 +4247,15 @@ function uploadDocumento(inp, tipoDocumento) {
     })
       .then(() => {
         if (statusEl) {
-          statusEl.innerHTML = `⏳ ${file.name} subido — en revisión por el equipo <button onclick="resetDocumento('${tipoDocumento}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
-          statusEl.classList.remove('ok', 'rejected');
+          statusEl.innerHTML = `✅ ${escapeHtml(file.name)} subido correctamente — pendiente de aprobación <button onclick="resetDocumento('${tipoDocumento}')" style="margin-left:8px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">× Cambiar</button>`;
+          statusEl.classList.add('ok');
+          statusEl.classList.remove('rejected');
           statusEl.style.color = '';
         }
+        // Confirmación explícita — antes el único indicio de que sí se subió
+        // era este texto pequeño junto al recuadro, que varios padres no
+        // notaban y creían que el archivo no había llegado.
+        alert('✅ Tu documento "' + file.name + '" se subió correctamente.\n\nQuedará pendiente de aprobación por nuestro equipo — te avisaremos si necesitas corregir algo.');
       })
       .catch(err => {
         console.error('Upload error:', err);
