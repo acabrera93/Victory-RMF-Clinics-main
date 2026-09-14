@@ -1859,6 +1859,15 @@ function revisarDocumento(data) {
     if (colMotivo >= 0) sheet.getRange(rowIndex, colMotivo + 1).setValue(decision === 'rechazado' ? motivo : '');
 
     if (decision === 'rechazado') {
+      // Si el proceso ya había llegado a "completado" (paso_actual 7 — ej. el
+      // admin había aprobado este mismo documento antes y luego se dio
+      // cuenta de que estaba mal y lo rechaza), hay que revertirlo: ya no es
+      // cierto que todos los documentos estén aprobados, así que el check
+      // verde de "Documentación" y la pantalla de bienvenida no deben seguir
+      // mostrándose. actualizarPasoTodos() nunca retrocede a propósito (para
+      // todo lo demás en el proceso), así que este es el único punto del
+      // código donde se retrocede paso_actual deliberadamente.
+      try { revertirPasoSiProcesoYaCompletado_(email, programa); } catch (e4) { Logger.log('revisarDocumento -> revertirPasoSiProcesoYaCompletado_ error: ' + e4); }
       try { notificarDocumentoRechazado_(email, tipo, motivo, programa); } catch (e3) { Logger.log('revisarDocumento -> notificarDocumentoRechazado_ error: ' + e3); }
     }
     if (decision === 'aprobado' && todosDocumentosAprobados_(email, programa)) {
@@ -1868,6 +1877,36 @@ function revisarDocumento(data) {
   } catch (err) {
     Logger.log('revisarDocumento error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// Si paso_actual ya estaba en 7 (proceso completado) para este email, lo baja
+// a 6 (Documentación) — excepción deliberada a la regla de "nunca retroceder"
+// que sigue el resto del código (actualizarPasoTodos, pagos, etc.): aquí sí
+// corresponde retroceder, porque un documento que se creía aprobado resultó
+// estar mal y el proceso deja de estar completo en los hechos. Sin esto, un
+// participante seguía viendo su paso "Documentación" en verde y accedía a la
+// pantalla de bienvenida aunque le acabaran de rechazar un documento.
+function revertirPasoSiProcesoYaCompletado_(email, programa) {
+  const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  let emailCol = -1, pasoCol = -1;
+  for (let j = 0; j < headers.length; j++) {
+    const h = String(headers[j]).toLowerCase().trim();
+    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+    if (h === 'paso_actual' || h === 'paso actual') pasoCol = j;
+  }
+  if (emailCol < 0) emailCol = 3;
+  if (pasoCol < 0) pasoCol = 20;
+  const emailNorm = String(email || '').toLowerCase().trim();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][emailCol] || '').toLowerCase().trim() !== emailNorm) continue;
+    const pasoActualSheet = parseInt(data[i][pasoCol]) || 0;
+    if (pasoActualSheet >= 7) {
+      sheet.getRange(i + 1, pasoCol + 1).setValue(6);
+      Logger.log('revertirPasoSiProcesoYaCompletado_: ' + emailNorm + ' vuelve a paso 6 (documento rechazado tras estar completo).');
+    }
   }
 }
 
