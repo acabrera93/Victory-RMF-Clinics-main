@@ -4255,7 +4255,12 @@ function uploadDocumento(inp, tipoDocumento) {
 
   const statusEl = document.getElementById(statusId);
   if (statusEl) {
-    statusEl.innerHTML = '⏳ Subiendo...';
+    // Se limpian las clases 'ok'/'rejected' (color verde/rojo de un estado
+    // previo) para que el reloj de "Subiendo..." se vea siempre neutro — si
+    // no, un documento que ya estaba aprobado/pendiente mostraba el reloj en
+    // verde, lo cual no se leía como "en progreso".
+    statusEl.classList.remove('ok', 'rejected');
+    statusEl.innerHTML = '⏳ Subiendo tu documento...';
     statusEl.style.color = 'var(--muted)';
   }
 
