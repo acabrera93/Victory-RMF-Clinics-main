@@ -668,7 +668,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <!-- Opción agregar tiquete (solo si vino sin tiquete) — PRIMERO -->
       <div id="tiq-optin" style="display:none" class="tiq-box">
         <h4>✈️ ¿Deseas agregar el tiquete aéreo?</h4>
-        <p>No lo incluiste en la inscripción. Puedes agregarlo ahora — costo <strong>993 EUR</strong> por persona (vuelo grupal BOG–MAD–BOG, fecha fija).</p>
+        <p>No lo incluiste en la inscripción. Puedes agregarlo ahora — costo <strong id="tiq-optin-precio">993 EUR</strong> por persona (vuelo grupal BOG–MAD–BOG, fecha fija).</p>
         <div class="tiq-btns">
           <button class="btn-tiq-yes" id="btn-tiq-si" onclick="setTiquete(true)">✈️ Sí, agregar tiquete</button>
           <button class="btn-tiq-no" onclick="setTiquete(false)">No, gestiono mi tiquete</button>
@@ -3302,13 +3302,26 @@ function tiqueteUnitEur_() {
 // (columna "Precio Tiquete EUR" en Inscripción, ver pestaña "Tiquetes" del
 // panel admin y normalizeParticipant().precio_tiquete_manual) si lo tiene, o
 // si no el precio global de tiqueteUnitEur_(). Única fuente de verdad para
-// "cuánto le toca a ESTA persona" — usarla en vez de tiqueteUnitEur_() a
-// secas en cualquier cálculo que sea POR PARTICIPANTE (grupo con precios
-// mixtos), reservando tiqueteUnitEur_() para cuando de verdad se necesita el
-// precio de tabla sin excepciones (ej. textos de T&C).
+// "cuánto le toca a ESTA persona" — usarla en cualquier cálculo POR
+// PARTICIPANTE (grupo con precios mixtos).
 function tiqueteUnitEurParaParticipante_(p) {
   const override = parseFloat(p && p.precio_tiquete_manual);
   return override > 0 ? override : tiqueteUnitEur_();
+}
+
+// Precio "representativo" para textos informativos que muestran UN solo
+// valor de tiquete (panel-tiq, T&C) — a diferencia de tiqueteUnitEurParaParticipante_,
+// aquí no siempre hay un participante puntual en contexto (ej. el párrafo
+// informativo del panel se arma para el grupo entero, no para una persona).
+// Si alguien del grupo activo tiene un precio manual fijado se usa ese
+// (asumiendo el caso típico: un solo override a la vez dentro del grupo);
+// si nadie tiene override, se usa el precio de tabla de siempre.
+function precioTiqueteInfoEur_() {
+  const conOverride = allParticipants
+    .filter(p => (p.program_key || 'clinic') === programKeyActivo)
+    .map(p => normalizeParticipant(p) || p)
+    .find(p => p.tiquete_aereo === 'Con tiquete' && p.precio_tiquete_manual > 0);
+  return conOverride ? conOverride.precio_tiquete_manual : tiqueteUnitEur_();
 }
 
 // Monto de Reserva y Pago Final para UN participante, según su tipo/habitación
@@ -3401,13 +3414,15 @@ function actualizarFechasLimitePorPrograma_() {
   const elTiqInfo = document.getElementById('tiquete-info-parrafo');
   if (elTiqInfo) {
     elTiqInfo.innerHTML = esWC
-      ? `El tiquete aéreo se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${TIQUETE_EUR_WC} EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> en que realices el pago.`
-      : `El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${TIQUETE_EUR} EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.`;
+      ? `El tiquete aéreo se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${precioTiqueteInfoEur_()} EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> en que realices el pago.`
+      : `El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${precioTiqueteInfoEur_()} EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.`;
   }
   const elTiqFecha = document.getElementById('tiquete-fecha-limite');
   if (elTiqFecha) elTiqFecha.textContent = fechas.tiquete;
   const elTiqCosto = document.getElementById('tiquete-costo-valor');
-  if (elTiqCosto) elTiqCosto.textContent = (esWC ? TIQUETE_EUR_WC : TIQUETE_EUR) + ' EUR / persona';
+  if (elTiqCosto) elTiqCosto.textContent = precioTiqueteInfoEur_() + ' EUR / persona';
+  const elTiqOptinPrecio = document.getElementById('tiq-optin-precio');
+  if (elTiqOptinPrecio) elTiqOptinPrecio.textContent = precioTiqueteInfoEur_() + ' EUR';
 
   const elFinalFecha = document.getElementById('panel3-fecha-limite');
   if (elFinalFecha) elFinalFecha.textContent = fechas.final;
@@ -3886,7 +3901,7 @@ function getTyC() {
 </ul>
 <h3>2. Precio del programa y forma de pago</h3>
 <ul>
-  <li>Costo por participante: <strong>2.790 EUR</strong>${conTiq ? ' + tiquete aéreo (993 EUR)' : ' (sin tiquete aéreo)'}</li>
+  <li>Costo por participante: <strong>2.790 EUR</strong>${conTiq ? ` + tiquete aéreo (${precioTiqueteInfoEur_()} EUR)` : ' (sin tiquete aéreo)'}</li>
   <li>Pago de reserva: <strong>1.000 EUR</strong> — fecha límite <strong>1 de junio 2026</strong></li>
   <li>2do pago: <strong>1.790 EUR</strong> — fecha límite <strong>30 de julio 2026</strong></li>
   <li>Los pagos pueden realizarse en pesos colombianos (COP) según la TRM del día, mediante transferencia bancaria o tarjeta</li>
@@ -3997,21 +4012,24 @@ function getTyCWorldChallenge_(tipoCurrent) {
   }
 
   const datosBancarios = `<li><strong>Datos bancarios:</strong> Bancolombia · Beneficiario: Fundación Revel · Cuenta 05962673128 · NIT 900636583-7</li>`;
+  // Precio representativo del tiquete para este texto — respeta el override
+  // manual del panel admin (pestaña "Tiquetes") si alguien del grupo lo tiene.
+  const precioTiquete = precioTiqueteInfoEur_();
   let precioSeccion;
   if (esJug) {
     const p = PRECIOS_WC.jugador;
     precioSeccion = `
 <ul>
-  <li>Costo total por participante: <strong>${p.reserva + p.final} EUR</strong>${conTiq ? ` (programa) + <strong>${TIQUETE_EUR_WC} EUR</strong> (tiquete aéreo) = <strong>${p.reserva + p.final + TIQUETE_EUR_WC} EUR</strong>` : ` (el tiquete aéreo no está incluido; valor referencial: ${TIQUETE_EUR_WC} EUR)`}</li>
+  <li>Costo total por participante: <strong>${p.reserva + p.final} EUR</strong>${conTiq ? ` (programa) + <strong>${precioTiquete} EUR</strong> (tiquete aéreo) = <strong>${p.reserva + p.final + precioTiquete} EUR</strong>` : ` (el tiquete aéreo no está incluido; valor referencial: ${precioTiquete} EUR)`}</li>
   <li>Reserva: <strong>${p.reserva} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>
-  ${conTiq ? `<li>Tiquete aéreo: <strong>${TIQUETE_EUR_WC} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
+  ${conTiq ? `<li>Tiquete aéreo: <strong>${precioTiquete} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
   <li>Pago final: <strong>${p.final} EUR</strong> — fecha límite <strong>${fFinal}</strong></li>
   <li>El pago se realizará en pesos colombianos (COP) según la tasa oficial del día de la transferencia bancaria</li>
   ${datosBancarios}
 </ul>`;
   } else if (pagoUnico) {
     const base = esSoloWC ? PRECIOS_WC.acomp_solo_wc.reserva : PRECIOS_WC.acomp_actividades.reserva;
-    const total = base + (conTiq ? TIQUETE_EUR_WC : 0);
+    const total = base + (conTiq ? precioTiquete : 0);
     precioSeccion = `
 <ul>
   <li>${conTiq ? 'Con Tiquete Aéreo' : 'Sin Tiquete Aéreo'}: <strong>${total} EUR</strong> — pago único al momento de la inscripción</li>
@@ -4020,12 +4038,12 @@ function getTyCWorldChallenge_(tipoCurrent) {
 </ul>`;
   } else {
     const p = esDoble ? PRECIOS_WC.acomp_doble : PRECIOS_WC.acomp_sencilla;
-    const total = p.reserva + p.final + (conTiq ? TIQUETE_EUR_WC : 0);
+    const total = p.reserva + p.final + (conTiq ? precioTiquete : 0);
     precioSeccion = `
 <ul>
   <li>Total del programa: <strong>${total} EUR</strong></li>
   <li>Reserva: <strong>${p.reserva} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>
-  ${conTiq ? `<li>Tiquete aéreo: <strong>${TIQUETE_EUR_WC} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
+  ${conTiq ? `<li>Tiquete aéreo: <strong>${precioTiquete} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
   <li>Pago final: <strong>${p.final} EUR</strong> — fecha límite <strong>${fFinal}</strong></li>
   <li>El pago se efectuará en COP o euros por transferencia</li>
   ${datosBancarios}
