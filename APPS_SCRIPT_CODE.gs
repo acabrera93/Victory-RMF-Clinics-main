@@ -4304,6 +4304,33 @@ function sincronizarPaqueteSegunTiquete() {
   Logger.log('sincronizarPaqueteSegunTiquete: TOTAL actualizado = ' + totalActualizados);
 }
 
+// ── Ejecutar UNA VEZ desde el editor para crear la columna de precio manual ───
+// de tiquete aéreo. Agrega la cabecera "Precio Tiquete EUR" al final de las
+// hojas de Inscripción (Clinic y World Challenge) si todavía no existe — vacía
+// para todos por defecto. Se guarda en Inscripción (no en Pagos) porque esa
+// fila existe desde que la persona se inscribe, sin importar si ya pagó algo;
+// la hoja Pagos solo tiene fila una vez que hay un primer abono registrado.
+// getAdminParticipantes() ya expone cualquier columna nueva de esta hoja sin
+// tocar código adicional (ver obj[h] = val ahí), así que basta con crear la
+// cabecera para que el admin pueda editarla desde la pestaña "Tiquetes".
+// 1. Selecciona esta función y pulsa ▶ Run
+// 2. Revisa el Log para confirmar en qué hojas se creó la columna
+function agregarColumnaPrecioTiquete_() {
+  [
+    { id: SHEET_ID, label: 'Clinic' },
+    { id: SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
+  ].forEach(function(fuente) {
+    const sheet = SpreadsheetApp.openById(fuente.id).getSheets()[0];
+    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (headerRow.indexOf('Precio Tiquete EUR') === -1) {
+      sheet.getRange(1, sheet.getLastColumn() + 1).setValue('Precio Tiquete EUR');
+      Logger.log('agregarColumnaPrecioTiquete_: ' + fuente.label + ' → columna creada.');
+    } else {
+      Logger.log('agregarColumnaPrecioTiquete_: ' + fuente.label + ' → columna ya existía.');
+    }
+  });
+}
+
 // ── Ejecutar UNA VEZ para corregir el bug de columna "Tiquete Actualizado" ────
 // La detección de columna de tiquete leía por error "Tiquete Actualizado" en vez
 // de "Tiquete Aéreo", causando que participantes CON tiquete (aún sin pagarlo)
