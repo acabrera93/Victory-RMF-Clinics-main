@@ -2346,7 +2346,13 @@ function normalizeParticipant(raw) {
     // = usa el precio global (TIQUETE_EUR/TIQUETE_EUR_WC, ver montoEsperadoEur_).
     // Columna "Precio Tiquete EUR" en la hoja de Inscripción (no en Pagos,
     // porque esa fila solo existe tras el primer pago — ver admin-sec-tiquetes).
-    precio_tiquete_manual: parseFloat(rowVal(raw, 'precio_tiquete_eur', 'Precio Tiquete EUR', 'precio tiquete eur')) || 0,
+    // 'precio_tiquete_manual' va PRIMERO en la lista de candidatos porque
+    // allParticipants ya guarda participantes normalizados (ver
+    // "allParticipants = rawParticipants.map(normalizeParticipant)") y varias
+    // funciones (calcPaymentTotals, buildBreakdown) vuelven a normalizar esos
+    // mismos objetos — sin este candidato, esa segunda pasada no encontraba
+    // "Precio Tiquete EUR" (ya no existe esa clave) y reseteaba el valor a 0.
+    precio_tiquete_manual: parseFloat(rowVal(raw, 'precio_tiquete_manual', 'precio_tiquete_eur', 'Precio Tiquete EUR', 'precio tiquete eur')) || 0,
     abono_reserva: parseFloat(rowVal(raw, 'abono_reserva')) || 0,
     abono_tiquete: parseFloat(rowVal(raw, 'abono_tiquete')) || 0,
     abono_final: parseFloat(rowVal(raw, 'abono_final')) || 0,
