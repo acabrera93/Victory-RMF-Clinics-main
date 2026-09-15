@@ -7437,8 +7437,10 @@ function botonGuardarTiqueteHtml_(idx) {
   return `<button onclick="guardarPrecioTiqueteFila_(${idx})" style="padding:5px 10px;font-size:12px;border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif">Guardar</button>`;
 }
 
-// Guarda el precio manual de UNA fila — mismo endpoint actualizar_participante
-// que guardarAlianzaFila_, reenviando toda la fila para no pisar otros campos.
+// Guarda el precio manual de UNA fila — acción dedicada `set_precio_tiquete`
+// (no reusa actualizar_participante: ese endpoint devuelve ok:true aunque el
+// campo no coincida con ninguna columna, dando una falsa confirmación de
+// guardado si la columna "Precio Tiquete EUR" todavía no existe en la hoja).
 // Valor vacío o 0 borra el override (columna vuelve a quedar en blanco) y el
 // participante vuelve a pagar el precio global. Al confirmar, muestra "✓
 // Guardado" un par de segundos (en vez de redibujar toda la tabla de una) para
@@ -7455,9 +7457,7 @@ function guardarPrecioTiqueteFila_(idx) {
   const valor = parseFloat(input.value) || 0;
   if (estadoEl) estadoEl.innerHTML = '<span style="color:var(--blue)">Guardando...</span>';
   input.disabled = true;
-  const payload = { action: 'actualizar_participante', _row: row._row, programa: row._program_key || adminProgramaActivo, token: adminSessionToken };
-  Object.keys(row).forEach(k => { if (k !== '_idx') payload[k] = row[k]; });
-  payload.precio_tiquete_eur = valor > 0 ? valor : '';
+  const payload = { action: 'set_precio_tiquete', _row: row._row, programa: row._program_key || adminProgramaActivo, token: adminSessionToken, valor: valor > 0 ? valor : '' };
   fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), redirect: 'follow' })
     .then(r => r.json())
     .then(res => {
@@ -7505,19 +7505,21 @@ function aplicarPrecioTiqueteBulk_(sobrescribirTodos) {
 
   let pendientes = filas.length;
   let errores = 0;
+  let primerError = '';
   filas.forEach(({ row }) => {
-    const payload = { action: 'actualizar_participante', _row: row._row, programa: row._program_key || adminProgramaActivo, token: adminSessionToken };
-    Object.keys(row).forEach(k => { if (k !== '_idx') payload[k] = row[k]; });
-    payload.precio_tiquete_eur = valor;
+    const payload = { action: 'set_precio_tiquete', _row: row._row, programa: row._program_key || adminProgramaActivo, token: adminSessionToken, valor: valor };
     fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), redirect: 'follow' })
       .then(r => r.json())
-      .then(res => { if (res.ok) row['Precio Tiquete EUR'] = String(valor); else errores++; })
+      .then(res => {
+        if (res.ok) row['Precio Tiquete EUR'] = String(valor);
+        else { errores++; if (!primerError) primerError = res.error || 'desconocido'; }
+      })
       .catch(() => { errores++; })
       .finally(() => {
         pendientes--;
         if (pendientes === 0) {
           renderAdminTiquetesTab();
-          if (errores > 0) alert(`Listo, pero ${errores} de ${filas.length} no se pudieron actualizar.`);
+          if (errores > 0) alert(`Listo, pero ${errores} de ${filas.length} no se pudieron actualizar.\n\n${primerError}`);
           else alert(`✓ Precio de ${valor} EUR aplicado a ${filas.length} participante(s).`);
         }
       });

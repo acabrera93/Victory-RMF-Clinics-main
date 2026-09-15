@@ -1133,6 +1133,7 @@ function doPost(e) {
         if (parsed.action === 'publicar_comunicado') return publicarComunicado(parsed);
         if (parsed.action === 'eliminar_comunicado') return eliminarComunicado(parsed);
         if (parsed.action === 'actualizar_participante') return actualizarParticipante(parsed);
+        if (parsed.action === 'set_precio_tiquete') return setPrecioTiquete(parsed);
         if (parsed.action === 'registrar_pago') return registrarPago(parsed);
         if (parsed.action === 'agregar_abono_pago') return agregarAbonoPago(parsed);
         if (parsed.action === 'confirmar_pago_pendiente') return confirmarPagoPendiente(parsed);
@@ -2573,6 +2574,34 @@ function actualizarParticipante(data) {
     return sendResponse(200, { ok: true, updated: updated });
   } catch (err) {
     Logger.log('actualizarParticipante error: ' + err);
+    return sendResponse(500, { ok: false, error: err.toString() });
+  }
+}
+
+// Guarda el precio manual de tiquete aéreo de UN participante en la columna
+// "Precio Tiquete EUR" de la hoja de Inscripción — acción dedicada (en vez de
+// reusar actualizarParticipante) porque ahí un campo sin columna coincidente
+// se ignora en silencio y la función igual responde ok:true, dando una falsa
+// confirmación de guardado. Aquí, si la columna todavía no existe (falta
+// correr agregarColumnaPrecioTiquete_() una vez desde el editor), se devuelve
+// un error explícito en vez de fingir que se guardó.
+function setPrecioTiquete(data) {
+  try {
+    if (!autorizar(data, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
+    const fuente = resolverSheets_(data.programa);
+    const sheet = SpreadsheetApp.openById(fuente.sheetId).getSheets()[0];
+    const rowNum = parseInt(data._row);
+    if (!rowNum || rowNum < 2) return sendResponse(400, { ok: false, error: 'Fila invalida: ' + data._row });
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const colIdx = headers.findIndex(function(h) { return normPagosHeaderKey_(h) === 'precio_tiquete_eur'; });
+    if (colIdx < 0) {
+      return sendResponse(404, { ok: false, error: 'Falta la columna "Precio Tiquete EUR" en la hoja de Inscripción. Ejecuta agregarColumnaPrecioTiquete_() una vez desde el editor de Apps Script y vuelve a intentar.' });
+    }
+    const valor = String(data.valor == null ? '' : data.valor).trim();
+    sheet.getRange(rowNum, colIdx + 1).setValue(valor === '' ? '' : parseFloat(valor));
+    return sendResponse(200, { ok: true });
+  } catch (err) {
+    Logger.log('setPrecioTiquete error: ' + err);
     return sendResponse(500, { ok: false, error: err.toString() });
   }
 }
