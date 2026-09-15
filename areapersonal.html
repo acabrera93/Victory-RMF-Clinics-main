@@ -8538,6 +8538,22 @@ function renderDocReviewModalBody() {
           <button onclick="revisarDocumentoAdmin('${jsAttr_(row.email)}','${tipo}','rechazado','${jsAttr_(row.programa)}')" style="flex:1;padding:9px;border:1px solid var(--red);background:#fff;color:var(--red);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">✗ Rechazar</button>
         </div>` : '';
 
+    // Permite al admin subir el documento EN NOMBRE del participante (ej. se
+    // lo mandó por WhatsApp, no tiene acceso al área personal) — reutiliza el
+    // mismo endpoint (handleJsonUpload) que usa el propio padre; el backend
+    // no distingue quién sube el archivo, solo valida que el email
+    // corresponda a un participante real (ver emailEsParticipante_ en
+    // APPS_SCRIPT_CODE.gs). El input se resetea con una key cambiante para
+    // poder volver a elegir el mismo archivo dos veces seguidas.
+    const subidaAdmin = puedeEditar ? `
+        <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
+          <label style="display:inline-block;padding:8px 14px;border:1px solid var(--blue);border-radius:7px;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer">
+            ${doc.url ? '⭱ Reemplazar documento (subir en nombre del participante)' : '⭱ Subir documento en nombre del participante'}
+            <input type="file" accept=".jpg,.jpeg,.png,.pdf" style="display:none" onchange="adminSubirDocumento(this,'${tipo}')">
+          </label>
+          <span id="admin-doc-upload-status-${tipo}" style="margin-left:8px;font-size:12px"></span>
+        </div>` : '';
+
     return `
       <div style="padding:14px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -8547,6 +8563,7 @@ function renderDocReviewModalBody() {
         ${preview}
         ${motivoBox}
         ${botones}
+        ${subidaAdmin}
       </div>`;
   }).join('');
 }
@@ -8593,6 +8610,58 @@ function revisarDocumentoAdmin(email, tipo, decision, programa) {
       // se encarga de re-sincronizar y re-pintar el modal si sigue abierto.
       refrescarAdminDocumentosSolo_();
     });
+}
+
+// El admin sube un documento en nombre del participante (ej. lo recibió por
+// WhatsApp o correo) desde el modal de revisión. Usa el mismo endpoint
+// (base64 JSON) que ya usa uploadDocumento() para el propio padre — al
+// llegar al backend, updateSheetWithUpload reinicia el estado a 'pendiente'
+// igual que cualquier (re)subida, así que queda esperando aprobación del
+// admin como cualquier otro documento.
+function adminSubirDocumento(inputEl, tipo) {
+  if (!isEditAdmin()) { alert('No tienes permisos de edición.'); return; }
+  const file = inputEl.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    alert('⚠️ Archivo demasiado grande. Máximo 5MB.');
+    inputEl.value = '';
+    return;
+  }
+  const row = docReviewModalRow;
+  if (!row) return;
+  const statusEl = document.getElementById('admin-doc-upload-status-' + tipo);
+  if (statusEl) { statusEl.textContent = '⏳ Subiendo...'; statusEl.style.color = 'var(--muted)'; }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64Data = reader.result.split(',')[1];
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify({
+        email: row.email,
+        tipo_documento: tipo,
+        base64: base64Data,
+        fileName: file.name,
+        programa: row.programa
+      })
+    })
+      .then(r => r.json())
+      .then(res => {
+        inputEl.value = '';
+        if (!res || !res.ok) {
+          if (statusEl) { statusEl.textContent = '❌ ' + (res && res.error || 'Error al subir'); statusEl.style.color = 'var(--red)'; }
+          return;
+        }
+        refrescarAdminDocumentosSolo_();
+      })
+      .catch(err => {
+        console.error('adminSubirDocumento error:', err);
+        inputEl.value = '';
+        if (statusEl) { statusEl.textContent = '❌ Error de conexión al subir.'; statusEl.style.color = 'var(--red)'; }
+      });
+  };
+  reader.readAsDataURL(file);
 }
 
 function parseFechaNacFront(v) {
