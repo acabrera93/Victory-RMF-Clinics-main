@@ -2534,12 +2534,14 @@ function calcPaymentTotals() {
   if (participantesPrograma.length === 0) final = esWC ? PRECIOS_WC.jugador.final : 1790; // fallback
 
   const tasaRT = tasaReservaTiquete_();
-  const tiqueteEurUnit = tiqueteUnitEur_();
-  const tiqCount = participantesPrograma.filter(p => {
-    const n = normalizeParticipant(p) || p;
-    return n.tiquete_aereo === 'Con tiquete';
-  }).length;
-  const tiquete = Math.round(tiqueteEurUnit * tasaRT) * tiqCount;
+  const tiquetePax = participantesPrograma.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
+  const tiqCount = tiquetePax.length;
+  // Suma el precio EFECTIVO de cada participante (su override manual si lo
+  // tiene, si no el global) — no un precio único × cantidad, porque el admin
+  // puede haberle fijado un precio distinto a uno o varios (ver pestaña
+  // "Tiquetes" del panel admin y tiqueteUnitEurParaParticipante_).
+  const tiqueteEurGrupo = tiquetePax.reduce((s, p) => s + tiqueteUnitEurParaParticipante_(p), 0);
+  const tiquete = Math.round(tiqueteEurGrupo * tasaRT);
 
   const abonoReserva = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_reserva || 0), 0);
   const abonoTiquete = participantesPrograma.reduce((s, raw) => s + ((normalizeParticipant(raw) || raw).abono_tiquete || 0), 0);
@@ -2570,7 +2572,13 @@ function calcPaymentTotals() {
     reserva, tiquete, final, tiqCount, total, abonoReserva, abonoTiquete, abonoFinal,
     comisionReserva, comisionTiquete, comisionFinal,
     copBrutoReserva, copBrutoTiquete, copBrutoFinal,
-    abonosReservaDetalle, abonosTiqueteDetalle, abonosFinalDetalle
+    abonosReservaDetalle, abonosTiqueteDetalle, abonosFinalDetalle,
+    // Suma en EUR (sin convertir a COP) de lo que corresponde a tiquete para
+    // TODO el grupo, ya con los overrides individuales aplicados — usado por
+    // applyPaymentTotals/applyPasoActual en vez de recalcular con el precio
+    // global fijo (que ignoraría cualquier precio manual puesto en la
+    // pestaña "Tiquetes" del panel admin).
+    tiqueteEurGrupo
   };
 }
 
@@ -2580,7 +2588,7 @@ function calcPaymentTotals() {
 // para quien no lo tiene).
 function montoEsperadoParticipante_(tipoPago, p, esWC) {
   if (tipoPago === 'reserva') return montoReservaFinalParticipante_(p, esWC).reserva;
-  if (tipoPago === 'tiquete') return p.tiquete_aereo === 'Con tiquete' ? tiqueteUnitEur_() : 0;
+  if (tipoPago === 'tiquete') return p.tiquete_aereo === 'Con tiquete' ? tiqueteUnitEurParaParticipante_(p) : 0;
   return montoReservaFinalParticipante_(p, esWC).final;
 }
 
@@ -2663,9 +2671,10 @@ function applyPaymentTotals(t) {
   const idxR = STEP_DEFS.findIndex(s => s.panel === 'panel2');
   if (idxR > -1) STEP_DEFS[idxR].done = t.reserva > 0 && conceptoGrupoCompleto_('reserva');
 
-  // Tiquete: input (EUR fijo por persona), usando lo restante si hay abono
+  // Tiquete: input (EUR por persona, con overrides individuales ya sumados
+  // en t.tiqueteEurGrupo — ver calcPaymentTotals), usando lo restante si hay abono
   const etiq = document.getElementById('eur-tiq');
-  const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
+  const totalTiqueteEur = t.tiqueteEurGrupo || 0;
   const restanteTiquete = mostrarAbonoYRestante('eur-tiq', 'aviso-abono-tiquete', '#panel-tiq', null, totalTiqueteEur, t.abonoTiquete || 0, 'el tiquete aéreo', t.abonosTiqueteDetalle, t.comisionTiquete || 0, t.copBrutoTiquete || 0, conceptoGrupoCompleto_('tiquete'));
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
@@ -2718,10 +2727,9 @@ function buildBreakdown(t) {
   const bt = document.getElementById('breakdown-tiquete');
   if (bt) {
     const tasaRT = tasaReservaTiquete_();
-    const tiqueteEurUnit = tiqueteUnitEur_();
     const tiqPax = participantesPrograma.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
     if (tiqPax.length > 1) {
-      bt.innerHTML = tiqPax.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', Math.round(tiqueteEurUnit * tasaRT), 'COP')).join('') + totalRow('Total tiquete', t.tiquete, 'COP');
+      bt.innerHTML = tiqPax.map(p => bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', Math.round(tiqueteUnitEurParaParticipante_(p) * tasaRT), 'COP')).join('') + totalRow('Total tiquete', t.tiquete, 'COP');
       bt.style.display = 'block';
     } else { bt.style.display = 'none'; }
   }
@@ -2758,10 +2766,9 @@ function buildBreakdown(t) {
         return bkRow(p.nombre || 'Participante', m.sub, m.reserva + m.final);
       }).join('');
 
-      const tiqueteUnit = tiqueteUnitEur_();
       const paxConTiquete = participantesPrograma.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
-      const filasTiquete = paxConTiquete.map(p => bkRow(p.nombre || 'Participante', 'Tiquete aéreo', tiqueteUnit)).join('');
-      const sumaTiquete = tiqueteUnit * paxConTiquete.length;
+      const filasTiquete = paxConTiquete.map(p => bkRow(p.nombre || 'Participante', 'Tiquete aéreo', tiqueteUnitEurParaParticipante_(p))).join('');
+      const sumaTiquete = paxConTiquete.reduce((s, p) => s + tiqueteUnitEurParaParticipante_(p), 0);
 
       bTotal.innerHTML = filasPrograma + filasTiquete + totalRow('Total', sumaPrograma + sumaTiquete);
       bTotal.style.display = 'block';
@@ -3146,7 +3153,7 @@ function applyPasoActual(paso, opts) {
   }
   const idxTiq = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
   if (idxTiq > -1) {
-    const totalTiqueteEur = tiqueteUnitEur_() * (t.tiqCount || 1);
+    const totalTiqueteEur = t.tiqueteEurGrupo || 0;
     const cubierto = totalTiqueteEur > 0 && conceptoGrupoCompleto_('tiquete');
     STEP_DEFS[idxTiq].done = cubierto || (opts.optimistic && paso >= 5);
   }
@@ -3283,6 +3290,19 @@ function tasaReservaTiquete_() {
 }
 function tiqueteUnitEur_() {
   return programKeyActivo === 'world_challenge' ? TIQUETE_EUR_WC : TIQUETE_EUR;
+}
+
+// Precio de tiquete EFECTIVO para un participante puntual: su override manual
+// (columna "Precio Tiquete EUR" en Inscripción, ver pestaña "Tiquetes" del
+// panel admin y normalizeParticipant().precio_tiquete_manual) si lo tiene, o
+// si no el precio global de tiqueteUnitEur_(). Única fuente de verdad para
+// "cuánto le toca a ESTA persona" — usarla en vez de tiqueteUnitEur_() a
+// secas en cualquier cálculo que sea POR PARTICIPANTE (grupo con precios
+// mixtos), reservando tiqueteUnitEur_() para cuando de verdad se necesita el
+// precio de tabla sin excepciones (ej. textos de T&C).
+function tiqueteUnitEurParaParticipante_(p) {
+  const override = parseFloat(p && p.precio_tiquete_manual);
+  return override > 0 ? override : tiqueteUnitEur_();
 }
 
 // Monto de Reserva y Pago Final para UN participante, según su tipo/habitación
