@@ -7426,22 +7426,30 @@ function renderAdminTiquetesTab() {
       <td>${escapeHtml(n.nombre || '')}</td>
       <td>${escapeHtml(n.tipo || '')}</td>
       <td>${escapeHtml(n.email || '')}</td>
-      <td>${efectivo} EUR${manual === '' ? ' <span style="color:var(--muted);font-size:11px">(global)</span>' : ''}</td>
+      <td id="tiq-efectivo-${idx}">${efectivo} EUR${manual === '' ? ' <span style="color:var(--muted);font-size:11px">(global)</span>' : ''}</td>
       <td><input type="number" id="tiq-precio-${idx}" data-prev="${manual}" value="${manual}" placeholder="${precioGlobal}" style="width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px" onkeydown="if(event.key==='Enter') guardarPrecioTiqueteFila_(${idx})"></td>
-      <td id="tiq-estado-${idx}" style="font-size:12px"><button onclick="guardarPrecioTiqueteFila_(${idx})" style="padding:5px 10px;font-size:12px;border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif">Guardar</button></td>
+      <td id="tiq-estado-${idx}" style="font-size:12px">${botonGuardarTiqueteHtml_(idx)}</td>
     </tr>`;
   }).join('');
+}
+
+function botonGuardarTiqueteHtml_(idx) {
+  return `<button onclick="guardarPrecioTiqueteFila_(${idx})" style="padding:5px 10px;font-size:12px;border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif">Guardar</button>`;
 }
 
 // Guarda el precio manual de UNA fila — mismo endpoint actualizar_participante
 // que guardarAlianzaFila_, reenviando toda la fila para no pisar otros campos.
 // Valor vacío o 0 borra el override (columna vuelve a quedar en blanco) y el
-// participante vuelve a pagar el precio global.
+// participante vuelve a pagar el precio global. Al confirmar, muestra "✓
+// Guardado" un par de segundos (en vez de redibujar toda la tabla de una) para
+// que quede claro que el precio nuevo sí se aplicó, sin perder el scroll ni el
+// texto del buscador.
 function guardarPrecioTiqueteFila_(idx) {
   const row = adminData[idx];
   if (!row) return;
   const input = document.getElementById('tiq-precio-' + idx);
   const estadoEl = document.getElementById('tiq-estado-' + idx);
+  const efectivoEl = document.getElementById('tiq-efectivo-' + idx);
   if (!input) return;
   const prev = input.dataset.prev || '';
   const valor = parseFloat(input.value) || 0;
@@ -7453,11 +7461,19 @@ function guardarPrecioTiqueteFila_(idx) {
   fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), redirect: 'follow' })
     .then(r => r.json())
     .then(res => {
+      input.disabled = false;
       if (res.ok) {
         row['Precio Tiquete EUR'] = valor > 0 ? String(valor) : '';
-        renderAdminTiquetesTab();
+        input.dataset.prev = valor > 0 ? String(valor) : '';
+        const esWC = adminProgramaActivo === 'world_challenge';
+        const precioGlobal = esWC ? TIQUETE_EUR_WC : TIQUETE_EUR;
+        const efectivo = valor > 0 ? valor : precioGlobal;
+        if (efectivoEl) efectivoEl.innerHTML = `${efectivo} EUR${valor > 0 ? '' : ' <span style="color:var(--muted);font-size:11px">(global)</span>'}`;
+        if (estadoEl) {
+          estadoEl.innerHTML = '<span style="color:var(--green)">&#10003; Guardado</span>';
+          setTimeout(() => { if (document.getElementById('tiq-estado-' + idx) === estadoEl) estadoEl.innerHTML = botonGuardarTiqueteHtml_(idx); }, 2000);
+        }
       } else {
-        input.disabled = false;
         input.value = prev;
         if (estadoEl) estadoEl.innerHTML = `<span style="color:#dc2626">Error: ${escapeHtml(res.error || 'desconocido')}</span>`;
       }
@@ -7502,6 +7518,7 @@ function aplicarPrecioTiqueteBulk_(sobrescribirTodos) {
         if (pendientes === 0) {
           renderAdminTiquetesTab();
           if (errores > 0) alert(`Listo, pero ${errores} de ${filas.length} no se pudieron actualizar.`);
+          else alert(`✓ Precio de ${valor} EUR aplicado a ${filas.length} participante(s).`);
         }
       });
   });
