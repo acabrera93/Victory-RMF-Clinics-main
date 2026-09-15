@@ -1336,6 +1336,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <button class="asnav-btn" data-asec="galeria" onclick="adminSection('galeria')">Galería</button>
         <button class="asnav-btn" data-asec="comerciales" onclick="adminSection('comerciales')">Comerciales</button>
         <button class="asnav-btn" data-asec="alianzas" onclick="adminSection('alianzas')" style="position:relative">Alianzas<span id="alianzas-nav-badge" style="display:none;position:absolute;top:-7px;right:-7px;background:#ea580c;color:#fff;font-size:10px;font-weight:700;line-height:1;padding:3px 5px;border-radius:9px;min-width:16px;text-align:center"></span></button>
+        <button class="asnav-btn" data-asec="tiquetes" onclick="adminSection('tiquetes')">Tiquetes</button>
         <button class="asnav-btn" data-asec="analytics" onclick="adminSection('analytics')">Analytics</button>
         <button class="asnav-btn" id="stab-acceso" data-asec="acceso" onclick="adminSection('acceso')" style="display:none;margin-left:auto;border-color:var(--navy);color:var(--navy)">🔐 Acceso</button>
       </div>
@@ -1845,6 +1846,36 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       </div>
     </div>
 
+    <!-- TIQUETES: precio manual de tiquete aéreo por participante -->
+    <div id="admin-sec-tiquetes" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <div class="ctitle" style="margin-bottom:0;flex:1">Precio manual de tiquete aéreo</div>
+          <input id="tiquetes-search" type="text" placeholder="Buscar nombre o email..."
+                 style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:210px"
+                 oninput="renderAdminTiquetesTab()">
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+          Por defecto todos los que tienen "Con tiquete" pagan <strong id="tiquetes-precio-global">—</strong>. Aquí puedes fijar un precio distinto para uno o varios participantes — deja el campo vacío y guarda para volver al precio global.
+          Este precio se guarda en la hoja de Inscripción (columna "Precio Tiquete EUR"), no en Pagos, para poder fijarlo desde antes de que la persona haga su primer abono.
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:rgba(30,91,168,.05);border-radius:8px">
+          <span style="font-size:13px;color:var(--navy);font-weight:600">Aplicar en bloque a los visibles:</span>
+          <input id="tiquetes-bulk-valor" type="number" placeholder="Precio EUR" style="width:120px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px">
+          <button onclick="aplicarPrecioTiqueteBulk_(false)" style="padding:7px 14px;font-size:12px;border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif">Solo a los que no tienen precio manual</button>
+          <button onclick="aplicarPrecioTiqueteBulk_(true)" style="padding:7px 14px;font-size:12px;border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif">A TODOS los visibles</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="ptable">
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Precio efectivo</th><th>Precio manual (EUR)</th><th></th></tr></thead>
+            <tbody id="tiquetes-tbody">
+              <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ANALYTICS -->
     <div id="admin-sec-analytics" style="display:none">
       <div class="card" style="padding:0;overflow:hidden">
@@ -2311,6 +2342,11 @@ function normalizeParticipant(raw) {
     pasaporte: rowVal(raw, 'pasaporte', 'Pasaporte', 'documento_pasaporte', 'No. Pasaporte', 'numero_pasaporte'),
     relacion: rowVal(raw, 'relacion', 'relación', 'Relación', 'Relacion', 'parentesco', 'Parentesco', 'vinculo', 'Vínculo'),
     paso_actual: rowVal(raw, 'paso_actual', 'Paso Actual', 'paso actual', 'step', 'paso'),
+    // Precio manual de tiquete aéreo para ESTE participante puntual — vacío/0
+    // = usa el precio global (TIQUETE_EUR/TIQUETE_EUR_WC, ver montoEsperadoEur_).
+    // Columna "Precio Tiquete EUR" en la hoja de Inscripción (no en Pagos,
+    // porque esa fila solo existe tras el primer pago — ver admin-sec-tiquetes).
+    precio_tiquete_manual: parseFloat(rowVal(raw, 'precio_tiquete_eur', 'Precio Tiquete EUR', 'precio tiquete eur')) || 0,
     abono_reserva: parseFloat(rowVal(raw, 'abono_reserva')) || 0,
     abono_tiquete: parseFloat(rowVal(raw, 'abono_tiquete')) || 0,
     abono_final: parseFloat(rowVal(raw, 'abono_final')) || 0,
@@ -5735,6 +5771,7 @@ function adminSection(section) {
     if (activeParticipantesSubtab === 'documentos') renderAdminDocumentosTab();
   }
   if (section === 'alianzas' && adminData && adminData.length) renderAdminAlianzasTab();
+  if (section === 'tiquetes' && adminData && adminData.length) renderAdminTiquetesTab();
   // Recargas específicas por sección
   if (section === 'comunicados') loadAdminComunicados();
   if (section === 'acceso') loadAdminAcceso();
@@ -5750,7 +5787,7 @@ function adminSection(section) {
   if (section === 'pagos' || section === 'dashboard') {
     loadAdmin(true);
   } else {
-    const DATA_SECTIONS = ['participantes', 'comisiones', 'alianzas'];
+    const DATA_SECTIONS = ['participantes', 'comisiones', 'alianzas', 'tiquetes'];
     if (DATA_SECTIONS.includes(section) && Date.now() - adminLastLoaded > 30000) {
       loadAdmin(true);
     }
@@ -6132,6 +6169,7 @@ function montoEsperadoEur_(tipo, n) {
   if (tipo === 'Reserva') return montoReservaFinalParticipante_(n, esWC).reserva;
   if (tipo === 'Tiquete') {
     if (n.tiquete_aereo !== 'Con tiquete') return 0;
+    if (n.precio_tiquete_manual > 0) return n.precio_tiquete_manual;
     return esWC ? TIQUETE_EUR_WC : TIQUETE_EUR;
   }
   if (tipo === 'Pago Final') return montoReservaFinalParticipante_(n, esWC).final;
@@ -7327,6 +7365,126 @@ function guardarAlianzaFila_(idx) {
       sel.value = sel.dataset.prev || '';
       if (estadoEl) estadoEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>';
     });
+}
+
+// ── Precio manual de tiquete aéreo por participante ─────────────────────────
+// Lista a TODOS los inscritos con "Con tiquete" (hayan pagado o no — a
+// diferencia de la pestaña Pagos, que solo muestra a quien ya hizo un primer
+// abono) y permite fijarles un precio distinto al global (TIQUETE_EUR/
+// TIQUETE_EUR_WC). El valor se guarda en la columna "Precio Tiquete EUR" de
+// la hoja de Inscripción (ver agregarColumnaPrecioTiquete_ en el backend) y
+// lo lee montoEsperadoEur_ vía normalizeParticipant().precio_tiquete_manual.
+function renderAdminTiquetesTab() {
+  const tbody = document.getElementById('tiquetes-tbody');
+  if (!tbody) return;
+  if (!adminData || !adminData.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>';
+    return;
+  }
+  const esWC = adminProgramaActivo === 'world_challenge';
+  const precioGlobal = esWC ? TIQUETE_EUR_WC : TIQUETE_EUR;
+  const elGlobal = document.getElementById('tiquetes-precio-global');
+  if (elGlobal) elGlobal.textContent = precioGlobal + ' EUR';
+
+  const qEl = document.getElementById('tiquetes-search');
+  const q = ((qEl && qEl.value) || '').toLowerCase().trim();
+  const filas = adminData
+    .map((row, idx) => ({ row, idx, n: normalizeParticipant(row) || {} }))
+    .filter(({ n }) => n.tiquete_aereo === 'Con tiquete')
+    .filter(({ n }) => (n.program_key || 'clinic') === adminProgramaActivo)
+    .filter(({ n }) => !q || (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q))
+    .sort((a, b) => (a.n.nombre || '').localeCompare(b.n.nombre || ''));
+
+  if (!filas.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Sin resultados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filas.map(({ idx, n }) => {
+    const manual = n.precio_tiquete_manual > 0 ? n.precio_tiquete_manual : '';
+    const efectivo = n.precio_tiquete_manual > 0 ? n.precio_tiquete_manual : precioGlobal;
+    return `<tr>
+      <td>${escapeHtml(n.nombre || '')}</td>
+      <td>${escapeHtml(n.tipo || '')}</td>
+      <td>${escapeHtml(n.email || '')}</td>
+      <td>${efectivo} EUR${manual === '' ? ' <span style="color:var(--muted);font-size:11px">(global)</span>' : ''}</td>
+      <td><input type="number" id="tiq-precio-${idx}" data-prev="${manual}" value="${manual}" placeholder="${precioGlobal}" style="width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px" onkeydown="if(event.key==='Enter') guardarPrecioTiqueteFila_(${idx})"></td>
+      <td id="tiq-estado-${idx}" style="font-size:12px"><button onclick="guardarPrecioTiqueteFila_(${idx})" style="padding:5px 10px;font-size:12px;border:1px solid var(--navy);color:var(--navy);background:#fff;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif">Guardar</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// Guarda el precio manual de UNA fila — mismo endpoint actualizar_participante
+// que guardarAlianzaFila_, reenviando toda la fila para no pisar otros campos.
+// Valor vacío o 0 borra el override (columna vuelve a quedar en blanco) y el
+// participante vuelve a pagar el precio global.
+function guardarPrecioTiqueteFila_(idx) {
+  const row = adminData[idx];
+  if (!row) return;
+  const input = document.getElementById('tiq-precio-' + idx);
+  const estadoEl = document.getElementById('tiq-estado-' + idx);
+  if (!input) return;
+  const prev = input.dataset.prev || '';
+  const valor = parseFloat(input.value) || 0;
+  if (estadoEl) estadoEl.innerHTML = '<span style="color:var(--blue)">Guardando...</span>';
+  input.disabled = true;
+  const payload = { action: 'actualizar_participante', _row: row._row, programa: row._program_key || adminProgramaActivo, token: adminSessionToken };
+  Object.keys(row).forEach(k => { if (k !== '_idx') payload[k] = row[k]; });
+  payload.precio_tiquete_eur = valor > 0 ? valor : '';
+  fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), redirect: 'follow' })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        row['Precio Tiquete EUR'] = valor > 0 ? String(valor) : '';
+        renderAdminTiquetesTab();
+      } else {
+        input.disabled = false;
+        input.value = prev;
+        if (estadoEl) estadoEl.innerHTML = `<span style="color:#dc2626">Error: ${escapeHtml(res.error || 'desconocido')}</span>`;
+      }
+    })
+    .catch(() => {
+      input.disabled = false;
+      input.value = prev;
+      if (estadoEl) estadoEl.innerHTML = '<span style="color:#dc2626">Error de conexión.</span>';
+    });
+}
+
+// Aplica un mismo precio a todos los participantes visibles (respetando el
+// buscador activo) — `sobrescribirTodos=false` solo toca a quienes aún no
+// tienen un precio manual propio, para no pisar excepciones ya fijadas antes.
+function aplicarPrecioTiqueteBulk_(sobrescribirTodos) {
+  const bulkEl = document.getElementById('tiquetes-bulk-valor');
+  const valor = parseFloat((bulkEl && bulkEl.value) || '');
+  if (!valor || valor <= 0) { alert('Ingresa un precio válido en EUR.'); return; }
+  const qEl = document.getElementById('tiquetes-search');
+  const q = ((qEl && qEl.value) || '').toLowerCase().trim();
+  const filas = adminData
+    .map((row, idx) => ({ row, idx, n: normalizeParticipant(row) || {} }))
+    .filter(({ n }) => n.tiquete_aereo === 'Con tiquete')
+    .filter(({ n }) => (n.program_key || 'clinic') === adminProgramaActivo)
+    .filter(({ n }) => !q || (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q))
+    .filter(({ n }) => sobrescribirTodos || !(n.precio_tiquete_manual > 0));
+  if (!filas.length) { alert('No hay participantes visibles que actualizar con este filtro.'); return; }
+  if (!confirm(`¿Aplicar ${valor} EUR de precio de tiquete a ${filas.length} participante(s)?`)) return;
+
+  let pendientes = filas.length;
+  let errores = 0;
+  filas.forEach(({ row }) => {
+    const payload = { action: 'actualizar_participante', _row: row._row, programa: row._program_key || adminProgramaActivo, token: adminSessionToken };
+    Object.keys(row).forEach(k => { if (k !== '_idx') payload[k] = row[k]; });
+    payload.precio_tiquete_eur = valor;
+    fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), redirect: 'follow' })
+      .then(r => r.json())
+      .then(res => { if (res.ok) row['Precio Tiquete EUR'] = String(valor); else errores++; })
+      .catch(() => { errores++; })
+      .finally(() => {
+        pendientes--;
+        if (pendientes === 0) {
+          renderAdminTiquetesTab();
+          if (errores > 0) alert(`Listo, pero ${errores} de ${filas.length} no se pudieron actualizar.`);
+        }
+      });
+  });
 }
 
 // Base fields shared by all participants
