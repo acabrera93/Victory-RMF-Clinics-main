@@ -3293,8 +3293,22 @@ const PRECIOS_WC = {
   acomp_solo_wc:     { reserva: 185,  final: 0 }  // total sin tiquete: 185€ — solo torneo, sin alojamiento ni actividades turísticas
 };
 
+// Excepción puntual: estos 3 participantes de Clinic ven la tasa del día en
+// vivo (misma que ya usa World Challenge) en vez de la TRM fija del 1 de
+// junio de 2026 para Reserva/Tiquete — así que si pagan después del plazo,
+// pagan con la tasa real del día en que efectivamente pagan, no con la tasa
+// del día en que venció el plazo (que es lo que le toca a todos los demás
+// participantes de Clinic). El congelamiento al enviar comprobante SIGUE
+// aplicando igual que a todos — ver pagoYaCongelado más abajo, que NO tiene
+// excepción: solo cambia qué tasa ven antes de ese momento. Acordado
+// puntualmente con estos 3 correos; no es un cambio de precio general.
+const EMAILS_TASA_VIVA_EXCEPCION = ['hernando.cifuentes@gmail.com', 'richenao@gmail.com', 'paolacamposg@hotmail.com'];
+function esExcepcionTasaViva_() {
+  return EMAILS_TASA_VIVA_EXCEPCION.includes(String(participantEmail || '').toLowerCase().trim());
+}
 function tasaReservaTiquete_() {
-  return programKeyActivo === 'world_challenge' ? tasa : TRM_RESERVA;
+  if (programKeyActivo === 'world_challenge' || esExcepcionTasaViva_()) return tasa;
+  return TRM_RESERVA;
 }
 function tiqueteUnitEur_() {
   return programKeyActivo === 'world_challenge' ? TIQUETE_EUR_WC : TIQUETE_EUR;
@@ -3394,6 +3408,11 @@ const FECHAS_LIMITE_CLINIC = { reserva: '1 de junio 2026', tiquete: '1 de junio 
 function actualizarFechasLimitePorPrograma_() {
   const esWC = programKeyActivo === 'world_challenge';
   const fechas = esWC ? FECHAS_LIMITE_WC : FECHAS_LIMITE_CLINIC;
+  // Excepción puntual (ver EMAILS_TASA_VIVA_EXCEPCION) — para estos 3
+  // participantes de Clinic, los textos de "tasa fija al 1 de junio" deben
+  // hablar de tasa del día como World Challenge, para no contradecir el
+  // número real que muestra su calculadora (ver tasaReservaTiquete_).
+  const usaTasaDia = esWC || esExcepcionTasaViva_();
 
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
   if (idxReserva > -1) STEP_DEFS[idxReserva].desc = 'Fecha límite: ' + fechas.reserva;
@@ -3404,18 +3423,18 @@ function actualizarFechasLimitePorPrograma_() {
 
   const elReservaInfo = document.getElementById('reserva-tasa-info');
   if (elReservaInfo) {
-    elReservaInfo.innerHTML = esWC
+    elReservaInfo.innerHTML = usaTasaDia
       ? `El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, a la <strong>tasa del día</strong> en que realices el pago — fecha límite: <strong>${fechas.reserva}</strong>.`
       : `El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.`;
   }
   const elReservaNota = document.getElementById('reserva-tasa-nota');
   if (elReservaNota) {
-    elReservaNota.textContent = esWC ? 'Tasa del día — se actualiza con la tasa de mercado vigente.' : 'Tasa fija — no varía con la TRM del día.';
+    elReservaNota.textContent = usaTasaDia ? 'Tasa del día — se actualiza con la tasa de mercado vigente.' : 'Tasa fija — no varía con la TRM del día.';
   }
 
   const elTiqInfo = document.getElementById('tiquete-info-parrafo');
   if (elTiqInfo) {
-    elTiqInfo.innerHTML = esWC
+    elTiqInfo.innerHTML = usaTasaDia
       ? `El tiquete aéreo se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${precioTiqueteInfoEur_()} EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> en que realices el pago.`
       : `El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${precioTiqueteInfoEur_()} EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.`;
   }
@@ -3714,6 +3733,13 @@ function congelarPagoKey(tipoPago) {
 }
 
 function pagoYaCongelado(tipoPago) {
+  // La excepción de tasa viva (EMAILS_TASA_VIVA_EXCEPCION) NO evita el
+  // congelamiento — al igual que todos los demás, una vez envían su
+  // comprobante, el monto/tasa de ESE momento queda fijo. La diferencia es
+  // solo QUÉ tasa ven ANTES de pagar: la del día real (tasaReservaTiquete_)
+  // en vez de la TRM fija del 1 de junio — así que si pagan tarde, congelan
+  // la tasa del día en que de verdad pagaron, no la del día del vencimiento
+  // (que es lo que le pasa al resto de participantes de Clinic).
   const cfg = PAGOS_CONGELABLES[tipoPago];
   if (!cfg || grupoPaso < cfg.paso) return false;
   // Si tras congelar apareció saldo pendiente REAL (ej. se agregó un
