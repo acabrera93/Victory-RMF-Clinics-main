@@ -777,7 +777,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
   <!-- PANEL TIQUETE (solo si aplica) -->
   <div class="panel section-anchor" id="panel-tiq">
-    <div class="card">
+    <div id="tiquete-tc-lock-msg" style="display:none;margin-bottom:20px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:14px 16px;font-size:14px;color:#92400e;line-height:1.6;text-align:center;font-weight:500">🔒 Debes aceptar los Términos y Condiciones para habilitar el pago del tiquete.</div>
+    <div class="card pay-lock" id="pay-card-tiq">
       <div style="background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:20px;margin-bottom:20px">
         <p id="tiquete-info-parrafo" style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>993 EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
@@ -835,7 +836,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
   <!-- PANEL 3: PAGO FINAL -->
   <div class="panel section-anchor" id="panel3">
-    <div class="card">
+    <div id="final-tc-lock-msg" style="display:none;margin-bottom:20px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:14px 16px;font-size:14px;color:#92400e;line-height:1.6;text-align:center;font-weight:500">🔒 Debes aceptar los Términos y Condiciones para habilitar el pago final.</div>
+    <div class="card pay-lock" id="pay-card-final">
       <div class="ctitle">Pago final del programa</div>
       <div style="text-align:center;padding:20px 0 24px">
         <div style="font-size:48px;margin-bottom:10px">📅</div>
@@ -4123,16 +4125,38 @@ function setTiquete(val) {
 }
 
 // ── TC CHECKBOX ───────────────────────────────────────────────────────────────
+// Antes SOLO se bloqueaba #pay-card1 (Reserva) — Tiquete, Pago Final y
+// Documentación quedaban totalmente accesibles (sin candado ni aviso) aunque
+// el participante nunca hubiera aceptado los T&C, porque la navegación entre
+// pasos (buildSteps/goPanel) no depende del estado de tc-chk — cualquier paso
+// es clickeable en cualquier momento salvo "¡Bienvenido!". Se bloquean aquí
+// TODAS las tarjetas de pago/documentación posteriores al T&C de la misma
+// forma que ya se hacía con Reserva, en vez de solo esa.
+// Documentación (panel4) queda deliberadamente FUERA de esta lista: Staff y
+// Redcol saltan directo a panel4 sin pasar por T&C (esos pasos ni se les
+// muestran ni se navegan — ver showStaffView()/esRedcolGrupo en
+// activarPrograma()), y el paso_actual que los desbloquearía (actualizarPaso(6))
+// se fija DESPUÉS de que este archivo ya llamó a onTC() una vez con el
+// paso_actual viejo — bloquear panel4 aquí los dejaría con Documentación
+// atascada en candado para siempre, sin ningún evento que vuelva a llamar
+// onTC() para destrabarla.
+const TC_LOCK_TARGETS = [
+  { card: 'pay-card1', msg: 'reserva-tc-lock-msg' },
+  { card: 'pay-card-tiq', msg: 'tiquete-tc-lock-msg' },
+  { card: 'pay-card-final', msg: 'final-tc-lock-msg' }
+];
 function onTC() {
   const ok = document.getElementById('tc-chk').checked;
-  const card = document.getElementById('pay-card1');
-  if (card) card.classList.toggle('pay-lock', !ok);
-  // El aviso vive FUERA de #pay-card1 a propósito: pay-lock deja la tarjeta
-  // al 40% de opacidad, y un hijo no puede "deshacer" la opacidad de su
-  // padre con su propio opacity — el mensaje quedaría igual de apagado y
-  // fácil de pasar por alto si estuviera adentro.
-  const lockMsg = document.getElementById('reserva-tc-lock-msg');
-  if (lockMsg) lockMsg.style.display = ok ? 'none' : 'block';
+  TC_LOCK_TARGETS.forEach(({ card: cardId, msg: msgId }) => {
+    const card = document.getElementById(cardId);
+    if (card) card.classList.toggle('pay-lock', !ok);
+    // El aviso vive FUERA de la tarjeta a propósito: pay-lock deja la tarjeta
+    // al 40% de opacidad, y un hijo no puede "deshacer" la opacidad de su
+    // padre con su propio opacity — el mensaje quedaría igual de apagado y
+    // fácil de pasar por alto si estuviera adentro.
+    const lockMsg = document.getElementById(msgId);
+    if (lockMsg) lockMsg.style.display = ok ? 'none' : 'block';
+  });
   const btnContinuar = document.getElementById('btn-continuar-tc');
   if (btnContinuar) {
     btnContinuar.disabled = !ok;
