@@ -1673,6 +1673,17 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
               </tbody>
             </table>
           </div>
+          <div class="ctitle" style="margin:22px 0 8px">Listado por participante</div>
+          <div class="ptable-wrap">
+            <table class="ptable" id="admin-unif-detalle-table">
+              <thead>
+                <tr><th>Nombre de participante</th><th>Colegio / Club</th><th style="text-align:center">Talla</th></tr>
+              </thead>
+              <tbody id="admin-unif-detalle-body">
+                <tr><td colspan="3" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -8722,17 +8733,20 @@ function compararTallas_(a, b) {
   return a.localeCompare(b);
 }
 
-// Devuelve { colegios: string[], filas: [{talla, jugador, portero, staff, total}], totalConTalla, totalSinTalla, totalParticipantes }
+// Devuelve { colegios: string[], filas: [{talla, jugador, portero, staff, total}], detalle: [{nombre, colegio, talla}], totalConTalla, totalSinTalla, totalParticipantes }
 // Los Acompañantes no reciben uniforme, así que se excluyen por completo del
 // conteo (no solo se ocultan en la tabla) — ni cuentan en totales ni aportan
 // colegios al filtro. Los porteros se cuentan aparte de los jugadores de
 // campo (columna "portero") porque su uniforme es distinto (ver campo
-// "posicion", valor "Portero" — ver inscripcion.html).
+// "posicion", valor "Portero" — ver inscripcion.html). "detalle" es el
+// listado nominal (uno por participante) que acompaña al resumen por talla,
+// para poder ver o descargar quién exactamente lleva cada talla.
 // colegiosFiltro: Set<string> con los colegios/clubes activos, o null/vacío
 // para no filtrar (todos) — permite elegir más de uno a la vez.
 function calcularResumenUniformes_(colegiosFiltro) {
   const porTalla = {};
   const colegiosSet = new Set();
+  const detalle = [];
   let totalParticipantes = 0;
   (adminData || []).forEach(row => {
     const n = normalizeParticipant(row) || {};
@@ -8748,12 +8762,15 @@ function calcularResumenUniformes_(colegiosFiltro) {
     if (!porTalla[talla]) porTalla[talla] = { talla, jugador: 0, portero: 0, staff: 0, total: 0 };
     porTalla[talla][key]++;
     porTalla[talla].total++;
+    detalle.push({ nombre: n.nombre || '(sin nombre)', colegio: colegio || '—', talla });
   });
   const filas = Object.values(porTalla).sort((a, b) => compararTallas_(a.talla, b.talla));
   const totalSinTalla = (porTalla[SIN_TALLA_LABEL_] || {}).total || 0;
+  detalle.sort((a, b) => a.nombre.localeCompare(b.nombre));
   return {
     colegios: [...colegiosSet].sort((a, b) => a.localeCompare(b)),
     filas,
+    detalle,
     totalConTalla: totalParticipantes - totalSinTalla,
     totalSinTalla,
     totalParticipantes
@@ -8788,11 +8805,13 @@ function limpiarAdminUnifColegios() {
 function renderAdminUniformesTab() {
   const cardsEl = document.getElementById('admin-unif-cards');
   const bodyEl = document.getElementById('admin-unif-body');
+  const detalleBodyEl = document.getElementById('admin-unif-detalle-body');
   const panelEl = document.getElementById('admin-unif-colegio-panel');
   const labelEl = document.getElementById('admin-unif-colegio-btn-label');
-  if (!cardsEl || !bodyEl || !panelEl || !labelEl) return;
+  if (!cardsEl || !bodyEl || !detalleBodyEl || !panelEl || !labelEl) return;
   if (!adminData || !adminData.length) {
     bodyEl.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Sin datos de participantes.</td></tr>';
+    detalleBodyEl.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:24px">Sin datos de participantes.</td></tr>';
     return;
   }
 
@@ -8847,6 +8866,15 @@ function renderAdminUniformesTab() {
       <td style="text-align:center;font-weight:700">${resumen.filas.reduce((s, f) => s + f.staff, 0)}</td>
       <td style="text-align:center;font-weight:700">${resumen.totalParticipantes}</td>
     </tr>`;
+
+  detalleBodyEl.innerHTML = resumen.detalle.length
+    ? resumen.detalle.map(d => `
+      <tr>
+        <td>${escapeHtml(d.nombre)}</td>
+        <td>${escapeHtml(d.colegio)}</td>
+        <td style="text-align:center">${escapeHtml(d.talla)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:24px">No hay participantes para este filtro.</td></tr>';
 }
 
 // Guardados por renderAdminUniformesTab() para que exportUniformesExcel() no
@@ -8855,26 +8883,99 @@ function renderAdminUniformesTab() {
 let adminUnifResumenActivo_ = null;
 let adminUnifColegioActivo_ = '';
 
-// Construye la hoja (worksheet) de un resumen de uniformes con la misma
-// estructura que exportParticipantesExcel: fila 1 = cabecera real (sin filas
-// sueltas encima que rompan el autofiltro), datos abajo, fila de totales al
-// final. Reutilizada por exportUniformesExcel (una sola hoja, según el
-// filtro activo) y exportUniformesExcelTodo (una hoja de totales + una hoja
-// por colegio/club, ver esa función).
-function hojaResumenUniformes_(resumen) {
+// La descarga de Uniformes necesita ver bien la cabecera y el total (negrilla,
+// fondo gris, bordes) — SheetJS Community (la librería que usa
+// cargarLibreriaXlsx_ para el resto de exportaciones) no escribe estilos de
+// celda al generar el .xlsx, así que aquí se usa ExcelJS, que sí lo soporta.
+let _exceljsLibPromise = null;
+function cargarLibreriaExcelJs_() {
+  if (window.ExcelJS) return Promise.resolve();
+  if (_exceljsLibPromise) return _exceljsLibPromise;
+  _exceljsLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar la librería de Excel'));
+    document.head.appendChild(s);
+  });
+  return _exceljsLibPromise;
+}
+
+const UNIF_BORDE_CELDA_ = { style: 'thin', color: { argb: 'FFB7B7B7' } };
+const UNIF_FONDO_GRIS_ = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+
+// Aplica a una fila ya creada el mismo look que la tabla en pantalla:
+// cabecera/total en negrilla con fondo gris, columnas desde `centrarDesde`
+// centradas, primera columna en negrilla si `primeraColBold` — y siempre
+// borde fino en cada celda.
+function estilizarFilaUnif_(row, { cabecera = false, total = false, primeraColBold = false, centrarDesde = 2 } = {}) {
+  row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    cell.border = { top: UNIF_BORDE_CELDA_, left: UNIF_BORDE_CELDA_, bottom: UNIF_BORDE_CELDA_, right: UNIF_BORDE_CELDA_ };
+    if (cabecera || total) { cell.font = { bold: true }; cell.fill = UNIF_FONDO_GRIS_; }
+    else if (primeraColBold && colNumber === 1) cell.font = { bold: true };
+    cell.alignment = { horizontal: colNumber >= centrarDesde ? 'center' : 'left', vertical: 'middle' };
+  });
+}
+
+// Agrega al workbook una hoja con el resumen de uniformes por talla y, debajo
+// (separado por una fila en blanco), el listado nominal de participantes con
+// Nombre / Colegio-Club / Talla — mismas dos tablas que se ven en pantalla.
+// Reutilizada por exportUniformesExcel (una sola hoja, según el filtro
+// activo) y exportUniformesExcelTodo (una hoja de totales + una por colegio).
+function agregarHojaResumenUniformes_(wb, nombreHoja, resumen) {
+  const ws = wb.addWorksheet(nombreHoja, { views: [{ state: 'frozen', ySplit: 1 }] });
   const headers = ['Talla', 'Jugadores', 'Porteros', 'Staff', 'Total'];
-  const filaTotal = ['Total',
+  const anchoCol = valores => Math.min(Math.max(valores.reduce((m, v) => Math.max(m, String(v).length), 0) + 4, 10), 40);
+  // Las columnas A-C las comparten ambas tablas (resumen y listado nominal),
+  // así que su ancho considera el contenido de las dos.
+  ws.columns = [
+    { width: anchoCol([headers[0], 'Nombre de participante', ...resumen.filas.map(f => f.talla), ...resumen.detalle.map(d => d.nombre)]) },
+    { width: anchoCol([headers[1], 'Colegio / Club', ...resumen.filas.map(f => f.jugador), ...resumen.detalle.map(d => d.colegio)]) },
+    { width: anchoCol([headers[2], 'Talla', ...resumen.filas.map(f => f.portero), ...resumen.detalle.map(d => d.talla)]) },
+    { width: anchoCol([headers[3], ...resumen.filas.map(f => f.staff)]) },
+    { width: anchoCol([headers[4], ...resumen.filas.map(f => f.total)]) }
+  ];
+
+  // Tabla 1: resumen por talla.
+  estilizarFilaUnif_(ws.addRow(headers), { cabecera: true });
+  const primeraFilaDatos = 2;
+  resumen.filas.forEach(f => {
+    const fila = ws.addRow([f.talla, f.jugador, f.portero, f.staff]);
+    // La columna "Total" (E) queda como fórmula =SUMA(B:D) de su propia fila,
+    // no el número ya calculado en JS — si alguien corrige a mano una celda
+    // en Excel, el total de esa fila se recalcula solo. El "result" es solo
+    // el valor en caché para que se vea bien antes de que Excel/Sheets
+    // recalculen al abrir el archivo; la fórmula es la que manda.
+    fila.getCell(5).value = { formula: `SUM(B${fila.number}:D${fila.number})`, result: f.total };
+    estilizarFilaUnif_(fila, { primeraColBold: true });
+  });
+  const ultimaFilaDatos = primeraFilaDatos + resumen.filas.length - 1;
+
+  // Fila "Total" final: cada columna es =SUMA() sobre el rango de filas de
+  // datos (también fórmula viva, no un número fijo).
+  const filaTotal = ws.addRow(['Total']);
+  const totalesCache = [
     resumen.filas.reduce((s, f) => s + f.jugador, 0),
     resumen.filas.reduce((s, f) => s + f.portero, 0),
     resumen.filas.reduce((s, f) => s + f.staff, 0),
-    resumen.totalParticipantes];
-  const datos = [headers, ...resumen.filas.map(f => [f.talla, f.jugador, f.portero, f.staff, f.total]), filaTotal];
-  const ws = XLSX.utils.aoa_to_sheet(datos);
-  ws['!cols'] = headers.map((h, col) => {
-    const maxLen = datos.reduce((m, fila) => Math.max(m, String(fila[col] ?? '').length), h.length);
-    return { wch: Math.min(Math.max(maxLen + 2, 10), 45) };
+    resumen.totalParticipantes
+  ];
+  [2, 3, 4, 5].forEach((col, i) => {
+    const letra = String.fromCharCode(64 + col); // 2->B, 3->C, 4->D, 5->E
+    filaTotal.getCell(col).value = resumen.filas.length
+      ? { formula: `SUM(${letra}${primeraFilaDatos}:${letra}${ultimaFilaDatos})`, result: totalesCache[i] }
+      : 0;
   });
-  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length - 2, c: headers.length - 1 } }) };
+  estilizarFilaUnif_(filaTotal, { total: true });
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+
+  // Tabla 2: listado nominal, separado del resumen por una fila en blanco.
+  ws.addRow([]);
+  estilizarFilaUnif_(ws.addRow(['Nombre de participante', 'Colegio / Club', 'Talla']), { cabecera: true, centrarDesde: 3 });
+  resumen.detalle.forEach(d => {
+    estilizarFilaUnif_(ws.addRow([d.nombre, d.colegio, d.talla]), { centrarDesde: 3 });
+  });
+
   return ws;
 }
 
@@ -8893,11 +8994,24 @@ function nombrePestanaUniformes_(base, usados) {
   return nombre;
 }
 
+// Dispara la descarga de un workbook de ExcelJS (que solo sabe generar un
+// ArrayBuffer en el navegador, sin un writeFile como SheetJS) como archivo
+// .xlsx real.
+async function descargarWorkbookExcelJs_(wb, nombreArchivo) {
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function exportUniformesExcel() {
   const resumen = adminUnifResumenActivo_;
   if (!resumen || !resumen.filas.length) { alert('No hay datos de uniformes para descargar.'); return; }
   try {
-    await cargarLibreriaXlsx_();
+    await cargarLibreriaExcelJs_();
   } catch (err) {
     alert('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.');
     return;
@@ -8905,13 +9019,12 @@ async function exportUniformesExcel() {
   // El colegio filtrado va en el nombre del archivo y de la pestaña, no como
   // fila extra, para que la tabla quede limpia y las columnas bien alineadas
   // al abrir en Excel/Sheets.
-  const ws = hojaResumenUniformes_(resumen);
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
   const nombrePestana = nombrePestanaUniformes_('Uniformes' + (adminUnifColegioActivo_ ? ' - ' + adminUnifColegioActivo_ : ''), new Set());
-  XLSX.utils.book_append_sheet(wb, ws, nombrePestana);
+  agregarHojaResumenUniformes_(wb, nombrePestana, resumen);
   const fecha = new Date().toISOString().slice(0, 10);
   const sufijoColegio = adminUnifColegioActivo_ ? '_' + adminUnifColegioActivo_.toLowerCase().replace(/[^a-z0-9]+/g, '_') : '_todos';
-  XLSX.writeFile(wb, `uniformes_${adminProgramaActivo}${sufijoColegio}_${fecha}.xlsx`);
+  await descargarWorkbookExcelJs_(wb, `uniformes_${adminProgramaActivo}${sufijoColegio}_${fecha}.xlsx`);
 }
 
 // Descarga TODO en un solo Excel, sin importar el filtro activo en pantalla:
@@ -8921,21 +9034,21 @@ async function exportUniformesExcelTodo() {
   const resumenTodos = calcularResumenUniformes_(null);
   if (!resumenTodos.filas.length) { alert('No hay datos de uniformes para descargar.'); return; }
   try {
-    await cargarLibreriaXlsx_();
+    await cargarLibreriaExcelJs_();
   } catch (err) {
     alert('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.');
     return;
   }
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
   const nombresUsados = new Set();
-  XLSX.utils.book_append_sheet(wb, hojaResumenUniformes_(resumenTodos), nombrePestanaUniformes_('Totales', nombresUsados));
+  agregarHojaResumenUniformes_(wb, nombrePestanaUniformes_('Totales', nombresUsados), resumenTodos);
   resumenTodos.colegios.forEach(colegio => {
     const resumenColegio = calcularResumenUniformes_(new Set([colegio]));
     if (!resumenColegio.filas.length) return;
-    XLSX.utils.book_append_sheet(wb, hojaResumenUniformes_(resumenColegio), nombrePestanaUniformes_(colegio, nombresUsados));
+    agregarHojaResumenUniformes_(wb, nombrePestanaUniformes_(colegio, nombresUsados), resumenColegio);
   });
   const fecha = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `uniformes_${adminProgramaActivo}_todos_los_colegios_${fecha}.xlsx`);
+  await descargarWorkbookExcelJs_(wb, `uniformes_${adminProgramaActivo}_todos_los_colegios_${fecha}.xlsx`);
 }
 
 // ── DOCUMENTOS (pestaña admin) ──────────────────────────────────────────────
