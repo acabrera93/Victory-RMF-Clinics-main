@@ -1581,8 +1581,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                    onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
                    oninput="filterAdminTable()">
             <span id="admin-search-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
-            <button onclick="exportParticipantesCSV(false)" title="Descarga solo los participantes que coinciden con la búsqueda actual" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar visibles</button>
-            <button onclick="exportParticipantesCSV(true)" title="Descarga todos los participantes, sin importar la búsqueda" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar todos</button>
+            <button onclick="exportParticipantesExcel(false)" title="Descarga solo los participantes que coinciden con la búsqueda actual" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar visibles</button>
+            <button onclick="exportParticipantesExcel(true)" title="Descarga todos los participantes, sin importar la búsqueda" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar todos</button>
             <button onclick="openAddParticipantModal()" style="padding:9px 16px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">+ Agregar inscrito</button>
             <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">Recargar</button>
           </div>
@@ -7303,17 +7303,34 @@ function filterAdminTable() {
   if (countEl) countEl.textContent = filtrados.length + (filtrados.length === 1 ? ' resultado' : ' resultados');
 }
 
-// Exporta la tabla de participantes a CSV. soloTodos=false exporta lo que
-// está visible en pantalla ahora mismo (respeta el filtro del buscador,
-// via adminPTableVisibleRows que guarda renderAdminTable); soloTodos=true
-// ignora el buscador y exporta adminData completo.
-function csvCell_(v) {
-  const s = (v == null ? '' : String(v)).replace(/"/g, '""');
-  return '"' + s + '"';
+// Exporta la tabla de participantes a un .xlsx real (no CSV) para que las
+// columnas siempre se vean separadas al abrirlo, sin depender de si Excel/
+// Sheets interpreta coma o punto y coma como separador. soloTodos=false
+// exporta lo que está visible en pantalla ahora mismo (respeta el filtro del
+// buscador, vía adminPTableVisibleRows que guarda renderAdminTable);
+// soloTodos=true ignora el buscador y exporta adminData completo.
+let _xlsxLibPromise = null;
+function cargarLibreriaXlsx_() {
+  if (window.XLSX) return Promise.resolve();
+  if (_xlsxLibPromise) return _xlsxLibPromise;
+  _xlsxLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('No se pudo cargar la librería de Excel'));
+    document.head.appendChild(s);
+  });
+  return _xlsxLibPromise;
 }
-function exportParticipantesCSV(soloTodos) {
+async function exportParticipantesExcel(soloTodos) {
   const rows = soloTodos ? (adminData || []) : (adminPTableVisibleRows || []);
   if (!rows.length) { alert('No hay participantes para descargar.'); return; }
+  try {
+    await cargarLibreriaXlsx_();
+  } catch (err) {
+    alert('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.');
+    return;
+  }
   const ordenTipo = tp => tp.toLowerCase().includes('jug') ? 0 : tp.toLowerCase().includes('staff') ? 2 : 1;
   const rowsOrdenadas = [...rows].sort((a, b) => {
     const ta = (normalizeParticipant(a) || {}).tipo || a['1'] || '';
@@ -7321,7 +7338,7 @@ function exportParticipantesCSV(soloTodos) {
     return ordenTipo(ta) - ordenTipo(tb);
   });
   const headers = ['Nombre', 'Tipo', 'Email', 'Tel.', 'Fecha nac.', 'Colegio / Club', 'Tiquete', 'Habitación', 'Alianza', 'Paso'];
-  const lineas = [headers.map(csvCell_).join(';')];
+  const datos = [headers];
   rowsOrdenadas.forEach(row => {
     const n = normalizeParticipant(row) || {};
     const nb = n.nombre || row['2'] || '';
@@ -7335,20 +7352,20 @@ function exportParticipantesCSV(soloTodos) {
     const hab = n.habitacion || '';
     const paso = n.paso_actual || '1';
     const alianza = n.alianza_nombre || '';
-    lineas.push([nb, tp, em, ph, fn, club, tiq, hab, alianza, paso].map(csvCell_).join(';'));
+    datos.push([nb, tp, em, ph, fn, club, tiq, hab, alianza, paso]);
   });
-  const csv = '﻿' + lineas.join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const ws = XLSX.utils.aoa_to_sheet(datos);
+  // Ancho de columna autoajustado al contenido más largo de cada columna
+  ws['!cols'] = headers.map((h, col) => {
+    const maxLen = datos.reduce((m, fila) => Math.max(m, String(fila[col] ?? '').length), h.length);
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 45) };
+  });
+  ws['!autofilter'] = { ref: ws['!ref'] };
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Participantes');
   const fecha = new Date().toISOString().slice(0, 10);
   const sufijo = soloTodos ? 'todos' : 'filtrados';
-  a.href = url;
-  a.download = `participantes_${adminProgramaActivo}_${sufijo}_${fecha}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  XLSX.writeFile(wb, `participantes_${adminProgramaActivo}_${sufijo}_${fecha}.xlsx`);
 }
 
 // Catálogo de alianzas activas del programa actual (nombre + precio total),
