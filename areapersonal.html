@@ -1581,6 +1581,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                    onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor=''"
                    oninput="filterAdminTable()">
             <span id="admin-search-count" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+            <button onclick="exportParticipantesCSV(false)" title="Descarga solo los participantes que coinciden con la búsqueda actual" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar visibles</button>
+            <button onclick="exportParticipantesCSV(true)" title="Descarga todos los participantes, sin importar la búsqueda" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar todos</button>
             <button onclick="openAddParticipantModal()" style="padding:9px 16px;border:none;border-radius:8px;background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">+ Agregar inscrito</button>
             <button onclick="loadAdmin(true)" style="padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--muted)">Recargar</button>
           </div>
@@ -7223,7 +7225,9 @@ async function refrescarComercialesTrasCambio() {
   loadAdmin(true);
 }
 
+let adminPTableVisibleRows = [];
 function renderAdminTable(rows) {
+  adminPTableVisibleRows = rows || [];
   const tbody = document.getElementById('admin-ptable-body');
   if (!rows || !rows.length) {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
@@ -7297,6 +7301,54 @@ function filterAdminTable() {
   });
   renderAdminTable(filtrados);
   if (countEl) countEl.textContent = filtrados.length + (filtrados.length === 1 ? ' resultado' : ' resultados');
+}
+
+// Exporta la tabla de participantes a CSV. soloTodos=false exporta lo que
+// está visible en pantalla ahora mismo (respeta el filtro del buscador,
+// via adminPTableVisibleRows que guarda renderAdminTable); soloTodos=true
+// ignora el buscador y exporta adminData completo.
+function csvCell_(v) {
+  const s = (v == null ? '' : String(v)).replace(/"/g, '""');
+  return '"' + s + '"';
+}
+function exportParticipantesCSV(soloTodos) {
+  const rows = soloTodos ? (adminData || []) : (adminPTableVisibleRows || []);
+  if (!rows.length) { alert('No hay participantes para descargar.'); return; }
+  const ordenTipo = tp => tp.toLowerCase().includes('jug') ? 0 : tp.toLowerCase().includes('staff') ? 2 : 1;
+  const rowsOrdenadas = [...rows].sort((a, b) => {
+    const ta = (normalizeParticipant(a) || {}).tipo || a['1'] || '';
+    const tb = (normalizeParticipant(b) || {}).tipo || b['1'] || '';
+    return ordenTipo(ta) - ordenTipo(tb);
+  });
+  const headers = ['Nombre', 'Tipo', 'Email', 'Tel.', 'Fecha nac.', 'Colegio / Club', 'Tiquete', 'Habitación', 'Alianza', 'Paso'];
+  const lineas = [headers.map(csvCell_).join(';')];
+  rowsOrdenadas.forEach(row => {
+    const n = normalizeParticipant(row) || {};
+    const nb = n.nombre || row['2'] || '';
+    const tp = n.tipo || row['1'] || '';
+    const em = n.email || row['3'] || '';
+    const ph = n.phone || row['4'] || '';
+    const fnRaw = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha_nacimiento'] || '';
+    const fn = fnRaw ? formatFechaNac(fnRaw) : '';
+    const club = n.club_colegio || row['Club / Colegio'] || row['Club/Colegio'] || row['Colegio'] || row['Club'] || '';
+    const tiq = (n.tiquete_aereo || '').toLowerCase().includes('con') ? 'Sí' : '';
+    const hab = n.habitacion || '';
+    const paso = n.paso_actual || '1';
+    const alianza = n.alianza_nombre || '';
+    lineas.push([nb, tp, em, ph, fn, club, tiq, hab, alianza, paso].map(csvCell_).join(';'));
+  });
+  const csv = '﻿' + lineas.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0, 10);
+  const sufijo = soloTodos ? 'todos' : 'filtrados';
+  a.href = url;
+  a.download = `participantes_${adminProgramaActivo}_${sufijo}_${fecha}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Catálogo de alianzas activas del programa actual (nombre + precio total),
