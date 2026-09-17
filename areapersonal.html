@@ -1589,10 +1589,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <div class="ptable-wrap">
             <table class="ptable" id="admin-ptable">
               <thead>
-                <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Colegio / Club</th><th>Tiquete</th><th>Habitación</th><th>Alianza</th><th>Paso</th><th></th></tr>
+                <tr><th>Nombre</th><th>Tipo</th><th>Email</th><th>Tel.</th><th>Fecha nac.</th><th>Colegio / Club</th><th>Tiquete</th><th>Habitación</th><th>Talla</th><th>Alianza</th><th>Paso</th><th></th></tr>
               </thead>
               <tbody id="admin-ptable-body">
-                <tr><td colspan="11" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+                <tr><td colspan="12" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2314,6 +2314,7 @@ function normalizeParticipant(raw) {
       /world\s*challenge/i.test(rowVal(raw, 'programa', 'Programa', 'program', 'evento', 'Evento')) ? 'world_challenge' : 'clinic'
     ),
     habitacion: rowVal(raw, 'habitacion', 'habitación', 'Habitacion', 'Habitación', 'room', 'tipo_habitacion'),
+    talla_uniforme: rowVal(raw, 'talla_uniforme', 'Talla Uniforme', 'talla uniforme', 'Talla', 'talla'),
     acudiente: rowVal(
       raw,
       'acudiente',
@@ -7230,7 +7231,7 @@ function renderAdminTable(rows) {
   adminPTableVisibleRows = rows || [];
   const tbody = document.getElementById('admin-ptable-body');
   if (!rows || !rows.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:24px">No hay participantes.</td></tr>';
     return;
   }
   // Orden fijo: Jugadores → Acompañantes → Staff (sort estable: dentro de
@@ -7266,6 +7267,7 @@ function renderAdminTable(rows) {
       <td style="font-size:12px;color:var(--muted)">${escapeHtml(club) || '—'}</td>
       <td style="text-align:center">${tiq}</td>
       <td style="font-size:12px">${escapeHtml(hab)}</td>
+      <td style="font-size:12px">${escapeHtml(n.talla_uniforme || '') || '—'}</td>
       <td style="font-size:12px">${n.alianza_nombre ? `<span style="color:var(--blue)">🤝 ${escapeHtml(n.alianza_nombre)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="${cls}">${escapeHtml(paso)}</span></td>
       <td><div style="display:flex;gap:5px;flex-wrap:wrap">${isEditAdmin() ? `<button onclick="event.stopPropagation();openEditModal(${origIdx})" style="padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy)" onmouseover="this.style.background='var(--off)'" onmouseout="this.style.background='#fff'">Editar</button>` : '<span style="font-size:11px;color:var(--muted)">Solo ver</span>'}</div></td>
@@ -7337,7 +7339,7 @@ async function exportParticipantesExcel(soloTodos) {
     const tb = (normalizeParticipant(b) || {}).tipo || b['1'] || '';
     return ordenTipo(ta) - ordenTipo(tb);
   });
-  const headers = ['Nombre', 'Tipo', 'Email', 'Tel.', 'Fecha nac.', 'Colegio / Club', 'Tiquete', 'Habitación', 'Alianza', 'Paso'];
+  const headers = ['Nombre', 'Tipo', 'Email', 'Tel.', 'Fecha nac.', 'Colegio / Club', 'Tiquete', 'Habitación', 'Talla', 'Alianza', 'Paso'];
   const datos = [headers];
   rowsOrdenadas.forEach(row => {
     const n = normalizeParticipant(row) || {};
@@ -7350,9 +7352,10 @@ async function exportParticipantesExcel(soloTodos) {
     const club = n.club_colegio || row['Club / Colegio'] || row['Club/Colegio'] || row['Colegio'] || row['Club'] || '';
     const tiq = (n.tiquete_aereo || '').toLowerCase().includes('con') ? 'Sí' : '';
     const hab = n.habitacion || '';
+    const talla = n.talla_uniforme || '';
     const paso = n.paso_actual || '1';
     const alianza = n.alianza_nombre || '';
-    datos.push([nb, tp, em, ph, fn, club, tiq, hab, alianza, paso]);
+    datos.push([nb, tp, em, ph, fn, club, tiq, hab, talla, alianza, paso]);
   });
   const ws = XLSX.utils.aoa_to_sheet(datos);
   // Ancho de columna autoajustado al contenido más largo de cada columna
