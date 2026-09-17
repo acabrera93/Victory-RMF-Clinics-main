@@ -835,6 +835,12 @@ function reiniciar() {
   ['a-nombre','a-email','a-phone','a-ciudad','a-pasaporte','a-fnac','a-jugador','p2-nombre','p2-fnac','p2-pasaporte'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const jBtn = document.getElementById('j-btn');
+  jBtn.disabled = false;
+  jBtn.textContent = 'Enviar inscripción del jugador →';
+  const aBtn = document.getElementById('a-btn');
+  aBtn.disabled = false;
+  aBtn.textContent = 'Enviar inscripción del acompañante →';
   window.scrollTo({top:0, behavior:'smooth'});
 }
 </script>
