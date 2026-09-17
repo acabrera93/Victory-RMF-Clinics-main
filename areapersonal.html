@@ -1569,6 +1569,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <button id="ptab-lista" onclick="switchParticipantesTab('lista')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--blue);background:var(--blue);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">📋 Lista</button>
         <button id="ptab-categorias" onclick="switchParticipantesTab('categorias')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">🏅 Categorías</button>
         <button id="ptab-documentos" onclick="switchParticipantesTab('documentos')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">📄 Documentos</button>
+        <button id="ptab-uniformes" onclick="switchParticipantesTab('uniformes')" style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">🎽 Uniformes</button>
       </div>
 
       <!-- Vista Lista -->
@@ -1637,6 +1638,32 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
               </thead>
               <tbody id="admin-docs-body">
                 <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista Uniformes -->
+      <div id="ptab-content-uniformes" style="display:none">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+            <div class="ctitle" style="margin-bottom:0;flex:1">Uniformes por talla</div>
+            <select id="admin-unif-colegio" onchange="renderAdminUniformesTab()"
+                    style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:220px;background:#fff;color:var(--navy)">
+              <option value="">Todos los colegios / clubes</option>
+            </select>
+            <button onclick="exportUniformesExcel()" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar</button>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 18px">Conteo de participantes por talla de uniforme registrada en la hoja de Inscripción. Filtra por colegio/club para ver solo ese grupo.</p>
+          <div id="admin-unif-cards" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px"></div>
+          <div class="ptable-wrap">
+            <table class="ptable" id="admin-unif-table">
+              <thead>
+                <tr><th>Talla</th><th style="text-align:center">Jugadores</th><th style="text-align:center">Acompañantes</th><th style="text-align:center">Staff</th><th style="text-align:center">Total</th></tr>
+              </thead>
+              <tbody id="admin-unif-body">
+                <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -5866,6 +5893,7 @@ function adminSection(section) {
     filterAdminTable();
     if (activeParticipantesSubtab === 'categorias') buildCategorias();
     if (activeParticipantesSubtab === 'documentos') renderAdminDocumentosTab();
+    if (activeParticipantesSubtab === 'uniformes') renderAdminUniformesTab();
   }
   if (section === 'alianzas' && adminData && adminData.length) renderAdminAlianzasTab();
   if (section === 'tiquetes' && adminData && adminData.length) renderAdminTiquetesTab();
@@ -5989,6 +6017,7 @@ function aplicarDatosAdmin(parts, fin, acceso) {
   if (activeAsec === 'comisiones' && adminFinData) renderAdminComisiones(adminFinData);
   if (activeAsec === 'participantes' && activeParticipantesSubtab === 'categorias') buildCategorias();
   if (activeAsec === 'participantes' && activeParticipantesSubtab === 'documentos') renderAdminDocumentosTab();
+  if (activeAsec === 'participantes' && activeParticipantesSubtab === 'uniformes') renderAdminUniformesTab();
 }
 
 // Actualiza (si existe) el snapshot cacheado de admin_financiero de un
@@ -8651,14 +8680,156 @@ function switchParticipantesTab(tab) {
   document.getElementById('ptab-content-lista').style.display       = tab === 'lista'      ? '' : 'none';
   document.getElementById('ptab-content-categorias').style.display  = tab === 'categorias' ? '' : 'none';
   document.getElementById('ptab-content-documentos').style.display  = tab === 'documentos' ? '' : 'none';
+  document.getElementById('ptab-content-uniformes').style.display   = tab === 'uniformes'  ? '' : 'none';
   const btnLista = document.getElementById('ptab-lista');
   const btnCat   = document.getElementById('ptab-categorias');
   const btnDocs  = document.getElementById('ptab-documentos');
+  const btnUnif  = document.getElementById('ptab-uniformes');
   if (btnLista) { btnLista.style.background = tab==='lista'?'var(--blue)':'#fff'; btnLista.style.color = tab==='lista'?'#fff':'var(--muted)'; btnLista.style.borderColor = tab==='lista'?'var(--blue)':'var(--border)'; }
   if (btnCat)   { btnCat.style.background   = tab==='categorias'?'var(--blue)':'#fff'; btnCat.style.color = tab==='categorias'?'#fff':'var(--muted)'; btnCat.style.borderColor = tab==='categorias'?'var(--blue)':'var(--border)'; }
   if (btnDocs)  { btnDocs.style.background  = tab==='documentos'?'var(--blue)':'#fff'; btnDocs.style.color = tab==='documentos'?'#fff':'var(--muted)'; btnDocs.style.borderColor = tab==='documentos'?'var(--blue)':'var(--border)'; }
+  if (btnUnif)  { btnUnif.style.background  = tab==='uniformes'?'var(--blue)':'#fff'; btnUnif.style.color = tab==='uniformes'?'#fff':'var(--muted)'; btnUnif.style.borderColor = tab==='uniformes'?'var(--blue)':'var(--border)'; }
   if (tab === 'categorias') buildCategorias();
   if (tab === 'documentos') renderAdminDocumentosTab();
+  if (tab === 'uniformes') renderAdminUniformesTab();
+}
+
+// ── UNIFORMES (pestaña admin) ───────────────────────────────────────────────
+// Cuenta participantes por talla de uniforme (columna "Talla Uniforme" en la
+// hoja de Inscripción, ver normalizeParticipant -> talla_uniforme). Es una
+// columna que hoy se llena a mano directo en el Sheet (no la escribe ningún
+// formulario), así que esta pestaña solo lee y resume lo que ya haya ahí.
+const ORDEN_TALLAS_LETRA_ = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+const SIN_TALLA_LABEL_ = 'Sin talla';
+function compararTallas_(a, b) {
+  if (a === SIN_TALLA_LABEL_) return 1;
+  if (b === SIN_TALLA_LABEL_) return -1;
+  const aNum = /^\d+$/.test(a), bNum = /^\d+$/.test(b);
+  if (aNum && bNum) return parseInt(a) - parseInt(b);
+  if (aNum && !bNum) return -1;
+  if (!aNum && bNum) return 1;
+  const ia = ORDEN_TALLAS_LETRA_.indexOf(a.toUpperCase());
+  const ib = ORDEN_TALLAS_LETRA_.indexOf(b.toUpperCase());
+  if (ia >= 0 && ib >= 0) return ia - ib;
+  if (ia >= 0) return -1;
+  if (ib >= 0) return 1;
+  return a.localeCompare(b);
+}
+
+// Devuelve { colegios: string[], filas: [{talla, jugador, acompanante, staff, total}], totalConTalla, totalSinTalla, totalParticipantes }
+function calcularResumenUniformes_(colegioFiltro) {
+  const porTalla = {};
+  const colegiosSet = new Set();
+  let totalParticipantes = 0;
+  (adminData || []).forEach(row => {
+    const n = normalizeParticipant(row) || {};
+    const colegio = (n.club_colegio || '').trim();
+    if (colegio) colegiosSet.add(colegio);
+    if (colegioFiltro && colegio !== colegioFiltro) return;
+    totalParticipantes++;
+    const talla = (n.talla_uniforme || '').trim() || SIN_TALLA_LABEL_;
+    const tipo = (n.tipo || '').toLowerCase();
+    const key = tipo.includes('jug') ? 'jugador' : tipo.includes('staff') ? 'staff' : 'acompanante';
+    if (!porTalla[talla]) porTalla[talla] = { talla, jugador: 0, acompanante: 0, staff: 0, total: 0 };
+    porTalla[talla][key]++;
+    porTalla[talla].total++;
+  });
+  const filas = Object.values(porTalla).sort((a, b) => compararTallas_(a.talla, b.talla));
+  const totalSinTalla = (porTalla[SIN_TALLA_LABEL_] || {}).total || 0;
+  return {
+    colegios: [...colegiosSet].sort((a, b) => a.localeCompare(b)),
+    filas,
+    totalConTalla: totalParticipantes - totalSinTalla,
+    totalSinTalla,
+    totalParticipantes
+  };
+}
+
+function renderAdminUniformesTab() {
+  const cardsEl = document.getElementById('admin-unif-cards');
+  const bodyEl = document.getElementById('admin-unif-body');
+  const selectEl = document.getElementById('admin-unif-colegio');
+  if (!cardsEl || !bodyEl || !selectEl) return;
+  if (!adminData || !adminData.length) {
+    bodyEl.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Sin datos de participantes.</td></tr>';
+    return;
+  }
+
+  // Repoblar el <select> de colegios sin perder la selección actual si sigue
+  // existiendo tras el refresco de datos.
+  const seleccionPrevia = selectEl.value;
+  const resumenTodos = calcularResumenUniformes_('');
+  selectEl.innerHTML = '<option value="">Todos los colegios / clubes</option>' +
+    resumenTodos.colegios.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  if (seleccionPrevia && resumenTodos.colegios.includes(seleccionPrevia)) selectEl.value = seleccionPrevia;
+  const colegioActivo = selectEl.value;
+
+  const resumen = colegioActivo ? calcularResumenUniformes_(colegioActivo) : resumenTodos;
+  adminUnifResumenActivo_ = resumen;
+  adminUnifColegioActivo_ = colegioActivo;
+
+  const iconoTalla = t => t === SIN_TALLA_LABEL_ ? '❓' : '🎽';
+  cardsEl.innerHTML = resumen.filas.length
+    ? resumen.filas.map(f => `
+      <div style="flex:1;min-width:90px;background:${f.talla === SIN_TALLA_LABEL_ ? 'rgba(148,163,184,.12)' : 'rgba(30,91,168,.06)'};border:1px solid ${f.talla === SIN_TALLA_LABEL_ ? 'var(--border)' : 'rgba(30,91,168,.18)'};border-radius:12px;padding:14px 12px;text-align:center">
+        <div style="font-size:20px;margin-bottom:2px">${iconoTalla(f.talla)}</div>
+        <div style="font-size:22px;font-weight:700;color:${f.talla === SIN_TALLA_LABEL_ ? 'var(--muted)' : 'var(--blue)'}">${f.total}</div>
+        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:2px">${escapeHtml(f.talla)}</div>
+      </div>`).join('')
+    : '<p style="color:var(--muted);font-size:13px;margin:0">No hay participantes para este filtro.</p>';
+
+  bodyEl.innerHTML = resumen.filas.map(f => `
+    <tr>
+      <td style="font-weight:600">${escapeHtml(f.talla)}</td>
+      <td style="text-align:center">${f.jugador || '—'}</td>
+      <td style="text-align:center">${f.acompanante || '—'}</td>
+      <td style="text-align:center">${f.staff || '—'}</td>
+      <td style="text-align:center;font-weight:700">${f.total}</td>
+    </tr>`).join('') + `
+    <tr style="background:rgba(30,91,168,.05)">
+      <td style="font-weight:700">Total</td>
+      <td style="text-align:center;font-weight:700">${resumen.filas.reduce((s, f) => s + f.jugador, 0)}</td>
+      <td style="text-align:center;font-weight:700">${resumen.filas.reduce((s, f) => s + f.acompanante, 0)}</td>
+      <td style="text-align:center;font-weight:700">${resumen.filas.reduce((s, f) => s + f.staff, 0)}</td>
+      <td style="text-align:center;font-weight:700">${resumen.totalParticipantes}</td>
+    </tr>`;
+}
+
+// Guardados por renderAdminUniformesTab() para que exportUniformesExcel() no
+// tenga que recalcular ni volver a leer el <select> (evita desincronía si el
+// usuario exporta justo cuando adminData se está refrescando).
+let adminUnifResumenActivo_ = null;
+let adminUnifColegioActivo_ = '';
+
+async function exportUniformesExcel() {
+  const resumen = adminUnifResumenActivo_;
+  if (!resumen || !resumen.filas.length) { alert('No hay datos de uniformes para descargar.'); return; }
+  try {
+    await cargarLibreriaXlsx_();
+  } catch (err) {
+    alert('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.');
+    return;
+  }
+  // Misma estructura que exportParticipantesExcel (ver ahí): fila 1 = cabecera
+  // real (sin filas sueltas encima que rompan el autofiltro), datos abajo,
+  // fila de totales al final. El colegio filtrado va en el nombre del archivo
+  // y de la pestaña, no como fila extra, para que la tabla quede limpia y las
+  // columnas bien alineadas al abrir en Excel/Sheets.
+  const headers = ['Talla', 'Jugadores', 'Acompañantes', 'Staff', 'Total'];
+  const filaTotal = ['Total', resumen.filas.reduce((s, f) => s + f.jugador, 0), resumen.filas.reduce((s, f) => s + f.acompanante, 0), resumen.filas.reduce((s, f) => s + f.staff, 0), resumen.totalParticipantes];
+  const datos = [headers, ...resumen.filas.map(f => [f.talla, f.jugador, f.acompanante, f.staff, f.total]), filaTotal];
+  const ws = XLSX.utils.aoa_to_sheet(datos);
+  ws['!cols'] = headers.map((h, col) => {
+    const maxLen = datos.reduce((m, fila) => Math.max(m, String(fila[col] ?? '').length), h.length);
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 45) };
+  });
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length - 2, c: headers.length - 1 } }) };
+  const wb = XLSX.utils.book_new();
+  const nombrePestana = ('Uniformes' + (adminUnifColegioActivo_ ? ' - ' + adminUnifColegioActivo_ : '')).replace(/[\\/?*[\]:]/g, '').slice(0, 31);
+  XLSX.utils.book_append_sheet(wb, ws, nombrePestana);
+  const fecha = new Date().toISOString().slice(0, 10);
+  const sufijoColegio = adminUnifColegioActivo_ ? '_' + adminUnifColegioActivo_.toLowerCase().replace(/[^a-z0-9]+/g, '_') : '_todos';
+  XLSX.writeFile(wb, `uniformes_${adminProgramaActivo}${sufijoColegio}_${fecha}.xlsx`);
 }
 
 // ── DOCUMENTOS (pestaña admin) ──────────────────────────────────────────────
