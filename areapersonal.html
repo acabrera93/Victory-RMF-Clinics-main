@@ -8934,7 +8934,7 @@ function renderAdminDocumentosBody(rows) {
     // que falta es que el padre suba el documento, no hay nada que revisar
     // todavía, así que se muestra un texto plano sin acción.
     const estadoCell = r.prioridad === 3
-      ? '<span style="color:#059669;font-weight:700;font-size:13px">&#10003; Completo</span>'
+      ? `<span style="color:#059669;font-weight:700;font-size:13px;margin-right:8px">&#10003; Completo</span><button onclick="abrirDocReviewModal('${jsAttr_(r.email)}')" style="padding:4px 12px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Revisar</button>`
       : (r.prioridad === 0 || r.prioridad === 1)
         ? `<button onclick="abrirDocReviewModal('${jsAttr_(r.email)}')" style="padding:6px 16px;border-radius:7px;border:1px solid var(--blue);background:#fff;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Revisar</button>`
         : '<span style="color:var(--muted);font-size:12px">— Pendiente</span>';
