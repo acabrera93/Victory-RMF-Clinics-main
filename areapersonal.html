@@ -1659,16 +1659,17 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
                    style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:240px;max-height:280px;overflow-y:auto;padding:6px 0"></div>
             </div>
             <button onclick="exportUniformesExcel()" style="padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--navy)">⬇ Descargar</button>
+            <button onclick="exportUniformesExcelTodo()" style="padding:9px 14px;border:1px solid var(--blue);border-radius:8px;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;color:var(--blue)">⬇ Descargar todo (por colegio)</button>
           </div>
-          <p style="font-size:12px;color:var(--muted);margin:0 0 18px">Conteo de Jugadores y Staff por talla de uniforme registrada en la hoja de Inscripción (los Acompañantes no reciben uniforme, no se cuentan aquí). Filtra por colegio/club para ver solo ese grupo.</p>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 18px">Conteo de Jugadores (de campo y porteros, por separado) y Staff por talla de uniforme registrada en la hoja de Inscripción (los Acompañantes no reciben uniforme, no se cuentan aquí). Filtra por colegio/club para ver solo ese grupo, o descarga todo en un solo Excel con una hoja de totales y una hoja por colegio/club.</p>
           <div id="admin-unif-cards" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px"></div>
           <div class="ptable-wrap">
             <table class="ptable" id="admin-unif-table">
               <thead>
-                <tr><th>Talla</th><th style="text-align:center">Jugadores</th><th style="text-align:center">Staff</th><th style="text-align:center">Total</th></tr>
+                <tr><th>Talla</th><th style="text-align:center">Jugadores</th><th style="text-align:center">Porteros</th><th style="text-align:center">Staff</th><th style="text-align:center">Total</th></tr>
               </thead>
               <tbody id="admin-unif-body">
-                <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
+                <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -3301,8 +3302,8 @@ function goPanel(id, noScroll) {
 }
 
 // ── TASA ─────────────────────────────────────────────────────────────────────
-const MARGEN_TASA_PCT = 0.0025; // margen sobre la tasa de mercado (0,25%)
-const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + 1% margen
+const MARGEN_TASA_PCT = 0.0030; // margen sobre la tasa de mercado (0,30%)
+const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + margen
 let tasa = TASA_FALLBACK;
 const TRM_RESERVA = 4288; // TRM oficial del 1 de junio de 2026 (fecha límite de pago de reserva) — tasa fija, no cambia
 const TIQUETE_EUR = 993; // Valor fijo del tiquete aéreo por persona, convertido a COP con la TRM_RESERVA (misma fecha límite)
@@ -8721,10 +8722,12 @@ function compararTallas_(a, b) {
   return a.localeCompare(b);
 }
 
-// Devuelve { colegios: string[], filas: [{talla, jugador, staff, total}], totalConTalla, totalSinTalla, totalParticipantes }
+// Devuelve { colegios: string[], filas: [{talla, jugador, portero, staff, total}], totalConTalla, totalSinTalla, totalParticipantes }
 // Los Acompañantes no reciben uniforme, así que se excluyen por completo del
 // conteo (no solo se ocultan en la tabla) — ni cuentan en totales ni aportan
-// colegios al filtro.
+// colegios al filtro. Los porteros se cuentan aparte de los jugadores de
+// campo (columna "portero") porque su uniforme es distinto (ver campo
+// "posicion", valor "Portero" — ver inscripcion.html).
 // colegiosFiltro: Set<string> con los colegios/clubes activos, o null/vacío
 // para no filtrar (todos) — permite elegir más de uno a la vez.
 function calcularResumenUniformes_(colegiosFiltro) {
@@ -8740,8 +8743,9 @@ function calcularResumenUniformes_(colegiosFiltro) {
     if (colegiosFiltro && colegiosFiltro.size && !colegiosFiltro.has(colegio)) return;
     totalParticipantes++;
     const talla = (n.talla_uniforme || '').trim() || SIN_TALLA_LABEL_;
-    const key = tipo.includes('jug') ? 'jugador' : 'staff';
-    if (!porTalla[talla]) porTalla[talla] = { talla, jugador: 0, staff: 0, total: 0 };
+    const esPortero = tipo.includes('jug') && (n.posicion || '').toLowerCase().trim() === 'portero';
+    const key = esPortero ? 'portero' : tipo.includes('jug') ? 'jugador' : 'staff';
+    if (!porTalla[talla]) porTalla[talla] = { talla, jugador: 0, portero: 0, staff: 0, total: 0 };
     porTalla[talla][key]++;
     porTalla[talla].total++;
   });
@@ -8824,6 +8828,7 @@ function renderAdminUniformesTab() {
         <div style="font-size:20px;margin-bottom:2px">${iconoTalla(f.talla)}</div>
         <div style="font-size:22px;font-weight:700;color:${f.talla === SIN_TALLA_LABEL_ ? 'var(--muted)' : 'var(--blue)'}">${f.total}</div>
         <div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:2px">${escapeHtml(f.talla)}</div>
+        ${f.portero ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🧤 ${f.portero} portero${f.portero === 1 ? '' : 's'}</div>` : ''}
       </div>`).join('')
     : '<p style="color:var(--muted);font-size:13px;margin:0">No hay participantes para este filtro.</p>';
 
@@ -8831,12 +8836,14 @@ function renderAdminUniformesTab() {
     <tr>
       <td style="font-weight:600">${escapeHtml(f.talla)}</td>
       <td style="text-align:center">${f.jugador || '—'}</td>
+      <td style="text-align:center">${f.portero || '—'}</td>
       <td style="text-align:center">${f.staff || '—'}</td>
       <td style="text-align:center;font-weight:700">${f.total}</td>
     </tr>`).join('') + `
     <tr style="background:rgba(30,91,168,.05)">
       <td style="font-weight:700">Total</td>
       <td style="text-align:center;font-weight:700">${resumen.filas.reduce((s, f) => s + f.jugador, 0)}</td>
+      <td style="text-align:center;font-weight:700">${resumen.filas.reduce((s, f) => s + f.portero, 0)}</td>
       <td style="text-align:center;font-weight:700">${resumen.filas.reduce((s, f) => s + f.staff, 0)}</td>
       <td style="text-align:center;font-weight:700">${resumen.totalParticipantes}</td>
     </tr>`;
@@ -8848,6 +8855,44 @@ function renderAdminUniformesTab() {
 let adminUnifResumenActivo_ = null;
 let adminUnifColegioActivo_ = '';
 
+// Construye la hoja (worksheet) de un resumen de uniformes con la misma
+// estructura que exportParticipantesExcel: fila 1 = cabecera real (sin filas
+// sueltas encima que rompan el autofiltro), datos abajo, fila de totales al
+// final. Reutilizada por exportUniformesExcel (una sola hoja, según el
+// filtro activo) y exportUniformesExcelTodo (una hoja de totales + una hoja
+// por colegio/club, ver esa función).
+function hojaResumenUniformes_(resumen) {
+  const headers = ['Talla', 'Jugadores', 'Porteros', 'Staff', 'Total'];
+  const filaTotal = ['Total',
+    resumen.filas.reduce((s, f) => s + f.jugador, 0),
+    resumen.filas.reduce((s, f) => s + f.portero, 0),
+    resumen.filas.reduce((s, f) => s + f.staff, 0),
+    resumen.totalParticipantes];
+  const datos = [headers, ...resumen.filas.map(f => [f.talla, f.jugador, f.portero, f.staff, f.total]), filaTotal];
+  const ws = XLSX.utils.aoa_to_sheet(datos);
+  ws['!cols'] = headers.map((h, col) => {
+    const maxLen = datos.reduce((m, fila) => Math.max(m, String(fila[col] ?? '').length), h.length);
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 45) };
+  });
+  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length - 2, c: headers.length - 1 } }) };
+  return ws;
+}
+
+// Nombre de pestaña válido para Excel: máx 31 caracteres, sin \/?*[]: — y sin
+// repetir nombre si dos colegios distintos quedan iguales tras sanear (les
+// añade un sufijo numérico).
+function nombrePestanaUniformes_(base, usados) {
+  let nombre = base.replace(/[\\/?*[\]:]/g, '').trim().slice(0, 31) || 'Hoja';
+  let i = 2;
+  while (usados.has(nombre.toLowerCase())) {
+    const sufijo = ' (' + i + ')';
+    nombre = base.replace(/[\\/?*[\]:]/g, '').trim().slice(0, 31 - sufijo.length) + sufijo;
+    i++;
+  }
+  usados.add(nombre.toLowerCase());
+  return nombre;
+}
+
 async function exportUniformesExcel() {
   const resumen = adminUnifResumenActivo_;
   if (!resumen || !resumen.filas.length) { alert('No hay datos de uniformes para descargar.'); return; }
@@ -8857,26 +8902,40 @@ async function exportUniformesExcel() {
     alert('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.');
     return;
   }
-  // Misma estructura que exportParticipantesExcel (ver ahí): fila 1 = cabecera
-  // real (sin filas sueltas encima que rompan el autofiltro), datos abajo,
-  // fila de totales al final. El colegio filtrado va en el nombre del archivo
-  // y de la pestaña, no como fila extra, para que la tabla quede limpia y las
-  // columnas bien alineadas al abrir en Excel/Sheets.
-  const headers = ['Talla', 'Jugadores', 'Staff', 'Total'];
-  const filaTotal = ['Total', resumen.filas.reduce((s, f) => s + f.jugador, 0), resumen.filas.reduce((s, f) => s + f.staff, 0), resumen.totalParticipantes];
-  const datos = [headers, ...resumen.filas.map(f => [f.talla, f.jugador, f.staff, f.total]), filaTotal];
-  const ws = XLSX.utils.aoa_to_sheet(datos);
-  ws['!cols'] = headers.map((h, col) => {
-    const maxLen = datos.reduce((m, fila) => Math.max(m, String(fila[col] ?? '').length), h.length);
-    return { wch: Math.min(Math.max(maxLen + 2, 10), 45) };
-  });
-  ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length - 2, c: headers.length - 1 } }) };
+  // El colegio filtrado va en el nombre del archivo y de la pestaña, no como
+  // fila extra, para que la tabla quede limpia y las columnas bien alineadas
+  // al abrir en Excel/Sheets.
+  const ws = hojaResumenUniformes_(resumen);
   const wb = XLSX.utils.book_new();
-  const nombrePestana = ('Uniformes' + (adminUnifColegioActivo_ ? ' - ' + adminUnifColegioActivo_ : '')).replace(/[\\/?*[\]:]/g, '').slice(0, 31);
+  const nombrePestana = nombrePestanaUniformes_('Uniformes' + (adminUnifColegioActivo_ ? ' - ' + adminUnifColegioActivo_ : ''), new Set());
   XLSX.utils.book_append_sheet(wb, ws, nombrePestana);
   const fecha = new Date().toISOString().slice(0, 10);
   const sufijoColegio = adminUnifColegioActivo_ ? '_' + adminUnifColegioActivo_.toLowerCase().replace(/[^a-z0-9]+/g, '_') : '_todos';
   XLSX.writeFile(wb, `uniformes_${adminProgramaActivo}${sufijoColegio}_${fecha}.xlsx`);
+}
+
+// Descarga TODO en un solo Excel, sin importar el filtro activo en pantalla:
+// una hoja "Totales" con el resumen general y, a continuación, una hoja
+// independiente por cada colegio/club registrado (ver calcularResumenUniformes_).
+async function exportUniformesExcelTodo() {
+  const resumenTodos = calcularResumenUniformes_(null);
+  if (!resumenTodos.filas.length) { alert('No hay datos de uniformes para descargar.'); return; }
+  try {
+    await cargarLibreriaXlsx_();
+  } catch (err) {
+    alert('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const nombresUsados = new Set();
+  XLSX.utils.book_append_sheet(wb, hojaResumenUniformes_(resumenTodos), nombrePestanaUniformes_('Totales', nombresUsados));
+  resumenTodos.colegios.forEach(colegio => {
+    const resumenColegio = calcularResumenUniformes_(new Set([colegio]));
+    if (!resumenColegio.filas.length) return;
+    XLSX.utils.book_append_sheet(wb, hojaResumenUniformes_(resumenColegio), nombrePestanaUniformes_(colegio, nombresUsados));
+  });
+  const fecha = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `uniformes_${adminProgramaActivo}_todos_los_colegios_${fecha}.xlsx`);
 }
 
 // ── DOCUMENTOS (pestaña admin) ──────────────────────────────────────────────
