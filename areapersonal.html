@@ -6724,15 +6724,16 @@ function renderAdminPagos(fin) {
     const btnClick = `openPagosModal(${origIdx}, '${nombre.replace(/'/g,"\\'")}')`;
     const tipoPart = tipoMap[key] || adRow.tipo || '';
     const tipoIsAcomp = tipoPart.toLowerCase().includes('acomp');
+    const tipoKeyDato = tipoPart.toLowerCase().includes('staff') ? 'staff' : (tipoIsAcomp ? 'acomp' : 'jug');
     const tipoBadge = tipoPart
       ? `<span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:${tipoIsAcomp ? 'rgba(22,101,52,.08)' : 'rgba(30,91,168,.1)'};color:${tipoIsAcomp ? '#166534' : 'var(--blue)'};white-space:nowrap">${escapeHtml(tipoPart)}</span>`
       : '<span style="color:var(--muted);font-size:12px">—</span>';
-    const acudienteKey = (adRow.acudiente || '').toLowerCase();
-    const emailKey = (adRow.email || '').toLowerCase();
+    const acudienteKey = normNombre(adRow.acudiente || '');
+    const emailKey = normNombre(adRow.email || '');
     const esPendienteConfirmar = p => p && (p.estado || '').toLowerCase().trim() === 'pendiente de confirmar';
     const tieneRevisar = esPendienteConfirmar(reserva) || esPendienteConfirmar(tiquete) || esPendienteConfirmar(pagoFinal);
     const colegioKey = normNombre(adRow.club_colegio || '');
-    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoIsAcomp ? 'acomp' : 'jug'}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-colegio="${escapeHtml(colegioKey)}" data-revisar="${tieneRevisar ? '1' : '0'}" data-resumen="${resumenPagoParticipante_(key)}">
+    return `<tr data-nombre="${escapeHtml(key)}" data-tipo="${tipoKeyDato}" data-acudiente="${escapeHtml(acudienteKey)}" data-email="${escapeHtml(emailKey)}" data-colegio="${escapeHtml(colegioKey)}" data-revisar="${tieneRevisar ? '1' : '0'}" data-resumen="${resumenPagoParticipante_(key)}">
       <td>${tipoBadge}</td>
       <td style="font-weight:500">${escapeHtml(nombre)}${adRow.alianza_nombre ? `<div style="font-size:11px;font-weight:400;color:var(--blue)">🤝 ${escapeHtml(adRow.alianza_nombre)}</div>` : ''}</td>
       <td>${esSoloAct(key) ? '<span style="color:var(--muted);font-size:12px">—</span>' : fmtPago(reserva)}</td>
@@ -6754,12 +6755,14 @@ let soloRevisarPagos = false;
 let filtroResumenPagos = null;
 
 function filtrarTablaPagos(q) {
-  const term = (q || '').toLowerCase().trim();
+  const term = normNombre(q || '');
+  const tipoKey = tipoBusquedaKeyword_(term);
   const esBusquedaRedcol = term.includes('redcol');
   let visibles = 0;
   document.querySelectorAll('#admin-pagos-body tr[data-nombre]').forEach(tr => {
     const pasaRedcol = esBusquedaRedcol && esColegioRedcol_(tr.dataset.colegio || '');
-    const pasaTexto = !term || pasaRedcol || tr.dataset.nombre.includes(term) || (tr.dataset.tipo || '').includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term) || (tr.dataset.colegio || '').includes(term);
+    const pasaTexto = tipoKey ? (tr.dataset.tipo || '') === tipoKey
+      : (!term || pasaRedcol || tr.dataset.nombre.includes(term) || (tr.dataset.acudiente || '').includes(term) || (tr.dataset.email || '').includes(term) || (tr.dataset.colegio || '').includes(term));
     const pasaRevisar = !soloRevisarPagos || tr.dataset.revisar === '1';
     const pasaResumen = !filtroResumenPagos || tr.dataset.resumen === filtroResumenPagos;
     const visible = pasaTexto && pasaRevisar && pasaResumen;
@@ -7331,8 +7334,19 @@ function formatFechaNac(v) {
   return s; // ya en dd/mm/aaaa u otro formato
 }
 
+// Si la búsqueda coincide con el nombre de un tipo de participante (en
+// singular o plural, ya sin tildes), filtra por ese tipo en vez de buscar el
+// texto literal en nombre/email/acudiente/colegio.
+const TIPO_BUSQUEDA_KEYWORDS_ = { jug: ['jugador', 'jugadores'], staff: ['staff'], acomp: ['acompanante', 'acompanantes'] };
+function tipoBusquedaKeyword_(q) {
+  for (const key in TIPO_BUSQUEDA_KEYWORDS_) {
+    if (TIPO_BUSQUEDA_KEYWORDS_[key].includes(q)) return key;
+  }
+  return null;
+}
+
 function filterAdminTable() {
-  const q = (document.getElementById('admin-search').value || '').toLowerCase();
+  const q = normNombre(document.getElementById('admin-search').value || '');
   const countEl = document.getElementById('admin-search-count');
   let base = adminData;
   if (!q) {
@@ -7340,11 +7354,13 @@ function filterAdminTable() {
     if (countEl) countEl.textContent = base.length + (base.length === 1 ? ' participante' : ' participantes');
     return;
   }
+  const tipoKey = tipoBusquedaKeyword_(q);
   const esBusquedaRedcol = q.includes('redcol');
   const filtrados = base.filter(row => {
     const n = normalizeParticipant(row) || {};
+    if (tipoKey) return (n.tipo || '').toLowerCase().includes(tipoKey);
     if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
-    return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.acudiente || '').toLowerCase().includes(q) || (n.club_colegio || '').toLowerCase().includes(q);
+    return normNombre(n.nombre || '').includes(q) || normNombre(n.email || '').includes(q) || normNombre(n.acudiente || '').includes(q) || normNombre(n.club_colegio || '').includes(q);
   });
   renderAdminTable(filtrados);
   if (countEl) countEl.textContent = filtrados.length + (filtrados.length === 1 ? ' resultado' : ' resultados');
@@ -7455,7 +7471,8 @@ function renderAdminAlianzasTab() {
     return;
   }
   const qEl = document.getElementById('alianzas-search');
-  const q = ((qEl && qEl.value) || '').toLowerCase().trim();
+  const q = normNombre((qEl && qEl.value) || '');
+  const tipoKey = tipoBusquedaKeyword_(q);
   const esBusquedaRedcol = q.includes('redcol');
   const soloPendientes = !!(document.getElementById('alianzas-solo-pendientes') || {}).checked;
   const filas = adminData
@@ -7464,8 +7481,9 @@ function renderAdminAlianzasTab() {
     .filter(({ n }) => !soloPendientes || !n.alianza_nombre)
     .filter(({ n }) => {
       if (!q) return true;
+      if (tipoKey) return (n.tipo || '').toLowerCase().includes(tipoKey);
       if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
-      return (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q) || (n.club_colegio || '').toLowerCase().includes(q);
+      return normNombre(n.nombre || '').includes(q) || normNombre(n.email || '').includes(q) || normNombre(n.club_colegio || '').includes(q);
     })
     .sort((a, b) => (a.n.nombre || '').localeCompare(b.n.nombre || ''));
   if (!filas.length) {
@@ -7598,12 +7616,13 @@ function renderAdminTiquetesTab() {
   if (elGlobal) elGlobal.textContent = precioGlobal + ' EUR';
 
   const qEl = document.getElementById('tiquetes-search');
-  const q = ((qEl && qEl.value) || '').toLowerCase().trim();
+  const q = normNombre((qEl && qEl.value) || '');
+  const tipoKeyTiq = tipoBusquedaKeyword_(q);
   const filas = adminData
     .map((row, idx) => ({ row, idx, n: normalizeParticipant(row) || {} }))
     .filter(({ n }) => n.tiquete_aereo === 'Con tiquete')
     .filter(({ n }) => (n.program_key || 'clinic') === adminProgramaActivo)
-    .filter(({ n }) => !q || (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q))
+    .filter(({ n }) => !q || (tipoKeyTiq ? (n.tipo || '').toLowerCase().includes(tipoKeyTiq) : (normNombre(n.nombre || '').includes(q) || normNombre(n.email || '').includes(q))))
     .sort((a, b) => (a.n.nombre || '').localeCompare(b.n.nombre || ''));
 
   if (!filas.length) {
@@ -7684,12 +7703,13 @@ function aplicarPrecioTiqueteBulk_(sobrescribirTodos) {
   const valor = parseFloat((bulkEl && bulkEl.value) || '');
   if (!valor || valor <= 0) { alert('Ingresa un precio válido en EUR.'); return; }
   const qEl = document.getElementById('tiquetes-search');
-  const q = ((qEl && qEl.value) || '').toLowerCase().trim();
+  const q = normNombre((qEl && qEl.value) || '');
+  const tipoKeyBulk = tipoBusquedaKeyword_(q);
   const filas = adminData
     .map((row, idx) => ({ row, idx, n: normalizeParticipant(row) || {} }))
     .filter(({ n }) => n.tiquete_aereo === 'Con tiquete')
     .filter(({ n }) => (n.program_key || 'clinic') === adminProgramaActivo)
-    .filter(({ n }) => !q || (n.nombre || '').toLowerCase().includes(q) || (n.email || '').toLowerCase().includes(q))
+    .filter(({ n }) => !q || (tipoKeyBulk ? (n.tipo || '').toLowerCase().includes(tipoKeyBulk) : (normNombre(n.nombre || '').includes(q) || normNombre(n.email || '').includes(q))))
     .filter(({ n }) => sobrescribirTodos || !(n.precio_tiquete_manual > 0));
   if (!filas.length) { alert('No hay participantes visibles que actualizar con este filtro.'); return; }
   if (!confirm(`¿Aplicar ${valor} EUR de precio de tiquete a ${filas.length} participante(s)?`)) return;
@@ -9220,8 +9240,11 @@ function setDocFiltroEstado(filtro) {
 
 function filterAdminDocumentosTable() {
   const searchEl = document.getElementById('admin-docs-search');
-  const term = (searchEl ? searchEl.value : '').toLowerCase().trim();
-  let filtrados = !term ? adminDocsRows.slice() : adminDocsRows.filter(r => r.nombre.toLowerCase().includes(term) || r.email.toLowerCase().includes(term));
+  const term = normNombre(searchEl ? searchEl.value : '');
+  const tipoKeyDocs = tipoBusquedaKeyword_(term);
+  let filtrados = !term ? adminDocsRows.slice()
+    : tipoKeyDocs ? adminDocsRows.filter(r => (r.tipo || '').toLowerCase().includes(tipoKeyDocs))
+    : adminDocsRows.filter(r => normNombre(r.nombre).includes(term) || normNombre(r.email).includes(term));
   // "Pendientes" agrupa 0 (subido, esperando revisión) y 2 (nada subido
   // todavía) — ambos son, en sentido amplio, "todavía no está resuelto".
   if (adminDocsFiltroEstado === 'pendientes') filtrados = filtrados.filter(r => r.prioridad === 0 || r.prioridad === 2);
@@ -9644,11 +9667,11 @@ function getColegiosUnicos() {
 
 function poblarComunColegio(filtro) {
   const list = document.getElementById('comun-colegio-list');
-  const q = (filtro || '').toLowerCase();
+  const q = normNombre(filtro || '');
   const prevChecked = new Set(
     Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)
   );
-  const colegios = getColegiosUnicos().filter(c => !q || c.toLowerCase().includes(q));
+  const colegios = getColegiosUnicos().filter(c => !q || normNombre(c).includes(q));
   if (!colegios.length) {
     list.innerHTML = '<p style="color:var(--muted);font-size:13px;margin:6px 8px">No hay colegios registrados aún.</p>';
     actualizarCuentaColegio();
@@ -9701,15 +9724,15 @@ function emailsPorColegios(colegios) {
 
 function poblarComunIndividual(filtro) {
   const list = document.getElementById('comun-individual-list');
-  const q = (filtro || '').toLowerCase();
+  const q = normNombre(filtro || '');
   // Preserve checked state across re-renders
   const prevChecked = new Set(
     Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)
   );
   const rows = adminData.filter(row => {
     const n = normalizeParticipant(row) || {};
-    const nombre = (n.nombre || row['2'] || '').toLowerCase();
-    const email = (n.email || row['3'] || '').toLowerCase();
+    const nombre = normNombre(n.nombre || row['2'] || '');
+    const email = normNombre(n.email || row['3'] || '');
     return !q || nombre.includes(q) || email.includes(q);
   });
   list.innerHTML = rows.map(row => {
