@@ -1880,6 +1880,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         </div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
           Asigna aquí la alianza (o "Precio base") de cada Jugador. Al confirmarla se dispara automáticamente el correo de aceptación al inscrito.
+          A los Acompañantes también se les puede asignar alianza: pagan el precio especial de su habitación (columnas "Precio Acomp. …" de la hoja Alianzas) y no se les envía ningún correo.
           Los jugadores ya inscritos <strong>antes</strong> de esta función y que quedan sin alianza asignada simplemente pagan el precio estándar — no hace falta revisarlos uno por uno.
         </p>
         <div style="overflow-x:auto">
@@ -3427,12 +3428,21 @@ function montoReservaFinalParticipante_(p, esWC) {
   const m = montoReservaFinalParticipante_base_(p, esWC);
   const esJug = (p.tipo || '').toLowerCase().includes('jug');
   // Alianza/promoción: precio total fijo acordado (catálogo "Alianzas" en el
-  // Sheet de Leads, ver alianzaPorNombre_ en el backend). Reemplaza el Pago
-  // Final calculado arriba y es EXCLUYENTE con el descuento de referido de
-  // abajo — un jugador con alianza nunca recibe también el 3% de referidos.
-  const precioAlianza = esJug ? (parseFloat(p.alianza_precio_total) || 0) : 0;
+  // Sheet de Inscripciones, ver alianzaPorNombre_ en el backend). Aplica a
+  // Jugadores ("Precio Total") y Acompañantes (columna "Precio Acomp. …" de
+  // su habitación — el backend ya manda en alianza_precio_total el precio
+  // que le toca a esta persona). Reemplaza el Pago Final calculado arriba y
+  // es EXCLUYENTE con el descuento de referido de abajo.
+  const precioAlianza = parseFloat(p.alianza_precio_total) || 0;
   if (precioAlianza > 0) {
-    m.final = Math.max(0, Math.round((precioAlianza - m.reserva) * 100) / 100);
+    if (precioAlianza <= m.reserva) {
+      // Paquetes de pago único (Solo Actividades / Solo WC) o precio menor
+      // que la reserva: todo se paga en la reserva, sin Pago Final.
+      m.reserva = precioAlianza;
+      m.final = 0;
+    } else {
+      m.final = Math.round((precioAlianza - m.reserva) * 100) / 100;
+    }
     return m;
   }
   const descuentoPct = esJug ? (parseFloat(p.referido_descuento_pct) || 0) : 0;
@@ -7456,13 +7466,30 @@ async function cargarAlianzasCatalogo() {
   if (typeof renderAdminAlianzasTab === 'function') renderAdminAlianzasTab();
 }
 
+// Precio total de alianza para UN participante ya normalizado — misma
+// lógica que precioAlianzaParaParticipante_ del backend (mantener ambas
+// iguales). info = entrada del catálogo (adminAlianzasCatalogo). 0 = paga
+// el precio estándar.
+function precioAlianzaParaParticipante_(info, n) {
+  if (!info) return 0;
+  if ((n.tipo || '').toLowerCase().includes('jug')) return info.precioTotal || 0;
+  const pa = info.preciosAcomp || {};
+  const hab = (n.habitacion || '').toLowerCase().trim();
+  if (hab === 'solo_world_challenge') return pa.solo_wc || 0;
+  if (hab === '' || hab === 'solo_actividades') return pa.actividades || 0;
+  if (hab.includes('doble')) return pa.doble || 0;
+  return pa.sencilla || 0;
+}
+
 // ── PESTAÑA "ALIANZAS" ──────────────────────────────────────────────────────
 // Tabla independiente (fuera del modal de edición general) donde el admin
-// asigna la alianza de cada Jugador. Solo lista Jugadores — Acompañantes no
-// tienen concepto de alianza. Un Jugador ya inscrito antes de esta función,
-// sin alianza asignada, sigue pagando el precio estándar automáticamente
-// (montoReservaFinalParticipante_ solo aplica el precio de alianza cuando
-// alianza_precio_total > 0) — no es obligatorio revisarlo aquí.
+// asigna la alianza de cada Jugador y Acompañante. Un Jugador ya inscrito
+// antes de esta función, sin alianza asignada, sigue pagando el precio
+// estándar automáticamente (montoReservaFinalParticipante_ solo aplica el
+// precio de alianza cuando alianza_precio_total > 0) — no es obligatorio
+// revisarlo aquí. Los Acompañantes nunca cuentan como "pendientes": sin
+// alianza simplemente pagan el precio estándar, y asignársela no envía
+// ningún correo (ya recibieron la aceptación al inscribirse).
 function renderAdminAlianzasTab() {
   const tbody = document.getElementById('alianzas-tbody');
   if (!tbody) return;
@@ -7477,38 +7504,58 @@ function renderAdminAlianzasTab() {
   const soloPendientes = !!(document.getElementById('alianzas-solo-pendientes') || {}).checked;
   const filas = adminData
     .map((row, idx) => ({ row, idx, n: normalizeParticipant(row) || {} }))
-    .filter(({ n }) => (n.tipo || '').toLowerCase().includes('jug'))
-    .filter(({ n }) => !soloPendientes || !n.alianza_nombre)
+    .filter(({ n }) => { const t = (n.tipo || '').toLowerCase(); return t.includes('jug') || t.includes('acomp'); })
+    .filter(({ n }) => !soloPendientes || ((n.tipo || '').toLowerCase().includes('jug') && !n.alianza_nombre))
     .filter(({ n }) => {
       if (!q) return true;
       if (tipoKey) return (n.tipo || '').toLowerCase().includes(tipoKey);
       if (esBusquedaRedcol && esColegioRedcol_(n.club_colegio)) return true;
       return normNombre(n.nombre || '').includes(q) || normNombre(n.email || '').includes(q) || normNombre(n.club_colegio || '').includes(q);
     })
-    .sort((a, b) => (a.n.nombre || '').localeCompare(b.n.nombre || ''));
+    // Jugadores primero, luego Acompañantes; alfabético dentro de cada grupo.
+    .sort((a, b) => {
+      const ja = (a.n.tipo || '').toLowerCase().includes('jug') ? 0 : 1;
+      const jb = (b.n.tipo || '').toLowerCase().includes('jug') ? 0 : 1;
+      return ja - jb || (a.n.nombre || '').localeCompare(b.n.nombre || '');
+    });
   if (!filas.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">Sin resultados.</td></tr>';
     return;
   }
   tbody.innerHTML = filas.map(({ row, idx, n }) => {
+    const esJug = (n.tipo || '').toLowerCase().includes('jug');
     const actual = n.alianza_nombre || '';
     const opts = adminAlianzasOptions.map(o =>
       `<option value="${escapeHtml(o)}"${o === actual ? ' selected' : ''}>${o ? escapeHtml(o) : 'Sin asignar'}</option>`
     ).join('');
+    const subTipo = esJug ? '' : `<div style="font-size:11px;color:var(--muted)">Acompañante${n.habitacion ? ' · ' + escapeHtml(n.habitacion) : ''}</div>`;
+    const jugAcomp = esJug ? '' : (rowVal(row, 'Jugador que acompana', 'Jugador que acompaña', 'jugador_que_acompana') || '');
+    const colegioOAcomp = esJug
+      ? escapeHtml(n.club_colegio || '—')
+      : (jugAcomp ? 'Acompaña a ' + escapeHtml(jugAcomp) : '—');
     return `<tr>
-      <td>${escapeHtml(n.nombre || '')}</td>
-      <td>${escapeHtml(n.club_colegio || '—')}</td>
+      <td>${escapeHtml(n.nombre || '')}${subTipo}</td>
+      <td>${colegioOAcomp}</td>
       <td>${escapeHtml(n.email || '')}</td>
       <td><select id="al-sel-${idx}" data-prev="${escapeHtml(actual)}" onchange="onCambioAlianzaSelect_(${idx})" style="width:100%;min-width:170px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fff">${opts}</select></td>
-      <td id="al-estado-${idx}" style="font-size:12px">${estadoAlianzaHtml_(actual)}</td>
+      <td id="al-estado-${idx}" style="font-size:12px">${estadoAlianzaHtml_(actual, esJug, row.alianza_precio_total)}</td>
     </tr>`;
   }).join('');
 }
 
-function estadoAlianzaHtml_(nombreAlianza) {
-  return nombreAlianza
-    ? `<span style="color:var(--green)">✓ ${escapeHtml(nombreAlianza)}</span>`
-    : '<span style="color:#ea580c">Pendiente</span>';
+// esJug=false: un Acompañante sin alianza no está "pendiente", paga el
+// estándar. Con alianza pero sin precio en su columna "Precio Acomp. …"
+// también paga el estándar — se avisa para que el admin lo note.
+function estadoAlianzaHtml_(nombreAlianza, esJug = true, precioAlianza = '') {
+  if (!nombreAlianza) {
+    return esJug
+      ? '<span style="color:#ea580c">Pendiente</span>'
+      : '<span style="color:var(--muted)">Precio estándar</span>';
+  }
+  if (!esJug && nombreAlianza !== ALIANZA_SIN_ALIANZA && !(parseFloat(precioAlianza) > 0)) {
+    return `<span style="color:#ea580c">${escapeHtml(nombreAlianza)} · sin precio para esta habitación (paga estándar)</span>`;
+  }
+  return `<span style="color:var(--green)">✓ ${escapeHtml(nombreAlianza)}</span>`;
 }
 
 // Cambiar el desplegable NO guarda de inmediato — primero pide confirmación
@@ -7525,8 +7572,12 @@ function onCambioAlianzaSelect_(idx) {
   const n = normalizeParticipant(adminData[idx]) || {};
   const textoEl = document.getElementById('confirm-alianza-texto');
   if (textoEl) {
+    const esJugSel = (n.tipo || '').toLowerCase().includes('jug');
+    const avisoCorreo = esJugSel
+      ? ' Si es la primera vez que se le asigna alianza o precio base, se le enviará de inmediato el correo de aceptación.'
+      : ' Es acompañante: solo cambia su precio, no se envía ningún correo.';
     textoEl.innerHTML = nuevo
-      ? `¿Aplicar la alianza <strong>"${escapeHtml(nuevo)}"</strong> a <strong>${escapeHtml(n.nombre || '')}</strong>? Si es la primera vez que se le asigna alianza o precio base, se le enviará de inmediato el correo de aceptación.`
+      ? `¿Aplicar la alianza <strong>"${escapeHtml(nuevo)}"</strong> a <strong>${escapeHtml(n.nombre || '')}</strong>?${avisoCorreo}`
       : `¿Dejar sin asignar la alianza de <strong>${escapeHtml(n.nombre || '')}</strong>?`;
   }
   const modal = document.getElementById('confirm-alianza-modal');
@@ -7578,9 +7629,10 @@ function guardarAlianzaFila_(idx) {
         row['Alianza'] = nuevaAlianza;
         const info = adminAlianzasCatalogo.find(a => a.nombre === nuevaAlianza);
         row.alianza_nombre = info ? info.nombre : (nuevaAlianza || '');
-        row.alianza_precio_total = info ? String(info.precioTotal) : '';
+        const precioFila = precioAlianzaParaParticipante_(info, normalizeParticipant(row) || {});
+        row.alianza_precio_total = precioFila > 0 ? String(precioFila) : '';
         sel.dataset.prev = nuevaAlianza;
-        if (estadoEl) estadoEl.innerHTML = estadoAlianzaHtml_(row.alianza_nombre);
+        if (estadoEl) estadoEl.innerHTML = estadoAlianzaHtml_(row.alianza_nombre, ((normalizeParticipant(row) || {}).tipo || '').toLowerCase().includes('jug'), row.alianza_precio_total);
         renderParticipantesKPIs(adminData);
         if (typeof filterAdminTable === 'function') filterAdminTable();
         if ((document.getElementById('alianzas-solo-pendientes') || {}).checked) renderAdminAlianzasTab();

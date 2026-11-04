@@ -218,6 +218,55 @@ function resolverSheets_(programa) {
   return { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' };
 }
 
+// Envoltorio de caché a prueba de fallos: intenta leer `key` de
+// CacheService; si hay hit, devuelve el valor ya parseado. Si no, ejecuta
+// computeFn() (debe devolver algo serializable a JSON), intenta guardarlo en
+// caché (solo si cabe cómodo bajo el límite de 100KB por entrada de
+// CacheService — más grande que eso simplemente no se cachea) y lo
+// devuelve. Cualquier error de CacheService (lectura o escritura, cuota,
+// entrada corrupta, lo que sea) se atrapa y se ignora — nunca debe romper el
+// flujo normal ni devolver datos parciales; en el peor caso el resultado
+// sale del cálculo en vivo, igual que si esta función no existiera. A
+// diferencia de un intento anterior que cacheaba la respuesta completa de
+// endpoints grandes (cientos de participantes con muchos campos, cerca o por
+// encima del límite de 100KB), aquí solo se usa sobre sub-cálculos pequeños
+// (mapas de referidos/alianzas, el catálogo de paquetes) — mucho más lejos
+// de ese límite y de cualquier problema de fragmentación de CacheService.
+function cachedCall_(key, ttlSeconds, computeFn) {
+  try {
+    const cached = CacheService.getScriptCache().get(key);
+    if (cached) return JSON.parse(cached);
+  } catch (err) {
+    Logger.log('cachedCall_ get error (' + key + '): ' + err);
+  }
+  const result = computeFn();
+  try {
+    const json = JSON.stringify(result);
+    if (json.length < 90000) CacheService.getScriptCache().put(key, json, ttlSeconds);
+  } catch (err) {
+    Logger.log('cachedCall_ put error (' + key + '): ' + err);
+  }
+  return result;
+}
+
+// Borra las entradas de caché de admin_participantes/admin_financiero de un
+// programa tras cualquier escritura que pueda cambiar lo que esos endpoints
+// devuelven — participantes, pagos, documentos, referidos, etc. Sin esto, un
+// admin que aprueba un pago o un documento vería el panel desactualizado
+// hasta que expire el TTL (45s) del caché. Se llama con el mismo valor
+// 'programa' crudo que llega del frontend (resolverSheets_ lo normaliza a
+// programKey internamente, así que no importa cómo esté escrito).
+function invalidarCacheAdmin_(programa) {
+  try {
+    const key = resolverSheets_(programa).programKey;
+    const cache = CacheService.getScriptCache();
+    cache.remove('admin_participantes_' + key);
+    cache.remove('admin_financiero_' + key);
+  } catch (err) {
+    Logger.log('invalidarCacheAdmin_ error: ' + err);
+  }
+}
+
 // Carpeta de Drive donde se guardan documentos/comprobantes subidos, según programa.
 function resolverParentFolderId_(programa) {
   return esWorldChallenge_(programa) ? PARENT_FOLDER_ID_WORLD_CHALLENGE : PARENT_FOLDER_ID;
@@ -515,7 +564,9 @@ function buscarParticipantesEnHoja_(emailNorm, fuente) {
       // contra el catálogo invalida el descuento de referido en el frontend.
       const alianzaInfo = participant['Alianza'] ? alianzaPorNombre_(participant['Alianza'], fuente.programKey) : null;
       participant['alianza_nombre'] = alianzaInfo ? alianzaInfo.nombre : '';
-      participant['alianza_precio_total'] = alianzaInfo ? String(alianzaInfo.precioTotal) : '';
+      // Jugador → Precio Total; Acompañante → precio de su tipo de habitación.
+      const precioAlianzaP = precioAlianzaParaParticipante_(alianzaInfo, participant['Tipo'], participant['Habitacion'] || participant['Habitación']);
+      participant['alianza_precio_total'] = precioAlianzaP > 0 ? String(precioAlianzaP) : '';
       out.push(participant);
     }
   } catch (err) {
@@ -931,6 +982,7 @@ function actualizarPasoTodos(email, pasoActual, programa) {
         }
       }
     }
+    if (updated > 0) invalidarCacheAdmin_(programa);
     return sendResponse(200, { ok: true, updated });
   } catch (err) {
     Logger.log('actualizarPasoTodos error: ' + err);
@@ -1874,6 +1926,7 @@ function revisarDocumento(data) {
     if (decision === 'aprobado' && todosDocumentosAprobados_(email, programa)) {
       try { actualizarPasoTodos(email, 7, programa); } catch (e2) { Logger.log('revisarDocumento -> actualizarPasoTodos error: ' + e2); }
     }
+    invalidarCacheAdmin_(programa);
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('revisarDocumento error: ' + err);
@@ -2284,71 +2337,85 @@ function getAdminParticipantes(params) {
   try {
     if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
     const fuente = resolverSheets_(params.programa);
-    const ss = SpreadsheetApp.openById(fuente.sheetId);
-    const sheet = ss.getSheets()[0];
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return sendResponse(200, []);
-    const headers = data[0];
-    let emailColAdmin = -1;
-    for (let j = 0; j < headers.length; j++) {
-      const h = String(headers[j]).toLowerCase().trim();
-      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailColAdmin = j; break; }
-    }
-    // Leídos UNA sola vez fuera del loop — antes cada fila reabría los
-    // Sheets de Referidos y Alianzas por su cuenta (ver
-    // construirMapaDescuentosReferido_/construirMapaAlianzasPorNombre_).
-    const mapaDescuentos = construirMapaDescuentosReferido_(fuente.programKey);
-    const mapaAlianzas = construirMapaAlianzasPorNombre_(params.programa);
-    // Estado de documentos subidos + revisados por el admin (hoja
-    // "Documentos") — usado por la pestaña admin "Documentos" para mostrar el
-    // enlace de cada archivo y permitir aprobar/rechazar (ver revisarDocumento
-    // y leerMapaDocumentos_).
-    const mapaDocumentos = leerMapaDocumentos_(ss);
-    const result = [];
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (row.every(function(c) { return c === '' || c === null; })) continue;
-      const obj = { _row: i + 1, _program_key: fuente.programKey };
+    // La lectura completa del sheet de inscripciones (+ mapas de Documentos/
+    // Referidos/Alianzas) es lo más lento del panel admin — se cachea 45s
+    // por programa. cachedCall_ valida el JSON antes de confiar en un hit de
+    // caché (ver su comentario) y cae de vuelta a leer en vivo ante
+    // cualquier problema, así que esto nunca puede devolver datos corruptos
+    // ni romper el endpoint — a lo sumo, en el peor caso, no ahorra tiempo.
+    const result = cachedCall_('admin_participantes_' + fuente.programKey, 45, function() {
+      const ss = SpreadsheetApp.openById(fuente.sheetId);
+      const sheet = ss.getSheets()[0];
+      const data = sheet.getDataRange().getValues();
+      if (data.length < 2) return [];
+      const headers = data[0];
+      let emailColAdmin = -1;
       for (let j = 0; j < headers.length; j++) {
-        const h = String(headers[j]);
-        let val = row[j];
-        if (val instanceof Date) {
-          val = val.getFullYear() + '-' + String(val.getMonth()+1).padStart(2,'0') + '-' + String(val.getDate()).padStart(2,'0');
-        } else {
-          val = String(val == null ? '' : val);
+        const h = String(headers[j]).toLowerCase().trim();
+        if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') { emailColAdmin = j; break; }
+      }
+      // Leídos UNA sola vez fuera del loop — antes cada fila reabría los
+      // Sheets de Referidos y Alianzas por su cuenta (ver
+      // construirMapaDescuentosReferido_/construirMapaAlianzasPorNombre_).
+      const mapaDescuentos = cachedCall_('referidos_map_' + fuente.programKey, 60, function() {
+        return construirMapaDescuentosReferido_(fuente.programKey);
+      });
+      const mapaAlianzas = cachedCall_('alianzas_map_' + fuente.programKey, 120, function() {
+        return construirMapaAlianzasPorNombre_(params.programa);
+      });
+      // Estado de documentos subidos + revisados por el admin (hoja
+      // "Documentos") — usado por la pestaña admin "Documentos" para mostrar el
+      // enlace de cada archivo y permitir aprobar/rechazar (ver revisarDocumento
+      // y leerMapaDocumentos_).
+      const mapaDocumentos = leerMapaDocumentos_(ss);
+      const resultInterno = [];
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (row.every(function(c) { return c === '' || c === null; })) continue;
+        const obj = { _row: i + 1, _program_key: fuente.programKey };
+        for (let j = 0; j < headers.length; j++) {
+          const h = String(headers[j]);
+          let val = row[j];
+          if (val instanceof Date) {
+            val = val.getFullYear() + '-' + String(val.getMonth()+1).padStart(2,'0') + '-' + String(val.getDate()).padStart(2,'0');
+          } else {
+            val = String(val == null ? '' : val);
+          }
+          obj[h] = val;
         }
-        obj[h] = val;
+        // Garantizar paso_actual desde columna U (índice 20) si no vino por cabecera
+        if (!obj['paso_actual']) {
+          const pv = row[20];
+          if (pv != null && pv !== '') obj['paso_actual'] = String(pv);
+        }
+        // Descuento de referido — MISMO flag que buscarParticipantesEnHoja_
+        // (login del participante), para que admin y participante vean
+        // siempre el mismo monto esperado en Pago Final. Lookup en el mapa
+        // precalculado, no una relectura del Sheet por fila.
+        const emailValAdmin = emailColAdmin >= 0 ? String(row[emailColAdmin] || '').toLowerCase().trim() : '';
+        obj['referido_descuento_pct'] = String(mapaDescuentos[emailValAdmin] || 0);
+        // Alianza/promoción — MISMO flag que buscarParticipantesEnHoja_ (login
+        // del participante), para que admin y participante vean siempre el
+        // mismo Pago Final esperado. Lookup en el mapa precalculado.
+        const alianzaInfoAdmin = obj['Alianza'] ? mapaAlianzas[normText_(obj['Alianza'])] : null;
+        obj['alianza_nombre'] = alianzaInfoAdmin ? alianzaInfoAdmin.nombre : '';
+        const precioAlianzaAdmin = precioAlianzaParaParticipante_(alianzaInfoAdmin, obj['Tipo'], obj['Habitacion'] || obj['Habitación']);
+        obj['alianza_precio_total'] = precioAlianzaAdmin > 0 ? String(precioAlianzaAdmin) : '';
+        const docVacio = { url: '', estado: '', motivo: '' };
+        const docsEstado = mapaDocumentos[emailValAdmin] || { pasaporte: docVacio, permiso: docVacio, registro_civil: docVacio };
+        obj['_doc_pasaporte_url'] = docsEstado.pasaporte.url;
+        obj['_doc_pasaporte_estado'] = docsEstado.pasaporte.estado;
+        obj['_doc_pasaporte_motivo'] = docsEstado.pasaporte.motivo;
+        obj['_doc_permiso_url'] = docsEstado.permiso.url;
+        obj['_doc_permiso_estado'] = docsEstado.permiso.estado;
+        obj['_doc_permiso_motivo'] = docsEstado.permiso.motivo;
+        obj['_doc_registro_civil_url'] = docsEstado.registro_civil.url;
+        obj['_doc_registro_civil_estado'] = docsEstado.registro_civil.estado;
+        obj['_doc_registro_civil_motivo'] = docsEstado.registro_civil.motivo;
+        resultInterno.push(obj);
       }
-      // Garantizar paso_actual desde columna U (índice 20) si no vino por cabecera
-      if (!obj['paso_actual']) {
-        const pv = row[20];
-        if (pv != null && pv !== '') obj['paso_actual'] = String(pv);
-      }
-      // Descuento de referido — MISMO flag que buscarParticipantesEnHoja_
-      // (login del participante), para que admin y participante vean
-      // siempre el mismo monto esperado en Pago Final. Lookup en el mapa
-      // precalculado, no una relectura del Sheet por fila.
-      const emailValAdmin = emailColAdmin >= 0 ? String(row[emailColAdmin] || '').toLowerCase().trim() : '';
-      obj['referido_descuento_pct'] = String(mapaDescuentos[emailValAdmin] || 0);
-      // Alianza/promoción — MISMO flag que buscarParticipantesEnHoja_ (login
-      // del participante), para que admin y participante vean siempre el
-      // mismo Pago Final esperado. Lookup en el mapa precalculado.
-      const alianzaInfoAdmin = obj['Alianza'] ? mapaAlianzas[normText_(obj['Alianza'])] : null;
-      obj['alianza_nombre'] = alianzaInfoAdmin ? alianzaInfoAdmin.nombre : '';
-      obj['alianza_precio_total'] = alianzaInfoAdmin ? String(alianzaInfoAdmin.precioTotal) : '';
-      const docVacio = { url: '', estado: '', motivo: '' };
-      const docsEstado = mapaDocumentos[emailValAdmin] || { pasaporte: docVacio, permiso: docVacio, registro_civil: docVacio };
-      obj['_doc_pasaporte_url'] = docsEstado.pasaporte.url;
-      obj['_doc_pasaporte_estado'] = docsEstado.pasaporte.estado;
-      obj['_doc_pasaporte_motivo'] = docsEstado.pasaporte.motivo;
-      obj['_doc_permiso_url'] = docsEstado.permiso.url;
-      obj['_doc_permiso_estado'] = docsEstado.permiso.estado;
-      obj['_doc_permiso_motivo'] = docsEstado.permiso.motivo;
-      obj['_doc_registro_civil_url'] = docsEstado.registro_civil.url;
-      obj['_doc_registro_civil_estado'] = docsEstado.registro_civil.estado;
-      obj['_doc_registro_civil_motivo'] = docsEstado.registro_civil.motivo;
-      result.push(obj);
-    }
+      return resultInterno;
+    });
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     Logger.log('getAdminParticipantes error: ' + err);
@@ -2555,7 +2622,13 @@ function actualizarParticipante(data) {
     }
 
     const alianzaDespues = String(dataByNorm['alianza'] || '').trim();
-    if (!alianzaAntes && alianzaDespues) {
+    // Solo Jugadores: los Acompañantes ya reciben el correo de aceptación al
+    // inscribirse (registrarInscripcionWeb_), así que asignarles una alianza
+    // solo cambia su precio, no debe reenviar ese correo.
+    const tipoFilaIdx = headers.findIndex(function(h) { return normFieldKey(h) === 'tipo'; });
+    const tipoFila = String(dataByNorm['tipo'] || (tipoFilaIdx >= 0 ? sheet.getRange(rowNum, tipoFilaIdx + 1).getValue() : '') || '');
+    const esJugadorFila = normText_(tipoFila).indexOf('jug') >= 0;
+    if (esJugadorFila && !alianzaAntes && alianzaDespues) {
       const emailPart = String(dataByNorm['email'] || data.email || '').trim();
       if (emailPart) {
         const datosAceptacionJugador = {
@@ -2571,6 +2644,7 @@ function actualizarParticipante(data) {
       }
     }
 
+    if (updated > 0) invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true, updated: updated });
   } catch (err) {
     Logger.log('actualizarParticipante error: ' + err);
@@ -2599,6 +2673,7 @@ function setPrecioTiquete(data) {
     }
     const valor = String(data.valor == null ? '' : data.valor).trim();
     sheet.getRange(rowNum, colIdx + 1).setValue(valor === '' ? '' : parseFloat(valor));
+    invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('setPrecioTiquete error: ' + err);
@@ -2689,6 +2764,7 @@ function guardarComercial(data) {
         }
       }
 
+      invalidarCacheAdmin_(data.programa);
       return sendResponse(200, { ok: true });
     } finally {
       lock.releaseLock();
@@ -2765,7 +2841,16 @@ function getSheetCI(ss, name) {
 function getAdminFinanciero(params) {
   try {
     if (!autorizar(params, ['superadmin', 'editor', 'viewer'])) return sendResponse(403, { error: 'No autorizado' });
-    const ss = SpreadsheetApp.openById(resolverSheets_(params.programa).budgetSheetId);
+    const fuenteFin = resolverSheets_(params.programa);
+    // Igual que en getAdminParticipantes: toda la lectura (Dashboard/
+    // Jugadores/Pagos/Gastos/Comisiones/Paquetes) se cachea 45s por
+    // programa — cachedCall_ valida el JSON antes de confiar en un hit (ver
+    // su comentario), así que nunca puede devolver datos corruptos ni
+    // romper el endpoint. `result` de aquí en adelante, hasta el cierre de
+    // este cachedCall_, vive DENTRO de su función — no es el mismo `result`
+    // que se devuelve más abajo (ese es lo que cachedCall_ retorna).
+    const result = cachedCall_('admin_financiero_' + fuenteFin.programKey, 45, function() {
+    const ss = SpreadsheetApp.openById(fuenteFin.budgetSheetId);
 
     const str = function(v) { return String(v == null ? '' : v).trim(); };
     const num = function(v) {
@@ -2964,20 +3049,31 @@ function getAdminFinanciero(params) {
     // abonos como texto) y ya se leyó más arriba en esta misma función para
     // otra cosa — releerla entera aquí, en CADA carga del panel admin y
     // CADA cambio de programa, era el cuello de botella real detrás de la
-    // lentitud general del panel (no solo de la pestaña Alianzas).
-    var HOJAS_SIN_PAQUETES_ = { 'pagos': true, 'asignacionescomercial': true };
-    ss.getSheets().forEach(function(sh) {
-      if (HOJAS_SIN_PAQUETES_[sh.getName().toLowerCase()]) return;
-      var sv = sh.getDataRange().getValues();
-      sv.forEach(function(row) {
-        for (var j = 0; j < row.length; j++) {
-          var cj = str(row[j]);
-          if ((cj.indexOf('Redcol') === 0 || cj.indexOf('Paquete') === 0 || cj.indexOf('Acomp.') === 0) && num(row[j+1]) > 0 && num(row[j+2]) > 0) {
-            result.paquetes.push({ nombre: cj, precio: num(row[j+1]), cantidad: num(row[j+2]), total: num(row[j+3]) });
-            break;
+    // lentitud general del panel (no solo de la pestaña Alianzas). Ningún
+    // flujo de la app escribe estas celdas (Redcol/Paquete/Acomp. se
+    // mantienen a mano en el Sheet), así que cachear el resultado 90s sin
+    // invalidación es seguro — a lo sumo un cambio manual en el Sheet tarda
+    // hasta 90s en reflejarse, igual que ya pasa con el resto del catálogo.
+    result.paquetes = cachedCall_('paquetes_' + fuenteFin.programKey, 90, function() {
+      var HOJAS_SIN_PAQUETES_ = { 'pagos': true, 'asignacionescomercial': true };
+      var paquetesEncontrados = [];
+      ss.getSheets().forEach(function(sh) {
+        if (HOJAS_SIN_PAQUETES_[sh.getName().toLowerCase()]) return;
+        var sv = sh.getDataRange().getValues();
+        sv.forEach(function(row) {
+          for (var j = 0; j < row.length; j++) {
+            var cj = str(row[j]);
+            if ((cj.indexOf('Redcol') === 0 || cj.indexOf('Paquete') === 0 || cj.indexOf('Acomp.') === 0) && num(row[j+1]) > 0 && num(row[j+2]) > 0) {
+              paquetesEncontrados.push({ nombre: cj, precio: num(row[j+1]), cantidad: num(row[j+2]), total: num(row[j+3]) });
+              break;
+            }
           }
-        }
+        });
       });
+      return paquetesEncontrados;
+    });
+
+      return result;
     });
 
     return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
@@ -3233,6 +3329,7 @@ function registrarPago(data) {
     if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
       recalcularComisionesComerciales_(data.programa);
     }
+    invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true, mode: targetSheetRow > 0 ? 'updated' : 'appended' });
   } catch (err) {
     Logger.log('registrarPago error: ' + err);
@@ -3594,6 +3691,7 @@ function marcarComprobanteSubido(data) {
     if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
       recalcularComisionesComerciales_(data.programa);
     }
+    invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('marcarComprobanteSubido error: ' + err);
@@ -3705,6 +3803,7 @@ function agregarAbonoPago(data) {
     if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
       recalcularComisionesComerciales_(data.programa);
     }
+    invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('agregarAbonoPago error: ' + err);
@@ -3819,6 +3918,7 @@ function confirmarPagoPendiente(data) {
     if (tipoLowerRecalc === 'reserva' || tipoLowerRecalc === 'pago final') {
       recalcularComisionesComerciales_(data.programa);
     }
+    invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('confirmarPagoPendiente error: ' + err);
@@ -3883,6 +3983,7 @@ function actualizarEstadoPago(data) {
     }
 
     actualizarResumenPagos(pagosSheet);
+    invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true });
   } catch (err) {
     Logger.log('actualizarEstadoPago error: ' + err);
@@ -3995,6 +4096,7 @@ function sincronizarParticipantes(params) {
       pagosSheet.getRange(insertRow, 1, newRows.length, 8).setValues(newRows);
     }
     actualizarResumenPagos(pagosSheet);
+    if (added > 0) invalidarCacheAdmin_('clinic');
     return sendResponse(200, { ok: true, added: added });
   } catch (err) {
     Logger.log('sincronizarParticipantes error: ' + err);
@@ -4482,6 +4584,7 @@ function agregarParticipante(data) {
     sheet.appendRow(newRow);
     const newRowNum = sheet.getLastRow();
     Logger.log('agregarParticipante: fila ' + newRowNum + ' creada para ' + (data.nombre || ''));
+    invalidarCacheAdmin_(data.programa);
     return sendResponse(200, { ok: true, _row: newRowNum });
   } catch(err) {
     Logger.log('agregarParticipante error: ' + err);
@@ -5677,7 +5780,7 @@ function getReferidosColMap_(sheet) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ALIANZAS Y PROMOCIONES — precio total fijo por jugador
+// ALIANZAS Y PROMOCIONES — precio total fijo por jugador y por acompañante
 // ═══════════════════════════════════════════════════════════════════════
 // Pestaña "Alianzas" dentro del MISMO spreadsheet de Inscripciones de cada
 // programa (SHEET_ID / SHEET_ID_WORLD_CHALLENGE, resuelto vía
@@ -5709,6 +5812,73 @@ function alianzaActiva_(valorCelda) {
   return s === 'si' || s === 'sí' || s === 'true' || s === 'x' || s === '1';
 }
 
+// Columnas opcionales del catálogo "Alianzas" con el precio especial de los
+// ACOMPAÑANTES de esa alianza, una por tipo de habitación. Son totales SIN
+// tiquete (el tiquete aéreo se cobra aparte, igual que con el precio
+// estándar). Celda vacía = ese tipo de acompañante paga el precio estándar.
+// Se buscan por nombre de encabezado (normPagosHeaderKey_), así que
+// "Precio Acomp. Doble" y "Precio Acomp Doble" valen igual.
+const ALIANZA_COLS_ACOMP_ = [
+  { key: 'doble',       header: 'Precio Acomp. Doble' },
+  { key: 'sencilla',    header: 'Precio Acomp. Sencilla' },
+  { key: 'actividades', header: 'Precio Acomp. Solo Actividades' },
+  { key: 'solo_wc',     header: 'Precio Acomp. Solo World Challenge' }
+];
+
+// Fila del catálogo → {nombre, precioTotal, preciosAcomp}. Única forma de
+// leer una fila de Alianzas, para que todos los lookups devuelvan lo mismo.
+function filaAlianzaAObjeto_(r, ac) {
+  const preciosAcomp = {};
+  ALIANZA_COLS_ACOMP_.forEach(function(c) {
+    const col = ac[normPagosHeaderKey_(c.header)];
+    preciosAcomp[c.key] = col ? (parseFloat(r[col - 1]) || 0) : 0;
+  });
+  return {
+    nombre: String(r[ac.nombre - 1]).trim(),
+    precioTotal: parseFloat(r[ac.precio_total - 1]) || 0,
+    preciosAcomp: preciosAcomp
+  };
+}
+
+// Precio total de alianza que le toca a UN participante: Jugador → "Precio
+// Total"; Acompañante → la columna de su tipo de habitación (mismo criterio
+// que montoReservaFinalParticipante_base_ en areapersonal.html). 0 = sin
+// precio especial (paga el estándar). Debe coincidir con
+// precioAlianzaParaParticipante_ del frontend.
+function precioAlianzaParaParticipante_(info, tipo, habitacion) {
+  if (!info) return 0;
+  if (normText_(tipo).indexOf('jug') >= 0) return info.precioTotal || 0;
+  const p = info.preciosAcomp || {};
+  const hab = String(habitacion || '').toLowerCase().trim();
+  if (hab === 'solo_world_challenge') return p.solo_wc || 0;
+  if (hab === '' || hab === 'solo_actividades') return p.actividades || 0;
+  if (hab.indexOf('doble') >= 0) return p.doble || 0;
+  return p.sencilla || 0;
+}
+
+// ── Ejecutar UNA VEZ desde el editor ─────────────────────────────────────
+// Agrega al final de la pestaña "Alianzas" (Clinic y World Challenge) las
+// columnas de precio de acompañantes que falten (ver ALIANZA_COLS_ACOMP_),
+// vacías por defecto. Luego basta con llenar el precio en la fila de cada
+// alianza que tenga precio especial para acompañantes.
+function agregarColumnasAlianzaAcompanantes() {
+  ['clinic', 'world_challenge'].forEach(function(programa) {
+    try {
+      const sheet = getAlianzasSheet_(programa);
+      const ac = getAlianzasColMap_(sheet);
+      let col = sheet.getLastColumn();
+      ALIANZA_COLS_ACOMP_.forEach(function(c) {
+        if (ac[normPagosHeaderKey_(c.header)]) return;
+        col++;
+        sheet.getRange(1, col).setValue(c.header);
+        Logger.log('agregarColumnasAlianzaAcompanantes: ' + programa + ' → creada "' + c.header + '"');
+      });
+    } catch (err) {
+      Logger.log('agregarColumnasAlianzaAcompanantes (' + programa + '): ' + err);
+    }
+  });
+}
+
 // Busca una alianza ACTIVA por nombre en el catálogo "Alianzas" del sheet de
 // Inscripciones del programa dado (programa acepta texto libre o programKey,
 // igual que resolverSheets_). Devuelve {nombre, precioTotal} o null.
@@ -5725,7 +5895,7 @@ function alianzaPorNombre_(nombre, programa) {
       return normText_(r[ac.nombre - 1]) === nombreNorm && alianzaActiva_(r[ac.activo - 1]);
     });
     if (!fila) return null;
-    return { nombre: String(fila[ac.nombre - 1]).trim(), precioTotal: parseFloat(fila[ac.precio_total - 1]) || 0 };
+    return filaAlianzaAObjeto_(fila, ac);
   } catch (err) {
     Logger.log('alianzaPorNombre_ error: ' + err);
     return null;
@@ -5745,7 +5915,7 @@ function listarAlianzasActivas_(programa) {
     return data.filter(function(r) {
       return alianzaActiva_(r[ac.activo - 1]);
     }).map(function(r) {
-      return { nombre: String(r[ac.nombre - 1]).trim(), precioTotal: parseFloat(r[ac.precio_total - 1]) || 0 };
+      return filaAlianzaAObjeto_(r, ac);
     }).filter(function(a) { return a.nombre; });
   } catch (err) {
     Logger.log('listarAlianzasActivas_ error: ' + err);
@@ -5840,7 +6010,7 @@ function alianzaPorColegioOEmail_(colegio, email, programa) {
       return false;
     });
     if (!fila) return null;
-    return { nombre: String(fila[ac.nombre - 1]).trim(), precioTotal: parseFloat(fila[ac.precio_total - 1]) || 0 };
+    return filaAlianzaAObjeto_(fila, ac);
   } catch (err) {
     Logger.log('alianzaPorColegioOEmail_ error: ' + err);
     return null;
@@ -6219,9 +6389,10 @@ function enviarNotificacionAdminInscripcion_(datos, opts) {
 // onChange) se decide y envía el correo correspondiente: si es Jugador y su
 // Colegio/email coincide con una alianza activa, se autoasigna y sale el
 // correo de aceptación; si no coincide, sale el de "pendiente de revisión" +
-// notificación al admin con el link para asignarla. Los Acompañantes no
-// tienen concepto de alianza — siguen el "proceso normal" de siempre
-// (correo de aceptación + notificación admin, sin filtro).
+// notificación al admin con el link para asignarla. Los Acompañantes siguen
+// el "proceso normal" de siempre (correo de aceptación + notificación admin,
+// sin filtro); su alianza, si la tienen, la asigna el admin después en la
+// pestaña Alianzas y solo cambia su precio.
 function registrarInscripcionWeb_(data) {
   try {
     const fuente = resolverSheets_(data.programa);
@@ -6248,6 +6419,7 @@ function registrarInscripcionWeb_(data) {
       return dataByNorm[norm] !== undefined ? dataByNorm[norm] : '';
     });
     sheet.appendRow(newRow);
+    invalidarCacheAdmin_(data.programa);
 
     const email = String(data.email || '').trim().toLowerCase();
     const nombre = String(data.nombre || '').trim();
@@ -6648,6 +6820,8 @@ function registrarReferido_(data) {
     newRow[rc.referidor_vinculado_correo - 1] = check.correoReferidor;
     newRow[rc.descuento_referido_aplicado - 1] = 3;
     sheet.appendRow(newRow);
+    try { CacheService.getScriptCache().remove('referidos_map_' + resolverSheets_(programa).programKey); } catch (_) {}
+    invalidarCacheAdmin_(programa);
 
     try {
       GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
