@@ -558,7 +558,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <img src="https://lh3.googleusercontent.com/d/1xXSlsj58noHEfds-s5NDlGt4nF16Zal9" alt="EFI">
     <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel">
   </div>
-  <div class="nav-tag">Área Personal · RMF Clinic 2026</div>
+  <div class="nav-tag" id="nav-tag-programa">Área Personal</div>
   <button id="btn-instalar" style="display:none;">📲 Instalar app en tu móvil</button>
 </nav>
 
@@ -594,11 +594,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
   </div>
 
-  <!-- BOTONES CAMBIAR DE PROGRAMA (solo si el email tiene inscripción en ambos) -->
-  <div id="programa-switcher" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
-    <button id="btn-prog-clinic" class="programa-switch-btn" onclick="cambiarPrograma('clinic')">🏟️ Real Madrid Foundation Clinic</button>
-    <button id="btn-prog-wc" class="programa-switch-btn" onclick="cambiarPrograma('world_challenge')">🏆 Real Madrid Foundation World Challenge</button>
-  </div>
+  <!-- BOTONES CAMBIAR DE PROGRAMA (solo si el email tiene inscripción en más de uno) — se generan desde programas.js -->
+  <div id="programa-switcher" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;"></div>
   <style>
     .programa-switch-btn {
       font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 20px;
@@ -612,7 +609,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
   <!-- BIENVENIDA DESCRIPTIVA -->
   <div id="welcome-guide" style="background:linear-gradient(135deg,#0b1f3a 0%,#1a3a6e 100%);border-radius:10px;padding:16px 20px;margin-bottom:18px;position:relative;">
     <button onclick="cerrarGuia()" title="Cerrar" style="position:absolute;top:10px;right:12px;background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;transition:color .2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,.5)'">✕</button>
-    <p style="color:#fff;font-size:13px;font-weight:600;margin:0 0 12px;padding-right:24px;">Gestiona aquí todo tu proceso RMF Clinic 2026 — sigue los pasos en orden y sube tus documentos cuando estén listos.</p>
+    <p style="color:#fff;font-size:13px;font-weight:600;margin:0 0 12px;padding-right:24px;">Gestiona aquí todo tu proceso <span id="guia-programa-nombre">RMF</span> — sigue los pasos en orden y sube tus documentos cuando estén listos.</p>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
       <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">📋 Mi Proceso — pagos y documentos</span>
       <span style="background:rgba(255,255,255,.1);border-radius:6px;padding:6px 12px;font-size:12px;color:rgba(255,255,255,.85);">📸 Fotos del viaje</span>
@@ -642,6 +639,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 
   <div class="section-tabs" id="section-tabs" style="display:none">
     <button class="stab active" data-section="proceso" onclick="switchSection('proceso')">Mi Proceso</button>
+    <button class="stab" id="stab-recuerdo" data-section="recuerdo" onclick="switchSection('recuerdo')" style="display:none">🏁 Mi programa</button>
     <button class="stab" data-section="saber" onclick="switchSection('saber')">📋 Prepárate</button>
     <button class="stab" data-section="fotos" onclick="switchSection('fotos')">📸 Fotos</button>
     <button class="stab" data-section="comunicaciones" onclick="switchSection('comunicaciones')">💬 Mensajes</button>
@@ -681,7 +679,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div class="tc-scroll" id="tc-text">Cargando...</div>
       <label class="chk-row">
         <input type="checkbox" id="tc-chk" onchange="onTC()">
-        <span>He leído y acepto los <strong>Términos y Condiciones</strong> del Real Madrid Foundation Clinic 2026. Entiendo las políticas de cancelación y la cláusula de responsabilidad.</span>
+        <span>He leído y acepto los <strong>Términos y Condiciones</strong> del <span id="tc-programa-nombre">programa</span>. Entiendo las políticas de cancelación y la cláusula de responsabilidad.</span>
       </label>
       <button onclick="continuarAReserva()" id="btn-continuar-tc" disabled style="width:100%;margin-top:20px;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:not-allowed;opacity:0.5;transition:all .2s">Continuar al pago de reserva →</button>
     </div>
@@ -1037,6 +1035,11 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
   </div>
 
+  <!-- MI PROGRAMA (vista de recuerdo: solo para programas ya finalizados) -->
+  <div class="panel section-anchor" id="panel-recuerdo">
+    <div class="card" id="recuerdo-content"></div>
+  </div>
+
   <!-- FOTOS DEL VIAJE -->
   <div class="panel section-anchor" id="panel-fotos">
     <div class="card">
@@ -1342,10 +1345,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <button class="asnav-btn" data-asec="analytics" onclick="adminSection('analytics')">Analytics</button>
         <button class="asnav-btn" id="stab-acceso" data-asec="acceso" onclick="adminSection('acceso')" style="display:none;margin-left:auto;border-color:var(--navy);color:var(--navy)">🔐 Acceso</button>
       </div>
-      <div style="display:flex;gap:6px;margin-top:10px">
-        <button id="admin-prog-clinic" class="programa-switch-btn active" style="font-size:12px;padding:6px 12px" onclick="cambiarProgramaAdmin('clinic')">🏟️ Clinic</button>
-        <button id="admin-prog-wc" class="programa-switch-btn" style="font-size:12px;padding:6px 12px" onclick="cambiarProgramaAdmin('world_challenge')">🏆 World Challenge</button>
-      </div>
+      <!-- Programas próximos/en curso como botones; los ya finalizados en el desplegable "Programas anteriores" (ver renderAdminProgramaSwitcher_) -->
+      <div id="admin-programa-switcher" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center"></div>
     </div>
 
     <!-- DASHBOARD -->
@@ -1354,7 +1355,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="kpi-card">
           <div class="kpi-icon-row">
             <div class="kpi-icon" style="background:rgba(100,116,139,0.2)"><svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-            <span class="kpi-badge neutral">2026</span>
+            <span class="kpi-badge neutral" id="kpi-badge-anio">2026</span>
           </div>
           <div class="kpi-label">Participantes</div>
           <div class="kpi-value" id="kpi-participantes">—</div>
@@ -1605,7 +1606,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div class="card">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
             <div class="ctitle" style="margin-bottom:0;flex:1">Categorías · Jugadores</div>
-            <span style="font-size:12px;color:var(--muted)">Edad al 2-oct-2026</span>
+            <span style="font-size:12px;color:var(--muted)" id="cat-edad-ref">Edad al 2-oct-2026</span>
           </div>
           <div id="admin-categorias-content">
             <p style="color:var(--muted);font-size:13px;">Cargando...</p>
@@ -2151,6 +2152,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 </div>
 
 <script src="config.js"></script>
+<script src="programas.js"></script>
 <script>
 // ── CONFIG (mismo webhook que inscripción; Make filtra por body.action) ───
 const WEBHOOK_URL = 'https://hook.us2.make.com/8mktm4zb9ag3ok257n5vhwwhdy371cju';
@@ -2194,11 +2196,11 @@ let esComercialOnly = false;
 let _gatedOnlySession = false; // true cuando se entra directo a admin/comercial sin datos de participante real
 let grupoPaso = 1;
 let programa = '';
-let programKeyActivo = 'clinic'; // 'clinic' | 'world_challenge' — programa activo en pantalla
+let programKeyActivo = 'clinic'; // key de programas.js — programa activo en pantalla
 let adminLoaded = false;
 let adminLastLoaded = 0;
 let adminData = [];
-let adminProgramaActivo = 'clinic'; // 'clinic' | 'world_challenge' — qué programa está viendo el admin
+let adminProgramaActivo = programaAdminPorDefecto(); // key de programas.js — por defecto el próximo programa (no los ya finalizados)
 // Snapshot en memoria de los últimos datos admin_participantes/admin_financiero
 // por programa — al alternar entre Clinic/World Challenge, si hay un snapshot
 // reciente se muestra de inmediato (sin el parpadeo de "…") mientras loadAdmin
@@ -2207,6 +2209,9 @@ let adminProgramaActivo = 'clinic'; // 'clinic' | 'world_challenge' — qué pro
 // que seguía sintiéndose lento tras las optimizaciones del backend.
 let adminCacheByPrograma = {};
 const ADMIN_CACHE_TTL_MS = 5 * 60 * 1000;
+// Pinta el selector de programas del panel admin con el programa por defecto
+// (el próximo, ver programaAdminPorDefecto en programas.js).
+setTimeout(() => { try { renderAdminProgramaSwitcher_(); } catch (e) {} }, 0);
 let pagoCurrentProgramKey = 'clinic'; // programa del participante cuyo modal de pagos está abierto
 let adminSessionToken = sessionStorage.getItem('admin_token') || '';
 let comercialSessionToken = sessionStorage.getItem('comercial_token') || '';
@@ -2355,7 +2360,7 @@ function normalizeParticipant(raw) {
     // qué sheet salió la fila — es la fuente de verdad. Si no viene (ej. otros
     // endpoints que aún no la setean), se infiere del texto libre de 'programa'.
     program_key: rowVal(raw, 'program_key') || (
-      /world\s*challenge/i.test(rowVal(raw, 'programa', 'Programa', 'program', 'evento', 'Evento')) ? 'world_challenge' : 'clinic'
+      getPrograma(rowVal(raw, 'programa', 'Programa', 'program', 'evento', 'Evento')).key
     ),
     habitacion: rowVal(raw, 'habitacion', 'habitación', 'Habitacion', 'Habitación', 'room', 'tipo_habitacion'),
     talla_uniforme: rowVal(raw, 'talla_uniforme', 'Talla Uniforme', 'talla uniforme', 'Talla', 'talla'),
@@ -2576,17 +2581,17 @@ function renderDocEstados(raw) {
 // antes esta función usaba allParticipants sin filtrar y mezclaba ambos.
 function calcPaymentTotals() {
   const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
-  const esWC = programKeyActivo === 'world_challenge';
+  const progKey = programKeyActivo;
   const total = participantesPrograma.length || 1;
 
   let reserva = 0, final = 0;
   for (const raw of participantesPrograma) {
     const n = normalizeParticipant(raw) || raw;
-    const m = montoReservaFinalParticipante_(n, esWC);
+    const m = montoReservaFinalParticipante_(n, progKey);
     reserva += m.reserva;
     final += m.final;
   }
-  if (participantesPrograma.length === 0) final = esWC ? PRECIOS_WC.jugador.final : 1790; // fallback
+  if (participantesPrograma.length === 0) final = getPrograma(progKey).precios.jugador.final; // fallback
 
   const tasaRT = tasaReservaTiquete_();
   const tiquetePax = participantesPrograma.map(raw => normalizeParticipant(raw) || raw).filter(p => p.tiquete_aereo === 'Con tiquete');
@@ -2641,10 +2646,10 @@ function calcPaymentTotals() {
 // participante para un concepto — mismas reglas que calcPaymentTotals(), pero
 // para una sola persona. Devuelve 0 si el concepto no le aplica (ej. tiquete
 // para quien no lo tiene).
-function montoEsperadoParticipante_(tipoPago, p, esWC) {
-  if (tipoPago === 'reserva') return montoReservaFinalParticipante_(p, esWC).reserva;
+function montoEsperadoParticipante_(tipoPago, p, progKey) {
+  if (tipoPago === 'reserva') return montoReservaFinalParticipante_(p, progKey).reserva;
   if (tipoPago === 'tiquete') return p.tiquete_aereo === 'Con tiquete' ? tiqueteUnitEurParaParticipante_(p) : 0;
-  return montoReservaFinalParticipante_(p, esWC).final;
+  return montoReservaFinalParticipante_(p, progKey).final;
 }
 
 // Reparte un pago (monto BASE en EUR, sin recargo de tarjeta) entre los
@@ -2662,14 +2667,14 @@ function montoEsperadoParticipante_(tipoPago, p, esWC) {
 // aunque el grupo ya haya pagado todo.
 function calcularDistribucionPago_(tipoPago, montoBaseEur) {
   const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
-  const esWC = programKeyActivo === 'world_challenge';
+  const progKey = programKeyActivo;
 
   let restanteAAsignar = Math.round(montoBaseEur * 100) / 100;
   const distribucion = [];
   for (const raw of participantesPrograma) {
     if (restanteAAsignar <= 0) break;
     const p = normalizeParticipant(raw) || raw;
-    const esperado = montoEsperadoParticipante_(tipoPago, p, esWC);
+    const esperado = montoEsperadoParticipante_(tipoPago, p, progKey);
     if (esperado <= 0) continue; // no debe nada de este concepto
     const abonoCampo = tipoPago === 'reserva' ? 'abono_reserva' : tipoPago === 'tiquete' ? 'abono_tiquete' : 'abono_final';
     const faltante = Math.max(0, esperado - (p[abonoCampo] || 0));
@@ -2700,11 +2705,11 @@ function calcularDistribucionPago_(tipoPago, montoBaseEur) {
 // para un acompañante solo actividades) no bloquea el chequeo.
 function conceptoGrupoCompleto_(tipoPago) {
   const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
-  const esWC = programKeyActivo === 'world_challenge';
+  const progKey = programKeyActivo;
   const estadoCampo = tipoPago === 'reserva' ? 'abono_reserva_estado' : tipoPago === 'tiquete' ? 'abono_tiquete_estado' : 'abono_final_estado';
   return participantesPrograma.every(raw => {
     const p = normalizeParticipant(raw) || raw;
-    const esperado = montoEsperadoParticipante_(tipoPago, p, esWC);
+    const esperado = montoEsperadoParticipante_(tipoPago, p, progKey);
     if (esperado <= 0) return true; // no debe nada de este concepto, no bloquea
     return p[estadoCampo] === 'completo';
   });
@@ -2763,7 +2768,7 @@ function buildBreakdown(t) {
   }
 
   const participantesPrograma = allParticipants.filter(p => (p.program_key || 'clinic') === programKeyActivo);
-  const esWC = programKeyActivo === 'world_challenge';
+  const progKey = programKeyActivo;
 
   // Reserva
   const br = document.getElementById('breakdown-reserva');
@@ -2771,7 +2776,7 @@ function buildBreakdown(t) {
     if (t.total > 1) {
       br.innerHTML = participantesPrograma.map(raw => {
         const p = normalizeParticipant(raw) || raw;
-        const m = montoReservaFinalParticipante_(p, esWC);
+        const m = montoReservaFinalParticipante_(p, progKey);
         return bkRow(p.nombre || 'Participante', p.tipo || 'Jugador', m.reserva);
       }).join('') + totalRow('Total reserva', t.reserva);
       br.style.display = 'block';
@@ -2795,7 +2800,7 @@ function buildBreakdown(t) {
     if (t.total > 1) {
       bf.innerHTML = participantesPrograma.map(raw => {
         const p = normalizeParticipant(raw) || raw;
-        const m = montoReservaFinalParticipante_(p, esWC);
+        const m = montoReservaFinalParticipante_(p, progKey);
         return bkRow(p.nombre || 'Participante', m.sub, m.final);
       }).join('') + totalRow('Total pago final', t.final);
       bf.style.display = 'block';
@@ -2816,7 +2821,7 @@ function buildBreakdown(t) {
       let sumaPrograma = 0;
       const filasPrograma = participantesPrograma.map(raw => {
         const p = normalizeParticipant(raw) || raw;
-        const m = montoReservaFinalParticipante_(p, esWC);
+        const m = montoReservaFinalParticipante_(p, progKey);
         sumaPrograma += m.reserva + m.final;
         return bkRow(p.nombre || 'Participante', m.sub, m.reserva + m.final);
       }).join('');
@@ -2885,7 +2890,8 @@ async function doLogin() {
     // Cada programa se inscribe/paga por separado — ver activarPrograma().
     const programasPresentes = [...new Set(allParticipants.map(p => p.program_key || 'clinic'))];
     setupProgramaSwitcher(programasPresentes);
-    const programaInicial = programasPresentes.includes('clinic') ? 'clinic' : programasPresentes[0];
+    // Abre primero el próximo programa del participante; si todos terminaron, el más reciente.
+    const programaInicial = programaPreferido(programasPresentes);
     const esStaffInicial = activarPrograma(programaInicial);
     if (esStaffInicial) return; // showStaffView() ya se mostró dentro de activarPrograma()
     // Admin emails siempre van al flujo gateado, aunque también estén en la hoja de participantes
@@ -2945,6 +2951,12 @@ async function doLogin() {
 function setupProgramaSwitcher(programKeys) {
   const wrap = document.getElementById('programa-switcher');
   if (!wrap) return;
+  const ordenados = programKeys.slice().sort((a, b) => new Date(getPrograma(b).inicio) - new Date(getPrograma(a).inicio));
+  wrap.innerHTML = ordenados.map(k => {
+    const p = getPrograma(k);
+    const fin = programaFinalizado(k) ? ' · finalizado' : '';
+    return `<button class="programa-switch-btn" data-prog="${p.key}" onclick="cambiarPrograma('${p.key}')">${p.etiqueta}${fin}</button>`;
+  }).join('');
   wrap.style.display = programKeys.length > 1 ? 'flex' : 'none';
 }
 
@@ -2964,10 +2976,9 @@ function cambiarPrograma(key) {
 // tenía doLogin: showStaffView() y no continuar con el resto del flujo).
 function activarPrograma(key, opts) {
   opts = opts || {};
-  const btnClinic = document.getElementById('btn-prog-clinic');
-  const btnWc = document.getElementById('btn-prog-wc');
-  if (btnClinic) btnClinic.classList.toggle('active', key === 'clinic');
-  if (btnWc) btnWc.classList.toggle('active', key === 'world_challenge');
+  document.querySelectorAll('#programa-switcher .programa-switch-btn').forEach(b => b.classList.toggle('active', b.dataset.prog === key));
+  // Cada programa tiene su propio álbum de fotos — al cambiar de programa se recargan.
+  if (key !== programKeyActivo) fotosLoaded = false;
 
   const programParticipants = allParticipants.filter(p => (p.program_key || 'clinic') === key);
   if (!programParticipants.length) return false;
@@ -2981,9 +2992,9 @@ function activarPrograma(key, opts) {
   // World Challenge: si TODO el grupo tiene un tipo de pago único (Solo
   // Actividades / Solo World Challenge — todo se paga en la reserva, sin
   // segundo pago), oculta el paso "Pago final" del stepper (ver STEP_DEFS).
-  sinPagoFinal = key === 'world_challenge' && programParticipants.every(p => {
+  sinPagoFinal = esWCKey(key) && programParticipants.every(p => {
     const n = normalizeParticipant(p) || p;
-    return montoReservaFinalParticipante_(n, true).final === 0;
+    return montoReservaFinalParticipante_(n, key).final === 0;
   });
 
   if (programParticipants.length > 1) {
@@ -3027,7 +3038,71 @@ function activarPrograma(key, opts) {
   esStaffView = programParticipants.every(p => (p.tipo || '').toLowerCase().includes('staff'));
   if (esStaffView) { showStaffView(); return true; }
   applyPasoActual(grupoPaso, opts);
+  aplicarVistaRecuerdo_(key, programParticipants, opts);
   return false;
+}
+
+// ── VISTA DE RECUERDO (programa ya finalizado) ──────────────────────────────
+// Cuando el programa activo ya terminó (fecha `fin` de programas.js), el
+// participante deja de ver su proceso de pasos/pagos/T&C y en su lugar ve
+// "Mi programa": un resumen de solo lectura con su historial de pagos y
+// accesos directos a Fotos y Mensajes, que siguen disponibles.
+function aplicarVistaRecuerdo_(key, programParticipants, opts) {
+  opts = opts || {};
+  const finalizado = programaFinalizado(key);
+  const show = (id, visible) => { const el = document.getElementById(id); if (el) el.style.display = visible ? '' : 'none'; };
+  const stabProceso = document.querySelector('.stab[data-section="proceso"]');
+  const stabSaber = document.querySelector('.stab[data-section="saber"]');
+  if (stabProceso) stabProceso.style.display = finalizado ? 'none' : '';
+  if (stabSaber) stabSaber.style.display = finalizado ? 'none' : '';
+  show('stab-recuerdo', finalizado);
+  show('btn-toggle-tiq', !finalizado);
+  if (finalizado) show('welcome-guide', false);
+  if (finalizado) {
+    renderRecuerdo_(key, programParticipants);
+    // Solo se lleva al participante a "Mi programa" si está en una pestaña
+    // que ya no aplica (Mi Proceso / Prepárate) — nunca lo saca del panel
+    // admin, comercial, fotos o mensajes. Se revisa dentro del timeout porque
+    // el login puede abrir el panel admin justo después de esta llamada.
+    setTimeout(() => {
+      const activa = (document.querySelector('.stab.active') || {}).dataset;
+      const seccionActiva = activa ? activa.section : 'proceso';
+      if (seccionActiva === 'proceso' || seccionActiva === 'saber') switchSection('recuerdo', true);
+    }, 0);
+  } else {
+    const activa = (document.querySelector('.stab.active') || {}).dataset;
+    if (activa && activa.section === 'recuerdo') setTimeout(() => switchSection('proceso', true), 0);
+  }
+}
+
+function renderRecuerdo_(key, programParticipants) {
+  const el = document.getElementById('recuerdo-content');
+  if (!el) return;
+  const prog = getPrograma(key);
+  const fmtEur = v => (Math.round((v || 0) * 100) / 100).toLocaleString('es-CO') + ' €';
+  const filas = programParticipants.map(raw => {
+    const p = normalizeParticipant(raw) || raw;
+    const celdas = ['reserva', 'tiquete', 'final'].map(c => {
+      const bruto = p['abono_' + c + '_bruto'] || parseFloat(p['abono_' + c]) || 0;
+      const fecha = p['abono_' + c + '_fecha'] || '';
+      return '<td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap">'
+        + (bruto > 0 ? fmtEur(bruto) + (fecha ? '<div style="font-size:11px;color:var(--muted)">' + escapeHtml(fecha) + '</div>' : '') : '<span style="color:var(--muted)">—</span>')
+        + '</td>';
+    }).join('');
+    return '<tr><td style="padding:8px 10px;border-bottom:1px solid var(--border)">' + escapeHtml(p.nombre || '') + '<div style="font-size:11px;color:var(--muted)">' + escapeHtml(p.tipo || '') + '</div></td>' + celdas + '</tr>';
+  }).join('');
+  el.innerHTML = '<div class="ctitle">🏁 ' + escapeHtml(prog.nombre) + ' · finalizado</div>'
+    + '<p style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:16px">Gracias por vivir esta experiencia con nosotros. Tu programa ya terminó, pero aquí sigues teniendo acceso a las fotos del viaje, a los mensajes del equipo y a tu historial de pagos.</p>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px">'
+    + '<button onclick="switchSection(\'fotos\')" style="padding:10px 18px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:14px;cursor:pointer">📸 Ver fotos del viaje</button>'
+    + '<button onclick="switchSection(\'comunicaciones\')" style="padding:10px 18px;background:#fff;color:var(--navy);border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;cursor:pointer">💬 Mensajes</button>'
+    + '</div>'
+    + '<div class="ctitle" style="font-size:15px">Historial de pagos</div>'
+    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+    + '<thead><tr style="text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">'
+    + '<th style="padding:8px 10px">Participante</th><th style="padding:8px 10px;text-align:right">Reserva</th><th style="padding:8px 10px;text-align:right">Tiquete</th><th style="padding:8px 10px;text-align:right">Pago final</th>'
+    + '</tr></thead><tbody>' + filas + '</tbody></table></div>'
+    + '<p style="font-size:12px;color:var(--muted);margin-top:12px">Montos validados por el equipo, incluyendo recargo de tarjeta si aplicó. ¿Dudas? Escríbenos a alejandro.cabrera@fundacionrevel.net.</p>';
 }
 
 function buildParticipantTabs(participants) {
@@ -3062,11 +3137,7 @@ let _countdownInterval = null;
 function iniciarCountdownViaje() {
   const els = document.querySelectorAll('.countdown-text');
   if (!els.length) return;
-  const fechasPorPrograma = {
-    clinic:          { inicio: '2026-10-02T09:00:00+02:00', fin: '2026-10-10T23:59:59+02:00' },
-    world_challenge: { inicio: '2027-03-19T09:00:00+01:00', fin: '2027-03-27T23:59:59+01:00' }
-  };
-  const fechas = fechasPorPrograma[programKeyActivo] || fechasPorPrograma.clinic;
+  const fechas = getPrograma(programKeyActivo); // inicio/fin de programas.js
   const inicioViaje = new Date(fechas.inicio).getTime();
   const finViaje = new Date(fechas.fin).getTime();
 
@@ -3112,11 +3183,13 @@ function loadParticipant(p) {
   programKeyActivo = participant.program_key || 'clinic';
   habitacion = participant.habitacion || '';
   const subtitleEl = document.getElementById('welcome-subtitle');
-  if (subtitleEl) {
-    subtitleEl.textContent = programKeyActivo === 'world_challenge'
-      ? 'Real Madrid Foundation World Challenge · 19–27 Marzo 2027 · Madrid, España'
-      : 'Real Madrid Foundation Clinic · 2–10 Octubre 2026 · Madrid, España';
-  }
+  const progActual = getPrograma(programKeyActivo);
+  if (subtitleEl) subtitleEl.textContent = progActual.subtitulo;
+  const setTxtProg = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setTxtProg('nav-tag-programa', 'Área Personal · ' + progActual.nombreCorto);
+  setTxtProg('guia-programa-nombre', progActual.nombreCorto);
+  setTxtProg('tc-programa-nombre', progActual.nombre);
+  document.title = 'Área Personal — ' + progActual.nombreCorto + ' · Victory Sports';
 
   // Cargar el texto de T&C de inmediato, independiente del estado del checkbox
   // y antes de cualquier otra actualización de UI que pueda fallar más abajo.
@@ -3316,8 +3389,8 @@ function goPanel(id, noScroll) {
 const MARGEN_TASA_PCT = 0.0030; // margen sobre la tasa de mercado (0,30%)
 const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + margen
 let tasa = TASA_FALLBACK;
-const TRM_RESERVA = 4288; // TRM oficial del 1 de junio de 2026 (fecha límite de pago de reserva) — tasa fija, no cambia
-const TIQUETE_EUR = 993; // Valor fijo del tiquete aéreo por persona, convertido a COP con la TRM_RESERVA (misma fecha límite)
+// La TRM fija de reserva/tiquete (tasaFija) y el valor del tiquete
+// (tiqueteEur) son de cada edición — ver programas.js.
 
 // ── PRECIOS WORLD CHALLENGE ────────────────────────────────────────────────
 // A diferencia del Clinic (Reserva/Tiquete a tasa fija TRM_RESERVA, solo el
@@ -3325,20 +3398,10 @@ const TIQUETE_EUR = 993; // Valor fijo del tiquete aéreo por persona, convertid
 // para LOS TRES pagos — ver tasaReservaTiquete_() y tiqueteUnitEur_(), que
 // centralizan esta rama para que calc1/calcTiq/congelamiento y
 // calcPaymentTotals/buildBreakdown queden siempre consistentes entre sí.
-const TIQUETE_EUR_WC = 950; // tiquete aéreo World Challenge — mismo valor para Jugador y Acompañante
-// Valores oficiales según los T&C de World Challenge 2027 (PDFs por tipo de
-// paquete) — son los totales "Sin Tiquete"; el tiquete aéreo se cobra APARTE
-// en su propio panel (950€, ver TIQUETE_EUR_WC), no está incluido aquí.
-const PRECIOS_WC = {
-  jugador:           { reserva: 1150, final: 1740 }, // total sin tiquete: 2.890€ — reserva fija (no % del total; el tiquete se cobra aparte, ver TIQUETE_EUR_WC)
-  acomp_doble:       { reserva: 1150, final: 1040 }, // total sin tiquete: 2.190€ — reserva fija (no % del total)
-  acomp_sencilla:    { reserva: 1150, final: 1360 }, // total sin tiquete: 2.510€ — reserva fija (no % del total)
-  // Solo Actividades y Solo World Challenge: pago único en la reserva, SIN
-  // segundo pago de "Pago Final" (a diferencia del Clinic, donde este tipo de
-  // acompañante paga todo al final en vez de en la reserva).
-  acomp_actividades: { reserva: 590,  final: 0 }, // total sin tiquete: 590€
-  acomp_solo_wc:     { reserva: 185,  final: 0 }  // total sin tiquete: 185€ — solo torneo, sin alojamiento ni actividades turísticas
-};
+// Precios por edición (totales "Sin Tiquete", separados en reserva/final):
+// programas.js → precios. En World Challenge, Solo Actividades y Solo World
+// Challenge son pago único en la reserva, SIN "Pago Final" (a diferencia del
+// Clinic, donde Solo Actividades paga todo al final).
 
 // Excepción puntual: estos 3 participantes de Clinic ven la tasa del día en
 // vivo (misma que ya usa World Challenge) en vez de la TRM fija del 1 de
@@ -3354,11 +3417,12 @@ function esExcepcionTasaViva_() {
   return EMAILS_TASA_VIVA_EXCEPCION.includes(String(participantEmail || '').toLowerCase().trim());
 }
 function tasaReservaTiquete_() {
-  if (programKeyActivo === 'world_challenge' || esExcepcionTasaViva_()) return tasa;
-  return TRM_RESERVA;
+  const fija = getPrograma(programKeyActivo).tasaFija;
+  if (!fija || esExcepcionTasaViva_()) return tasa;
+  return fija.valor;
 }
 function tiqueteUnitEur_() {
-  return programKeyActivo === 'world_challenge' ? TIQUETE_EUR_WC : TIQUETE_EUR;
+  return getPrograma(programKeyActivo).tiqueteEur;
 }
 
 // Precio de tiquete EFECTIVO para un participante puntual: su override manual
@@ -3391,25 +3455,36 @@ function precioTiqueteInfoEur_() {
 // y el programa activo. Única fuente de verdad compartida por
 // calcPaymentTotals() y buildBreakdown() — evita que ambos queden
 // desincronizados si se ajusta un precio más adelante.
-function montoReservaFinalParticipante_base_(p, esWC) {
+// progKey: key del programa (programas.js). Por compatibilidad también acepta
+// un booleano "es World Challenge" (true → edición legacy de WC).
+function programaParaMonto_(progKey, p) {
+  if (progKey === true) return getPrograma('world_challenge');
+  if (typeof progKey === 'string' && progKey) return getPrograma(progKey);
+  return getPrograma((p && p.program_key) || programKeyActivo);
+}
+function montoReservaFinalParticipante_base_(p, progKey) {
+  const prog = programaParaMonto_(progKey, p);
+  const pr = prog.precios;
+  const m = (precio, sub) => ({ reserva: precio.reserva, final: precio.final, sub: sub });
   const esJug = (p.tipo || '').toLowerCase().includes('jug');
   const hab = (p.habitacion || '').toLowerCase();
-  if (esWC) {
-    if (esJug) return { reserva: PRECIOS_WC.jugador.reserva, final: PRECIOS_WC.jugador.final, sub: 'Jugador' };
-    if (hab === 'solo_world_challenge') return { reserva: PRECIOS_WC.acomp_solo_wc.reserva, final: PRECIOS_WC.acomp_solo_wc.final, sub: 'Acompañante · Solo World Challenge' };
-    if (hab === '' || hab === 'solo_actividades') return { reserva: PRECIOS_WC.acomp_actividades.reserva, final: PRECIOS_WC.acomp_actividades.final, sub: 'Acompañante · Solo actividades' };
-    if (hab.includes('doble')) return { reserva: PRECIOS_WC.acomp_doble.reserva, final: PRECIOS_WC.acomp_doble.final, sub: 'Acompañante · hab. doble' };
-    return { reserva: PRECIOS_WC.acomp_sencilla.reserva, final: PRECIOS_WC.acomp_sencilla.final, sub: 'Acompañante · hab. sencilla' };
+  if (prog.familia === 'world_challenge') {
+    if (esJug) return m(pr.jugador, 'Jugador');
+    if (hab === 'solo_world_challenge') return m(pr.acomp_solo_wc, 'Acompañante · Solo World Challenge');
+    if (hab === '' || hab === 'solo_actividades') return m(pr.acomp_actividades, 'Acompañante · Solo actividades');
+    if (hab.includes('doble')) return m(pr.acomp_doble, 'Acompañante · hab. doble');
+    return m(pr.acomp_sencilla, 'Acompañante · hab. sencilla');
   }
-  // Clinic (comportamiento original, sin cambios)
-  if (esJug) return { reserva: 1000, final: 1790, sub: 'Jugador' };
+  // Familia Clinic
+  if (esJug) return m(pr.jugador, 'Jugador');
   if (hab === '') {
     const fObj = parseFechaNacFront(p.fecha_nacimiento || '');
-    const edad = fObj ? calcEdadRefFront(fObj) : null;
-    return { reserva: 0, final: (edad !== null && edad <= 12) ? 190 : 590, sub: 'Acompañante · Solo actividades' };
+    const edad = fObj ? calcEdadRefFront(fObj, prog.key) : null;
+    const precioAct = (edad !== null && edad <= 12 && pr.acomp_actividades_menor12) ? pr.acomp_actividades_menor12 : pr.acomp_actividades;
+    return m(precioAct, 'Acompañante · Solo actividades');
   }
-  if (hab.includes('doble')) return { reserva: 1000, final: 1190, sub: 'Acompañante · hab. doble' };
-  return { reserva: 1000, final: 1510, sub: 'Acompañante · hab. sencilla' };
+  if (hab.includes('doble')) return m(pr.acomp_doble, 'Acompañante · hab. doble');
+  return m(pr.acomp_sencilla, 'Acompañante · hab. sencilla');
 }
 
 // Programa de Referidos: envuelve montoReservaFinalParticipante_base_ (sin
@@ -3424,8 +3499,8 @@ function montoReservaFinalParticipante_base_(p, esWC) {
 // precio del programa cambia. Como todos los call-sites de
 // montoReservaFinalParticipante_ pasan por aquí, quedan cubiertos
 // automáticamente (login normal y panel admin) sin tocarlos uno por uno.
-function montoReservaFinalParticipante_(p, esWC) {
-  const m = montoReservaFinalParticipante_base_(p, esWC);
+function montoReservaFinalParticipante_(p, progKey) {
+  const m = montoReservaFinalParticipante_base_(p, progKey);
   const esJug = (p.tipo || '').toLowerCase().includes('jug');
   // Alianza/promoción: precio total fijo acordado (catálogo "Alianzas" en el
   // Sheet de Inscripciones, ver alianzaPorNombre_ en el backend). Aplica a
@@ -3447,7 +3522,7 @@ function montoReservaFinalParticipante_(p, esWC) {
   }
   const descuentoPct = esJug ? (parseFloat(p.referido_descuento_pct) || 0) : 0;
   if (descuentoPct > 0 && m.final > 0) {
-    const precioBase = esWC ? 2890 : 2790;
+    const precioBase = programaParaMonto_(progKey, p).precioBaseReferido;
     const descuentoEur = Math.round(precioBase * (descuentoPct / 100) * 100) / 100;
     m.final = Math.max(0, Math.round((m.final - descuentoEur) * 100) / 100);
   }
@@ -3458,17 +3533,17 @@ function montoReservaFinalParticipante_(p, esWC) {
 // tasa del día (no una TRM fija) en los tres pagos, así que el texto
 // explicativo también cambia, no solo la fecha. Se llama desde
 // activarPrograma() cada vez que se carga o cambia de programa.
-const FECHAS_LIMITE_WC = { reserva: '5 de octubre 2026', tiquete: '5 de octubre 2026', final: '11 de diciembre 2026' };
-const FECHAS_LIMITE_CLINIC = { reserva: '1 de junio 2026', tiquete: '1 de junio 2026', final: '30 de julio 2026' };
-
 function actualizarFechasLimitePorPrograma_() {
-  const esWC = programKeyActivo === 'world_challenge';
-  const fechas = esWC ? FECHAS_LIMITE_WC : FECHAS_LIMITE_CLINIC;
+  const prog = getPrograma(programKeyActivo);
+  const esWC = prog.familia === 'world_challenge';
+  const fechas = prog.fechasLimite;
   // Excepción puntual (ver EMAILS_TASA_VIVA_EXCEPCION) — para estos 3
   // participantes de Clinic, los textos de "tasa fija al 1 de junio" deben
   // hablar de tasa del día como World Challenge, para no contradecir el
   // número real que muestra su calculadora (ver tasaReservaTiquete_).
-  const usaTasaDia = esWC || esExcepcionTasaViva_();
+  const usaTasaDia = !prog.tasaFija || esExcepcionTasaViva_();
+  const tasaFijaTxt = prog.tasaFija ? prog.tasaFija.fechaTexto : '';
+  const tasaFijaValor = prog.tasaFija ? prog.tasaFija.valor.toLocaleString('es-CO') : '';
 
   const idxReserva = STEP_DEFS.findIndex(s => s.panel === 'panel2');
   if (idxReserva > -1) STEP_DEFS[idxReserva].desc = 'Fecha límite: ' + fechas.reserva;
@@ -3481,7 +3556,7 @@ function actualizarFechasLimitePorPrograma_() {
   if (elReservaInfo) {
     elReservaInfo.innerHTML = usaTasaDia
       ? `El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, a la <strong>tasa del día</strong> en que realices el pago — fecha límite: <strong>${fechas.reserva}</strong>.`
-      : `El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.`;
+      : `El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>${tasaFijaTxt}</strong> — fecha límite de pago de reserva: <strong>1 EUR = $${tasaFijaValor} COP</strong>.`;
   }
   const elReservaNota = document.getElementById('reserva-tasa-nota');
   if (elReservaNota) {
@@ -3492,7 +3567,7 @@ function actualizarFechasLimitePorPrograma_() {
   if (elTiqInfo) {
     elTiqInfo.innerHTML = usaTasaDia
       ? `El tiquete aéreo se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${precioTiqueteInfoEur_()} EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> en que realices el pago.`
-      : `El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${precioTiqueteInfoEur_()} EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.`;
+      : `El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>${precioTiqueteInfoEur_()} EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>${tasaFijaTxt}</strong>.`;
   }
   const elTiqFecha = document.getElementById('tiquete-fecha-limite');
   if (elTiqFecha) elTiqFecha.textContent = fechas.tiquete;
@@ -3507,29 +3582,21 @@ function actualizarFechasLimitePorPrograma_() {
   // Carta de bienvenida (panel-done) — título, fecha y párrafos con el
   // nombre/fechas del programa activo.
   const elCartaFechaMes = document.getElementById('carta-fecha-mes');
-  if (elCartaFechaMes) elCartaFechaMes.textContent = esWC ? 'Madrid, marzo 2027' : 'Madrid, octubre 2026';
+  if (elCartaFechaMes) elCartaFechaMes.textContent = prog.carta.fechaMes;
   const elCartaTitulo = document.getElementById('carta-titulo');
-  if (elCartaTitulo) elCartaTitulo.textContent = esWC ? '¡Bienvenido al Real Madrid Foundation World Challenge 2027!' : '¡Bienvenido al Real Madrid Foundation Clinic 2026!';
+  if (elCartaTitulo) elCartaTitulo.textContent = prog.carta.titulo;
   const elCartaFechas = document.getElementById('carta-parrafo-fechas');
   if (elCartaFechas) {
-    elCartaFechas.innerHTML = esWC
-      ? 'Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, del <strong>19 al 27 de marzo 2027</strong>.'
-      : 'Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, del <strong>2 al 10 de octubre 2026</strong>.';
+    elCartaFechas.innerHTML = 'Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, ' + prog.carta.fechasHtml + '.';
   }
   const elCartaDesc = document.getElementById('carta-parrafo-descripcion');
-  if (elCartaDesc) {
-    elCartaDesc.textContent = esWC
-      ? 'Bienvenido a formar parte de uno de los torneos más importantes del mundo, en el que representarás a tu país compitiendo contra equipos internacionales y viviendo el fútbol desde dentro, tal como lo hacen los futuros profesionales del Real Madrid CF.'
-      : 'Bienvenido a formar parte de uno de los programas formativos más importantes del mundo, en el que representarás a tu país enfrentándote a academias internacionales y viviendo el fútbol desde dentro, tal como lo hacen los futuros profesionales del Real Madrid CF.';
-  }
+  if (elCartaDesc) elCartaDesc.textContent = prog.carta.descripcion;
   const elCartaCierre = document.getElementById('carta-cierre');
-  if (elCartaCierre) elCartaCierre.textContent = esWC
-    ? '¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation World Challenge powered by Fundación Revel!'
-    : '¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation Clinic powered by Fundación Revel!';
+  if (elCartaCierre) elCartaCierre.textContent = prog.carta.cierre;
 
   // Panel de documentación — validez del pasaporte según fecha de fin del programa.
-  const finPrograma = esWC ? '27 de marzo de 2027' : '10 de octubre de 2026';
-  const finProgramaCorto = esWC ? '27 de marzo 2027' : '10 de octubre 2026';
+  const finPrograma = prog.finTexto;
+  const finProgramaCorto = prog.finTextoCorto;
   const elPasaporte1 = document.getElementById('doc-pasaporte-desc');
   if (elPasaporte1) elPasaporte1.textContent = `Mínimo 6 meses de validez desde el ${finProgramaCorto}. Página principal con foto.`;
   const elPasaporte2 = document.getElementById('doc-pasaporte-desc-2');
@@ -3541,21 +3608,13 @@ function actualizarFechasLimitePorPrograma_() {
   if (elItinTitulo) elItinTitulo.textContent = '🗓️ Itinerario de vuelos confirmado';
   const elItinPendiente = document.getElementById('itinerario-vuelo-pendiente');
   const elItinConfirmado = document.getElementById('itinerario-vuelo-confirmado');
+  // Itinerario de la edición (programas.js → vuelo); null = aún sin confirmar.
+  const itinVuelo = prog.vuelo || { idaFecha: 'Por confirmar', idaVuelo: '—', idaSalida: '—', idaLlegada: '—', regresoFecha: 'Por confirmar', regresoVuelo: '—', regresoSalida: '—', regresoLlegada: '—' };
+  if (elItinTitulo && !prog.vuelo) elItinTitulo.textContent = '🗓️ Itinerario de vuelos (por confirmar)';
   if (elItinPendiente && elItinConfirmado) {
     elItinPendiente.style.display = 'none';
     elItinConfirmado.style.display = 'flex';
   }
-  const ITIN_VUELOS = {
-    clinic: {
-      idaFecha: '2 de octubre 2026', idaVuelo: 'Air Europa · UX194', idaSalida: '20:15 hrs', idaLlegada: '13:00 hrs',
-      regresoFecha: '10 de octubre 2026', regresoVuelo: 'Air Europa · UX0193', regresoSalida: '15:15 hrs', regresoLlegada: '18:15 hrs'
-    },
-    world_challenge: {
-      idaFecha: '19 de marzo 2027', idaVuelo: 'Air Europa · UX0194', idaSalida: '21:35 hrs', idaLlegada: '13:10 hrs',
-      regresoFecha: '27 de marzo 2027', regresoVuelo: 'Air Europa · UX0193', regresoSalida: '15:15 hrs', regresoLlegada: '19:15 hrs'
-    }
-  };
-  const itinVuelo = esWC ? ITIN_VUELOS.world_challenge : ITIN_VUELOS.clinic;
   const setItinTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   setItinTxt('itin-ida-fecha', itinVuelo.idaFecha);
   setItinTxt('itin-ida-vuelo', itinVuelo.idaVuelo);
@@ -3569,9 +3628,7 @@ function actualizarFechasLimitePorPrograma_() {
   // Vuelo independiente (participantes que gestionan su propio tiquete).
   const elVueloIndep = document.getElementById('doc-vuelo-independiente-desc');
   if (elVueloIndep) {
-    elVueloIndep.innerHTML = esWC
-      ? 'Debes coordinar con Victory tu itinerario de vuelo. El programa inicia el <strong>19 de marzo</strong> y finaliza el <strong>27 de marzo de 2027</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.'
-      : 'Debes coordinar con Victory tu itinerario de vuelo. El vuelo sale el <strong>2 de octubre</strong> y la llegada a Madrid es el <strong>3 de octubre de 2026</strong>. La salida de regreso es el <strong>10 de octubre</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.';
+    elVueloIndep.innerHTML = prog.vueloIndependienteHtml;
   }
 
   renderClimaEstatico_();
@@ -3584,22 +3641,9 @@ function actualizarFechasLimitePorPrograma_() {
 // 5°C, ~12 días de lluvia/mes, humedad ~68%, viento ~22 km/h; días
 // soleados/lluvia de abajo son una proporción para la ventana de 9 días del
 // viaje, no el mes completo).
-const CLIMA_DATA = {
-  clinic: {
-    tituloRango: '2–10 Octubre', max: '19°C', min: '10°C', soleados: '7', lluvia: '3', humedad: '40%', viento: '14 km/h',
-    forecastTitulo: 'Pronóstico 3–10 octubre 2026', forecastStart: '2026-10-03', forecastEnd: '2026-10-10',
-    cutoffTexto: '19 de septiembre de 2026'
-  },
-  world_challenge: {
-    tituloRango: '19–27 Marzo', max: '18°C', min: '5°C', soleados: '5', lluvia: '4', humedad: '65%', viento: '22 km/h',
-    forecastTitulo: 'Pronóstico 19–27 marzo 2027', forecastStart: '2027-03-19', forecastEnd: '2027-03-27',
-    cutoffTexto: '5 de marzo de 2027'
-  }
-};
-
+// (Los datos de clima de cada edición viven en programas.js → clima.)
 function renderClimaEstatico_() {
-  const esWC = programKeyActivo === 'world_challenge';
-  const c = esWC ? CLIMA_DATA.world_challenge : CLIMA_DATA.clinic;
+  const c = getPrograma(programKeyActivo).clima;
   const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   setTxt('clima-titulo', 'Datos Históricos del Clima · ' + c.tituloRango);
   setTxt('clima-max', c.max);
@@ -3948,7 +3992,12 @@ setInterval(() => {
 // ── T&C ──────────────────────────────────────────────────────────────────────
 function getTyC() {
   const tipoCurrent = (tipo || 'jugador').toLowerCase();
-  if (programKeyActivo === 'world_challenge') return getTyCWorldChallenge_(tipoCurrent);
+  if (esWCKey(programKeyActivo)) return getTyCWorldChallenge_(tipoCurrent);
+  const progTyC = getPrograma(programKeyActivo);
+  const fmtE = v => Number(v).toLocaleString('es-CO');
+  const pJug = progTyC.precios.jugador;
+  const pAcomp = habitacion === 'doble' ? progTyC.precios.acomp_doble : progTyC.precios.acomp_sencilla;
+  const fl = progTyC.fechasLimite;
   // Bug histórico: comparaba `programa` (texto libre, ej. "Real Madrid
   // Foundation Clinic") contra 'solo_actividades', que en realidad es un
   // valor posible de `habitacion` — nunca coincidían, así que esta rama
@@ -3985,9 +4034,9 @@ function getTyC() {
 </ul>
 <h3>2. Precio del programa y forma de pago</h3>
 <ul>
-  <li>Costo por participante: <strong>2.790 EUR</strong>${conTiq ? ` + tiquete aéreo (${precioTiqueteInfoEur_()} EUR)` : ' (sin tiquete aéreo)'}</li>
-  <li>Pago de reserva: <strong>1.000 EUR</strong> — fecha límite <strong>1 de junio 2026</strong></li>
-  <li>2do pago: <strong>1.790 EUR</strong> — fecha límite <strong>30 de julio 2026</strong></li>
+  <li>Costo por participante: <strong>${fmtE(pJug.reserva + pJug.final)} EUR</strong>${conTiq ? ` + tiquete aéreo (${precioTiqueteInfoEur_()} EUR)` : ' (sin tiquete aéreo)'}</li>
+  <li>Pago de reserva: <strong>${fmtE(pJug.reserva)} EUR</strong> — fecha límite <strong>${fl.reserva}</strong></li>
+  <li>2do pago: <strong>${fmtE(pJug.final)} EUR</strong> — fecha límite <strong>${fl.final}</strong></li>
   <li>Los pagos pueden realizarse en pesos colombianos (COP) según la TRM del día, mediante transferencia bancaria o tarjeta</li>
   <li><strong>Datos bancarios:</strong> Bancolombia · Beneficiario: Fundación Revel · Cta. Cte. 05962673128 · NIT 900636583</li>
 </ul>
@@ -4027,8 +4076,8 @@ ${cancelacion}
 </ul>
 <h3>2. Precio y forma de pago</h3>
 <ul>
-  <li>Pago de reserva: <strong>1.000 EUR</strong> — fecha límite <strong>1 de junio 2026</strong></li>
-  <li>2do pago: <strong>1.790 EUR</strong> — fecha límite <strong>30 de julio 2026</strong></li>
+  <li>Pago de reserva: <strong>${fmtE(pAcomp.reserva)} EUR</strong> — fecha límite <strong>${fl.reserva}</strong></li>
+  <li>2do pago: <strong>${fmtE(pAcomp.final)} EUR</strong> — fecha límite <strong>${fl.final}</strong></li>
   <li>Pagos en COP según TRM del día. Bancolombia · Fundación Revel · Cta. 05962673128 · NIT 900636583</li>
 </ul>
 ${cancelacion}
@@ -4058,7 +4107,9 @@ function getTyCWorldChallenge_(tipoCurrent) {
   // igual que ya hace el cálculo de precios.
   const esSoloAct = !esJug && (habNorm === '' || habNorm === 'solo_actividades');
   const pagoUnico = esSoloAct || esSoloWC;
-  const fReserva = FECHAS_LIMITE_WC.reserva, fFinal = FECHAS_LIMITE_WC.final;
+  const progWC = getPrograma(programKeyActivo);
+  const PRECIOS_WC = progWC.precios;
+  const fReserva = progWC.fechasLimite.reserva, fFinal = progWC.fechasLimite.final;
 
   let servicios;
   if (esJug) {
@@ -5388,7 +5439,10 @@ let lbIndex = 0;
 
 function loadFotos() {
   fotosLoaded = true;
-  fetch(APPS_SCRIPT_URL + '?action=fotos', { redirect: 'follow' })
+  const progFotos = getPrograma(programKeyActivo);
+  const btnAlbum = document.getElementById('btn-album');
+  if (btnAlbum && progFotos.albumUrl) btnAlbum.href = progFotos.albumUrl;
+  fetch(APPS_SCRIPT_URL + '?action=fotos&programa=' + encodeURIComponent(programKeyActivo), { redirect: 'follow' })
     .then(r => r.json())
     .then(files => {
       const grid = document.getElementById('fotos-grid');
@@ -5397,7 +5451,7 @@ function loadFotos() {
         return;
       }
       lbFiles = files;
-      document.getElementById('btn-album').style.display = 'flex';
+      document.getElementById('btn-album').style.display = progFotos.albumUrl ? 'flex' : 'none';
       grid.innerHTML = files.map((f, i) =>
         `<div class="foto-item" onclick="openLightbox(${i})">
           <img src="${f.viewUrl}" alt="${f.name}" loading="lazy">
@@ -5587,7 +5641,7 @@ function loadClima() {
 
   // Pronóstico de la ventana de viaje del programa activo (ver CLIMA_DATA).
   renderClimaEstatico_();
-  const climaProg = programKeyActivo === 'world_challenge' ? CLIMA_DATA.world_challenge : CLIMA_DATA.clinic;
+  const climaProg = getPrograma(programKeyActivo).clima;
   fetch('https://api.open-meteo.com/v1/forecast?latitude=40.4168&longitude=-3.7038&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe%2FMadrid&start_date=' + climaProg.forecastStart + '&end_date=' + climaProg.forecastEnd)
     .then(r => r.json())
     .then(d => {
@@ -5653,7 +5707,7 @@ function showComercialOnly(data) {
 }
 
 let comercialProgramaActivo = null; // 'clinic' | 'world_challenge' — pestaña activa en Mis Comisiones
-const COMERCIAL_PROGRAMA_LABEL = { clinic: '🏟️ Clinic 2026', world_challenge: '🏆 World Challenge 2027' };
+const COMERCIAL_PROGRAMA_LABEL = new Proxy({}, { get: (_, k) => getPrograma(k).etiqueta }); // etiqueta de programas.js
 
 function selComercialPrograma(p) {
   comercialProgramaActivo = p;
@@ -5718,7 +5772,7 @@ function renderComercialPanel() {
         colegioKey: normNombre(j.colegio || ''),
         fnDisp: fObj ? String(fObj.dia).padStart(2,'0')+'/'+String(fObj.mes).padStart(2,'0')+'/'+fObj.anio : '—',
         sortFecha: fObj ? fObj.anio*10000+fObj.mes*100+fObj.dia : -1,
-        edad: calcEdadRefFront(fObj)
+        edad: calcEdadRefFront(fObj, j.programa)
       };
     });
     // Colegio (alfabético, sin colegio al final) y luego de menor a mayor
@@ -6000,13 +6054,39 @@ function manejarDeepLinkAdminParticipante_() {
   }, 150);
 }
 
-// Cambia qué programa ve el admin (Clinic / World Challenge) y refresca todo
-// el panel — los datos de un programa nunca se mezclan con los del otro.
+// Selector de programa del panel admin: los programas próximos/en curso como
+// botones, y los ya finalizados en un desplegable "Programas anteriores"
+// (siguen accesibles con todos sus datos, pero no estorban en el día a día).
+function renderAdminProgramaSwitcher_() {
+  const wrap = document.getElementById('admin-programa-switcher');
+  if (!wrap) return;
+  const btnStyle = 'font-size:12px;padding:6px 12px';
+  let html = programasActivos().map(p =>
+    `<button class="programa-switch-btn${p.key === adminProgramaActivo ? ' active' : ''}" style="${btnStyle}" onclick="cambiarProgramaAdmin('${p.key}')">${p.etiqueta}</button>`
+  ).join('');
+  const pasados = programasPasados();
+  if (pasados.length) {
+    const esPasado = pasados.some(p => p.key === adminProgramaActivo);
+    html += `<select onchange="if(this.value) cambiarProgramaAdmin(this.value)" class="programa-switch-btn${esPasado ? ' active' : ''}" style="${btnStyle};cursor:pointer" aria-label="Programas anteriores">`
+      + `<option value="">🗂️ Programas anteriores</option>`
+      + pasados.map(p => `<option value="${p.key}"${p.key === adminProgramaActivo ? ' selected' : ''}>${p.etiqueta} · finalizado</option>`).join('')
+      + '</select>';
+  }
+  wrap.innerHTML = html;
+  const badge = document.getElementById('kpi-badge-anio');
+  if (badge) badge.textContent = String(getPrograma(adminProgramaActivo).anio);
+  const catRef = document.getElementById('cat-edad-ref');
+  if (catRef) catRef.textContent = 'Edad al ' + getPrograma(adminProgramaActivo).fechaRefEdadTexto;
+}
+
+// Cambia qué programa ve el admin y refresca todo el panel — los datos de un
+// programa nunca se mezclan con los de otro.
 function cambiarProgramaAdmin(key) {
   if (adminProgramaActivo === key) return;
   adminProgramaActivo = key;
-  document.getElementById('admin-prog-clinic')?.classList.toggle('active', key === 'clinic');
-  document.getElementById('admin-prog-wc')?.classList.toggle('active', key === 'world_challenge');
+  renderAdminProgramaSwitcher_();
+  adminFotosLoaded = false;
+  if ((document.querySelector('.asnav-btn.active') || {}).dataset?.asec === 'galeria') loadAdminFotos(true);
   loadAdmin(true);
   // Invalidar el caché de "Comerciales" siempre, sin importar la pestaña
   // activa — si no, entrar después a esa pestaña mostraría datos del
@@ -6317,14 +6397,14 @@ function parseHistorialAbonosFrontend_(str) {
 // solo participante (el modal admin trabaja participante por participante,
 // no por grupo).
 function montoEsperadoEur_(tipo, n) {
-  const esWC = (n.program_key || adminProgramaActivo) === 'world_challenge';
-  if (tipo === 'Reserva') return montoReservaFinalParticipante_(n, esWC).reserva;
+  const progKeyN = n.program_key || adminProgramaActivo;
+  if (tipo === 'Reserva') return montoReservaFinalParticipante_(n, progKeyN).reserva;
   if (tipo === 'Tiquete') {
     if (n.tiquete_aereo !== 'Con tiquete') return 0;
     if (n.precio_tiquete_manual > 0) return n.precio_tiquete_manual;
-    return esWC ? TIQUETE_EUR_WC : TIQUETE_EUR;
+    return getPrograma(progKeyN).tiqueteEur;
   }
-  if (tipo === 'Pago Final') return montoReservaFinalParticipante_(n, esWC).final;
+  if (tipo === 'Pago Final') return montoReservaFinalParticipante_(n, progKeyN).final;
   return 0;
 }
 
@@ -6756,7 +6836,7 @@ function renderAdminPagos(fin) {
 
   // Sincronizar: agregar al Pagos sheet cualquier inscrito que no esté (fire & forget)
   fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'},
-    body: JSON.stringify({ action: 'sincronizar_participantes', token: adminSessionToken }), redirect:'follow' }).catch(()=>{});
+    body: JSON.stringify({ action: 'sincronizar_participantes', token: adminSessionToken, programa: adminProgramaActivo }), redirect:'follow' }).catch(()=>{});
 }
 
 let soloRevisarPagos = false;
@@ -7662,8 +7742,7 @@ function renderAdminTiquetesTab() {
     tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">Cargando...</td></tr>';
     return;
   }
-  const esWC = adminProgramaActivo === 'world_challenge';
-  const precioGlobal = esWC ? TIQUETE_EUR_WC : TIQUETE_EUR;
+  const precioGlobal = getPrograma(adminProgramaActivo).tiqueteEur;
   const elGlobal = document.getElementById('tiquetes-precio-global');
   if (elGlobal) elGlobal.textContent = precioGlobal + ' EUR';
 
@@ -7727,8 +7806,7 @@ function guardarPrecioTiqueteFila_(idx) {
       if (res.ok) {
         row['Precio Tiquete EUR'] = valor > 0 ? String(valor) : '';
         input.dataset.prev = valor > 0 ? String(valor) : '';
-        const esWC = adminProgramaActivo === 'world_challenge';
-        const precioGlobal = esWC ? TIQUETE_EUR_WC : TIQUETE_EUR;
+        const precioGlobal = getPrograma(adminProgramaActivo).tiqueteEur;
         const efectivo = valor > 0 ? valor : precioGlobal;
         if (efectivoEl) efectivoEl.innerHTML = `${efectivo} EUR${valor > 0 ? '' : ' <span style="color:var(--muted);font-size:11px">(global)</span>'}`;
         if (estadoEl) {
@@ -8686,7 +8764,7 @@ function registrarPagoDesdePanel(tipo) {
       const pasoMap = { 'Reserva': 4, 'Tiquete': 5, 'Pago Final': 6 };
       let nuevoPaso = pasoMap[tipo];
       // World Challenge, pago único (Solo Actividades/Solo World Challenge): no hay Pago Final — salta directo a Documentación
-      const sinFinalActual = participanteActual ? montoReservaFinalParticipante_(participanteActual, pagoCurrentProgramKey === 'world_challenge').final === 0 : false;
+      const sinFinalActual = participanteActual ? montoReservaFinalParticipante_(participanteActual, pagoCurrentProgramKey).final === 0 : false;
       if (tipo === 'Reserva' && !pagoCurrentTieneTiquete) nuevoPaso = sinFinalActual ? 6 : 5; // sin tiquete: salta directo al siguiente paso pendiente
       if (tipo === 'Tiquete' && sinFinalActual) nuevoPaso = 6; // sin pago final: salta a Documentación
       if (estado === 'Completo' && email && nuevoPaso) {
@@ -9183,7 +9261,7 @@ function renderAdminDocumentosTab() {
     const n = normalizeParticipant(row) || {};
     const fnRaw = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha nacimiento'] || row['fecha_nacimiento'] || '';
     const fObj = parseFechaNacFront(fnRaw);
-    const edad = calcEdadRefFront(fObj);
+    const edad = calcEdadRefFront(fObj, adminProgramaActivo);
     const esMenor = edad !== null && edad < 18;
     const tieneTiquete = (n.tiquete_aereo || '').toLowerCase().includes('con');
     const requiere3 = tieneTiquete && esMenor;
@@ -9511,10 +9589,13 @@ function parseFechaNacFront(v) {
   return null;
 }
 
-function calcEdadRefFront(f) {
+// Edad en la fecha de referencia del programa (programas.js → fechaRefEdad).
+// Sin key usa el programa activo del participante.
+function calcEdadRefFront(f, progKey) {
   if (!f) return null;
-  var edad = 2026 - f.anio;
-  if (f.mes > 10 || (f.mes === 10 && f.dia > 2)) edad -= 1;
+  var ref = getPrograma(progKey || programKeyActivo).fechaRefEdad;
+  var edad = ref.anio - f.anio;
+  if (f.mes > ref.mes || (f.mes === ref.mes && f.dia > ref.dia)) edad -= 1;
   return edad;
 }
 
@@ -9550,7 +9631,7 @@ function buildCategorias() {
   // Sub 16 — esas edades no aplican a este programa) y, a diferencia del
   // Clinic, no se separa Gimnasio Moderno del resto de colegios — todos los
   // jugadores van en una sola lista por categoría de edad.
-  const esWC = adminProgramaActivo === 'world_challenge';
+  const esWC = esWCKey(adminProgramaActivo);
   const yr = new Date().getFullYear();
   const CATS = esWC ? ['Sub 14','Sub 12','Sub 10'] : ['Sub 18','Sub 16','Sub 14','Sub 12','Sub 10'];
   const catColors = {'Sub 18':'#1e5ba8','Sub 16':'#0d9488','Sub 14':'#7c3aed','Sub 12':'#ea580c','Sub 10':'#dc2626'};
@@ -9577,7 +9658,7 @@ function buildCategorias() {
     const nombre = n.nombre || '';
     const fnRaw  = n.fecha_nacimiento || row['Fecha Nacimiento'] || row['fecha nacimiento'] || row['fecha_nacimiento'] || '';
     const fObj   = parseFechaNacFront(fnRaw);
-    const edad   = calcEdadRefFront(fObj);
+    const edad   = calcEdadRefFront(fObj, adminProgramaActivo);
     const fnDisp = fObj ? String(fObj.dia).padStart(2,'0')+'/'+String(fObj.mes).padStart(2,'0')+'/'+fObj.anio : '—';
     const sort   = fObj ? fObj.anio*10000+fObj.mes*100+fObj.dia : 0;
     const club   = n.club_colegio || row['Club / Colegio'] || row['Club/Colegio'] || row['Colegio'] || row['Club'] || '';
@@ -10009,7 +10090,7 @@ function loadAdminFotos(force) {
   const grid = document.getElementById('admin-fotos-grid');
   if (!grid) return;
   grid.innerHTML = '<p style="color:var(--muted);font-size:13px">Cargando fotos...</p>';
-  fetch(APPS_SCRIPT_URL + '?action=fotos&_t=' + Date.now(), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=fotos&programa=' + encodeURIComponent(adminProgramaActivo) + '&_t=' + Date.now(), { redirect: 'follow' })
     .then(r => r.json())
     .then(files => {
       if (!Array.isArray(files) || !files.length) {
@@ -10074,7 +10155,7 @@ function adminHandleFotoUpload(files) {
       const base64 = ev.target.result.split(',')[1];
       const ext = file.name.split('.').pop().toLowerCase();
       const fileName = 'foto_' + Date.now() + '_' + Math.random().toString(36).slice(2,7) + '.' + ext;
-      fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'subir_foto_drive',base64,fileName,mimeType:file.type}), redirect:'follow' })
+      fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'subir_foto_drive',base64,fileName,mimeType:file.type,programa:adminProgramaActivo}), redirect:'follow' })
         .then(r => r.json())
         .then(res => {
           done++;

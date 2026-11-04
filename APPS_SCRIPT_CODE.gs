@@ -178,6 +178,149 @@ const BUDGET_SHEET_ID = "1nMPrqnDUVwaoG42B84T8rCBvE7hKLo5nFLbrYWb58XQ"; // Sheet
 const SHEET_ID_WORLD_CHALLENGE = "1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg"; // Sheet Inscripciones World Challenge 2027
 const BUDGET_SHEET_ID_WORLD_CHALLENGE = "1vqmm9em3DKNZdhlZ7hfjlFJfGiL83bTell0izCCHvPY"; // Sheet presupuesto World Challenge 2027
 
+// ═════════════════════════════════════════════════════════════════════════════
+// CATÁLOGO DE PROGRAMAS — única lista de programas/ediciones del backend
+// ═════════════════════════════════════════════════════════════════════════════
+// Cada edición (Clinic 2026, World Challenge 2027, Clinic 2027, …) es UNA
+// entrada aquí, con sus propios Sheets y carpetas de Drive. Todo el resto del
+// código (login, pagos, admin, correos, triggers) recorre esta lista en vez de
+// tener los programas escritos a mano.
+//
+// CÓMO AGREGAR UN PROGRAMA NUEVO (cada ~5 meses):
+//   1. Duplicar los Sheets de inscripción y presupuesto de la edición anterior
+//      de la misma familia y vaciar sus filas de datos.
+//   2. Crear en Drive su carpeta de uploads y su carpeta de fotos.
+//   3. Agregar una entrada aquí (copiar la anterior de la misma familia y
+//      cambiar key, anio, IDs, fechas y precios). La key lleva el año
+//      (ej. 'world_challenge_2028'); las dos claves originales ('clinic' y
+//      'world_challenge') se mantienen tal cual para no migrar datos viejos.
+//   4. Agregar la misma entrada en programas.js (frontend).
+//   5. Ejecutar instalarTriggersProgramas() UNA vez desde el editor.
+//
+// Mientras sheetId/budgetSheetId empiecen con "TODO", el programa se ignora
+// (no aparece en login, admin ni triggers) — así se puede dejar preparado.
+//
+// legacy: true → es la edición a la que apuntan los textos viejos SIN año
+// ("Real Madrid Foundation Clinic"), que ya están guardados en filas de
+// Inscripciones/Referidos. Debe haber exactamente una por familia.
+//
+// precios: totales en EUR SIN tiquete, separados en reserva/final. Deben
+// coincidir con programas.js (frontend).
+const PROGRAMAS = [
+  {
+    key: 'clinic', familia: 'clinic', anio: 2026, legacy: true,
+    nombre: 'Real Madrid Foundation Clinic 2026', nombreBase: 'Real Madrid Foundation Clinic', nombreCorto: 'RMF Clinic 2026',
+    sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID,
+    uploadsFolderId: PARENT_FOLDER_ID, fotosFolderId: FOTOS_FOLDER_ID,
+    inicio: new Date(2026, 9, 2), fin: new Date(2026, 9, 10, 23, 59, 59),
+    fechaRefEdad: { anio: 2026, mes: 10, dia: 2 },
+    deadlines: { reserva: new Date(2026, 5, 1), tiquete: new Date(2026, 5, 1), final: new Date(2026, 6, 30) },
+    precios: {
+      jugador: { reserva: 1000, final: 1790 },
+      acomp_doble: { reserva: 1000, final: 1190 },
+      acomp_sencilla: { reserva: 1000, final: 1510 },
+      acomp_actividades: { reserva: 0, final: 590 },
+      acomp_actividades_menor12: { reserva: 0, final: 190 }
+    },
+    precioBaseReferido: 2790, prefijoReferido: 'RMF26',
+    fechasTexto: '2 al 10 Octubre', fechasCorto: '2–10 octubre',
+    linkPresentacion: 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing'
+  },
+  {
+    key: 'world_challenge', familia: 'world_challenge', anio: 2027, legacy: true,
+    nombre: 'Real Madrid Foundation World Challenge 2027', nombreBase: 'Real Madrid Foundation World Challenge', nombreCorto: 'RMF World Challenge 2027',
+    sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE,
+    uploadsFolderId: PARENT_FOLDER_ID_WORLD_CHALLENGE, fotosFolderId: 'TODO_FOTOS_WC_2027',
+    inicio: new Date(2027, 2, 19), fin: new Date(2027, 2, 27, 23, 59, 59),
+    fechaRefEdad: { anio: 2026, mes: 10, dia: 2 }, // se mantiene la referencia que ya usaba (categorías ya armadas)
+    deadlines: { reserva: new Date(2026, 9, 5), tiquete: new Date(2026, 9, 5), final: new Date(2026, 11, 11) },
+    precios: {
+      jugador: { reserva: 1150, final: 1740 },
+      acomp_doble: { reserva: 1150, final: 1040 },
+      acomp_sencilla: { reserva: 1150, final: 1360 },
+      acomp_actividades: { reserva: 590, final: 0 },
+      acomp_solo_wc: { reserva: 185, final: 0 }
+    },
+    precioBaseReferido: 2890, prefijoReferido: 'WC27',
+    cuposTiquete: 20,
+    fechasTexto: '19&ndash;27 Marzo', fechasCorto: '19–27 marzo',
+    linkPresentacion: 'https://drive.google.com/file/d/18-8t9vBa_kaauFgHOKTgxU3wjKXNv_wC/view?usp=sharing'
+  },
+  {
+    // TODO: completar IDs, fechas y precios definitivos del Clinic 2027.
+    key: 'clinic_2027', familia: 'clinic', anio: 2027,
+    nombre: 'Real Madrid Foundation Clinic 2027', nombreBase: 'Real Madrid Foundation Clinic', nombreCorto: 'RMF Clinic 2027',
+    sheetId: '1XDY6Y30xZu3Rs8B_1367sW-h0giapPZxikQ_osN0gCs', budgetSheetId: '162QwHhVdRDLoxml3OFV9SSntcLJ2Gp1YzVnI9dwGEsY',
+    uploadsFolderId: '1e1F2pyJMMKYN7-XXPj6SX_RBPOfElcbG', fotosFolderId: '1dWV2jp6vO0K33cVRapBAOawtoPz6KYMa',
+    inicio: new Date(2027, 9, 1), fin: new Date(2027, 9, 9, 23, 59, 59), // TODO fechas reales
+    fechaRefEdad: { anio: 2027, mes: 10, dia: 1 },
+    deadlines: { reserva: new Date(2027, 5, 1), tiquete: new Date(2027, 5, 1), final: new Date(2027, 6, 30) }, // TODO
+    precios: { // TODO confirmar — copiados del Clinic 2026
+      jugador: { reserva: 1000, final: 1790 },
+      acomp_doble: { reserva: 1000, final: 1190 },
+      acomp_sencilla: { reserva: 1000, final: 1510 },
+      acomp_actividades: { reserva: 0, final: 590 },
+      acomp_actividades_menor12: { reserva: 0, final: 190 }
+    },
+    precioBaseReferido: 2790, prefijoReferido: 'RMF27',
+    fechasTexto: '1 al 9 Octubre', fechasCorto: '1–9 octubre', // TODO fechas reales
+    linkPresentacion: 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing' // TODO presentación 2027
+  }
+];
+
+function programaConfigurado_(p) {
+  return !!p && !!p.sheetId && !!p.budgetSheetId &&
+    String(p.sheetId).indexOf('TODO') !== 0 && String(p.budgetSheetId).indexOf('TODO') !== 0;
+}
+
+// Programas listos para usarse (con Sheets reales), en el orden del catálogo.
+function listarProgramas_() {
+  return PROGRAMAS.filter(programaConfigurado_);
+}
+
+function programaFinalizado_(p) {
+  return !!p && !!p.fin && Date.now() > p.fin.getTime();
+}
+
+function idDriveValido_(id) {
+  return !!id && String(id).indexOf('TODO') !== 0;
+}
+
+// Resuelve cualquier forma de referirse a un programa a su entrada del
+// catálogo: la key exacta ('clinic_2027'), el nombre con año ("Real Madrid
+// Foundation Clinic 2027") o el texto viejo sin año ("Real Madrid Foundation
+// Clinic", que apunta a la edición legacy de esa familia). Nunca devuelve null:
+// ante algo irreconocible cae en la edición legacy del Clinic (comportamiento
+// histórico de resolverSheets_).
+function getPrograma_(programa) {
+  const raw = String(programa || '').trim();
+  const exacto = PROGRAMAS.find(function(p) { return p.key === raw; });
+  if (exacto) return exacto;
+  const txt = raw.toLowerCase().replace(/_/g, ' ');
+  const familia = txt.indexOf('world challenge') >= 0 ? 'world_challenge' : (txt.indexOf('clinic') >= 0 ? 'clinic' : '');
+  if (familia) {
+    const porAnio = PROGRAMAS.find(function(p) { return p.familia === familia && txt.indexOf(String(p.anio)) >= 0; });
+    if (porAnio) return porAnio;
+    const legacy = PROGRAMAS.find(function(p) { return p.familia === familia && p.legacy; });
+    if (legacy) return legacy;
+  }
+  return PROGRAMAS.find(function(p) { return p.familia === 'clinic' && p.legacy; }) || PROGRAMAS[0];
+}
+
+// Entrada del catálogo cuyo Sheet de inscripción es `sheetId` (para triggers
+// onEdit/onChange, que solo saben qué spreadsheet se editó).
+// Texto a escribir en columnas "Programa" de Sheets (Inscripciones,
+// Referidos): las ediciones legacy conservan el texto sin año que ya tenían
+// sus filas; las nuevas llevan el año para que getPrograma_ las distinga.
+function textoProgramaParaSheet_(programa) {
+  const p = getPrograma_(programa);
+  return p.legacy ? p.nombreBase : p.nombre;
+}
+
+function programaPorSheetId_(sheetId) {
+  return PROGRAMAS.find(function(p) { return p.sheetId === sheetId; }) || null;
+}
+
 // Recargo que cobra Bold por pago con tarjeta. El comprobante/monto de un pago
 // con tarjeta trae este recargo incluido, pero no es parte del programa (es la
 // comisión del procesador) — no cuenta para el saldo del cliente. Se separa en
@@ -200,22 +343,18 @@ function recargoTarjetaDeCelda_(valorCelda) {
   return RECARGO_TARJETA_PCT;
 }
 
+// true si el programa (key o texto libre) es de la familia World Challenge —
+// decide reglas de negocio de familia (precios por tipo, pago único, etc.),
+// NO la edición. Para nombres/fechas/IDs usar getPrograma_().
 function esWorldChallenge_(programa) {
-  // Acepta tanto el texto libre ("Real Madrid Foundation World Challenge")
-  // como el program_key interno ("world_challenge") — normaliza guiones
-  // bajos a espacios para que ambos formatos calcen con la misma búsqueda.
-  return String(programa || '').toLowerCase().replace(/_/g, ' ').indexOf('world challenge') >= 0;
+  return getPrograma_(programa).familia === 'world_challenge';
 }
 
-// Devuelve { sheetId, budgetSheetId, programKey } para el programa dado.
-// programa puede ser el string completo ("Real Madrid Foundation World Challenge")
-// o ya la programKey ('world_challenge'/'clinic') — ambos casos funcionan porque
-// esWorldChallenge_ solo busca la subcadena 'world challenge'.
+// Devuelve { sheetId, budgetSheetId, programKey, familia, programa } para el
+// programa dado (key o texto libre — ver getPrograma_).
 function resolverSheets_(programa) {
-  if (esWorldChallenge_(programa)) {
-    return { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge' };
-  }
-  return { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' };
+  const p = getPrograma_(programa);
+  return { sheetId: p.sheetId, budgetSheetId: p.budgetSheetId, programKey: p.key, familia: p.familia, programa: p };
 }
 
 // Envoltorio de caché a prueba de fallos: intenta leer `key` de
@@ -269,18 +408,26 @@ function invalidarCacheAdmin_(programa) {
 
 // Carpeta de Drive donde se guardan documentos/comprobantes subidos, según programa.
 function resolverParentFolderId_(programa) {
-  return esWorldChallenge_(programa) ? PARENT_FOLDER_ID_WORLD_CHALLENGE : PARENT_FOLDER_ID;
+  return getPrograma_(programa).uploadsFolderId;
 }
 
 // Todas las hojas de presupuesto (una por programa) — usado por el área
 // comercial, que busca/gestiona comisiones de un comercial a través de
-// ambos programas a la vez (un comercial puede vender Clinic y World
-// Challenge con la misma cuenta).
+// todos los programas a la vez (un comercial puede vender varios programas
+// con la misma cuenta).
 function getBudgetSheetIds_() {
-  return [
-    { budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' },
-    { budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge' }
-  ];
+  return listarProgramas_().map(function(p) {
+    return { budgetSheetId: p.budgetSheetId, sheetId: p.sheetId, programKey: p.key };
+  });
+}
+
+// Lista de fuentes { sheetId, budgetSheetId, programKey, key, label } de
+// todos los programas configurados — reemplaza las listas fijas
+// [Clinic, World Challenge] que había repartidas por el archivo.
+function fuentesProgramas_() {
+  return listarProgramas_().map(function(p) {
+    return { sheetId: p.sheetId, budgetSheetId: p.budgetSheetId, programKey: p.key, key: p.key, label: p.nombreCorto, familia: p.familia, programa: p };
+  });
 }
 
 // ───── GET HANDLER (fotos, saber, comunicaciones) ──────────────────────────────
@@ -291,7 +438,14 @@ function doGet(e) {
   try {
     if (action === 'getAnalyticsSummary') return obtenerResumenAnalytics_(e);
     if (action === 'getResumenEjecutivo') return obtenerResumenEjecutivo_(e);
-    if (action === 'fotos') return listFiles(FOTOS_FOLDER_ID, 'image');
+    if (action === 'fotos') {
+      // Cada programa tiene su propia carpeta de fotos del viaje. Sin
+      // `programa` (versiones viejas del frontend) → la edición legacy del
+      // Clinic, que es lo que devolvía antes.
+      const fotosId = getPrograma_(params.programa || '').fotosFolderId;
+      if (!idDriveValido_(fotosId)) return ContentService.createTextOutput('[]').setMimeType(ContentService.MimeType.JSON);
+      return listFiles(fotosId, 'image');
+    }
     if (action === 'memorias') return listFiles(MEMORIAS_FOLDER_ID, 'image');
     if (action === 'saber') {
       if (!SABER_FOLDER_ID || SABER_FOLDER_ID.indexOf('REEMPLAZAR') >= 0)
@@ -303,7 +457,7 @@ function doGet(e) {
     if (action === 'comercial_login') return getComercialData(params.email || '');
     if (action === 'buscar') return buscarParticipantes(params.email || '', params.login === '1');
     if (action === 'mis_pagos') return getMisPagos(params.nombre || '', params.programa || '');
-    if (action === 'cupos_tiquete_wc') return getCuposTiqueteWC_();
+    if (action === 'cupos_tiquete_wc') return getCuposTiqueteWC_(params.programa || 'world_challenge');
     if (action === 'validar_promo') return validarCodigoReferido_(params.codigo || '', params.programa || '', params.email || '');
     if (action === 'referido_login') return getReferidoData_(params.email || '');
     if (action === 'tasa_wise') return getTasaWise_();
@@ -584,10 +738,7 @@ function buscarParticipantes(email, esLogin) {
     // Busca en los dos programas — Clinic y World Challenge — y combina los
     // resultados. Cada fila queda marcada con _program_key para que el área
     // personal sepa a cuál pertenece.
-    const fuentes = [
-      { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic' },
-      { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge' }
-    ];
+    const fuentes = fuentesProgramas_();
     let participants = [];
     for (let f = 0; f < fuentes.length; f++) {
       participants = participants.concat(buscarParticipantesEnHoja_(emailNorm, fuentes[f]));
@@ -693,10 +844,12 @@ function getMisPagos(nombre, programa) {
 // getDocumentosRequeridos/sincronizarPaqueteSegunTiquete). inscripcion.html
 // consulta este endpoint para mostrar "quedan X cupos" y bloquear la opción
 // cuando se agotan.
-const CUPOS_TIQUETE_WC_TOTAL = 20;
-function getCuposTiqueteWC_() {
+// Cupo por edición: PROGRAMAS[].cuposTiquete (20 si no se define).
+function getCuposTiqueteWC_(programa) {
+  const prog = getPrograma_(programa || 'world_challenge');
+  const CUPOS_TIQUETE_WC_TOTAL = prog.cuposTiquete || 20;
   try {
-    const sheet = SpreadsheetApp.openById(SHEET_ID_WORLD_CHALLENGE).getSheets()[0];
+    const sheet = SpreadsheetApp.openById(prog.sheetId).getSheets()[0];
     const data = sheet.getDataRange().getValues();
     const headers = data[0] || [];
     let tiqueteCol = -1;
@@ -903,7 +1056,8 @@ function notificarNuevoComunicadoDesde_(e, sourceSheetId, propKey) {
     const lastHash = props.getProperty(propKey) || '';
     if (currentHash === lastHash) return;
 
-    const nombreProgramaCorto = sourceSheetId === SHEET_ID_WORLD_CHALLENGE ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    const progComunicado = programaPorSheetId_(sourceSheetId) || getPrograma_('');
+    const nombreProgramaCorto = progComunicado.nombreBase;
 
     // Obtener emails únicos de participantes desde la hoja principal
     const mainSheet = ss.getSheets()[0];
@@ -928,7 +1082,7 @@ function notificarNuevoComunicadoDesde_(e, sourceSheetId, propKey) {
     const link = 'https://victory.com.es/areapersonal.html?tab=comunicaciones';
     const subject = '⚠ Nuevo comunicado';
     const preview = mensaje.length > 180 ? mensaje.substring(0, 180).trim() + '...' : mensaje;
-    const htmlBody = buildComunicadoHtml(fecha, titulo, preview, link, sourceSheetId === SHEET_ID_WORLD_CHALLENGE ? 'world_challenge' : 'clinic');
+    const htmlBody = buildComunicadoHtml(fecha, titulo, preview, link, progComunicado.key);
     const adminEmail = 'alejandro.cabrera@fundacionrevel.net';
     emails.forEach(function(em) {
       try { GmailApp.sendEmail(em, subject, 'Tienes un nuevo comunicado: ' + link, { htmlBody: htmlBody, replyTo: adminEmail, name: nombreProgramaCorto }); }
@@ -947,6 +1101,26 @@ function notificarNuevoComunicado(e) {
 
 function notificarNuevoComunicadoWorldChallenge(e) {
   notificarNuevoComunicadoDesde_(e, SHEET_ID_WORLD_CHALLENGE, 'comun_last_hash_wc');
+}
+
+// Clave de PropertiesService por programa — las dos ediciones originales
+// conservan el nombre de propiedad que ya tenían (para no perder su estado).
+function propKeyPorPrograma_(base, programKey) {
+  if (programKey === 'clinic') return base;
+  if (programKey === 'world_challenge') return base + '_wc';
+  return base + '_' + programKey;
+}
+
+// Handler GENÉRICO (instalado por instalarTriggersProgramas para cada
+// programa): identifica el programa por el spreadsheet editado.
+function notificarNuevoComunicadoPrograma(e) {
+  try {
+    const prog = e && e.source ? programaPorSheetId_(e.source.getId()) : null;
+    if (!prog) return;
+    notificarNuevoComunicadoDesde_(e, prog.sheetId, propKeyPorPrograma_('comun_last_hash', prog.key));
+  } catch (err) {
+    Logger.log('notificarNuevoComunicadoPrograma error: ' + err);
+  }
 }
 
 // ───── ACTUALIZAR PASO (todas las filas del mismo email) ───────────────────────
@@ -1136,7 +1310,7 @@ function enviarCorreoProcesoCompletado_(email, nombreCompleto, programa) {
     }
     const esWC = esWorldChallenge_(programa);
     const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
-    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+    const nombrePrograma = getPrograma_(programa).nombre;
     const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
     const asunto = String.fromCodePoint(0x2705) + ' ¡Todo listo, ' + primerNombre + '!';
     const htmlBody = buildProcesoCompletadoHtml_(primerNombre, nombrePrograma, 'https://victory.com.es/areapersonal.html?goto=done');
@@ -1328,7 +1502,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metod
       return;
     }
     const esWC = esWorldChallenge_(programa);
-    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+    const nombrePrograma = getPrograma_(programa).nombre;
     const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
     const esCompleto = String(estado || '').toLowerCase().trim() === 'completo';
     const tipoLabels = { 'reserva': 'la Reserva', 'tiquete': 'el Tiquete Aéreo', 'pago final': 'el Pago Final' };
@@ -1356,7 +1530,7 @@ function notificarPagoConfirmado(nombre, tipo, eur, cop, estado, programa, metod
     const cuerpoTexto = esCompleto
       ? 'Confirmamos que tu pago correspondiente a <strong>' + tipoLabel + '</strong> ha sido registrado correctamente.'
       : 'Registramos un abono a cuenta de <strong>' + tipoLabel + '</strong>. Este pago queda guardado en tu historial de pagos.';
-    const subject = (esCompleto ? '✅ Pago confirmado — ' : 'Abono registrado — ') + tipoLabel + ' · ' + (esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026');
+    const subject = (esCompleto ? '✅ Pago confirmado — ' : 'Abono registrado — ') + tipoLabel + ' · ' + getPrograma_(programa).nombreCorto;
     const saldoBox = restanteEur === null ? '' : (
       '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:18px 0">'
       + '<p style="font-size:12px;color:#94a3b8;margin:0 0 4px">Saldo pendiente de ' + tipoLabel + '</p>'
@@ -1780,7 +1954,7 @@ function getDocumentosRequeridos(email, programa) {
       if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) {
         const tieneTiquete = tiqueteCol >= 0 && String(data[i][tiqueteCol] || '').toLowerCase().indexOf('con') >= 0;
         const fechaObj = fechaCol >= 0 ? parseFechaNacimiento(data[i][fechaCol]) : null;
-        const edad = calcEdadRef(fechaObj);
+        const edad = calcEdadRef(fechaObj, programa);
         const esMenor = edad !== null && edad < 18;
         return (tieneTiquete && esMenor) ? 3 : 1;
       }
@@ -1998,7 +2172,7 @@ function notificarDocumentoRechazado_(email, tipoDoc, motivo, programa) {
   try {
     const esWC = esWorldChallenge_(programa);
     const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
-    const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+    const nombrePrograma = getPrograma_(programa).nombre;
     const nombre = buscarNombrePorEmail_(email, programa);
     const primerNombre = obtenerNombrePila_(nombre) || nombre || '';
     const etiquetasDoc = { pasaporte: 'pasaporte', permiso: 'permiso de salida del país', registro_civil: 'registro civil de nacimiento' };
@@ -2191,10 +2365,7 @@ function actualizarContadorDocumentos(email, subidos, requeridos, programa) {
 // cuando se sospeche de un desfase) desde el editor de Apps Script; revisa
 // ambos programas y deja en el Log cuántos documentos completó.
 function sincronizarDocumentosDesdeDrive() {
-  const programas = [
-    { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, key: 'clinic', label: 'Clinic' },
-    { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, key: 'world_challenge', label: 'World Challenge' }
-  ];
+  const programas = fuentesProgramas_();
   programas.forEach(function(fuente) {
     try {
       sincronizarDocumentosDesdeDriveParaPrograma_(fuente);
@@ -2528,7 +2699,7 @@ function enviarEmailsComunicado(params) {
 }
 
 function buildComunicadoHtml(fecha, titulo, preview, link, programa) {
-  const nombrePrograma = esWorldChallenge_(programa) ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+  const nombrePrograma = getPrograma_(programa).nombre;
   return '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">'
     + '<div style="background:#1e5ba8;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
     + '<table cellpadding="0" cellspacing="0" style="margin:0 auto 12px auto"><tr>'
@@ -4031,7 +4202,8 @@ function actualizarResumenPagos(pagosSheet) {
 function sincronizarParticipantes(params) {
   try {
     if (!autorizar(params, ['superadmin', 'editor'])) return sendResponse(403, { ok: false, error: 'No autorizado' });
-    var mainSheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+    var fuenteSync = resolverSheets_(params.programa);
+    var mainSheet = SpreadsheetApp.openById(fuenteSync.sheetId).getSheets()[0];
     var mainData = mainSheet.getDataRange().getValues();
     var headers = mainData[0] || [];
     var nombreCol = 1, tiqueteCol = 13;
@@ -4041,7 +4213,7 @@ function sincronizarParticipantes(params) {
       if ((h.includes('tiquete') && !h.includes('actualizado')) || h.includes('vuelo')) tiqueteCol = j;
     }
 
-    var ss = SpreadsheetApp.openById(BUDGET_SHEET_ID);
+    var ss = SpreadsheetApp.openById(fuenteSync.budgetSheetId);
     var pagosSheet = getSheetCI(ss, 'Pagos');
     if (!pagosSheet) return sendResponse(404, { ok: false, error: 'Hoja Pagos no encontrada' });
 
@@ -4096,7 +4268,7 @@ function sincronizarParticipantes(params) {
       pagosSheet.getRange(insertRow, 1, newRows.length, 8).setValues(newRows);
     }
     actualizarResumenPagos(pagosSheet);
-    if (added > 0) invalidarCacheAdmin_('clinic');
+    if (added > 0) invalidarCacheAdmin_(params.programa);
     return sendResponse(200, { ok: true, added: added });
   } catch (err) {
     Logger.log('sincronizarParticipantes error: ' + err);
@@ -4119,10 +4291,7 @@ function sincronizarParticipantes(params) {
 // 1. Selecciona esta función y pulsa ▶ Run
 // 2. Revisa el Log (Ver → Registros)
 function detectarPagosDuplicados() {
-  var programas = [
-    { budgetSheetId: BUDGET_SHEET_ID, label: 'Clinic' },
-    { budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
-  ];
+  var programas = fuentesProgramas_();
 
   programas.forEach(function(fuente) {
     var ss = SpreadsheetApp.openById(fuente.budgetSheetId);
@@ -4188,10 +4357,7 @@ function detectarPagosDuplicados() {
 // 2. Selecciona esta función y pulsa ▶ Run
 // 3. Revisa el Log: dice qué filas borró y cuáles dejó para revisión manual
 function limpiarDuplicadosVaciosPago() {
-  var programas = [
-    { budgetSheetId: BUDGET_SHEET_ID, label: 'Clinic' },
-    { budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
-  ];
+  var programas = fuentesProgramas_();
 
   programas.forEach(function(fuente) {
     var ss = SpreadsheetApp.openById(fuente.budgetSheetId);
@@ -4368,10 +4534,7 @@ function sincronizarPaqueteSegunTiquete() {
     return String(s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
-  const programas = [
-    { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, label: 'Clinic' },
-    { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
-  ];
+  const programas = fuentesProgramas_();
 
   let totalActualizados = 0;
 
@@ -4447,10 +4610,7 @@ function sincronizarPaqueteSegunTiquete() {
 // 1. Selecciona esta función y pulsa ▶ Run
 // 2. Revisa el Log para confirmar en qué hojas se creó la columna
 function agregarColumnaPrecioTiquete_() {
-  [
-    { id: SHEET_ID, label: 'Clinic' },
-    { id: SHEET_ID_WORLD_CHALLENGE, label: 'World Challenge' }
-  ].forEach(function(fuente) {
+  fuentesProgramas_().map(function(f) { return { id: f.sheetId, label: f.label }; }).forEach(function(fuente) {
     const sheet = SpreadsheetApp.openById(fuente.id).getSheets()[0];
     const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     if (headerRow.indexOf('Precio Tiquete EUR') === -1) {
@@ -4813,14 +4973,14 @@ function forgotAdminPassword(data) {
       'Para restablecer tu contraseña accede a: ' + link, {
         htmlBody: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto">'
           + '<div style="background:#1e5ba8;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">'
-          + '<h2 style="color:#fff;margin:0;font-size:18px">Real Madrid Foundation Clinic 2026</h2></div>'
+          + '<h2 style="color:#fff;margin:0;font-size:18px">Real Madrid Foundation · Panel de Administración</h2></div>'
           + '<div style="background:#f8fafc;padding:28px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px">'
           + '<p style="color:#334155;margin-top:0">Hola,</p>'
           + '<p style="color:#334155">Recibimos una solicitud para restablecer la contraseña del panel de administración.</p>'
           + '<p style="text-align:center;margin:24px 0">'
           + '<a href="' + link + '" style="display:inline-block;background:#1e5ba8;color:#fff;padding:13px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px">Restablecer contraseña →</a></p>'
           + '<p style="color:#94a3b8;font-size:12px">Este enlace expira en <strong>1 hora</strong>. Si no lo solicitaste, ignora este correo.</p>'
-          + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Real Madrid Foundation Clinic 2026</p>'
+          + '<p style="color:#94a3b8;font-size:12px">Equipo Revel · Victory Sports</p>'
           + '</div></div>',
         replyTo: 'alejandro.cabrera@fundacionrevel.net', name: 'Real Madrid Foundation Clinic'
       });
@@ -4941,7 +5101,10 @@ function subirFotoDrive(data) {
     if (!data.base64 || !data.fileName) return sendResponse(400, { ok: false, error: 'base64 y fileName requeridos' });
     const mime = data.mimeType || getMimeType(data.fileName);
     const blob = Utilities.newBlob(Utilities.base64Decode(data.base64), mime, data.fileName);
-    const folder = DriveApp.getFolderById(FOTOS_FOLDER_ID);
+    // Cada programa tiene su propio álbum (PROGRAMAS[].fotosFolderId).
+    const fotosId = getPrograma_(data.programa || '').fotosFolderId;
+    if (!idDriveValido_(fotosId)) return sendResponse(400, { ok: false, error: 'Este programa aún no tiene carpeta de fotos configurada (fotosFolderId en PROGRAMAS).' });
+    const folder = DriveApp.getFolderById(fotosId);
     const file = folder.createFile(blob);
     file.setName(data.fileName);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -4988,11 +5151,16 @@ function parseFechaNacimiento(valor) {
   return null;
 }
 
-function calcEdadRef(fechaObj) {
+// Edad del participante en la fecha de referencia del programa (inicio del
+// viaje, ver PROGRAMAS[].fechaRefEdad). El 2do argumento acepta key, texto o
+// la entrada del catálogo; sin él se usa la edición legacy del Clinic (2 oct 2026).
+function calcEdadRef(fechaObj, programa) {
   if (!fechaObj) return null;
-  var edad = 2026 - fechaObj.anio;
-  // Si el cumpleaños es posterior al 2 de octubre, aún no lo ha cumplido
-  if (fechaObj.mes > 10 || (fechaObj.mes === 10 && fechaObj.dia > 2)) edad -= 1;
+  var prog = (programa && programa.fechaRefEdad) ? programa : getPrograma_(programa || '');
+  var ref = prog.fechaRefEdad || { anio: 2026, mes: 10, dia: 2 };
+  var edad = ref.anio - fechaObj.anio;
+  // Si el cumpleaños es posterior a la fecha de referencia, aún no lo ha cumplido
+  if (fechaObj.mes > ref.mes || (fechaObj.mes === ref.mes && fechaObj.dia > ref.dia)) edad -= 1;
   return edad;
 }
 
@@ -5027,7 +5195,7 @@ function getAdminCategorias(params) {
       if (!nombre) continue;
 
       var fechaObj = parseFechaNacimiento(row[fechaCol]);
-      var edad = calcEdadRef(fechaObj);
+      var edad = calcEdadRef(fechaObj, params.programa);
 
       var fechaDisplay = '—';
       if (fechaObj) {
@@ -5171,8 +5339,8 @@ function getComercialData(email) {
       // Jugadores individuales asignados a este comercial (ver panel admin
       // "Comerciales") — el listado con nombre/colegio/tiquete/paso que ve el
       // comercial en su propia área, no solo el conteo agregado de Comisiones.
-      const budgetSheetIdPrograma = e.programKey === 'world_challenge' ? BUDGET_SHEET_ID_WORLD_CHALLENGE : BUDGET_SHEET_ID;
-      const sheetIdPrograma = e.programKey === 'world_challenge' ? SHEET_ID_WORLD_CHALLENGE : SHEET_ID;
+      const budgetSheetIdPrograma = getPrograma_(e.programKey).budgetSheetId;
+      const sheetIdPrograma = getPrograma_(e.programKey).sheetId;
       const asignacionesPrograma = leerAsignacionesComercial_(budgetSheetIdPrograma);
       const jugadoresPrograma = leerJugadoresPrograma_(sheetIdPrograma);
       const resueltoPrograma = resolverAsignacionesComercial_(jugadoresPrograma, asignacionesPrograma);
@@ -5862,7 +6030,7 @@ function precioAlianzaParaParticipante_(info, tipo, habitacion) {
 // vacías por defecto. Luego basta con llenar el precio en la fila de cada
 // alianza que tenga precio especial para acompañantes.
 function agregarColumnasAlianzaAcompanantes() {
-  ['clinic', 'world_challenge'].forEach(function(programa) {
+  listarProgramas_().map(function(p) { return p.key; }).forEach(function(programa) {
     try {
       const sheet = getAlianzasSheet_(programa);
       const ac = getAlianzasColMap_(sheet);
@@ -6035,20 +6203,18 @@ function alianzaPorColegioOEmail_(colegio, email, programa) {
 // timestamp, programKey.
 
 function buildAceptacionInscripcionHtml_(datos) {
-  const esWC = datos.programKey === 'world_challenge';
+  const prog = getPrograma_(datos.programKey);
   const d = function(k) { return datos[k] || ''; };
-  const nombrePrograma = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
-  const fechas = esWC ? '19&ndash;27 Marzo &middot; Madrid, Espa&ntilde;a' : '2 al 10 Octubre &middot; Madrid, Espa&ntilde;a';
-  const linkPresentacion = esWC
-    ? 'https://drive.google.com/file/d/18-8t9vBa_kaauFgHOKTgxU3wjKXNv_wC/view?usp=sharing'
-    : 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing';
+  const nombrePrograma = prog.nombreCorto;
+  const fechas = prog.fechasTexto + ' &middot; Madrid, Espa&ntilde;a';
+  const linkPresentacion = prog.linkPresentacion;
 
   return '<!DOCTYPE html>' +
 '<html lang="es">' +
 '<head>' +
 '<meta charset="UTF-8">' +
 '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-'<title>' + (esWC ? 'Confirmaci&oacute;n RMF World Challenge 2027' : 'Confirmaci&oacute;n RMF Clinic 2026') + '</title>' +
+'<title>Confirmaci&oacute;n ' + prog.nombreCorto + '</title>' +
 '</head>' +
 '<body style="margin:0;padding:0;background:#f4f7fb;font-family:\'Helvetica Neue\',Helvetica,Arial,sans-serif;">' +
 '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f7fb;">' +
@@ -6114,7 +6280,7 @@ function buildAceptacionInscripcionHtml_(datos) {
 function enviarCorreoAceptacionInscripcion_(datos) {
   try {
     if (!datos || !datos.email) return;
-    const esWC = datos.programKey === 'world_challenge';
+    const esWC = esWorldChallenge_(datos.programKey);
     const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
     GmailApp.sendEmail(datos.email, (datos.nombre || '') + ' ¡Bienvenido al ' + nombrePrograma + '!',
       'Hemos confirmado tu inscripción. Ingresa a tu área personal: https://victory.com.es/areapersonal.html',
@@ -6143,8 +6309,7 @@ function enviarCorreoAceptacionInscripcion_(datos) {
 // pasos a seguir. Campos disponibles: nombre, tipo, email, acudiente,
 // tiquete_aereo, programKey.
 function buildNotificacionAdminAceptacionHtml_(datos) {
-  const esWC = datos.programKey === 'world_challenge';
-  const nombrePrograma = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
+  const nombrePrograma = getPrograma_(datos.programKey).nombreCorto;
   const d = function(k) { return datos[k] || ''; };
 
   return `
@@ -6188,10 +6353,10 @@ function enviarNotificacionAdminAceptacion_(datos) {
 // alianza. No promete acceso inmediato ni pasos concretos — solo confirma
 // recepción y explica que el equipo está evaluando la inscripción.
 function buildPendienteRevisionHtml_(datos) {
-  const esWC = datos.programKey === 'world_challenge';
-  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
-  const nombreCorto = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
-  const fechas = esWC ? '19–27 marzo · Madrid' : '2–10 octubre · Madrid';
+  const progPend = getPrograma_(datos.programKey);
+  const nombrePrograma = progPend.nombreBase;
+  const nombreCorto = progPend.nombreCorto;
+  const fechas = progPend.fechasCorto + ' · Madrid';
   const primerNombre = (String(datos.nombre || '').trim().split(/\s+/)[0]) || '';
   const tipo = datos.tipo ? (datos.tipo.charAt(0).toUpperCase() + datos.tipo.slice(1).toLowerCase()) : '';
 
@@ -6243,7 +6408,7 @@ function buildPendienteRevisionHtml_(datos) {
 function enviarCorreoPendienteRevision_(datos) {
   try {
     if (!datos || !datos.email) return;
-    const esWC = datos.programKey === 'world_challenge';
+    const esWC = esWorldChallenge_(datos.programKey);
     const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
     GmailApp.sendEmail(datos.email, 'Inscripción recibida — ' + nombrePrograma,
       'Hemos recibido tu inscripción. Nuestro equipo la revisará y te confirmaremos en breve.',
@@ -6263,13 +6428,13 @@ function enviarCorreoPendienteRevision_(datos) {
 // aceptación al inscrito automáticamente.
 function buildNotificacionAdminInscripcionHtml_(datos, opts) {
   opts = opts || {};
-  const esWC = datos.programKey === 'world_challenge';
-  const nombreCorto = esWC ? 'RMF World Challenge 2027' : 'RMF Clinic 2026';
+  const progNotif = getPrograma_(datos.programKey);
+  const nombreCorto = progNotif.nombreCorto;
   const tipo = datos.tipo ? (datos.tipo.charAt(0).toUpperCase() + datos.tipo.slice(1).toLowerCase()) : '';
 
   const SHEET_ID_CLINIC = '1y5dB0eD4bpJ7NahLFMB5HqOAp3cYTZDeBTHINot5wss';
   const SHEET_ID_WC = '1-9WepBAmmLbLY09yb1EZ0VkUzmIg3cAhYp5y4KpN-dg';
-  const linkSheets = 'https://docs.google.com/spreadsheets/d/' + (esWC ? SHEET_ID_WC : SHEET_ID_CLINIC) + '/edit';
+  const linkSheets = 'https://docs.google.com/spreadsheets/d/' + progNotif.sheetId + '/edit';
 
   const filas = [
     ['Nombre', datos.nombre],
@@ -6357,7 +6522,7 @@ function buildNotificacionAdminInscripcionHtml_(datos, opts) {
 // cuando esMatch es false (deep link al panel admin, ver areapersonal.html).
 function enviarNotificacionAdminInscripcion_(datos, opts) {
   try {
-    const esWC = datos.programKey === 'world_challenge';
+    const esWC = esWorldChallenge_(datos.programKey);
     const sufijoAsunto = (opts && !opts.esMatch) ? ' — Requiere revisión' : '';
     GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
       'Nueva Pre-Inscripción ' + (esWC ? 'RMF World Challenge' : 'RMFC') + sufijoAsunto,
@@ -6407,7 +6572,7 @@ function registrarInscripcionWeb_(data) {
       tiquete_aereo: data.tiquete_aereo || '', email: data.email || '',
       posicion: data.posicion || '', club_colegio: data.club_colegio || '',
       relacion: data.relacion || '', salud_alergias: data.salud_alergias || '',
-      programa: data.programa || '', habitacion: data.habitacion || '',
+      programa: textoProgramaParaSheet_(data.programa), habitacion: data.habitacion || '',
       nombre_p2: data.nombre_p2 || '', pasaporte_p2: data.pasaporte_p2 || '',
       whatsapp_p2: data.phone || '', email_p2: data.email || '',
       jugador_que_acompana: data.jugador_acompana || '',
@@ -6431,7 +6596,7 @@ function registrarInscripcionWeb_(data) {
       pasaporte: data.pasaporte || '', fecha_nacimiento: data.fecha_nacimiento || '',
       posicion: data.posicion || '', club_colegio: data.club_colegio || '',
       acudiente: data.acudiente || '', tiquete_aereo: data.tiquete_aereo || '',
-      programa: data.programa || '', habitacion: data.habitacion || '',
+      programa: getPrograma_(data.programa).nombre, habitacion: data.habitacion || '',
       jugador_que_acompana: data.jugador_acompana || '', salud_alergias: data.salud_alergias || '',
       fuente: dataByNorm.fuente, timestamp: String(dataByNorm.timestamp), programKey: fuente.programKey
     };
@@ -6489,7 +6654,7 @@ function buscarNombrePorEmail_(email, programa) {
 // agregó antes de inscribirse). No revalida nada — el llamador ya confirmó
 // el match contra Inscripciones.
 function generarCodigoParaFila_(sheet, rc, row, programKey, nombre, correo) {
-  const prefijo = programKey === 'world_challenge' ? 'WC27' : 'RMF26';
+  const prefijo = getPrograma_(programKey).prefijoReferido;
   const lastRow = sheet.getLastRow();
   const codigosExistentes = {};
   if (lastRow >= 2) {
@@ -6502,7 +6667,7 @@ function generarCodigoParaFila_(sheet, rc, row, programKey, nombre, correo) {
 
   sheet.getRange(row, rc.codigo).setValue(codigo);
   sheet.getRange(row, rc.programa).setValue(
-    programKey === 'world_challenge' ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic'
+    textoProgramaParaSheet_(programKey)
   );
   // El código queda generado pero SIN activar — antes se activaba y se
   // enviaban los correos (Embajador + aviso admin) de inmediato al
@@ -6524,7 +6689,7 @@ function generarCodigoParaFila_(sheet, rc, row, programKey, nombre, correo) {
 // correo de bienvenida al Referidor si este aviso llegara a fallar.
 function notificarAdminNuevoReferidor_(nombre, correo, programKey, codigo) {
   try {
-    const nombrePrograma = programKey === 'world_challenge' ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
+    const nombrePrograma = getPrograma_(programKey).nombre;
     GmailApp.sendEmail('alejandro.cabrera@fundacionrevel.net',
       '[Referidos] Nuevo Embajador activado — ' + nombre,
       'Se activó un nuevo Referidor (Embajador).\n\n' +
@@ -6542,8 +6707,8 @@ function notificarAdminNuevoReferidor_(nombre, correo, programKey, codigo) {
 // Mismo patrón de 3 logos (Victory/RMF/Revel) ya usado en
 // buildProcesoCompletadoHtml_/buildCumpleanosHtml_.
 function buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo) {
-  const esWC = programKey === 'world_challenge';
-  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+  const esWC = esWorldChallenge_(programKey);
+  const nombrePrograma = getPrograma_(programKey).nombre;
   const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto || '';
   const areaPersonalUrl = 'https://victory.com.es/areapersonal.html';
   return `
@@ -6615,7 +6780,7 @@ function buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo) {
 function enviarCorreoNuevoEmbajador_(email, nombreCompleto, programKey, codigo) {
   try {
     if (!email || !codigo) return;
-    const esWC = programKey === 'world_challenge';
+    const esWC = esWorldChallenge_(programKey);
     const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
     const asunto = String.fromCodePoint(0x2705) + ' ¡Ya eres Embajador ' + nombreProgramaCorto + '!';
     const htmlBody = buildNuevoEmbajadorHtml_(nombreCompleto, programKey, codigo);
@@ -6665,9 +6830,15 @@ function generarCodigoOnEdit_(e) {
 
     if (!nombre || !correo || codigoActual) return; // idempotente — el código ya existe, nada que generar
 
+    // Se prueban primero los programas que aún no terminaron (el Referidor
+    // típico es de la edición en curso), después los ya finalizados.
     let programaDetectado = null;
-    if (emailEsParticipante_(correo, 'clinic')) programaDetectado = 'clinic';
-    else if (emailEsParticipante_(correo, 'world_challenge')) programaDetectado = 'world_challenge';
+    const candidatos = listarProgramas_().slice().sort(function(a, b) {
+      return (programaFinalizado_(a) ? 1 : 0) - (programaFinalizado_(b) ? 1 : 0);
+    });
+    for (let ci = 0; ci < candidatos.length && !programaDetectado; ci++) {
+      if (emailEsParticipante_(correo, candidatos[ci].key)) programaDetectado = candidatos[ci].key;
+    }
 
     if (!programaDetectado) {
       sheet.getRange(row, rc.estado).setValue('Sin match - verificar');
@@ -6814,7 +6985,7 @@ function registrarReferido_(data) {
     newRow[rc.tipo - 1] = 'Referido Registrado';
     newRow[rc.nombre - 1] = nombreReferido;
     newRow[rc.correo - 1] = emailReferido;
-    newRow[rc.programa - 1] = programa;
+    newRow[rc.programa - 1] = textoProgramaParaSheet_(programa);
     newRow[rc.codigo - 1] = codigo.toUpperCase();
     newRow[rc.estado - 1] = 'Pendiente pago';
     newRow[rc.referidor_vinculado_correo - 1] = check.correoReferidor;
@@ -7071,7 +7242,7 @@ function procesarReferidoExitoso_(emailReferido, programaReferido) {
 
     // precioBase debe coincidir con el hardcodeado en montoReservaFinalParticipante_
     // (areapersonal.html) — actualizar ambos si el precio del programa cambia.
-    const precioBase = esWorldChallenge_(programaReferidor) ? 2890 : 2790;
+    const precioBase = getPrograma_(programaReferidor).precioBaseReferido;
     const creditoEur = Math.round(precioBase * (tramoPct / 100) * 100) / 100;
     const nombreReferidor = buscarNombrePorEmail_(correoReferidor, programaReferidor);
     if (!nombreReferidor) { Logger.log('procesarReferidoExitoso_: no se encontró nombre para ' + correoReferidor); return; }
@@ -7248,6 +7419,54 @@ function onChangeInscripciones(e) {
 function onChangeInscripcionesWorldChallenge(e) {
   sincronizarLeadsDesdeInscripciones_(e, SHEET_ID_WORLD_CHALLENGE, 'leads_last_synced_row_wc');
   revisarReferidoresPendientes_('world_challenge');
+}
+
+// Handler GENÉRICO (instalado por instalarTriggersProgramas para cada
+// programa): identifica el programa por el spreadsheet que cambió.
+function onChangeInscripcionesPrograma(e) {
+  try {
+    const prog = e && e.source ? programaPorSheetId_(e.source.getId()) : null;
+    if (!prog) return;
+    sincronizarLeadsDesdeInscripciones_(e, prog.sheetId, propKeyPorPrograma_('leads_last_synced_row', prog.key));
+    revisarReferidoresPendientes_(prog.key);
+  } catch (err) {
+    Logger.log('onChangeInscripcionesPrograma error: ' + err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INSTALAR TRIGGERS DE TODOS LOS PROGRAMAS
+// ═══════════════════════════════════════════════════════════════════════
+// Ejecutar UNA VEZ desde el editor cada vez que se agrega un programa al
+// catálogo PROGRAMAS. Reemplaza a crearTriggerComunicados,
+// crearTriggerComunicadosWorldChallenge, crearTriggerSyncLeads y
+// crearTriggerSyncLeadsWorldChallenge: borra esos triggers viejos (y los
+// genéricos ya instalados) y crea, para cada programa configurado:
+//   - onEdit   → notificarNuevoComunicadoPrograma (comunicados por correo)
+//   - onChange → onChangeInscripcionesPrograma   (sync a Leads + referidos)
+// Es seguro ejecutarla varias veces. El avance de sync a Leads de los
+// programas que ya existían se conserva (misma propiedad que antes); para un
+// programa nuevo se inicializa en la última fila actual, para no reenviar a
+// Leads filas que ya estuvieran en su Sheet.
+function instalarTriggersProgramas() {
+  const handlers = [
+    'notificarNuevoComunicado', 'notificarNuevoComunicadoWorldChallenge', 'notificarNuevoComunicadoPrograma',
+    'onChangeInscripciones', 'onChangeInscripcionesWorldChallenge', 'onChangeInscripcionesPrograma'
+  ];
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (handlers.indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
+  });
+  const props = PropertiesService.getScriptProperties();
+  listarProgramas_().forEach(function(prog) {
+    ScriptApp.newTrigger('notificarNuevoComunicadoPrograma').forSpreadsheet(prog.sheetId).onEdit().create();
+    ScriptApp.newTrigger('onChangeInscripcionesPrograma').forSpreadsheet(prog.sheetId).onChange().create();
+    const leadsKey = propKeyPorPrograma_('leads_last_synced_row', prog.key);
+    if (!props.getProperty(leadsKey)) {
+      const lastRow = SpreadsheetApp.openById(prog.sheetId).getSheets()[0].getLastRow();
+      props.setProperty(leadsKey, String(lastRow));
+    }
+    Logger.log('instalarTriggersProgramas: triggers creados para ' + prog.nombre);
+  });
 }
 
 // ── Ejecutar UNA VEZ desde el editor para instalar el trigger (Clinic) ─────
@@ -7590,48 +7809,46 @@ function crearTriggerSeguimientoLeads() {
 // diferencia de enviarSeguimientoLeads_(), este SÍ se repite cada semana
 // mientras el pago siga pendiente — no deduplica, porque el objetivo es
 // insistir hasta que se resuelva.
-const DEADLINES_PAGO = {
-  // Deben coincidir con FECHAS_LIMITE_CLINIC / FECHAS_LIMITE_WC en areapersonal.html
-  clinic:           { reserva: new Date(2026, 5, 1),  tiquete: new Date(2026, 5, 1),  final: new Date(2026, 6, 30) },
-  world_challenge:  { reserva: new Date(2026, 9, 5),  tiquete: new Date(2026, 9, 5),  final: new Date(2026, 11, 11) }
-};
+// Las fechas límite de pago de cada edición viven en PROGRAMAS[].deadlines
+// (deben coincidir con fechasLimite de programas.js en el frontend).
 
 // Duplica montoReservaFinalParticipante_ de areapersonal.html (solo lo
 // necesario para saber si un participante DEBE dinero en Reserva/Pago Final,
 // no el desglose completo) — mantener en sync si cambian precios o reglas.
-function montoReservaFinalGS_(tipo, habitacion, fechaNacimiento, esWC) {
+function montoReservaFinalGS_(tipo, habitacion, fechaNacimiento, programa) {
+  const prog = getPrograma_(programa);
+  const pr = prog.precios;
   const esJug = String(tipo || '').toLowerCase().indexOf('jug') >= 0;
   const hab = String(habitacion || '').toLowerCase();
-  if (esWC) {
-    if (esJug) return { reserva: 1150, final: 1740 };
-    if (hab === 'solo_world_challenge') return { reserva: 185, final: 0 };
-    if (hab === '' || hab === 'solo_actividades') return { reserva: 590, final: 0 };
-    if (hab.indexOf('doble') >= 0) return { reserva: 1150, final: 1040 };
-    return { reserva: 1150, final: 1360 };
+  if (prog.familia === 'world_challenge') {
+    if (esJug) return pr.jugador;
+    if (hab === 'solo_world_challenge') return pr.acomp_solo_wc;
+    if (hab === '' || hab === 'solo_actividades') return pr.acomp_actividades;
+    if (hab.indexOf('doble') >= 0) return pr.acomp_doble;
+    return pr.acomp_sencilla;
   }
-  if (esJug) return { reserva: 1000, final: 1790 };
+  if (esJug) return pr.jugador;
   if (hab === '') {
     const fObj = parseFechaNacimiento(fechaNacimiento);
-    const edad = calcEdadRef(fObj);
-    return { reserva: 0, final: (edad !== null && edad <= 12) ? 190 : 590 };
+    const edad = calcEdadRef(fObj, prog);
+    return (edad !== null && edad <= 12 && pr.acomp_actividades_menor12) ? pr.acomp_actividades_menor12 : pr.acomp_actividades;
   }
-  if (hab.indexOf('doble') >= 0) return { reserva: 1000, final: 1190 };
-  return { reserva: 1000, final: 1510 };
+  if (hab.indexOf('doble') >= 0) return pr.acomp_doble;
+  return pr.acomp_sencilla;
 }
 
 function enviarRecordatorioPagosVencidos_() {
   try {
     const hoy = new Date();
-    const programas = [
-      { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, key: 'clinic', label: 'Clinic' },
-      { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, key: 'world_challenge', label: 'World Challenge' }
-    ];
+    // Solo programas que aún no terminaron — a un programa ya finalizado no
+    // tiene sentido seguir recordándole pagos vencidos cada lunes.
+    const programas = fuentesProgramas_().filter(function(f) { return !programaFinalizado_(f.programa); });
 
     const pendientes = [];
 
     programas.forEach(function(fuente) {
-      const esWC = fuente.key === 'world_challenge';
-      const deadlines = DEADLINES_PAGO[fuente.key];
+      const deadlines = fuente.programa.deadlines;
+      if (!deadlines) return;
 
       const conceptosVencidos = [];
       ['reserva', 'tiquete', 'final'].forEach(function(c) {
@@ -7703,7 +7920,7 @@ function enviarRecordatorioPagosVencidos_() {
       Object.keys(participantesMap).forEach(function(key) {
         const p = participantesMap[key];
         if (p.esRedcol) return; // colegios Redcol pagan de forma centralizada — no se les recuerda pagos vencidos
-        const montos = montoReservaFinalGS_(p.tipo, p.habitacion, p.fechaNac, esWC);
+        const montos = montoReservaFinalGS_(p.tipo, p.habitacion, p.fechaNac, fuente.key);
         conceptosVencidos.forEach(function(c) {
           if (c === 'tiquete') {
             if (!p.tieneTiquete) return; // no debe tiquete
@@ -7782,7 +7999,7 @@ function obtenerNombrePila_(nombreCompleto) {
 function buildCumpleanosHtml_(nombreCompleto, edad, programa) {
   const primerNombre = obtenerNombrePila_(nombreCompleto) || nombreCompleto;
   const esWC = esWorldChallenge_(programa);
-  const nombrePrograma = esWC ? 'Real Madrid Foundation World Challenge 2027' : 'Real Madrid Foundation Clinic 2026';
+  const nombrePrograma = getPrograma_(programa).nombre;
   const nombreProgramaCorto = esWC ? 'Real Madrid Foundation World Challenge' : 'Real Madrid Foundation Clinic';
   return `
 <div style="margin:0;padding:0;background:#eef1f5;font-family:'DM Sans',Arial,sans-serif;">
@@ -8449,10 +8666,7 @@ function obtenerResumenEjecutivo_(e) {
     return parseFloat(s) || 0;
   };
 
-  var fuentes = [
-    { sheetId: SHEET_ID, budgetSheetId: BUDGET_SHEET_ID, programKey: 'clinic', label: 'Clinic' },
-    { sheetId: SHEET_ID_WORLD_CHALLENGE, budgetSheetId: BUDGET_SHEET_ID_WORLD_CHALLENGE, programKey: 'world_challenge', label: 'World Challenge' }
-  ];
+  var fuentes = fuentesProgramas_();
 
   var porPrograma = {};
   var comisionesPendientes = [];
