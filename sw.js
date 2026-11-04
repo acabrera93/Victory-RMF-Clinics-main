@@ -1,4 +1,4 @@
-const CACHE = 'rmf-v7';
+const CACHE = 'rmf-v8';
 
 self.addEventListener('install', e => {
   // Precache only the main HTML pages — icon files cached on demand
@@ -11,7 +11,8 @@ self.addEventListener('install', e => {
         c.add('/rmf-clinic.html'),
         c.add('/memorias.html'),
         c.add('/manifest.json'),
-        c.add('/config.js')
+        c.add('/config.js'),
+        c.add('/programas.js')
       ]))
       .then(() => self.skipWaiting())
   );
