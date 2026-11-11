@@ -4210,8 +4210,8 @@ function tycAplica_(aplica, cat) {
 }
 
 // Texto de una sección → HTML. Líneas "- x" son viñetas, **x** negrita,
-// [con tiquete] / [sin tiquete] al inicio filtran la línea, {var} se
-// reemplaza por el dato del participante.
+// [con tiquete] / [sin tiquete] al inicio filtran la línea, {dato} se
+// reemplaza con resolverDatoTyc_ (precios de la tabla, fechas, cálculos).
 function tycTextoAHtml_(texto, vars, conTiquete) {
   const out = [];
   let lista = [];
@@ -4224,7 +4224,10 @@ function tycTextoAHtml_(texto, vars, conTiquete) {
       if ((tag[1].toLowerCase() === "con") !== !!conTiquete) return;
       l = l.slice(tag[0].length);
     }
-    let html = escapeHtml(l).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? escapeHtml(String(vars[k])) : m));
+    let html = escapeHtml(l).replace(/\{([^{}]+)\}/g, (m, k) => {
+      const v = resolverDatoTyc_(k.trim(), vars);
+      return v == null ? m : escapeHtml(String(v));
+    });
     html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     if (/^[-•]\s+/.test(l)) lista.push("<li>" + html.replace(/^[-•]\s+/, "") + "</li>");
     else { cerrarLista(); out.push("<p>" + html + "</p>"); }
@@ -4233,24 +4236,107 @@ function tycTextoAHtml_(texto, vars, conTiquete) {
   return out.join("\n");
 }
 
+const MESES_TYC_ = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+function fechaLargaTyc_(d) { return d.getDate() + " de " + MESES_TYC_[d.getMonth()] + " de " + d.getFullYear(); }
+function fmtNumTyc_(n) {
+  const r = Math.round(n * 100) / 100;
+  return r.toLocaleString("es-CO", { minimumFractionDigits: r % 1 ? 2 : 0, maximumFractionDigits: 2 });
+}
+
+// Resuelve un {dato}: nombre directo, fecha relativa al inicio ({inicio-90})
+// o cálculo con + - * sobre datos numéricos ({jugador_total*0.3}).
+// Devuelve null si no lo reconoce (el texto queda tal cual).
+function resolverDatoTyc_(k, vars) {
+  if (Object.prototype.hasOwnProperty.call(vars.txt, k)) return vars.txt[k];
+  const rel = k.match(/^inicio\s*([+-])\s*(\d+)$/);
+  if (rel && vars.inicioDate) {
+    const d = new Date(vars.inicioDate.getTime());
+    d.setDate(d.getDate() + (rel[1] === "-" ? -1 : 1) * parseInt(rel[2], 10));
+    return fechaLargaTyc_(d);
+  }
+  if (!/^[\w\s.+\-*]+$/.test(k)) return null;
+  const valor = tok => {
+    tok = tok.trim();
+    if (/^\d+(\.\d+)?$/.test(tok)) return parseFloat(tok);
+    return Object.prototype.hasOwnProperty.call(vars.num, tok) ? vars.num[tok] : NaN;
+  };
+  // suma/resta de términos; cada término es un producto de factores
+  const terminos = k.replace(/\s+/g, "").match(/[+-]?[^+-]+/g);
+  if (!terminos) return null;
+  let total = 0;
+  for (const t of terminos) {
+    const signo = t[0] === "-" ? -1 : 1;
+    const prod = t.replace(/^[+-]/, "").split("*").reduce((acc, f) => acc * valor(f), 1);
+    if (isNaN(prod)) return null;
+    total += signo * prod;
+  }
+  return fmtNumTyc_(total);
+}
+
+// Fecha (yyyy-mm-dd al inicio del string ISO) → Date local, sin desfases de zona.
+function fechaDeIsoTyc_(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+
 function renderTyCDesdeSheet_(cfg) {
   const prog = getPrograma(programKeyActivo);
   const act = participanteActual ? (normalizeParticipant(participanteActual) || participanteActual) : { tipo: tipo, habitacion: habitacion };
   const cat = categoriaTyc_(act, prog);
   const alianzaNorm = tieneAlianzaReal_(act) ? normFieldName(act.alianza_nombre) : "";
+  const al = alianzaNorm ? alianzaDeConfig_(prog.key, act.alianza_nombre) : null;
   const m = montoReservaFinalParticipante_base_(act, programKeyActivo);
   const tiq = precioTiqueteInfoEur_();
   const fl = fechasLimiteActivas_();
-  const fmt = v => Number(v || 0).toLocaleString("es-CO");
   const total = (m.reserva || 0) + (m.final || 0);
   const hab = (act.habitacion || habitacion || "").toLowerCase();
-  const vars = {
-    reserva: fmt(m.reserva), pago_final: fmt(m.final), total: fmt(total),
-    tiquete: fmt(tiq), total_con_tiquete: fmt(total + tiq),
+
+  // Fechas del programa: con tiquete arranca el día del vuelo (inicio de
+  // programas.js); sin tiquete, el día siguiente (llegada a Madrid).
+  const inicioVuelo = fechaDeIsoTyc_(prog.inicio);
+  const finProg = fechaDeIsoTyc_(prog.fin);
+  const inicioDate = inicioVuelo ? new Date(inicioVuelo.getTime() + (conTiq ? 0 : 86400000)) : null;
+  const fechasProg = inicioDate && finProg
+    ? (inicioDate.getMonth() === finProg.getMonth()
+        ? "Del " + inicioDate.getDate() + " al " + fechaLargaTyc_(finProg)
+        : "Del " + fechaLargaTyc_(inicioDate) + " al " + fechaLargaTyc_(finProg))
+    : "";
+
+  const num = {
+    reserva: m.reserva || 0, pago_final: m.final || 0, total: total, tiquete: tiq, total_con_tiquete: total + tiq
+  };
+  const txt = {
     fecha_reserva: fl.reserva, fecha_tiquete: fl.tiquete, fecha_final: fl.final,
     habitacion: hab.includes("triple") ? "triple" : hab.includes("doble") ? "doble" : "sencilla",
-    programa: prog.nombre, alianza: alianzaNorm ? act.alianza_nombre : ""
+    programa: prog.nombre, alianza: alianzaNorm ? act.alianza_nombre : "",
+    fecha_inicio: inicioDate ? fechaLargaTyc_(inicioDate) : "",
+    fecha_fin: finProg ? fechaLargaTyc_(finProg) : "",
+    fechas_programa: fechasProg
   };
+
+  // Precios de la pestaña Alianzas para TODOS los paquetes (la alianza de la
+  // persona, o Estándar donde la celda está vacía): {doble_total}, etc.
+  const nombresPaq = {
+    jugador: "jugador", acomp_doble: "doble", acomp_sencilla: "sencilla", acomp_triple: "triple",
+    acomp_actividades: "actividades", acomp_solo_wc: "solo_wc", acomp_actividades_menor12: "actividades_menor12"
+  };
+  Object.keys(nombresPaq).forEach(key => {
+    const std = prog.precios[key];
+    const ap = al && al.precios ? al.precios[key] : null;
+    if (!std && !ap) return;
+    const r = ap && ap.reserva != null ? ap.reserva : (std ? std.reserva : 0);
+    const f = ap && ap.final != null ? ap.final : (std ? std.final : 0);
+    const n = nombresPaq[key];
+    num[n + "_reserva"] = Number(r) || 0;
+    num[n + "_final"] = Number(f) || 0;
+    num[n + "_total"] = (Number(r) || 0) + (Number(f) || 0);
+  });
+  const fJug = fechasConfig_(cfg.estandar, al, true);
+  const fAco = fechasConfig_(cfg.estandar, al, false);
+  txt.jugador_fecha_reserva = fJug.reserva; txt.jugador_fecha_final = fJug.final;
+  txt.acomp_fecha_reserva = fAco.reserva; txt.acomp_fecha_final = fAco.final;
+  Object.keys(num).forEach(k => { if (!(k in txt)) txt[k] = fmtNumTyc_(num[k]); });
+  const vars = { txt: txt, num: num, inicioDate: inicioDate };
 
   // Filas que le aplican: estándar (sin alianza) + las de su alianza. Una fila
   // de alianza con el mismo título que una estándar la REEMPLAZA.
@@ -4261,18 +4347,21 @@ function renderTyCDesdeSheet_(cfg) {
   const usadas = estandar.filter(r => !titulosAlianza.has(normFieldName(r.seccion))).concat(deAlianza.filter(r => r.texto));
   usadas.sort((a, b) => (a.orden - b.orden) || (a._i - b._i));
 
-  // Agrupar por sección (varias filas con el mismo título se juntan)
+  // Agrupar por sección. Orden <= 0 = encabezado sin número.
   const secciones = [];
   usadas.forEach(r => {
     const k = normFieldName(r.seccion);
     let s = secciones.find(x => x.k === k);
-    if (!s) { s = { k: k, titulo: r.seccion, partes: [] }; secciones.push(s); }
+    if (!s) { s = { k: k, titulo: r.seccion, intro: r.orden <= 0, partes: [] }; secciones.push(s); }
     s.partes.push(tycTextoAHtml_(r.texto, vars, conTiq));
   });
+  let n = 0;
   return secciones
-    .map(s => ({ titulo: s.titulo, html: s.partes.filter(Boolean).join("\n") }))
-    .filter(s => s.html)
-    .map((s, i) => "<h3>" + (i + 1) + ". " + escapeHtml(s.titulo) + "</h3>\n" + s.html)
+    .map(s => ({ s: s, html: s.partes.filter(Boolean).join("\n") }))
+    .filter(x => x.html)
+    .map(x => x.s.intro
+      ? '<div style="text-align:center;margin-bottom:14px">' + x.html + "</div>"
+      : "<h3>" + (++n) + ". " + escapeHtml(x.s.titulo) + "</h3>\n" + x.html)
     .join("\n");
 }
 
