@@ -1897,7 +1897,9 @@ function updateSheetWithUpload(email, tipoDoc, tipoPago, fileName, fileUrl, file
     const colIndex = headers.indexOf(colName);
     if (colIndex >= 0) {
       const formula = `=HYPERLINK("${fileUrl}","${fileName}")`;
-      sheet.getRange(rowIndex, colIndex + 1).setValue(formula);
+      // setFormula (no setValue): setValue interpreta la coma según el idioma
+      // de la hoja (español usa ";") y el enlace quedaba en #ERROR!.
+      sheet.getRange(rowIndex, colIndex + 1).setFormula(formula);
       // Cada (re)subida reinicia la revisión: si el padre corrige un
       // documento rechazado (o reemplaza uno ya aprobado), el check de
       // "aprobado" desaparece hasta que el admin lo revise de nuevo — ver
@@ -2139,32 +2141,6 @@ function revertirPasoSiProcesoYaCompletado_(email, programa) {
       Logger.log('revertirPasoSiProcesoYaCompletado_: ' + emailNorm + ' vuelve a paso 6 (documento rechazado tras estar completo).');
     }
   }
-}
-
-// Busca el nombre completo del participante en la hoja principal — mismo
-// patrón que notificarDocumentoSubido, extraído aquí porque
-// notificarDocumentoRechazado_ lo necesita igual.
-function buscarNombrePorEmail_(email, programa) {
-  try {
-    const mainSheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
-    const mainData = mainSheet.getDataRange().getValues();
-    const headers = mainData[0] || [];
-    let emailCol = -1, nombreCol = -1;
-    for (let j = 0; j < headers.length; j++) {
-      const h = String(headers[j]).toLowerCase();
-      if (h === 'email' && emailCol < 0) emailCol = j;
-      if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
-    }
-    if (emailCol < 0) return '';
-    for (let i = 1; i < mainData.length; i++) {
-      if (String(mainData[i][emailCol] || '').toLowerCase().trim() === email) {
-        return nombreCol >= 0 ? String(mainData[i][nombreCol] || '') : '';
-      }
-    }
-  } catch (err) {
-    Logger.log('buscarNombrePorEmail_ error: ' + err);
-  }
-  return '';
 }
 
 // Correo de "documento rechazado". Se envía TAL CUAL (mismo asunto y mismo
@@ -6114,14 +6090,24 @@ function tablasAlianzas_(values) {
     });
   });
   const out = {};
+  // Nombres de ① por posición: en ② y ③ la columna A es una fórmula que copia
+  // ①; si quedó en error (#ERROR!, #REF!…) o vacía, se usa el de ① en la
+  // misma posición.
+  const nombresGeneral = [];
+  const tGen = titulos.find(function(t) { return t.k === 'general'; });
+  if (tGen) {
+    const finGen = titulos.filter(function(t) { return t.i > tGen.i; }).map(function(t) { return t.i; })[0] || values.length;
+    for (let i = tGen.i + 2; i < finGen; i++) nombresGeneral.push(String((values[i] || [])[0] || '').trim());
+  }
   titulos.forEach(function(t, idx) {
     const fin = idx + 1 < titulos.length ? titulos[idx + 1].i : values.length;
     const headers = (values[t.i + 1] || []).map(normPagosHeaderKey_);
     const filas = [];
     for (let i = t.i + 2; i < fin; i++) {
       const r = values[i] || [];
-      const nombre = String(r[0] || '').trim();
-      if (!nombre) continue;
+      let nombre = String(r[0] || '').trim();
+      if (t.k !== 'general' && (!nombre || nombre.charAt(0) === '#')) nombre = nombresGeneral[i - (t.i + 2)] || '';
+      if (!nombre || nombre.charAt(0) === '#') continue;
       const obj = { _nombre: nombre };
       headers.forEach(function(h, j) { if (h) obj[h] = r[j]; });
       filas.push(obj);
@@ -6249,8 +6235,9 @@ function leerPestanaTyc_(values) {
     const texto = String(h.texto != null ? r[h.texto] : '').trim();
     const alianza = String(h.alianza != null ? r[h.alianza] : '').trim();
     if (!seccion || (!texto && !alianza)) continue;
+    const ordenNum = parseFloat(h.orden != null ? r[h.orden] : '');
     out.push({
-      orden: parseFloat(h.orden != null ? r[h.orden] : '') || 999,
+      orden: isNaN(ordenNum) ? 999 : ordenNum, // 0 = encabezado sin número
       seccion: seccion,
       aplica: String(h.aplica_a != null ? r[h.aplica_a] : '').trim() || 'Todos',
       alianza: alianza,
@@ -6472,6 +6459,117 @@ function celdaDeFecha_(fobj) {
   return fobj.texto || '';
 }
 
+// Posiciones fijas de las tres tablas de la pestaña Alianzas (ver
+// construirPestanaAlianzas_): fila del título y primera fila de datos.
+function posicionesAlianzas_(N) {
+  const s1 = 4, d1 = s1 + 2, s2 = d1 + N + 1, d2 = s2 + 2, s3 = d2 + N + 1, d3 = s3 + 2;
+  return { s1: s1, d1: d1, s2: s2, d2: d2, s3: s3, d3: d3 };
+}
+
+// Fórmulas de la pestaña Alianzas: nombre en ② y ③ (copia de ①) y Total en ②.
+// IMPORTANTE: con setFormulas(), que siempre usa sintaxis en inglés (coma).
+// setValues() con "=IF(…,…)" las interpreta en el idioma de la hoja (español
+// usa ";") y quedan en #ERROR!.
+function escribirFormulasAlianzas_(sh, N) {
+  const p = posicionesAlianzas_(N);
+  const nombres = [], totales = [];
+  for (let i = 0; i < N; i++) {
+    const r1 = p.d1 + i, r = p.d2 + i;
+    nombres.push(['=IF($A$' + r1 + '="","",$A$' + r1 + ')']);
+    totales.push([i === 0
+      ? '=B' + r + '+D' + r
+      : '=IF($A' + r + '="","",IF(B' + r + '="",$B$' + p.d2 + ',B' + r + ')+IF(D' + r + '="",$D$' + p.d2 + ',D' + r + '))']);
+  }
+  sh.getRange(p.d2, 1, N, 1).setFormulas(nombres);
+  sh.getRange(p.d3, 1, N, 1).setFormulas(nombres);
+  sh.getRange(p.d2, 6, N, 1).setFormulas(totales);
+}
+
+// Reglas "alianza pausada" (Activo = NO → gris tachado). Sin comas a
+// propósito: las fórmulas de formato condicional se leen en el idioma de la
+// hoja, así que se usa INDIRECT con un solo argumento.
+function reglasAlianzasPausadas_(sh, N, nG, nJ, nA) {
+  const p = posicionesAlianzas_(N);
+  const regla = function(fila, nCols, desfase) {
+    const formula = desfase === 0 ? '=$B' + p.d1 + '="NO"' : '=INDIRECT("B"&(ROW()-' + desfase + '))="NO"';
+    return SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(formula)
+      .setFontColor('#9ca3af').setStrikethrough(true).setRanges([sh.getRange(fila, 1, N, nCols)]).build();
+  };
+  return [regla(p.d1, nG, 0), regla(p.d2, nJ, p.d2 - p.d1), regla(p.d3, nA, p.d3 - p.d1)];
+}
+
+// ── Ejecutar UNA VEZ si la pestaña Alianzas ya se creó con la versión
+// anterior (columnas A y F con #ERROR!). Reescribe sus fórmulas y reglas de
+// color sin tocar los datos, arregla los colores de la pestaña T&C y los
+// enlaces #ERROR! de la pestaña Documentos. Seguro de ejecutar varias veces.
+function repararPestanasAlianzas() {
+  const N = ALIANZAS_FILAS_POR_TABLA_;
+  listarProgramas_().forEach(function(prog) {
+    try {
+      const ss = SpreadsheetApp.openById(prog.sheetId);
+      const sh = ss.getSheetByName('Alianzas');
+      if (sh && esFormatoNuevoAlianzas_(sh.getDataRange().getValues())) {
+        const paquetes = PAQUETES_ACOMP_[prog.familia] || PAQUETES_ACOMP_.clinic;
+        const nA = 1 + ALIANZAS_HEADERS_ACOMP_FECHAS_.length + paquetes.length * 2;
+        escribirFormulasAlianzas_(sh, N);
+        sh.setConditionalFormatRules(reglasAlianzasPausadas_(sh, N, ALIANZAS_HEADERS_GENERAL_.length, ALIANZAS_HEADERS_JUG_.length, nA));
+        Logger.log('repararPestanasAlianzas: ' + prog.key + ' → Alianzas reparada.');
+      }
+      const tsh = ss.getSheetByName('T&C');
+      // Versión vieja de T&C (sin la fila "Encabezado", con montos fijos):
+      // se guarda como "T&C (anterior)" y se crea de nuevo con el texto que
+      // toma precios y fechas de la pestaña Alianzas.
+      const esTycVieja = tsh && !tsh.getDataRange().getValues().some(function(r) { return String(r[1] || '').trim() === 'Encabezado'; });
+      if (esTycVieja) {
+        let nombreResp = 'T&C (anterior)';
+        if (ss.getSheetByName(nombreResp)) nombreResp += ' ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+        tsh.setName(nombreResp);
+        construirPestanaTyc_(ss, prog);
+        Logger.log('repararPestanasAlianzas: ' + prog.key + ' → T&C reconstruida (la vieja quedó como "' + nombreResp + '").');
+      } else if (tsh) {
+        tsh.setConditionalFormatRules(reglasTyc_(tsh.getRange(4, 1, Math.max(tsh.getMaxRows() - 3, 1), 5)));
+      } else {
+        construirPestanaTyc_(ss, prog);
+      }
+      repararEnlacesDocumentos_(ss);
+      try { CacheService.getScriptCache().removeAll(['config_prog_v1_' + prog.key]); } catch (e) {}
+    } catch (err) {
+      Logger.log('repararPestanasAlianzas (' + prog.key + '): ' + err);
+    }
+  });
+}
+
+// Enlaces =HYPERLINK de la pestaña Documentos que quedaron en #ERROR! (se
+// escribían con setValue — ver updateSheetWithUpload): se reescriben con
+// setFormula, que sí entiende la coma.
+function repararEnlacesDocumentos_(ss) {
+  const docs = ss.getSheetByName('Documentos');
+  if (!docs || docs.getLastRow() < 2) return;
+  const rng = docs.getRange(1, 1, docs.getLastRow(), docs.getLastColumn());
+  const formulas = rng.getFormulas();
+  const valores = rng.getDisplayValues();
+  let n = 0;
+  for (let i = 1; i < formulas.length; i++) {
+    for (let j = 0; j < formulas[i].length; j++) {
+      const fo = formulas[i][j];
+      if (fo && /^=HYPERLINK\(/i.test(fo) && String(valores[i][j]).indexOf('#') === 0) {
+        docs.getRange(i + 1, j + 1).setFormula(fo);
+        n++;
+      }
+    }
+  }
+  if (n) Logger.log('repararEnlacesDocumentos_: ' + n + ' enlace(s) reparado(s) en ' + ss.getName());
+}
+
+// Colores de la pestaña T&C según "Aplica a" / Alianza. Sin comas (ver arriba).
+function reglasTyc_(datos) {
+  return [
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=LEN($D4)>0').setBackground('#fdf2e3').setRanges([datos]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$C4="Jugador"').setBackground('#eef7f0').setRanges([datos]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=($C4<>"")*($C4<>"Jugador")*($C4<>"Todos")').setBackground('#f4f2fb').setRanges([datos]).build()
+  ];
+}
+
 function construirPestanaAlianzas_(ss, prog) {
   let vieja = ss.getSheetByName('Alianzas');
   if (vieja && esFormatoNuevoAlianzas_(vieja.getDataRange().getValues())) {
@@ -6554,7 +6652,6 @@ function construirPestanaAlianzas_(ss, prog) {
   const vFecha = SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).setHelpText('Fecha dd/mm/aaaa. Vacío = fecha Estándar.').build();
   const fmtPrecio = function(rng) { rng.setNumberFormat('#,##0 "€"').setHorizontalAlignment('center').setDataValidation(vNum); };
   const fmtFecha = function(rng) { rng.setNumberFormat('dd/mm/yyyy').setHorizontalAlignment('center').setDataValidation(vFecha).setFontColor('#1e3a8a'); };
-  const formulaNombre = function(i) { return '=IF($A$' + (d1 + i) + '="","",$A$' + (d1 + i) + ')'; };
   const v = function(x) { return x == null ? '' : x; };
   const fila = function(i) { return i === 0 ? null : (alianzas[i - 1] || null); };
 
@@ -6584,14 +6681,12 @@ function construirPestanaAlianzas_(ss, prog) {
   encabezado(s2 + 1, ALIANZAS_HEADERS_JUG_, C.jugadores.header);
   const filas2 = [];
   for (let i = 0; i < N; i++) {
-    const r = d2 + i, a = fila(i);
-    const total = i === 0 ? '=B' + r + '+D' + r
-      : '=IF($A' + r + '="","",IF(B' + r + '="",$B$' + d2 + ',B' + r + ')+IF(D' + r + '="",$D$' + d2 + ',D' + r + '))';
-    if (i === 0) filas2.push([formulaNombre(i), std.jugador.reserva, dl.reserva || '', std.jugador.final, dl.final || '', total]);
+    const a = fila(i);
+    if (i === 0) filas2.push(['', std.jugador.reserva, dl.reserva || '', std.jugador.final, dl.final || '', '']);
     else {
       const p = a && a.precios.jugador ? a.precios.jugador : {};
       const fj = a ? (a.fechas.jugador || {}) : {};
-      filas2.push([formulaNombre(i), v(p.reserva), celdaDeFecha_(fj.reserva), v(p.final), celdaDeFecha_(fj.final), total]);
+      filas2.push(['', v(p.reserva), celdaDeFecha_(fj.reserva), v(p.final), celdaDeFecha_(fj.final), '']);
     }
   }
   sh.getRange(d2, 1, N, nJ).setValues(filas2);
@@ -6611,7 +6706,7 @@ function construirPestanaAlianzas_(ss, prog) {
   const filas3 = [];
   for (let i = 0; i < N; i++) {
     const a = fila(i);
-    const row = [formulaNombre(i)];
+    const row = [''];
     if (i === 0) row.push(dl.reserva || '', dl.final || '');
     else { const f3 = a ? (a.fechas.acomp || {}) : {}; row.push(celdaDeFecha_(f3.reserva), celdaDeFecha_(f3.final)); }
     paquetes.forEach(function(p) {
@@ -6621,6 +6716,7 @@ function construirPestanaAlianzas_(ss, prog) {
     filas3.push(row);
   }
   sh.getRange(d3, 1, N, nA).setValues(filas3);
+  escribirFormulasAlianzas_(sh, N);
   marco(d3, N, nA);
   fmtFecha(sh.getRange(d3, 2, N, 2));
   fmtPrecio(sh.getRange(d3, 4, N, nA - 3));
@@ -6631,16 +6727,7 @@ function construirPestanaAlianzas_(ss, prog) {
   });
 
   // Alianza pausada (Activo = NO) → gris tachado en las tres tablas
-  const regla = function(rng, desplazamiento) {
-    return SpreadsheetApp.newConditionalFormatRule()
-      .whenFormulaSatisfied('=INDEX($B$' + d1 + ':$B$' + (d1 + N - 1) + ',ROW()-' + desplazamiento + ')="NO"')
-      .setFontColor('#9ca3af').setStrikethrough(true).setRanges([rng]).build();
-  };
-  sh.setConditionalFormatRules([
-    regla(sh.getRange(d1, 1, N, nG), d1 - 1),
-    regla(sh.getRange(d2, 1, N, nJ), d2 - 1),
-    regla(sh.getRange(d3, 1, N, nA), d3 - 1)
-  ]);
+  sh.setConditionalFormatRules(reglasAlianzasPausadas_(sh, N, nG, nJ, nA));
 
   // Notas de ayuda
   sh.getRange(s1 + 1, 3).setNote('Nombres de colegio/club EXACTOS como los escriben en el formulario, separados por coma. Sirven para sugerirte la alianza cuando llega una inscripción nueva.');
@@ -6690,9 +6777,12 @@ function construirPestanaTyc_(ss, prog) {
     '• Aplica a: a quién se muestra (Todos, Jugador, Acompañante, Acompañante con alojamiento, sin alojamiento, solo actividades, solo World Challenge).\n' +
     '• Alianza vacía = texto estándar. Con una alianza: si la Sección se llama igual que una estándar, la REEMPLAZA para esa alianza (jugadores y acompañantes); si no, se agrega. Texto vacío con alianza = quita esa sección.\n' +
     '• Texto: cada línea que empieza con "- " es una viñeta. **negrita**. Al inicio de una línea: [con tiquete] o [sin tiquete] para mostrarla solo en ese caso.\n' +
-    '• Datos automáticos: {reserva} {pago_final} {total} {tiquete} {total_con_tiquete} {fecha_reserva} {fecha_tiquete} {fecha_final} {habitacion} {programa} {alianza}'
+    '• Orden 0 = encabezado sin número (va arriba de todo).\n' +
+    '• Datos de la persona: {reserva} {pago_final} {total} {tiquete} {total_con_tiquete} {fecha_reserva} {fecha_tiquete} {fecha_final} {habitacion} {programa} {alianza}\n' +
+    '• Precios de la pestaña Alianzas (de la alianza de la persona, o Estándar): {jugador_reserva} {jugador_final} {jugador_total} {jugador_fecha_reserva} {jugador_fecha_final} {acomp_fecha_reserva} {acomp_fecha_final} y por paquete {doble_…} {sencilla_…} {triple_…} {actividades_…} {solo_wc_…} con _reserva / _final / _total.\n' +
+    '• Cálculos: {jugador_total*0.3}  {jugador_total-jugador_reserva}.  Fechas del programa: {fecha_inicio} {fecha_fin} {fechas_programa} (inicio = día del vuelo con tiquete; un día después sin tiquete) y {inicio-90} = 90 días antes del inicio.'
   ).setBackground(COLORES_ALIANZAS_.instr).setFontColor('#334155').setWrap(true).setVerticalAlignment('middle');
-  sh.setRowHeight(2, 120);
+  sh.setRowHeight(2, 170);
 
   sh.getRange(3, 1, 1, ancho).setValues([['Orden', 'Sección', 'Aplica a', 'Alianza', 'Texto']])
     .setBackground(COLORES_ALIANZAS_.general.banda).setFontColor('#ffffff').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
@@ -6713,12 +6803,7 @@ function construirPestanaTyc_(ss, prog) {
         .setHelpText('Vacío = texto estándar. Elige una alianza para reemplazar/agregar esta sección solo para ella.').build());
   }
   // Alterna color por "Aplica a" para distinguir jugador/acompañante
-  const reglas = [
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=LEN($D4)>0').setBackground('#fdf2e3').setRanges([datos]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$C4="Jugador"').setBackground('#eef7f0').setRanges([datos]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=LEFT($C4,11)="Acompañante"').setBackground('#f4f2fb').setRanges([datos]).build()
-  ];
-  sh.setConditionalFormatRules(reglas);
+  sh.setConditionalFormatRules(reglasTyc_(datos));
   [60, 210, 190, 150, 720].forEach(function(w, i) { sh.setColumnWidth(i + 1, w); });
   sh.setFrozenRows(3);
   sh.getRange(1, 1, 3, ancho).protect().setDescription('Encabezados T&C').setWarningOnly(true);
@@ -6732,6 +6817,7 @@ function construirPestanaTyc_(ss, prog) {
 // World Challenge" (sin el Hotel Eurostars Towers, que no aplica).
 const TYC_ALIANZAS_INICIALES_ = {
   world_challenge: [
+    [0, 'Encabezado', 'Todos', 'Alianza F.C', '**{programa}**\n{fechas_programa} · Madrid, España\nVictory Sports Spain, S.L. · Fundación Revel'],
     [1, 'Servicios incluidos', 'Todos', 'Alianza F.C', [
       '- **Alojamiento:** 7 noches y 8 días en el Campus Deportivo European Football Institute: pensión completa (desayuno, almuerzo, snack y cena). Lavandería incluida de uniformes.',
       '- Participación en el Real Madrid Foundation World Challenge',
@@ -6746,9 +6832,9 @@ const TYC_ALIANZAS_INICIALES_ = {
       '- Diploma oficial del Real Madrid Foundation World Challenge'
     ].join('\n')],
     [2, 'Precio del programa y forma de pago', 'Todos', 'Alianza F.C', [
-      '- Costo total por participante: **3.179 EUR**',
-      '- Reserva (no reembolsable) — hasta el 30 de octubre de 2026: **600 EUR**',
-      '- Pago final — hasta el 15 de diciembre de 2026: **2.579 EUR**',
+      '- Costo total por participante: **{jugador_total} EUR**',
+      '- Reserva (no reembolsable) — hasta el {jugador_fecha_reserva}: **{jugador_reserva} EUR**',
+      '- Pago final — hasta el {jugador_fecha_final}: **{jugador_final} EUR**',
       '',
       'El valor del programa no incluye tiquete aéreo.',
       'El pago se realizará en pesos colombianos (COP) según la Tasa Representativa del Mercado (TRM) de cambio EUR/COP del día del pago, en los términos del numeral 5.5.',
@@ -6778,19 +6864,19 @@ const TYC_ALIANZAS_INICIALES_ = {
       '- Real Madrid Foundation World Challenge',
       'No incluye alojamiento, transporte a las actividades ni seguro médico de viaje.',
       '**Precios — Hotel Eurostars Monte Real (4 estrellas)**',
-      '- FULL PACK — Habitación doble (por persona): **1.499 EUR**',
-      '- FULL PACK — Habitación sencilla: **2.150 EUR**',
-      '- FULL PACK — 3.ª persona en habitación triple: **650 EUR**',
+      '- FULL PACK — Habitación doble (por persona): **{doble_total} EUR**',
+      '- FULL PACK — Habitación sencilla: **{sencilla_total} EUR**',
+      '- FULL PACK — 3.ª persona en habitación triple: **{triple_total} EUR**',
       '**Precios — Planes sin alojamiento**',
-      '- Solo Actividades: **470 EUR**',
-      '- Solo acceso al Torneo Real Madrid Foundation World Challenge: **250 EUR**',
+      '- Solo Actividades: **{actividades_total} EUR**',
+      '- Solo acceso al Torneo Real Madrid Foundation World Challenge: **{solo_wc_total} EUR**',
       '**Forma de pago acompañantes — FULL PACK (con alojamiento)**',
-      '- Reserva (no reembolsable) — hasta el 15 de noviembre de 2026: **600 EUR**',
-      '- Pago final Monte Real, doble — hasta el 15 de enero de 2027: **899 EUR**',
-      '- Pago final Monte Real, sencilla — hasta el 15 de enero de 2027: **1.550 EUR**',
-      '- Pago final Monte Real, 3.ª persona en triple — hasta el 15 de enero de 2027: **50 EUR**',
+      '- Reserva (no reembolsable) — hasta el {acomp_fecha_reserva}: **{doble_reserva} EUR**',
+      '- Pago final Monte Real, doble — hasta el {acomp_fecha_final}: **{doble_final} EUR**',
+      '- Pago final Monte Real, sencilla — hasta el {acomp_fecha_final}: **{sencilla_final} EUR**',
+      '- Pago final Monte Real, 3.ª persona en triple — hasta el {acomp_fecha_final}: **{triple_final} EUR**',
       '',
-      'Los planes Solo Actividades (470 EUR) y Solo acceso al Torneo (250 EUR) se cancelan en un solo pago, con fecha límite el 15 de noviembre de 2026, dado que su valor total es inferior al monto de la reserva.',
+      'Los planes Solo Actividades ({actividades_total} EUR) y Solo acceso al Torneo ({solo_wc_total} EUR) se cancelan en un solo pago, con fecha límite el {acomp_fecha_reserva}, dado que su valor total es inferior al monto de la reserva.',
       'El pago se realizará en pesos colombianos (COP) según la Tasa Representativa del Mercado (TRM) de cambio EUR/COP del día del pago, en los términos del numeral 5.5.',
       'Los valores de FULL PACK en habitación doble corresponden al precio por persona; cada acompañante que comparta la habitación paga este valor de forma individual. Los precios para acompañantes no incluyen tiquete aéreo.'
     ].join('\n')],
@@ -6803,7 +6889,7 @@ const TYC_ALIANZAS_INICIALES_ = {
     ].join('\n')],
     [5, 'Políticas de cancelación', 'Todos', 'Alianza F.C', [
       '**5.1 Reserva**',
-      'La inscripción solo quedará confirmada con el pago de la reserva de 600 EUR. La reserva no es reembolsable en ningún caso, salvo (a) excusa médica debidamente certificada, según el numeral 5.4, o (b) cancelación o modificación sustancial del programa por parte de la organización, según la cláusula 7.',
+      'La inscripción solo quedará confirmada con el pago de la reserva de {jugador_reserva} EUR. La reserva no es reembolsable en ningún caso, salvo (a) excusa médica debidamente certificada, según el numeral 5.4, o (b) cancelación o modificación sustancial del programa por parte de la organización, según la cláusula 7.',
       'La reserva no es reembolsable porque se destina a cubrir costos que se generan desde el momento mismo de la inscripción y que la organización no puede recuperar, entre ellos:',
       '- Inscripción y confirmación de la plaza del participante ante la organización del Real Madrid Foundation World Challenge.',
       '- Bloqueo de plazas de alojamiento y alimentación con los proveedores del programa.',
@@ -6811,18 +6897,18 @@ const TYC_ALIANZAS_INICIALES_ = {
       '- Comisiones bancarias, costos de pasarela de pago y costos de conversión de divisas.',
       'Los planes que se pagan en un solo pago por ser de valor inferior a la reserva (Solo Actividades y Solo acceso al Torneo) reciben el mismo tratamiento que la reserva: no son reembolsables, salvo en los casos de los numerales (a) y (b) anteriores, ya que las entradas y acreditaciones correspondientes se adquieren de forma anticipada.',
       '**5.2 Penalidades por cancelación del participante**',
-      'Si el participante cancela su inscripción, la organización retendrá de los valores efectivamente pagados el porcentaje indicado a continuación. Los porcentajes se calculan sobre el valor total del programa contratado: 3.179 EUR para los jugadores y el valor del paquete correspondiente para los acompañantes. La anticipación se cuenta hasta la fecha de inicio del programa, el 20 de marzo de 2027.',
-      '- **Más de 90 días de anticipación (hasta el 19 de diciembre de 2026):** penalidad: la reserva · retención máx. (jugador) 600 EUR · reembolso máx. (jugador) 2.579 EUR',
-      '- **Entre 90 y 61 días (del 20 de diciembre de 2026 al 18 de enero de 2027):** penalidad 30% · retención máx. (jugador) 953,70 EUR · reembolso máx. (jugador) 2.225,30 EUR',
-      '- **Entre 60 y 31 días (del 19 de enero al 17 de febrero de 2027):** penalidad 60% · retención máx. (jugador) 1.907,40 EUR · reembolso máx. (jugador) 1.271,60 EUR',
-      '- **30 días o menos (desde el 18 de febrero de 2027):** penalidad 100% · retención máx. (jugador) 3.179 EUR · reembolso máx. (jugador) 0 EUR',
+      'Si el participante cancela su inscripción, la organización retendrá de los valores efectivamente pagados el porcentaje indicado a continuación. Los porcentajes se calculan sobre el valor total del programa contratado: {jugador_total} EUR para los jugadores y el valor del paquete correspondiente para los acompañantes. La anticipación se cuenta hasta la fecha de inicio del programa, el {fecha_inicio}.',
+      '- **Más de 90 días de anticipación (hasta el {inicio-91}):** penalidad: la reserva · retención máx. (jugador) {jugador_reserva} EUR · reembolso máx. (jugador) {jugador_final} EUR',
+      '- **Entre 90 y 61 días (del {inicio-90} al {inicio-61}):** penalidad 30% · retención máx. (jugador) {jugador_total*0.3} EUR · reembolso máx. (jugador) {jugador_total*0.7} EUR',
+      '- **Entre 60 y 31 días (del {inicio-60} al {inicio-31}):** penalidad 60% · retención máx. (jugador) {jugador_total*0.6} EUR · reembolso máx. (jugador) {jugador_total*0.4} EUR',
+      '- **30 días o menos (desde el {inicio-30}):** penalidad 100% · retención máx. (jugador) {jugador_total} EUR · reembolso máx. (jugador) 0 EUR',
       'La retención nunca será superior a lo efectivamente pagado por el participante a la fecha de cancelación, y la cancelación no le genera ninguna obligación de pago adicional. En todos los casos se retendrá, como mínimo, el valor de la reserva. El saldo a favor del participante, si lo hay, se reembolsará dentro de los 30 días calendario siguientes a la recepción de la cancelación.',
       'Las penalidades responden a los costos que la organización ya ha comprometido y pagado a medida que se acerca la fecha del programa, y que no puede recuperar ni reasignar a otro participante:',
       '- **Entre 90 y 61 días:** pago completo de la inscripción en el torneo a la organización del Real Madrid Foundation World Challenge (no reembolsable a partir del 15 de diciembre de 2026), y reservas de alojamiento, alimentación y transporte con los proveedores.',
       '- **Entre 60 y 31 días:** además de lo anterior, producción del kit deportivo, contratación de pólizas de seguro, asignación de staff y compra de entradas y reservas de actividades y excursiones.',
       '- **30 días o menos:** la totalidad de los servicios del programa está contratada y pagada, la plantilla del equipo está cerrada ante la organización del torneo y la plaza no puede ser reasignada.',
-      '**Ejemplo 1:** un jugador ha pagado 3.179 EUR y cancela el 5 de enero de 2027 (entre 90 y 61 días de anticipación). Se retienen 953,70 EUR (30%) y se le reembolsan 2.225,30 EUR.',
-      '**Ejemplo 2:** un jugador ha pagado únicamente la reserva de 600 EUR y cancela el 1 de diciembre de 2026. Se retienen los 600 EUR, no hay reembolso y el participante no adeuda ningún valor adicional.',
+      '**Ejemplo 1:** un jugador ha pagado {jugador_total} EUR y cancela el 5 de enero de 2027 (entre 90 y 61 días de anticipación). Se retienen {jugador_total*0.3} EUR (30%) y se le reembolsan {jugador_total*0.7} EUR.',
+      '**Ejemplo 2:** un jugador ha pagado únicamente la reserva de {jugador_reserva} EUR y cancela el 1 de diciembre de 2026. Se retienen los {jugador_reserva} EUR, no hay reembolso y el participante no adeuda ningún valor adicional.',
       '**5.3 Forma y cómputo de la cancelación**',
       'La cancelación debe comunicarse por escrito a través de los canales de contacto oficiales del programa. La fecha que se tendrá en cuenta para aplicar la tabla del numeral 5.2 será la fecha de recepción de dicha comunicación.',
       '**5.4 Excusa médica**',
@@ -6885,6 +6971,7 @@ const TYC_CANCEL_WC_ = [
   '- **30 días o menos de anticipación:** penalidad del 100% (no hay lugar a reembolso)'
 ];
 const TYC_SEMILLA_WC_ = [
+  [0, 'Encabezado', 'Todos', '**{programa}**\n{fechas_programa} · Madrid, España'],
   [1, 'Servicios incluidos', 'Jugador', [
     '[con tiquete] - **Tiquete aéreo:** ida y vuelta en la ruta Bogotá – Madrid – Bogotá',
     '- **Alojamiento:** 7 noches y 8 días en el Campus Deportivo European Football Institute by StepHouse — pensión completa (desayuno, almuerzo, snack y cena). Lavandería incluida.',
@@ -6964,6 +7051,7 @@ const TYC_SEMILLA_WC_ = [
 ];
 
 const TYC_SEMILLA_CLINIC_ = [
+  [0, 'Encabezado', 'Todos', '**{programa}**\n{fechas_programa} · Madrid, España'],
   [1, 'Servicios incluidos', 'Jugador', [
     '[con tiquete] - **Tiquete aéreo:** Bogotá – Madrid – Bogotá (vuelo grupal, fecha fija)',
     '- **Alojamiento:** 7 noches y 8 días en el Campus Deportivo European Football Institute — pensión completa (desayuno, almuerzo, snack y cena). Lavandería incluida.',
@@ -7537,23 +7625,27 @@ function registrarInscripcionWeb_(data) {
 }
 
 // Inverso de buscarEmailPorNombre_ (más arriba): dado un email, devuelve el
-// nombre completo en la hoja de Inscripciones del programa. Mismo criterio
-// de columnas.
+// nombre completo en la hoja de Inscripciones del programa ('' si no está).
+// Única definición — la usan notificarDocumentoRechazado_, Referidos, etc.
 function buscarNombrePorEmail_(email, programa) {
-  const emailNorm = String(email || '').toLowerCase().trim();
-  if (!emailNorm) return '';
-  const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0] || [];
-  let emailCol = -1, nombreCol = -1;
-  for (let j = 0; j < headers.length; j++) {
-    const h = String(headers[j]).toLowerCase().trim();
-    if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
-    if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
-  }
-  if (emailCol < 0 || nombreCol < 0) return '';
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) return String(data[i][nombreCol] || '').trim();
+  try {
+    const emailNorm = String(email || '').toLowerCase().trim();
+    if (!emailNorm) return '';
+    const sheet = SpreadsheetApp.openById(resolverSheets_(programa).sheetId).getSheets()[0];
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0] || [];
+    let emailCol = -1, nombreCol = -1;
+    for (let j = 0; j < headers.length; j++) {
+      const h = String(headers[j]).toLowerCase().trim();
+      if (h === 'email' || h === 'correo' || h === 'correo electrónico' || h === 'correo electronico' || h === 'e-mail') emailCol = j;
+      if ((h === 'nombre' || h.includes('nombre')) && h.indexOf('acudiente') < 0 && nombreCol < 0) nombreCol = j;
+    }
+    if (emailCol < 0 || nombreCol < 0) return '';
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][emailCol] || '').toLowerCase().trim() === emailNorm) return String(data[i][nombreCol] || '').trim();
+    }
+  } catch (err) {
+    Logger.log('buscarNombrePorEmail_ error: ' + err);
   }
   return '';
 }
