@@ -1882,6 +1882,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">
           Asigna aquí la alianza (o "Precio base") de cada Jugador. Al confirmarla se dispara automáticamente el correo de aceptación al inscrito.
           A los Acompañantes también se les puede asignar alianza: pagan el precio especial de su habitación (columnas "Precio Acomp. …" de la hoja Alianzas) y no se les envía ningún correo.
+          Los precios (Estándar y de cada alianza), el tiquete, las fechas límite y los T&C se editan en el Sheet de Inscripciones de este programa: pestaña <strong>Alianzas</strong> (tablas ① datos generales, ② precios jugadores, ③ precios acompañantes) y pestaña <strong>T&amp;C</strong>. Los cambios se ven aquí en aprox. 1 minuto.
           Los jugadores ya inscritos <strong>antes</strong> de esta función y que quedan sin alianza asignada simplemente pagan el precio estándar — no hace falta revisarlos uno por uno.
         </p>
         <div style="overflow-x:auto">
@@ -2222,6 +2223,9 @@ let pagoCurrentTipo = '';
 let pagoCurrentParticipanteNorm = null; // participante normalizado del modal de Pagos abierto — usado para calcular el monto esperado al confirmar/registrar un pago
 let pagoCurrentTieneTiquete = true;
 let habitacion = '';
+// Participante cargado en pantalla (normalizado) — lo usan los T&C y las
+// fechas límite para aplicar las condiciones de su alianza.
+let participanteActual = null;
 let fotosLoaded = false;
 let saberLoaded = false;
 let comunLoaded = false;
@@ -2237,6 +2241,86 @@ function escapeHtml(s) {
 }
 
 /** Normaliza nombres de campo para comparar claves de Sheets/Make (tildes, espacios, /, guiones). */
+function numONull_(v) {
+  if (v === '' || v == null) return null;
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+// ── CONFIG DEL PROGRAMA (pestañas "Alianzas" y "T&C" del Sheet) ───────────
+// Precios Estándar, alianzas y T&C de cada programa, leídos del backend
+// (?action=config_programa). Al llegar, los precios/tiquete/fechas Estándar
+// reemplazan los valores por defecto de programas.js para ese programa.
+const CONFIG_PROG = {};
+const _configProgPromesas = {};
+
+function aplicarConfigPrograma_(cfg) {
+  if (!cfg || !cfg.programa) return;
+  CONFIG_PROG[cfg.programa] = cfg;
+  const prog = getPrograma(cfg.programa);
+  if (!prog || prog.key !== cfg.programa) return;
+  const est = cfg.estandar || {};
+  if (est.precios) {
+    Object.keys(est.precios).forEach(k => {
+      const v = est.precios[k];
+      if (v && v.reserva != null && v.final != null) prog.precios[k] = { reserva: Number(v.reserva) || 0, final: Number(v.final) || 0 };
+    });
+  }
+  if (Number(est.tiqueteEur) > 0) prog.tiqueteEur = Number(est.tiqueteEur);
+  // Fechas por defecto del programa = las de jugadores (tabla ②, fila Estándar).
+  const fj = fechasConfig_(est, null, true);
+  prog.fechasLimite = Object.assign({}, prog.fechasLimite, {
+    reserva: fj.reserva || prog.fechasLimite.reserva,
+    tiquete: fj.tiquete || prog.fechasLimite.tiquete,
+    final: fj.final || prog.fechasLimite.final
+  });
+}
+
+// Fechas (texto) de Reserva/Tiquete/Pago Final según la config: alianza →
+// Estándar del grupo (jugadores ② / acompañantes ③) → Estándar de jugadores.
+// Misma regla que fechasLimiteGS_ en el backend. '' = sin dato.
+function fechasConfig_(estandar, alianza, esJugador) {
+  const g = esJugador ? 'jugador' : 'acomp';
+  const de = (obj, grupo, c) => (obj && obj.fechas && obj.fechas[grupo] && obj.fechas[grupo][c] && obj.fechas[grupo][c].texto) || '';
+  const out = {};
+  ['reserva', 'final'].forEach(c => {
+    out[c] = de(alianza, g, c) || de(estandar, g, c) || de(estandar, 'jugador', c);
+  });
+  out.tiquete = (alianza && alianza.fechas && alianza.fechas.tiquete && alianza.fechas.tiquete.texto)
+    || (estandar && estandar.fechas && estandar.fechas.tiquete && estandar.fechas.tiquete.texto) || '';
+  return out;
+}
+
+function cargarConfigPrograma_(key, forzar) {
+  if (!key) return Promise.resolve(null);
+  if (!forzar && _configProgPromesas[key]) return _configProgPromesas[key];
+  _configProgPromesas[key] = fetch(APPS_SCRIPT_URL + '?action=config_programa&programa=' + encodeURIComponent(key) + '&_t=' + Date.now(), { redirect: 'follow' })
+    .then(r => r.json())
+    .then(cfg => { aplicarConfigPrograma_(cfg); return cfg; })
+    .catch(() => { delete _configProgPromesas[key]; return null; });
+  return _configProgPromesas[key];
+}
+
+// Alianza activa por nombre en la config del programa, o null.
+function alianzaDeConfig_(progKey, nombre) {
+  const cfg = CONFIG_PROG[progKey];
+  if (!cfg || !nombre) return null;
+  const n = normFieldName(nombre);
+  return (cfg.alianzas || []).find(a => normFieldName(a.nombre) === n) || null;
+}
+
+// Vuelve a pintar lo que depende de la config (T&C, fechas, montos) cuando
+// llega del backend después de haber mostrado el área personal.
+function refrescarVistaConfig_() {
+  try {
+    const tcEl = document.getElementById('tc-text');
+    if (tcEl) tcEl.innerHTML = getTyC();
+    actualizarFechasLimitePorPrograma_();
+    applyPaymentTotals(calcPaymentTotals());
+    buildSteps();
+  } catch (e) {}
+}
+
 function normFieldName(s) {
   return String(s == null ? '' : s)
     .normalize('NFD')
@@ -2442,7 +2526,19 @@ function normalizeParticipant(raw) {
     // backend) — invalida el descuento de referido de arriba cuando está
     // presente. Mismo motivo de whitelist que referido_descuento_pct.
     alianza_nombre: rowVal(raw, 'alianza_nombre', 'Alianza', 'alianza') || '',
-    alianza_precio_total: parseFloat(rowVal(raw, 'alianza_precio_total')) || 0,
+    // Montos, tiquete y fechas que le tocan a esta persona según la pestaña
+    // "Alianzas" del Sheet de Inscripciones (fila Estándar o su alianza) —
+    // ver aplicarAlianzaAParticipante_ en el backend. null/'' = no vino del
+    // backend y se calcula aquí (montoReservaFinalParticipante_base_).
+    alianza_con_precio: rowVal(raw, 'alianza_con_precio') === '1' || rowVal(raw, 'alianza_con_precio') === 'true',
+    precio_reserva: numONull_(rowVal(raw, 'precio_reserva')),
+    precio_final: numONull_(rowVal(raw, 'precio_final')),
+    // Ojo: NO llamarlo precio_tiquete_eur — chocaría con la columna manual
+    // "Precio Tiquete EUR" (precio_tiquete_manual, arriba).
+    tiquete_eur_efectivo: parseFloat(rowVal(raw, 'tiquete_eur_efectivo')) || 0,
+    fecha_limite_reserva: rowVal(raw, 'fecha_limite_reserva') || '',
+    fecha_limite_tiquete: rowVal(raw, 'fecha_limite_tiquete') || '',
+    fecha_limite_final: rowVal(raw, 'fecha_limite_final') || '',
     // Estado de revisión de documentos (ver revisarDocumento/leerMapaDocumentos_
     // en el backend) — sin estos en el whitelist, renderDocEstados() recibía
     // (a través de loadParticipant, que usa el participante ya NORMALIZADO de
@@ -2889,6 +2985,10 @@ async function doLogin() {
     // Challenge), mostrar los botones para cambiar entre sus áreas personales.
     // Cada programa se inscribe/paga por separado — ver activarPrograma().
     const programasPresentes = [...new Set(allParticipants.map(p => p.program_key || 'clinic'))];
+    // Precios/fechas Estándar y T&C de la hoja — al llegar se repinta la vista.
+    programasPresentes.forEach(k => cargarConfigPrograma_(k).then(cfg => {
+      if (cfg && k === programKeyActivo) refrescarVistaConfig_();
+    }));
     setupProgramaSwitcher(programasPresentes);
     // Abre primero el próximo programa del participante; si todos terminaron, el más reciente.
     const programaInicial = programaPreferido(programasPresentes);
@@ -3176,6 +3276,7 @@ function iniciarCountdownViaje() {
 // Los pasos y pagos son globales para el grupo y NO se tocan aquí.
 function loadParticipant(p) {
   const participant = normalizeParticipant(p) || p;
+  participanteActual = participant;
   nombre = participant.nombre || 'Participante';
   participantEmail = participant.email || '';
   tipo = (participant.tipo || 'Jugador').toLowerCase();
@@ -3433,7 +3534,28 @@ function tiqueteUnitEur_() {
 // PARTICIPANTE (grupo con precios mixtos).
 function tiqueteUnitEurParaParticipante_(p) {
   const override = parseFloat(p && p.precio_tiquete_manual);
-  return override > 0 ? override : tiqueteUnitEur_();
+  if (override > 0) return override;
+  const tiqAlianza = tiqueteAlianzaEur_(p);
+  if (tiqAlianza > 0) return tiqAlianza;
+  // Precio que calculó el backend con la pestaña Alianzas (fila Estándar).
+  const efectivo = parseFloat(p && p.tiquete_eur_efectivo) || 0;
+  if (efectivo > 0) return efectivo;
+  return tiqueteUnitEur_();
+}
+
+// Precio de tiquete de la alianza de la persona (columna "Tiquete aéreo (€)"
+// de la tabla ① en la pestaña Alianzas), o 0 si no tiene. Por debajo del
+// precio manual por persona (pestaña Tiquetes del panel).
+function tiqueteAlianzaEur_(p) {
+  if (!p) return 0;
+  const progKey = p.program_key || programKeyActivo;
+  const al = alianzaDeConfig_(progKey, p.alianza_nombre);
+  if (al && al.tiqueteEur > 0) return Number(al.tiqueteEur);
+  // Valor que mandó el backend (ya con alianza o Estándar): cuenta como de
+  // alianza solo si difiere del precio Estándar del programa.
+  const efectivo = parseFloat(p.tiquete_eur_efectivo) || 0;
+  const std = getPrograma(progKey).tiqueteEur;
+  return efectivo > 0 && efectivo !== std && tieneAlianzaReal_(p) ? efectivo : 0;
 }
 
 // Precio "representativo" para textos informativos que muestran UN solo
@@ -3444,11 +3566,18 @@ function tiqueteUnitEurParaParticipante_(p) {
 // (asumiendo el caso típico: un solo override a la vez dentro del grupo);
 // si nadie tiene override, se usa el precio de tabla de siempre.
 function precioTiqueteInfoEur_() {
+  // Primero el participante que se está viendo (su T&C es personal); si no
+  // tiene precio propio, alguien del grupo con override/alianza; si no, tabla.
+  const actual = participanteActual ? (normalizeParticipant(participanteActual) || participanteActual) : null;
+  if (actual && actual.tiquete_aereo === 'Con tiquete') {
+    const propio = tiqueteUnitEurParaParticipante_(actual);
+    if (propio !== tiqueteUnitEur_()) return propio;
+  }
   const conOverride = allParticipants
     .filter(p => (p.program_key || 'clinic') === programKeyActivo)
     .map(p => normalizeParticipant(p) || p)
-    .find(p => p.tiquete_aereo === 'Con tiquete' && p.precio_tiquete_manual > 0);
-  return conOverride ? conOverride.precio_tiquete_manual : tiqueteUnitEur_();
+    .find(p => p.tiquete_aereo === 'Con tiquete' && (p.precio_tiquete_manual > 0 || tiqueteAlianzaEur_(p) > 0));
+  return conOverride ? tiqueteUnitEurParaParticipante_(conOverride) : tiqueteUnitEur_();
 }
 
 // Monto de Reserva y Pago Final para UN participante, según su tipo/habitación
@@ -3462,64 +3591,87 @@ function programaParaMonto_(progKey, p) {
   if (typeof progKey === 'string' && progKey) return getPrograma(progKey);
   return getPrograma((p && p.program_key) || programKeyActivo);
 }
-function montoReservaFinalParticipante_base_(p, progKey) {
-  const prog = programaParaMonto_(progKey, p);
+// Paquete de precio (key de precios en programas.js / pestaña Alianzas).
+// Misma regla que paqueteGS_ en el backend.
+function paqueteFront_(p, prog) {
   const pr = prog.precios;
-  const m = (precio, sub) => ({ reserva: precio.reserva, final: precio.final, sub: sub });
-  const esJug = (p.tipo || '').toLowerCase().includes('jug');
-  const hab = (p.habitacion || '').toLowerCase();
-  if (prog.familia === 'world_challenge') {
-    if (esJug) return m(pr.jugador, 'Jugador');
-    if (hab === 'solo_world_challenge') return m(pr.acomp_solo_wc, 'Acompañante · Solo World Challenge');
-    if (hab === '' || hab === 'solo_actividades') return m(pr.acomp_actividades, 'Acompañante · Solo actividades');
-    if (hab.includes('doble')) return m(pr.acomp_doble, 'Acompañante · hab. doble');
-    return m(pr.acomp_sencilla, 'Acompañante · hab. sencilla');
+  const esJug = (p.tipo || "").toLowerCase().includes("jug");
+  const hab = (p.habitacion || "").toLowerCase();
+  if (esJug) return "jugador";
+  if (hab.includes("triple")) return "acomp_triple";
+  if (prog.familia === "world_challenge") {
+    if (hab === "solo_world_challenge") return "acomp_solo_wc";
+    if (hab === "" || hab === "solo_actividades") return "acomp_actividades";
+    return hab.includes("doble") ? "acomp_doble" : "acomp_sencilla";
   }
-  // Familia Clinic
-  if (esJug) return m(pr.jugador, 'Jugador');
-  if (hab === '') {
-    const fObj = parseFechaNacFront(p.fecha_nacimiento || '');
+  if (hab === "") {
+    const fObj = parseFechaNacFront(p.fecha_nacimiento || "");
     const edad = fObj ? calcEdadRefFront(fObj, prog.key) : null;
-    const precioAct = (edad !== null && edad <= 12 && pr.acomp_actividades_menor12) ? pr.acomp_actividades_menor12 : pr.acomp_actividades;
-    return m(precioAct, 'Acompañante · Solo actividades');
+    return (edad !== null && edad <= 12 && pr.acomp_actividades_menor12) ? "acomp_actividades_menor12" : "acomp_actividades";
   }
-  if (hab.includes('doble')) return m(pr.acomp_doble, 'Acompañante · hab. doble');
-  return m(pr.acomp_sencilla, 'Acompañante · hab. sencilla');
+  return hab.includes("doble") ? "acomp_doble" : "acomp_sencilla";
 }
 
-// Programa de Referidos: envuelve montoReservaFinalParticipante_base_ (sin
-// tocar su lógica) para restar el 3% de descuento del Pago Final — SOLO
-// cuando el participante es Jugador. Los Acompañantes no participan del
-// programa de referidos en absoluto (ya no pueden ni registrar un código en
-// inscripcion.html — ver comentario junto a codigoPromoValidado ahí), así
-// que esta rama nunca debería activarse para ellos; el guard esJug queda de
-// todos modos como protección ante datos históricos/edición manual.
-// precioBase debe coincidir con el hardcodeado en
-// procesarReferidoExitoso_ (APPS_SCRIPT_CODE.gs) — actualizar ambos si el
-// precio del programa cambia. Como todos los call-sites de
-// montoReservaFinalParticipante_ pasan por aquí, quedan cubiertos
-// automáticamente (login normal y panel admin) sin tocarlos uno por uno.
-function montoReservaFinalParticipante_(p, progKey) {
-  const m = montoReservaFinalParticipante_base_(p, progKey);
-  const esJug = (p.tipo || '').toLowerCase().includes('jug');
-  // Alianza/promoción: precio total fijo acordado (catálogo "Alianzas" en el
-  // Sheet de Inscripciones, ver alianzaPorNombre_ en el backend). Aplica a
-  // Jugadores ("Precio Total") y Acompañantes (columna "Precio Acomp. …" de
-  // su habitación — el backend ya manda en alianza_precio_total el precio
-  // que le toca a esta persona). Reemplaza el Pago Final calculado arriba y
-  // es EXCLUYENTE con el descuento de referido de abajo.
-  const precioAlianza = parseFloat(p.alianza_precio_total) || 0;
-  if (precioAlianza > 0) {
-    if (precioAlianza <= m.reserva) {
-      // Paquetes de pago único (Solo Actividades / Solo WC) o precio menor
-      // que la reserva: todo se paga en la reserva, sin Pago Final.
-      m.reserva = precioAlianza;
-      m.final = 0;
-    } else {
-      m.final = Math.round((precioAlianza - m.reserva) * 100) / 100;
-    }
-    return m;
+const SUB_PAQUETE_ = {
+  jugador: "Jugador",
+  acomp_solo_wc: "Acompañante · Solo World Challenge",
+  acomp_actividades: "Acompañante · Solo actividades",
+  acomp_actividades_menor12: "Acompañante · Solo actividades",
+  acomp_doble: "Acompañante · hab. doble",
+  acomp_sencilla: "Acompañante · hab. sencilla",
+  acomp_triple: "Acompañante · hab. triple (3.ª persona)"
+};
+
+// Triple sin precio (ni Estándar ni alianza) → se cobra como Doble.
+// Misma regla que paqueteConPrecio_ en el backend.
+function paqueteConPrecioFront_(paq, prog, al) {
+  if (paq !== "acomp_triple") return paq;
+  const tieneStd = !!(prog.precios && prog.precios.acomp_triple);
+  const tieneAl = !!(al && al.precios && al.precios.acomp_triple);
+  return tieneStd || tieneAl ? paq : "acomp_doble";
+}
+
+// Reserva y Pago Final de UN participante, YA con su alianza (sin descuento
+// de referido). Fuente, en orden:
+//   1. precio_reserva/precio_final que manda el backend (pestaña Alianzas del
+//      Sheet de Inscripciones: fila Estándar o la de su alianza);
+//   2. si no vinieron (ej. el admin acaba de asignar la alianza), se calcula
+//      con la config del programa (CONFIG_PROG) — celda vacía = Estándar;
+//   3. sin config, los valores por defecto de programas.js.
+function montoReservaFinalParticipante_base_(p, progKey) {
+  const prog = programaParaMonto_(progKey, p);
+  const al = alianzaDeConfig_(prog.key, p.alianza_nombre);
+  const paq = paqueteConPrecioFront_(paqueteFront_(p, prog), prog, al);
+  const sub = SUB_PAQUETE_[paqueteFront_(p, prog)] || SUB_PAQUETE_[paq] || "";
+  if (p.precio_reserva != null && p.precio_final != null && p.precio_reserva !== "" && p.precio_final !== "") {
+    return { reserva: Number(p.precio_reserva) || 0, final: Number(p.precio_final) || 0, sub: sub };
   }
+  const std = prog.precios[paq] || { reserva: 0, final: 0 };
+  const ap = al && al.precios ? al.precios[paq] : null;
+  return {
+    reserva: ap && ap.reserva != null ? ap.reserva : std.reserva,
+    final: ap && ap.final != null ? ap.final : std.final,
+    sub: sub
+  };
+}
+
+// ¿Su alianza le cambia algún monto? (entonces NO aplica descuento de referido)
+function tieneAlianzaConPrecio_(p) {
+  if (p.alianza_con_precio === true || p.alianza_con_precio === "1") return true;
+  if (p.precio_reserva != null && p.precio_reserva !== "") return false; // el backend ya dijo que no
+  const prog = programaParaMonto_(null, p);
+  const al = alianzaDeConfig_(prog.key, p.alianza_nombre);
+  const ap = al && al.precios ? al.precios[paqueteConPrecioFront_(paqueteFront_(p, prog), prog, al)] : null;
+  return !!(ap && (ap.reserva != null || ap.final != null));
+}
+
+// Programa de Referidos: resta el 3% del Pago Final — SOLO Jugadores y solo
+// si su alianza no le fija precio (son excluyentes). precioBase debe
+// coincidir con el de procesarReferidoExitoso_ (APPS_SCRIPT_CODE.gs).
+function montoReservaFinalParticipante_(p, progKey) {
+  const esJug = (p.tipo || "").toLowerCase().includes("jug");
+  const m = montoReservaFinalParticipante_base_(p, progKey);
+  if (tieneAlianzaConPrecio_(p)) return m;
   const descuentoPct = esJug ? (parseFloat(p.referido_descuento_pct) || 0) : 0;
   if (descuentoPct > 0 && m.final > 0) {
     const precioBase = programaParaMonto_(progKey, p).precioBaseReferido;
@@ -3529,14 +3681,39 @@ function montoReservaFinalParticipante_(p, progKey) {
   return m;
 }
 
-// Fechas límite de pago y texto de mecánica de tasa — World Challenge usa
-// tasa del día (no una TRM fija) en los tres pagos, así que el texto
-// explicativo también cambia, no solo la fecha. Se llama desde
-// activarPrograma() cada vez que se carga o cambia de programa.
+// ¿Tiene una alianza real asignada (no vacía ni "Precio base")?
+function tieneAlianzaReal_(n) {
+  return !!(n && n.alianza_nombre && n.alianza_nombre !== "Precio base (sin alianza)");
+}
+
+// Fechas límite del participante en pantalla: las suyas (vienen del backend,
+// ya con su alianza o la fila Estándar de su tabla).
+function fechasLimiteActivas_() {
+  const prog = getPrograma(programKeyActivo);
+  const base = Object.assign({}, prog.fechasLimite);
+  const grupo = allParticipants
+    .filter(p => (p.program_key || "clinic") === programKeyActivo)
+    .map(p => normalizeParticipant(p) || p);
+  const actual = participanteActual ? (normalizeParticipant(participanteActual) || participanteActual) : null;
+  // Cada persona ve sus propias fechas (jugadores y acompañantes pueden
+  // tener fechas distintas, tablas ② y ③ de la pestaña Alianzas).
+  const fuente = actual || grupo.find(n => (n.tipo || "").toLowerCase().includes("jug")) || grupo[0];
+  if (!fuente) return base;
+  const cfg = CONFIG_PROG[prog.key];
+  const al = alianzaDeConfig_(prog.key, fuente.alianza_nombre);
+  const esJugFuente = (fuente.tipo || "").toLowerCase().includes("jug");
+  const deConfig = cfg ? fechasConfig_(cfg.estandar, al, esJugFuente) : {};
+  ["reserva", "tiquete", "final"].forEach(c => {
+    const v = fuente["fecha_limite_" + c] || deConfig[c] || "";
+    if (v) base[c] = v;
+  });
+  return base;
+}
+
 function actualizarFechasLimitePorPrograma_() {
   const prog = getPrograma(programKeyActivo);
   const esWC = prog.familia === 'world_challenge';
-  const fechas = prog.fechasLimite;
+  const fechas = fechasLimiteActivas_();
   // Excepción puntual (ver EMAILS_TASA_VIVA_EXCEPCION) — para estos 3
   // participantes de Clinic, los textos de "tasa fija al 1 de junio" deben
   // hablar de tasa del día como World Challenge, para no contradecir el
@@ -3990,14 +4167,124 @@ setInterval(() => {
 }, 60 * 1000);
 
 // ── T&C ──────────────────────────────────────────────────────────────────────
+// Monto (reserva/final) que le toca al participante en pantalla (con su
+// alianza o la fila Estándar), o null si no hay participante cargado.
+function montoAlianzaTyC_() {
+  const act = participanteActual ? (normalizeParticipant(participanteActual) || participanteActual) : null;
+  return act ? montoReservaFinalParticipante_base_(act, programKeyActivo) : null;
+}
+
+// T&C: si la pestaña "T&C" del Sheet de Inscripciones tiene filas, el texto
+// sale de ahí (renderTyCDesdeSheet_). Si no (o aún no cargó), se usa el texto
+// de respaldo escrito en el código (getTyCBase_).
 function getTyC() {
+  const cfg = CONFIG_PROG[programKeyActivo];
+  if (cfg && Array.isArray(cfg.tyc) && cfg.tyc.length) {
+    try { return renderTyCDesdeSheet_(cfg); } catch (e) { /* respaldo abajo */ }
+  }
+  return getTyCBase_();
+}
+
+// Categoría de T&C del participante (columna "Aplica a").
+function categoriaTyc_(n, prog) {
+  const t = (n.tipo || tipo || "").toLowerCase();
+  if (t.includes("jug")) return "jugador";
+  const hab = (n.habitacion || "").toLowerCase();
+  if (prog.familia === "world_challenge" && hab === "solo_world_challenge") return "acomp_solo_wc";
+  if (hab === "" || hab === "solo_actividades") return "acomp_solo_actividades";
+  return "acomp_alojamiento";
+}
+
+function tycAplica_(aplica, cat) {
+  return String(aplica || "Todos").split(",").some(a => {
+    const k = normFieldName(a);
+    if (!k || k === "todos") return true;
+    if (k === "jugador" || k === "jugadores") return cat === "jugador";
+    if (k === "acompanante" || k === "acompanantes") return cat !== "jugador";
+    if (k === "acompanante_con_alojamiento") return cat === "acomp_alojamiento";
+    if (k === "acompanante_sin_alojamiento") return cat === "acomp_solo_actividades" || cat === "acomp_solo_wc";
+    if (k === "acompanante_solo_actividades") return cat === "acomp_solo_actividades";
+    if (k === "acompanante_solo_world_challenge") return cat === "acomp_solo_wc";
+    return false;
+  });
+}
+
+// Texto de una sección → HTML. Líneas "- x" son viñetas, **x** negrita,
+// [con tiquete] / [sin tiquete] al inicio filtran la línea, {var} se
+// reemplaza por el dato del participante.
+function tycTextoAHtml_(texto, vars, conTiquete) {
+  const out = [];
+  let lista = [];
+  const cerrarLista = () => { if (lista.length) { out.push("<ul>" + lista.join("") + "</ul>"); lista = []; } };
+  String(texto || "").split(/\r?\n/).forEach(linea => {
+    let l = linea.trim();
+    if (!l) { cerrarLista(); return; }
+    const tag = l.match(/^\[(con|sin) tiquete\]\s*/i);
+    if (tag) {
+      if ((tag[1].toLowerCase() === "con") !== !!conTiquete) return;
+      l = l.slice(tag[0].length);
+    }
+    let html = escapeHtml(l).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? escapeHtml(String(vars[k])) : m));
+    html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    if (/^[-•]\s+/.test(l)) lista.push("<li>" + html.replace(/^[-•]\s+/, "") + "</li>");
+    else { cerrarLista(); out.push("<p>" + html + "</p>"); }
+  });
+  cerrarLista();
+  return out.join("\n");
+}
+
+function renderTyCDesdeSheet_(cfg) {
+  const prog = getPrograma(programKeyActivo);
+  const act = participanteActual ? (normalizeParticipant(participanteActual) || participanteActual) : { tipo: tipo, habitacion: habitacion };
+  const cat = categoriaTyc_(act, prog);
+  const alianzaNorm = tieneAlianzaReal_(act) ? normFieldName(act.alianza_nombre) : "";
+  const m = montoReservaFinalParticipante_base_(act, programKeyActivo);
+  const tiq = precioTiqueteInfoEur_();
+  const fl = fechasLimiteActivas_();
+  const fmt = v => Number(v || 0).toLocaleString("es-CO");
+  const total = (m.reserva || 0) + (m.final || 0);
+  const hab = (act.habitacion || habitacion || "").toLowerCase();
+  const vars = {
+    reserva: fmt(m.reserva), pago_final: fmt(m.final), total: fmt(total),
+    tiquete: fmt(tiq), total_con_tiquete: fmt(total + tiq),
+    fecha_reserva: fl.reserva, fecha_tiquete: fl.tiquete, fecha_final: fl.final,
+    habitacion: hab.includes("triple") ? "triple" : hab.includes("doble") ? "doble" : "sencilla",
+    programa: prog.nombre, alianza: alianzaNorm ? act.alianza_nombre : ""
+  };
+
+  // Filas que le aplican: estándar (sin alianza) + las de su alianza. Una fila
+  // de alianza con el mismo título que una estándar la REEMPLAZA.
+  const filas = cfg.tyc.map((r, i) => Object.assign({ _i: i }, r)).filter(r => tycAplica_(r.aplica, cat));
+  const estandar = filas.filter(r => !r.alianza);
+  const deAlianza = alianzaNorm ? filas.filter(r => normFieldName(r.alianza) === alianzaNorm) : [];
+  const titulosAlianza = new Set(deAlianza.map(r => normFieldName(r.seccion)));
+  const usadas = estandar.filter(r => !titulosAlianza.has(normFieldName(r.seccion))).concat(deAlianza.filter(r => r.texto));
+  usadas.sort((a, b) => (a.orden - b.orden) || (a._i - b._i));
+
+  // Agrupar por sección (varias filas con el mismo título se juntan)
+  const secciones = [];
+  usadas.forEach(r => {
+    const k = normFieldName(r.seccion);
+    let s = secciones.find(x => x.k === k);
+    if (!s) { s = { k: k, titulo: r.seccion, partes: [] }; secciones.push(s); }
+    s.partes.push(tycTextoAHtml_(r.texto, vars, conTiq));
+  });
+  return secciones
+    .map(s => ({ titulo: s.titulo, html: s.partes.filter(Boolean).join("\n") }))
+    .filter(s => s.html)
+    .map((s, i) => "<h3>" + (i + 1) + ". " + escapeHtml(s.titulo) + "</h3>\n" + s.html)
+    .join("\n");
+}
+
+function getTyCBase_() {
   const tipoCurrent = (tipo || 'jugador').toLowerCase();
   if (esWCKey(programKeyActivo)) return getTyCWorldChallenge_(tipoCurrent);
   const progTyC = getPrograma(programKeyActivo);
   const fmtE = v => Number(v).toLocaleString('es-CO');
-  const pJug = progTyC.precios.jugador;
-  const pAcomp = habitacion === 'doble' ? progTyC.precios.acomp_doble : progTyC.precios.acomp_sencilla;
-  const fl = progTyC.fechasLimite;
+  const mAl = montoAlianzaTyC_();
+  const pJug = mAl || progTyC.precios.jugador;
+  const pAcomp = mAl || (habitacion === 'doble' ? progTyC.precios.acomp_doble : progTyC.precios.acomp_sencilla);
+  const fl = fechasLimiteActivas_();
   // Bug histórico: comparaba `programa` (texto libre, ej. "Real Madrid
   // Foundation Clinic") contra 'solo_actividades', que en realidad es un
   // valor posible de `habitacion` — nunca coincidían, así que esta rama
@@ -4108,8 +4395,16 @@ function getTyCWorldChallenge_(tipoCurrent) {
   const esSoloAct = !esJug && (habNorm === '' || habNorm === 'solo_actividades');
   const pagoUnico = esSoloAct || esSoloWC;
   const progWC = getPrograma(programKeyActivo);
-  const PRECIOS_WC = progWC.precios;
-  const fReserva = progWC.fechasLimite.reserva, fFinal = progWC.fechasLimite.final;
+  // Con alianza, el precio de la persona en pantalla reemplaza al de tabla
+  // en la rama que le corresponde (jugador / pago único / doble / sencilla).
+  const mAl = montoAlianzaTyC_();
+  const PRECIOS_WC = mAl ? {
+    jugador: mAl, acomp_doble: mAl, acomp_sencilla: mAl,
+    acomp_solo_wc: { reserva: mAl.reserva + mAl.final, final: 0 },
+    acomp_actividades: { reserva: mAl.reserva + mAl.final, final: 0 }
+  } : progWC.precios;
+  const flWC = fechasLimiteActivas_();
+  const fReserva = flWC.reserva, fFinal = flWC.final, fTiquete = flWC.tiquete;
 
   let servicios;
   if (esJug) {
@@ -4157,7 +4452,7 @@ function getTyCWorldChallenge_(tipoCurrent) {
 <ul>
   <li>Costo total por participante: <strong>${p.reserva + p.final} EUR</strong>${conTiq ? ` (programa) + <strong>${precioTiquete} EUR</strong> (tiquete aéreo) = <strong>${p.reserva + p.final + precioTiquete} EUR</strong>` : ` (el tiquete aéreo no está incluido; valor referencial: ${precioTiquete} EUR)`}</li>
   <li>Reserva: <strong>${p.reserva} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>
-  ${conTiq ? `<li>Tiquete aéreo: <strong>${precioTiquete} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
+  ${conTiq ? `<li>Tiquete aéreo: <strong>${precioTiquete} EUR</strong> — fecha límite <strong>${fTiquete}</strong></li>` : ''}
   <li>Pago final: <strong>${p.final} EUR</strong> — fecha límite <strong>${fFinal}</strong></li>
   <li>El pago se realizará en pesos colombianos (COP) según la tasa oficial del día de la transferencia bancaria</li>
   ${datosBancarios}
@@ -4178,7 +4473,7 @@ function getTyCWorldChallenge_(tipoCurrent) {
 <ul>
   <li>Total del programa: <strong>${total} EUR</strong></li>
   <li>Reserva: <strong>${p.reserva} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>
-  ${conTiq ? `<li>Tiquete aéreo: <strong>${precioTiquete} EUR</strong> — fecha límite <strong>${fReserva}</strong></li>` : ''}
+  ${conTiq ? `<li>Tiquete aéreo: <strong>${precioTiquete} EUR</strong> — fecha límite <strong>${fTiquete}</strong></li>` : ''}
   <li>Pago final: <strong>${p.final} EUR</strong> — fecha límite <strong>${fFinal}</strong></li>
   <li>El pago se efectuará en COP o euros por transferencia</li>
   ${datosBancarios}
@@ -6402,6 +6697,8 @@ function montoEsperadoEur_(tipo, n) {
   if (tipo === 'Tiquete') {
     if (n.tiquete_aereo !== 'Con tiquete') return 0;
     if (n.precio_tiquete_manual > 0) return n.precio_tiquete_manual;
+    if (tiqueteAlianzaEur_(n) > 0) return tiqueteAlianzaEur_(n);
+    if (n.tiquete_eur_efectivo > 0) return n.tiquete_eur_efectivo;
     return getPrograma(progKeyN).tiqueteEur;
   }
   if (tipo === 'Pago Final') return montoReservaFinalParticipante_(n, progKeyN).final;
@@ -7535,38 +7832,38 @@ const ALIANZA_SIN_ALIANZA = 'Precio base (sin alianza)';
 let adminAlianzasCatalogo = [];
 let adminAlianzasOptions = [''];
 async function cargarAlianzasCatalogo() {
-  try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=listar_alianzas&programa=' + encodeURIComponent(adminProgramaActivo) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json());
-    adminAlianzasCatalogo = Array.isArray(res) ? res : [];
-  } catch (err) {
-    adminAlianzasCatalogo = [];
-  }
+  // Config completa del programa (Estándar + alianzas + T&C) de las pestañas
+  // "Alianzas" y "T&C" del Sheet de Inscripciones.
+  const cfg = await cargarConfigPrograma_(adminProgramaActivo, true);
+  adminAlianzasCatalogo = cfg && Array.isArray(cfg.alianzas) ? cfg.alianzas : [];
   adminAlianzasOptions.length = 0;
   adminAlianzasOptions.push('', ALIANZA_SIN_ALIANZA, ...adminAlianzasCatalogo.map(a => a.nombre));
   if (typeof renderAdminAlianzasTab === 'function') renderAdminAlianzasTab();
+  if (typeof renderAdminTiquetesTab === 'function') renderAdminTiquetesTab();
 }
 
-// Precio total de alianza para UN participante ya normalizado — misma
-// lógica que precioAlianzaParaParticipante_ del backend (mantener ambas
-// iguales). info = entrada del catálogo (adminAlianzasCatalogo). 0 = paga
-// el precio estándar.
-function precioAlianzaParaParticipante_(info, n) {
-  if (!info) return 0;
-  if ((n.tipo || '').toLowerCase().includes('jug')) return info.precioTotal || 0;
-  const pa = info.preciosAcomp || {};
-  const hab = (n.habitacion || '').toLowerCase().trim();
-  if (hab === 'solo_world_challenge') return pa.solo_wc || 0;
-  if (hab === '' || hab === 'solo_actividades') return pa.actividades || 0;
-  if (hab.includes('doble')) return pa.doble || 0;
-  return pa.sencilla || 0;
+// Tras asignar una alianza en el panel: borra los montos/fechas que había
+// calculado el backend para que montoReservaFinalParticipante_base_ y
+// fechasLimiteActivas_ los recalculen con la config (CONFIG_PROG) y la
+// nueva alianza — sin recargar todo el panel.
+function aplicarAlianzaFront_(row, info) {
+  row.alianza_nombre = info ? info.nombre : '';
+  row.precio_reserva = '';
+  row.precio_final = '';
+  row.tiquete_eur_efectivo = '';
+  row.fecha_limite_reserva = '';
+  row.fecha_limite_tiquete = '';
+  row.fecha_limite_final = '';
+  row.alianza_con_precio = '';
+  const n = normalizeParticipant(row) || {};
+  row.alianza_con_precio = tieneAlianzaConPrecio_(n) ? '1' : '';
 }
 
 // ── PESTAÑA "ALIANZAS" ──────────────────────────────────────────────────────
 // Tabla independiente (fuera del modal de edición general) donde el admin
 // asigna la alianza de cada Jugador y Acompañante. Un Jugador ya inscrito
 // antes de esta función, sin alianza asignada, sigue pagando el precio
-// estándar automáticamente (montoReservaFinalParticipante_ solo aplica el
-// precio de alianza cuando alianza_precio_total > 0) — no es obligatorio
+// estándar automáticamente (fila "Estándar" de la pestaña Alianzas) — no es obligatorio
 // revisarlo aquí. Los Acompañantes nunca cuentan como "pendientes": sin
 // alianza simplemente pagan el precio estándar, y asignársela no envía
 // ningún correo (ya recibieron la aceptación al inscribirse).
@@ -7618,7 +7915,7 @@ function renderAdminAlianzasTab() {
       <td>${colegioOAcomp}</td>
       <td>${escapeHtml(n.email || '')}</td>
       <td><select id="al-sel-${idx}" data-prev="${escapeHtml(actual)}" onchange="onCambioAlianzaSelect_(${idx})" style="width:100%;min-width:170px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fff">${opts}</select></td>
-      <td id="al-estado-${idx}" style="font-size:12px">${estadoAlianzaHtml_(actual, esJug, row.alianza_precio_total)}</td>
+      <td id="al-estado-${idx}" style="font-size:12px">${estadoAlianzaHtml_(actual, esJug, n)}</td>
     </tr>`;
   }).join('');
 }
@@ -7626,16 +7923,23 @@ function renderAdminAlianzasTab() {
 // esJug=false: un Acompañante sin alianza no está "pendiente", paga el
 // estándar. Con alianza pero sin precio en su columna "Precio Acomp. …"
 // también paga el estándar — se avisa para que el admin lo note.
-function estadoAlianzaHtml_(nombreAlianza, esJug = true, precioAlianza = '') {
+function estadoAlianzaHtml_(nombreAlianza, esJug = true, n = null) {
   if (!nombreAlianza) {
     return esJug
       ? '<span style="color:#ea580c">Pendiente</span>'
       : '<span style="color:var(--muted)">Precio estándar</span>';
   }
-  if (!esJug && nombreAlianza !== ALIANZA_SIN_ALIANZA && !(parseFloat(precioAlianza) > 0)) {
-    return `<span style="color:#ea580c">${escapeHtml(nombreAlianza)} · sin precio para esta habitación (paga estándar)</span>`;
+  // Monto que le queda (reserva + pago final) para que el admin lo vea al asignar.
+  let montoTxt = '';
+  if (n && n.tipo) {
+    const m = montoReservaFinalParticipante_base_(n, n.program_key || adminProgramaActivo);
+    const fmt = v => Number(v || 0).toLocaleString('es-CO');
+    montoTxt = '<div style="color:var(--muted);font-size:11px">Reserva ' + fmt(m.reserva) + ' € + Final ' + fmt(m.final) + ' € = ' + fmt((m.reserva || 0) + (m.final || 0)) + ' €</div>';
   }
-  return `<span style="color:var(--green)">✓ ${escapeHtml(nombreAlianza)}</span>`;
+  if (nombreAlianza !== ALIANZA_SIN_ALIANZA && n && n.tipo && !tieneAlianzaConPrecio_(n)) {
+    return '<span style="color:#ea580c">' + escapeHtml(nombreAlianza) + ' · sin precio especial para ' + (esJug ? 'jugadores' : 'esta habitación') + ' (paga estándar)</span>' + montoTxt;
+  }
+  return '<span style="color:var(--green)">✓ ' + escapeHtml(nombreAlianza) + '</span>' + montoTxt;
 }
 
 // Cambiar el desplegable NO guarda de inmediato — primero pide confirmación
@@ -7708,11 +8012,10 @@ function guardarAlianzaFila_(idx) {
       if (res.ok) {
         row['Alianza'] = nuevaAlianza;
         const info = adminAlianzasCatalogo.find(a => a.nombre === nuevaAlianza);
+        aplicarAlianzaFront_(row, info);
         row.alianza_nombre = info ? info.nombre : (nuevaAlianza || '');
-        const precioFila = precioAlianzaParaParticipante_(info, normalizeParticipant(row) || {});
-        row.alianza_precio_total = precioFila > 0 ? String(precioFila) : '';
         sel.dataset.prev = nuevaAlianza;
-        if (estadoEl) estadoEl.innerHTML = estadoAlianzaHtml_(row.alianza_nombre, ((normalizeParticipant(row) || {}).tipo || '').toLowerCase().includes('jug'), row.alianza_precio_total);
+        if (estadoEl) estadoEl.innerHTML = estadoAlianzaHtml_(row.alianza_nombre, ((normalizeParticipant(row) || {}).tipo || '').toLowerCase().includes('jug'), normalizeParticipant(row) || {});
         renderParticipantesKPIs(adminData);
         if (typeof filterAdminTable === 'function') filterAdminTable();
         if ((document.getElementById('alianzas-solo-pendientes') || {}).checked) renderAdminAlianzasTab();
@@ -7762,12 +8065,15 @@ function renderAdminTiquetesTab() {
   }
   tbody.innerHTML = filas.map(({ idx, n }) => {
     const manual = n.precio_tiquete_manual > 0 ? n.precio_tiquete_manual : '';
-    const efectivo = n.precio_tiquete_manual > 0 ? n.precio_tiquete_manual : precioGlobal;
+    const tiqAl = tiqueteAlianzaEur_(n);
+    const deAlianza = manual === '' && tiqAl > 0;
+    const efectivo = manual !== '' ? manual : (deAlianza ? tiqAl : precioGlobal);
+    const etiqueta = manual !== '' ? '' : (deAlianza ? `(alianza ${escapeHtml(n.alianza_nombre || '')})` : '(global)');
     return `<tr>
       <td>${escapeHtml(n.nombre || '')}</td>
       <td>${escapeHtml(n.tipo || '')}</td>
       <td>${escapeHtml(n.email || '')}</td>
-      <td id="tiq-efectivo-${idx}">${efectivo} EUR${manual === '' ? ' <span style="color:var(--muted);font-size:11px">(global)</span>' : ''}</td>
+      <td id="tiq-efectivo-${idx}">${efectivo} EUR${etiqueta ? ` <span style="color:var(--muted);font-size:11px">${etiqueta}</span>` : ''}</td>
       <td><input type="number" id="tiq-precio-${idx}" data-prev="${manual}" value="${manual}" placeholder="${precioGlobal}" style="width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px" onkeydown="if(event.key==='Enter') guardarPrecioTiqueteFila_(${idx})"></td>
       <td id="tiq-estado-${idx}" style="font-size:12px">${botonGuardarTiqueteHtml_(idx)}</td>
     </tr>`;
@@ -7807,8 +8113,12 @@ function guardarPrecioTiqueteFila_(idx) {
         row['Precio Tiquete EUR'] = valor > 0 ? String(valor) : '';
         input.dataset.prev = valor > 0 ? String(valor) : '';
         const precioGlobal = getPrograma(adminProgramaActivo).tiqueteEur;
-        const efectivo = valor > 0 ? valor : precioGlobal;
-        if (efectivoEl) efectivoEl.innerHTML = `${efectivo} EUR${valor > 0 ? '' : ' <span style="color:var(--muted);font-size:11px">(global)</span>'}`;
+        const nTiq = normalizeParticipant(row) || {};
+        const tiqAl = tiqueteAlianzaEur_(nTiq);
+        const deAlianza = !(valor > 0) && tiqAl > 0;
+        const efectivo = valor > 0 ? valor : (deAlianza ? tiqAl : precioGlobal);
+        const etiqueta = valor > 0 ? '' : (deAlianza ? `(alianza ${escapeHtml(nTiq.alianza_nombre || '')})` : '(global)');
+        if (efectivoEl) efectivoEl.innerHTML = `${efectivo} EUR${etiqueta ? ` <span style="color:var(--muted);font-size:11px">${etiqueta}</span>` : ''}`;
         if (estadoEl) {
           estadoEl.innerHTML = '<span style="color:var(--green)">&#10003; Guardado</span>';
           setTimeout(() => { if (document.getElementById('tiq-estado-' + idx) === estadoEl) estadoEl.innerHTML = botonGuardarTiqueteHtml_(idx); }, 2000);
@@ -7840,7 +8150,8 @@ function aplicarPrecioTiqueteBulk_(sobrescribirTodos) {
     .filter(({ n }) => n.tiquete_aereo === 'Con tiquete')
     .filter(({ n }) => (n.program_key || 'clinic') === adminProgramaActivo)
     .filter(({ n }) => !q || (tipoKeyBulk ? (n.tipo || '').toLowerCase().includes(tipoKeyBulk) : (normNombre(n.nombre || '').includes(q) || normNombre(n.email || '').includes(q))))
-    .filter(({ n }) => sobrescribirTodos || !(n.precio_tiquete_manual > 0));
+    // Sin "sobrescribir", tampoco se pisa el precio fijo de tiquete de una alianza.
+    .filter(({ n }) => sobrescribirTodos || !(n.precio_tiquete_manual > 0 || tiqueteAlianzaEur_(n) > 0));
   if (!filas.length) { alert('No hay participantes visibles que actualizar con este filtro.'); return; }
   if (!confirm(`¿Aplicar ${valor} EUR de precio de tiquete a ${filas.length} participante(s)?`)) return;
 
@@ -7892,7 +8203,7 @@ const EDIT_FIELDS_JUGADOR = [
 const EDIT_FIELDS_ACOMP = [
   {key:'jugador_acompanado',label:'Jugador que acompaña',type:'text',full:true},
   {key:'fecha_nacimiento',label:'Fecha de nacimiento',type:'text'},
-  {key:'habitacion',label:'Habitación',type:'select',options:['Doble','Sencilla','']},
+  {key:'habitacion',label:'Habitación',type:'select',options:['Doble','Sencilla','Triple','']},
 ];
 // Keep EDIT_FIELDS as alias for legacy references
 const EDIT_FIELDS = [...EDIT_FIELDS_BASE, ...EDIT_FIELDS_JUGADOR, ...EDIT_FIELDS_ACOMP];

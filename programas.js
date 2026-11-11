@@ -14,6 +14,11 @@
 //   El estado "finalizado" (vista de recuerdo, sale del admin principal) es
 //   automático: se calcula con la fecha `fin`.
 //
+// OJO precios / tiqueteEur / fechasLimite: son solo valores POR DEFECTO. Los
+// reales se editan en el Sheet de Inscripciones de cada programa (pestaña
+// "Alianzas", fila "Estándar") y areapersonal.html los reemplaza al cargar
+// (ver aplicarConfigPrograma_). Los T&C salen de la pestaña "T&C".
+//
 // familia: 'clinic' | 'world_challenge' — decide las reglas de negocio
 // (estructura de precios, T&C, pago único de WC, categorías). Todo lo que
 // cambia de una edición a otra (fechas, precios, textos) vive aquí.
