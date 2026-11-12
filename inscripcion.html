@@ -252,7 +252,7 @@ img, video, iframe, table {
       </div>
       <div>
         <label class="flabel">Fecha de nacimiento <span class="req">*</span></label>
-        <input class="finput" id="a-fnac" type="date">
+        <input class="finput" id="a-fnac" type="date" onchange="if(document.getElementById('a-habitacion').value==='triple')onHabitacion()">
       </div>
       <div>
         <label class="flabel">No. Pasaporte <span class="req">*</span></label>
@@ -285,6 +285,7 @@ img, video, iframe, table {
     </div>
 
     <!-- NOTA SOLO ACTIVIDADES (solo si sin alojamiento) -->
+    <div id="triple-note" class="info-note" style="display:none"></div>
     <div id="solo-act-note" class="info-note" style="display:none">Esta opción <strong>no incluye alojamiento</strong>: el acompañante participa únicamente en las actividades del programa.</div>
 
     <!-- SECCIÓN COMPAÑERO DE HABITACIÓN (solo si doble) -->
@@ -578,6 +579,25 @@ function selectPrograma(programa) {
     }
     optSoloWC.remove();
   }
+  // 3.ª persona en habitación doble (menores de 3 años): solo si la edición
+  // tiene ese precio en programas.js (precios.acomp_triple).
+  const optTriple = document.getElementById('opt-triple');
+  if (precioTripleInscripcion_()) {
+    if (!optTriple) {
+      const opt = document.createElement('option');
+      opt.id = 'opt-triple';
+      opt.value = 'triple';
+      opt.textContent = '3.ª persona en habitación doble (habitación triple)';
+      const optSolo = select.querySelector('option[value="solo_actividades"]');
+      select.insertBefore(opt, optSolo);
+    }
+  } else if (optTriple) {
+    if (select.value === 'triple') {
+      select.value = '';
+      onHabitacion();
+    }
+    optTriple.remove();
+  }
 }
 
 // Preselecciona el programa si llega por link desde el correo de "Mas
@@ -622,8 +642,35 @@ function selectType(tipo) {
   }, 100);
 }
 
+// Precio de 3.ª persona (Triple) de la edición elegida, o 0 si no aplica.
+const EDAD_MAX_TRIPLE = 3;
+function precioTripleInscripcion_() {
+  const pr = getPrograma(selectedPrograma).precios || {};
+  return pr.acomp_triple ? (pr.acomp_triple.reserva || 0) + (pr.acomp_triple.final || 0) : 0;
+}
+
+// ¿La fecha (aaaa-mm-dd) corresponde a un menor de 3 años al inicio del programa?
+// (Informativo: los menores de 3 en Triple no pagan; el cobro lo calcula el backend.)
+function esMenorTriple_(fechaIso) {
+  if (!fechaIso) return false;
+  const p = fechaIso.split('-').map(Number);
+  const ini = new Date(getPrograma(selectedPrograma).inicio);
+  let edad = ini.getFullYear() - p[0];
+  if (p[1] > ini.getMonth() + 1 || (p[1] === ini.getMonth() + 1 && p[2] > ini.getDate())) edad -= 1;
+  return edad < EDAD_MAX_TRIPLE;
+}
+
 function onHabitacion() {
   const val = document.getElementById('a-habitacion').value;
+  const tripleNote = document.getElementById('triple-note');
+  if (val === 'triple') {
+    const fnac = document.getElementById('a-fnac').value;
+    tripleNote.innerHTML = 'La <strong>3.ª persona</strong> se suma a la habitación doble de otros dos acompañantes inscritos (la habitación pasa a ser triple). Costo: <strong>' + precioTripleInscripcion_().toLocaleString('es-CO') + ' EUR</strong> en un solo pago. <strong>Menores de ' + EDAD_MAX_TRIPLE + ' años</strong> (al inicio del programa) <strong>no pagan</strong>.'
+      + (fnac && esMenorTriple_(fnac) ? '<br>✅ Según la fecha de nacimiento indicada, esta persona <strong>no tiene costo</strong>.' : '');
+    tripleNote.style.display = 'block';
+  } else {
+    tripleNote.style.display = 'none';
+  }
   const p2 = document.getElementById('p2-section');
   p2.style.display = val === 'doble' ? 'block' : 'none';
   if (val !== 'doble') {

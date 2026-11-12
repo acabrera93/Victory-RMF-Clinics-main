@@ -3536,12 +3536,33 @@ function tiqueteUnitEur_() {
 function tiqueteUnitEurParaParticipante_(p) {
   const override = parseFloat(p && p.precio_tiquete_manual);
   if (override > 0) return override;
+  return tiqueteBaseEurParaParticipante_(p) * factorTiqueteParticipante_(p);
+}
+// Precio de tabla (alianza → Estándar del backend → programa), sin override
+// manual ni tarifa de infante.
+function tiqueteBaseEurParaParticipante_(p) {
   const tiqAlianza = tiqueteAlianzaEur_(p);
   if (tiqAlianza > 0) return tiqAlianza;
   // Precio que calculó el backend con la pestaña Alianzas (fila Estándar).
   const efectivo = parseFloat(p && p.tiquete_eur_efectivo) || 0;
   if (efectivo > 0) return efectivo;
   return tiqueteUnitEur_();
+}
+
+// Bebés menores de 2 años a la FECHA DE REGRESO (fin del programa: la
+// aerolínea exige que sea infante en todos los vuelos) pagan el 25% del
+// tiquete. No se aplica sobre un precio manual (pestaña Tiquetes del panel):
+// ese valor ya es el definitivo para esa persona.
+const EDAD_MAX_INFANTE_TIQUETE = 2;
+const FACTOR_TIQUETE_INFANTE = 0.25;
+function factorTiqueteParticipante_(p, progKey) {
+  const prog = getPrograma(progKey || (p && p.program_key) || programKeyActivo);
+  const f = parseFechaNacFront((p && p.fecha_nacimiento) || "");
+  if (!f || !prog || !prog.fin) return 1;
+  const fin = new Date(prog.fin);
+  let edad = fin.getFullYear() - f.anio;
+  if (f.mes > fin.getMonth() + 1 || (f.mes === fin.getMonth() + 1 && f.dia > fin.getDate())) edad -= 1;
+  return edad < EDAD_MAX_INFANTE_TIQUETE ? FACTOR_TIQUETE_INFANTE : 1;
 }
 
 // Precio de tiquete de la alianza de la persona (columna "Tiquete aéreo (€)"
@@ -3570,7 +3591,9 @@ function precioTiqueteInfoEur_() {
   // Primero el participante que se está viendo (su T&C es personal); si no
   // tiene precio propio, alguien del grupo con override/alianza; si no, tabla.
   const actual = participanteActual ? (normalizeParticipant(participanteActual) || participanteActual) : null;
-  if (actual && actual.tiquete_aereo === 'Con tiquete') {
+  if (actual) {
+    // Su precio aunque aún no haya pedido tiquete (ej. inscrito antes del
+    // cambio de precio: el backend le manda el anterior en tiquete_eur_efectivo).
     const propio = tiqueteUnitEurParaParticipante_(actual);
     if (propio !== tiqueteUnitEur_()) return propio;
   }
@@ -3593,6 +3616,19 @@ function programaParaMonto_(progKey, p) {
   return getPrograma((p && p.program_key) || programKeyActivo);
 }
 // Paquete de precio (key de precios en programas.js / pestaña Alianzas).
+// 3.ª persona (Triple): si es menor de 3 años al inicio del programa no paga;
+// si tiene 3 o más paga el precio de Triple. null = sin fecha válida (paga).
+// Misma regla que menorEdadTriple_ en el backend.
+const EDAD_MAX_TRIPLE = 3;
+function menorEdadTripleFront_(fechaNac, prog) {
+  const f = parseFechaNacFront(fechaNac || "");
+  if (!f || !prog || !prog.inicio) return null;
+  const ini = new Date(prog.inicio);
+  let edad = ini.getFullYear() - f.anio;
+  if (f.mes > ini.getMonth() + 1 || (f.mes === ini.getMonth() + 1 && f.dia > ini.getDate())) edad -= 1;
+  return edad < EDAD_MAX_TRIPLE;
+}
+
 // Misma regla que paqueteGS_ en el backend.
 function paqueteFront_(p, prog) {
   const pr = prog.precios;
@@ -3646,6 +3682,9 @@ function montoReservaFinalParticipante_base_(p, progKey) {
   const sub = SUB_PAQUETE_[paqueteFront_(p, prog)] || SUB_PAQUETE_[paq] || "";
   if (p.precio_reserva != null && p.precio_final != null && p.precio_reserva !== "" && p.precio_final !== "") {
     return { reserva: Number(p.precio_reserva) || 0, final: Number(p.precio_final) || 0, sub: sub };
+  }
+  if (paq === "acomp_triple" && menorEdadTripleFront_(p.fecha_nacimiento, prog) === true) {
+    return { reserva: 0, final: 0, sub: sub + " · menor de 3 años (sin costo)" };
   }
   const std = prog.precios[paq] || { reserva: 0, final: 0 };
   const ap = al && al.precios ? al.precios[paq] : null;
@@ -6837,9 +6876,10 @@ function montoEsperadoEur_(tipo, n) {
   if (tipo === 'Tiquete') {
     if (n.tiquete_aereo !== 'Con tiquete') return 0;
     if (n.precio_tiquete_manual > 0) return n.precio_tiquete_manual;
-    if (tiqueteAlianzaEur_(n) > 0) return tiqueteAlianzaEur_(n);
-    if (n.tiquete_eur_efectivo > 0) return n.tiquete_eur_efectivo;
-    return getPrograma(progKeyN).tiqueteEur;
+    const factorInf = factorTiqueteParticipante_(n, progKeyN);
+    if (tiqueteAlianzaEur_(n) > 0) return tiqueteAlianzaEur_(n) * factorInf;
+    if (n.tiquete_eur_efectivo > 0) return n.tiquete_eur_efectivo * factorInf;
+    return getPrograma(progKeyN).tiqueteEur * factorInf;
   }
   if (tipo === 'Pago Final') return montoReservaFinalParticipante_(n, progKeyN).final;
   return 0;
@@ -8207,8 +8247,10 @@ function renderAdminTiquetesTab() {
     const manual = n.precio_tiquete_manual > 0 ? n.precio_tiquete_manual : '';
     const tiqAl = tiqueteAlianzaEur_(n);
     const deAlianza = manual === '' && tiqAl > 0;
-    const efectivo = manual !== '' ? manual : (deAlianza ? tiqAl : precioGlobal);
-    const etiqueta = manual !== '' ? '' : (deAlianza ? `(alianza ${escapeHtml(n.alianza_nombre || '')})` : '(global)');
+    const factorInf = factorTiqueteParticipante_(n, adminProgramaActivo);
+    const baseStd = parseFloat(n.tiquete_eur_efectivo) || precioGlobal;
+    const efectivo = manual !== '' ? manual : (deAlianza ? tiqAl : baseStd) * factorInf;
+    const etiqueta = manual !== '' ? '' : (deAlianza ? `(alianza ${escapeHtml(n.alianza_nombre || '')})` : (baseStd !== precioGlobal ? '(precio anterior)' : '(global)')) + (factorInf < 1 ? ' · infante 25%' : '');
     return `<tr>
       <td>${escapeHtml(n.nombre || '')}</td>
       <td>${escapeHtml(n.tipo || '')}</td>
@@ -8256,8 +8298,10 @@ function guardarPrecioTiqueteFila_(idx) {
         const nTiq = normalizeParticipant(row) || {};
         const tiqAl = tiqueteAlianzaEur_(nTiq);
         const deAlianza = !(valor > 0) && tiqAl > 0;
-        const efectivo = valor > 0 ? valor : (deAlianza ? tiqAl : precioGlobal);
-        const etiqueta = valor > 0 ? '' : (deAlianza ? `(alianza ${escapeHtml(nTiq.alianza_nombre || '')})` : '(global)');
+        const factorInf = factorTiqueteParticipante_(nTiq, adminProgramaActivo);
+        const baseStd = parseFloat(nTiq.tiquete_eur_efectivo) || precioGlobal;
+        const efectivo = valor > 0 ? valor : (deAlianza ? tiqAl : baseStd) * factorInf;
+        const etiqueta = valor > 0 ? '' : (deAlianza ? `(alianza ${escapeHtml(nTiq.alianza_nombre || '')})` : (baseStd !== precioGlobal ? '(precio anterior)' : '(global)')) + (factorInf < 1 ? ' · infante 25%' : '');
         if (efectivoEl) efectivoEl.innerHTML = `${efectivo} EUR${etiqueta ? ` <span style="color:var(--muted);font-size:11px">${etiqueta}</span>` : ''}`;
         if (estadoEl) {
           estadoEl.innerHTML = '<span style="color:var(--green)">&#10003; Guardado</span>';

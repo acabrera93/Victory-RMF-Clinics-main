@@ -94,7 +94,8 @@
         acomp_doble: { reserva: 1150, final: 1040 },
         acomp_sencilla: { reserva: 1150, final: 1360 },
         acomp_actividades: { reserva: 590, final: 0 },
-        acomp_solo_wc: { reserva: 270, final: 0 }
+        acomp_solo_wc: { reserva: 270, final: 0 },
+        acomp_triple: { reserva: 650, final: 0 } // 3.ª persona en hab. doble (triple). Menores de 3 años: gratis
       },
       precioBaseReferido: 2890,
       tiqueteEur: 1400,
@@ -123,7 +124,7 @@
         titulo: 'Real Madrid Foundation World Challenge',
         descripcion: 'Torneo internacional en la Ciudad Deportiva del Real Madrid. 19–27 Marzo 2027 · Madrid, España.',
         icono: '🏆',
-        precioTiqueteHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>1.400 EUR</strong> por persona (válido hasta agotar cupos reservados), pagadero en pesos colombianos a la <strong>tasa del día</strong> del pago.',
+        precioTiqueteHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>1.400 EUR</strong> por persona (válido hasta agotar cupos reservados; bebés menores de 2 años: <strong>25%</strong>), pagadero en pesos colombianos a la <strong>tasa del día</strong> del pago.',
         anioNacMin: 2013, anioNacMax: 2018, edadTexto: '8 a 14 años'
       },
       cuposTiquete: 20
