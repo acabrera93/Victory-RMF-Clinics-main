@@ -241,9 +241,12 @@ const PROGRAMAS = [
       acomp_doble: { reserva: 1150, final: 1040 },
       acomp_sencilla: { reserva: 1150, final: 1360 },
       acomp_actividades: { reserva: 590, final: 0 },
-      acomp_solo_wc: { reserva: 270, final: 0 }
+      acomp_solo_wc: { reserva: 270, final: 0 },
+      acomp_triple: { reserva: 650, final: 0 } // 3.ª persona en hab. doble (triple). Menores de 3 años: gratis
     },
     precioBaseReferido: 2890, prefijoReferido: 'WC27', tiqueteEur: 1400,
+    // Inscritos ANTES del cambio de precio conservan el tiquete anterior (ver tiqueteEstandarParaObj_).
+    tiqueteAnterior: { eur: 950, hasta: new Date(2026, 10, 12) },
     cuposTiquete: 20,
     fechasTexto: '19&ndash;27 Marzo', fechasCorto: '19–27 marzo',
     linkPresentacion: 'https://drive.google.com/file/d/1TJWchX-nKeeAT1Uqtaf0xaYJ-sNN0m09/view?usp=sharing'
@@ -6337,6 +6340,20 @@ function paqueteGS_(tipo, habitacion, fechaNacimiento, programa, precios) {
   return hab.indexOf('doble') >= 0 ? 'acomp_doble' : 'acomp_sencilla';
 }
 
+// 3.ª persona (Triple): si es menor de EDAD_MAX_TRIPLE_ años al inicio del
+// programa no paga; con esa edad o más paga el precio de Triple.
+// Devuelve true (menor), false (paga) o null (sin fecha válida → paga).
+// Misma regla que menorEdadTripleFront_ en areapersonal.html.
+const EDAD_MAX_TRIPLE_ = 3;
+function menorEdadTriple_(fechaNacimiento, prog) {
+  const f = parseFechaNacimiento(fechaNacimiento);
+  if (!f || !prog || !prog.inicio) return null;
+  const ini = new Date(prog.inicio);
+  let edad = ini.getFullYear() - f.anio;
+  if (f.mes > ini.getMonth() + 1 || (f.mes === ini.getMonth() + 1 && f.dia > ini.getDate())) edad -= 1;
+  return edad < EDAD_MAX_TRIPLE_;
+}
+
 // Triple sin precio (ni Estándar ni alianza) → se cobra como Doble.
 function paqueteConPrecio_(paq, preciosStd, alianzaInfo) {
   if (paq !== 'acomp_triple') return paq;
@@ -6352,6 +6369,9 @@ function montoReservaFinalGS_(tipo, habitacion, fechaNacimiento, programa, alian
   const paq = paqueteConPrecio_(paqueteGS_(tipo, habitacion, fechaNacimiento, programa, cfg.estandar.precios), cfg.estandar.precios, alianzaInfo);
   const std = cfg.estandar.precios[paq] || { reserva: 0, final: 0 };
   const al = alianzaInfo && alianzaInfo.precios ? alianzaInfo.precios[paq] : null;
+  if (paq === 'acomp_triple' && menorEdadTriple_(fechaNacimiento, getPrograma_(programa)) === true) {
+    return { paquete: paq, reserva: 0, final: 0, conAlianza: false };
+  }
   return {
     paquete: paq,
     reserva: al && al.reserva != null ? al.reserva : (std.reserva || 0),
@@ -6376,6 +6396,35 @@ function fechasLimiteGS_(programa, alianzaInfo, esJugador) {
   return res;
 }
 
+// Tiquete Estándar de un inscrito: si el programa tiene tiqueteAnterior y la
+// persona se inscribió antes de tiqueteAnterior.hasta, conserva ese precio
+// (ej. WC 2027: inscritos antes del 12-nov-2026 → 950 €; desde ese día, el de
+// la fila Estándar de Alianzas). Sin fecha de inscripción legible se asume
+// inscrito antiguo. El precio de una alianza o el manual por persona mandan
+// sobre esto.
+function tiqueteEstandarParaObj_(obj, programKey, cfg) {
+  const ant = getPrograma_(programKey).tiqueteAnterior;
+  if (ant) {
+    const ts = fechaInscripcionDeObj_(obj);
+    if (!ts || ts < ant.hasta) return ant.eur;
+  }
+  return cfg.estandar.tiqueteEur;
+}
+
+// Fecha de inscripción (columna Timestamp / Marca temporal) como Date, o null.
+function fechaInscripcionDeObj_(obj) {
+  for (const k in obj) {
+    const n = normText_(k);
+    if (n === 'timestamp' || n.indexOf('marca temporal') >= 0) {
+      const v = obj[k];
+      if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+      const d = v ? new Date(String(v)) : null;
+      return d && !isNaN(d.getTime()) ? d : null;
+    }
+  }
+  return null;
+}
+
 function fechaNacimientoDeObj_(obj) {
   for (const k in obj) {
     const n = normText_(k);
@@ -6393,7 +6442,7 @@ function aplicarAlianzaAParticipante_(obj, info, programKey) {
   const m = montoReservaFinalGS_(obj['Tipo'] || obj['tipo'], hab, fechaNacimientoDeObj_(obj), programKey, info);
   const esJug = normText_(obj['Tipo'] || obj['tipo']).indexOf('jug') >= 0;
   const f = fechasLimiteGS_(programKey, info, esJug);
-  const tiq = info && info.tiqueteEur > 0 ? info.tiqueteEur : cfg.estandar.tiqueteEur;
+  const tiq = info && info.tiqueteEur > 0 ? info.tiqueteEur : tiqueteEstandarParaObj_(obj, programKey, cfg);
   obj['alianza_nombre'] = info ? info.nombre : '';
   obj['alianza_con_precio'] = m.conAlianza ? '1' : '';
   obj['precio_reserva'] = String(m.reserva);
