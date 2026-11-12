@@ -6418,6 +6418,11 @@ function fechaInscripcionDeObj_(obj) {
     if (n === 'timestamp' || n.indexOf('marca temporal') >= 0) {
       const v = obj[k];
       if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+      // "aaaa-mm-dd" (así llegan las fechas tras convertirlas en el login y
+      // el panel admin): se lee como fecha LOCAL. new Date('2026-11-12') la
+      // tomaría como medianoche UTC, que en Bogotá es todavía el día 11.
+      const m = String(v || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
       const d = v ? new Date(String(v)) : null;
       return d && !isNaN(d.getTime()) ? d : null;
     }
