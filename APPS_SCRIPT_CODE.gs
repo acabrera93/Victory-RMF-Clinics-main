@@ -235,18 +235,18 @@ const PROGRAMAS = [
     uploadsFolderId: PARENT_FOLDER_ID_WORLD_CHALLENGE, fotosFolderId: 'TODO_FOTOS_WC_2027',
     inicio: new Date(2027, 2, 19), fin: new Date(2027, 2, 27, 23, 59, 59),
     fechaRefEdad: { anio: 2026, mes: 10, dia: 2 }, // se mantiene la referencia que ya usaba (categorías ya armadas)
-    deadlines: { reserva: new Date(2026, 9, 5), tiquete: new Date(2026, 9, 5), final: new Date(2026, 11, 11) },
+    deadlines: { reserva: new Date(2026, 11, 15), tiquete: new Date(2026, 11, 15), final: new Date(2027, 0, 15) },
     precios: {
       jugador: { reserva: 1150, final: 1740 },
       acomp_doble: { reserva: 1150, final: 1040 },
       acomp_sencilla: { reserva: 1150, final: 1360 },
       acomp_actividades: { reserva: 590, final: 0 },
-      acomp_solo_wc: { reserva: 185, final: 0 }
+      acomp_solo_wc: { reserva: 270, final: 0 }
     },
-    precioBaseReferido: 2890, prefijoReferido: 'WC27', tiqueteEur: 950,
+    precioBaseReferido: 2890, prefijoReferido: 'WC27', tiqueteEur: 1400,
     cuposTiquete: 20,
     fechasTexto: '19&ndash;27 Marzo', fechasCorto: '19–27 marzo',
-    linkPresentacion: 'https://drive.google.com/file/d/18-8t9vBa_kaauFgHOKTgxU3wjKXNv_wC/view?usp=sharing'
+    linkPresentacion: 'https://drive.google.com/file/d/1TJWchX-nKeeAT1Uqtaf0xaYJ-sNN0m09/view?usp=sharing'
   },
   {
     // TODO: completar IDs, fechas y precios definitivos del Clinic 2027.
@@ -255,6 +255,7 @@ const PROGRAMAS = [
     sheetId: '1XDY6Y30xZu3Rs8B_1367sW-h0giapPZxikQ_osN0gCs', budgetSheetId: '162QwHhVdRDLoxml3OFV9SSntcLJ2Gp1YzVnI9dwGEsY',
     uploadsFolderId: '1e1F2pyJMMKYN7-XXPj6SX_RBPOfElcbG', fotosFolderId: '1dWV2jp6vO0K33cVRapBAOawtoPz6KYMa',
     inicio: new Date(2027, 9, 1), fin: new Date(2027, 9, 9, 23, 59, 59), // TODO fechas reales
+    fechasConfirmadas: false, // TODO quitar con las fechas reales — mientras tanto los correos usan fechasTexto/fechasCorto
     fechaRefEdad: { anio: 2027, mes: 10, dia: 1 },
     deadlines: { reserva: new Date(2027, 5, 1), tiquete: new Date(2027, 5, 1), final: new Date(2027, 6, 30) }, // TODO
     precios: { // TODO confirmar — copiados del Clinic 2026
@@ -278,6 +279,23 @@ function programaConfigurado_(p) {
 // Programas listos para usarse (con Sheets reales), en el orden del catálogo.
 function listarProgramas_() {
   return PROGRAMAS.filter(programaConfigurado_);
+}
+
+// Rango de fechas del programa para UN participante — misma regla en todos
+// los programas (y en areapersonal.html, fechasProgramaParticipante_): con
+// tiquete arranca el día del vuelo (inicio); sin tiquete, el día siguiente
+// (llegada a Madrid). largo → "20 al 27 Marzo"; corto → "20–27 marzo".
+// Ediciones con fechasConfirmadas:false devuelven el texto fijo.
+function rangoFechasPrograma_(programa, conTiquete, largo) {
+  const p = getPrograma_(programa);
+  if (p.fechasConfirmadas === false || !p.inicio || !p.fin) return largo ? p.fechasTexto : p.fechasCorto;
+  const ini = new Date(p.inicio.getFullYear(), p.inicio.getMonth(), p.inicio.getDate() + (conTiquete ? 0 : 1));
+  const fin = p.fin;
+  const mes = function(d) { const m = MESES_ES_[d.getMonth()]; return largo ? m.charAt(0).toUpperCase() + m.slice(1) : m; };
+  if (ini.getMonth() === fin.getMonth()) {
+    return largo ? ini.getDate() + ' al ' + fin.getDate() + ' ' + mes(fin) : ini.getDate() + '–' + fin.getDate() + ' ' + mes(fin);
+  }
+  return ini.getDate() + ' ' + mes(ini) + (largo ? ' al ' : ' – ') + fin.getDate() + ' ' + mes(fin);
 }
 
 function programaFinalizado_(p) {
@@ -6467,22 +6485,28 @@ function posicionesAlianzas_(N) {
 }
 
 // Fórmulas de la pestaña Alianzas: nombre en ② y ③ (copia de ①) y Total en ②.
-// IMPORTANTE: con setFormulas(), que siempre usa sintaxis en inglés (coma).
-// setValues() con "=IF(…,…)" las interpreta en el idioma de la hoja (español
-// usa ";") y quedan en #ERROR!.
+// SIN COMAS a propósito: el separador de argumentos depende del idioma de la
+// hoja ("," en inglés, ";" en español) y una fórmula con el separador
+// equivocado queda en #ERROR!. Estas fórmulas no tienen argumentos múltiples,
+// así que funcionan igual en cualquier idioma:
+//   Nombre: =$A$6&""            → "" si ① está vacía, si no el nombre.
+//   Total : (B + Estándar si B vacío) + (D + Estándar si D vacío), × (hay
+//           alianza). El 0 de las filas sin alianza se oculta con el formato
+//           de número (sección vacía tras el 2.º ";").
+const FORMATO_TOTAL_ALIANZAS_ = '#,##0 "€";-#,##0 "€";';
 function escribirFormulasAlianzas_(sh, N) {
   const p = posicionesAlianzas_(N);
   const nombres = [], totales = [];
   for (let i = 0; i < N; i++) {
     const r1 = p.d1 + i, r = p.d2 + i;
-    nombres.push(['=IF($A$' + r1 + '="","",$A$' + r1 + ')']);
+    nombres.push(['=$A$' + r1 + '&""']);
     totales.push([i === 0
-      ? '=B' + r + '+D' + r
-      : '=IF($A' + r + '="","",IF(B' + r + '="",$B$' + p.d2 + ',B' + r + ')+IF(D' + r + '="",$D$' + p.d2 + ',D' + r + '))']);
+      ? '=N(B' + r + ')+N(D' + r + ')'
+      : '=($A' + r + '<>"")*((N(B' + r + ')+$B$' + p.d2 + '*(B' + r + '=""))+(N(D' + r + ')+$D$' + p.d2 + '*(D' + r + '="")))']);
   }
   sh.getRange(p.d2, 1, N, 1).setFormulas(nombres);
   sh.getRange(p.d3, 1, N, 1).setFormulas(nombres);
-  sh.getRange(p.d2, 6, N, 1).setFormulas(totales);
+  sh.getRange(p.d2, 6, N, 1).setFormulas(totales).setNumberFormat(FORMATO_TOTAL_ALIANZAS_);
 }
 
 // Reglas "alianza pausada" (Activo = NO → gris tachado). Sin comas a
@@ -6695,7 +6719,7 @@ function construirPestanaAlianzas_(ss, prog) {
   fmtFecha(sh.getRange(d2, 3, N, 1));
   fmtPrecio(sh.getRange(d2, 4, N, 1));
   fmtFecha(sh.getRange(d2, 5, N, 1));
-  sh.getRange(d2, 6, N, 1).setNumberFormat('#,##0 "€"').setHorizontalAlignment('center')
+  sh.getRange(d2, 6, N, 1).setNumberFormat(FORMATO_TOTAL_ALIANZAS_).setHorizontalAlignment('center')
     .setBackground(C.formula).setFontColor(C.textoFormula).setFontWeight('bold');
   sh.getRange(d2, 1, N, 1).setBackground(C.formula).setFontColor('#1f2937').setFontWeight('bold');
   sh.getRange(d2, 1, 1, nJ - 1).setBackground(C.estandar);
@@ -7203,7 +7227,8 @@ function buildAceptacionInscripcionHtml_(datos) {
   const prog = getPrograma_(datos.programKey);
   const d = function(k) { return datos[k] || ''; };
   const nombrePrograma = prog.nombreCorto;
-  const fechas = prog.fechasTexto + ' &middot; Madrid, Espa&ntilde;a';
+  const conTiqueteAcept = String(datos.tiquete_aereo || '').toLowerCase().indexOf('con') >= 0;
+  const fechas = rangoFechasPrograma_(datos.programKey, conTiqueteAcept, true) + ' &middot; Madrid, Espa&ntilde;a';
   const linkPresentacion = prog.linkPresentacion;
 
   return '<!DOCTYPE html>' +
@@ -7353,7 +7378,8 @@ function buildPendienteRevisionHtml_(datos) {
   const progPend = getPrograma_(datos.programKey);
   const nombrePrograma = progPend.nombreBase;
   const nombreCorto = progPend.nombreCorto;
-  const fechas = progPend.fechasCorto + ' · Madrid';
+  const conTiquetePend = String(datos.tiquete_aereo || '').toLowerCase().indexOf('con') >= 0;
+  const fechas = rangoFechasPrograma_(datos.programKey, conTiquetePend, false) + ' · Madrid';
   const primerNombre = (String(datos.nombre || '').trim().split(/\s+/)[0]) || '';
   const tipo = datos.tipo ? (datos.tipo.charAt(0).toUpperCase() + datos.tipo.slice(1).toLowerCase()) : '';
 

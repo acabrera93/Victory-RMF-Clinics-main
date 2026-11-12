@@ -3238,7 +3238,9 @@ function iniciarCountdownViaje() {
   const els = document.querySelectorAll('.countdown-text');
   if (!els.length) return;
   const fechas = getPrograma(programKeyActivo); // inicio/fin de programas.js
-  const inicioViaje = new Date(fechas.inicio).getTime();
+  // Sin tiquete el programa arranca un día después (llegada a Madrid) — ver
+  // fechasProgramaParticipante_.
+  const inicioViaje = new Date(fechas.inicio).getTime() + (conTiq ? 0 : 86400000);
   const finViaje = new Date(fechas.fin).getTime();
 
   function tick() {
@@ -3283,9 +3285,8 @@ function loadParticipant(p) {
   programa = participant.programa || '';
   programKeyActivo = participant.program_key || 'clinic';
   habitacion = participant.habitacion || '';
-  const subtitleEl = document.getElementById('welcome-subtitle');
   const progActual = getPrograma(programKeyActivo);
-  if (subtitleEl) subtitleEl.textContent = progActual.subtitulo;
+  actualizarFechasProgramaUI_(); // subtítulo / carta / vuelo independiente según tiquete
   const setTxtProg = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   setTxtProg('nav-tag-programa', 'Área Personal · ' + progActual.nombreCorto);
   setTxtProg('guia-programa-nombre', progActual.nombreCorto);
@@ -3762,10 +3763,7 @@ function actualizarFechasLimitePorPrograma_() {
   if (elCartaFechaMes) elCartaFechaMes.textContent = prog.carta.fechaMes;
   const elCartaTitulo = document.getElementById('carta-titulo');
   if (elCartaTitulo) elCartaTitulo.textContent = prog.carta.titulo;
-  const elCartaFechas = document.getElementById('carta-parrafo-fechas');
-  if (elCartaFechas) {
-    elCartaFechas.innerHTML = 'Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, ' + prog.carta.fechasHtml + '.';
-  }
+  actualizarFechasProgramaUI_(); // párrafo de fechas de la carta (depende del tiquete)
   const elCartaDesc = document.getElementById('carta-parrafo-descripcion');
   if (elCartaDesc) elCartaDesc.textContent = prog.carta.descripcion;
   const elCartaCierre = document.getElementById('carta-cierre');
@@ -3803,10 +3801,7 @@ function actualizarFechasLimitePorPrograma_() {
   setItinTxt('itin-regreso-llegada', itinVuelo.regresoLlegada);
 
   // Vuelo independiente (participantes que gestionan su propio tiquete).
-  const elVueloIndep = document.getElementById('doc-vuelo-independiente-desc');
-  if (elVueloIndep) {
-    elVueloIndep.innerHTML = prog.vueloIndependienteHtml;
-  }
+  // (texto calculado en actualizarFechasProgramaUI_, arriba)
 
   renderClimaEstatico_();
 }
@@ -4279,6 +4274,57 @@ function fechaDeIsoTyc_(iso) {
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
 }
 
+// Fechas del programa para el participante — MISMA regla en TODOS los
+// programas: con tiquete arranca el día del vuelo (inicio de programas.js);
+// sin tiquete, el día siguiente (llegada a Madrid). Devuelve null si faltan
+// fechas, o si la edición tiene fechasConfirmadas:false (salvo ignorarConfirmacion)
+// — ahí se siguen mostrando los textos fijos de programas.js.
+function fechasProgramaParticipante_(prog, conTiquete, ignorarConfirmacion) {
+  if (!prog || (prog.fechasConfirmadas === false && !ignorarConfirmacion)) return null;
+  const vuelo = fechaDeIsoTyc_(prog.inicio);
+  const fin = fechaDeIsoTyc_(prog.fin);
+  if (!vuelo || !fin) return null;
+  const inicio = new Date(vuelo.getFullYear(), vuelo.getMonth(), vuelo.getDate() + (conTiquete ? 0 : 1));
+  return { inicio: inicio, fin: fin };
+}
+
+// Subtítulo de bienvenida, párrafo de fechas de la carta y texto de "vuelo
+// independiente" del programa activo, según si el grupo tiene tiquete.
+function actualizarFechasProgramaUI_() {
+  const prog = getPrograma(programKeyActivo);
+  const f = fechasProgramaParticipante_(prog, conTiq);
+  const mismoMes = f && f.inicio.getMonth() === f.fin.getMonth();
+  const mesCap = d => { const m = MESES_TYC_[d.getMonth()]; return m.charAt(0).toUpperCase() + m.slice(1); };
+
+  const sub = document.getElementById('welcome-subtitle');
+  if (sub) {
+    sub.textContent = !f ? prog.subtitulo
+      : prog.nombreBase + ' · ' + (mismoMes
+          ? f.inicio.getDate() + '–' + f.fin.getDate() + ' ' + mesCap(f.fin)
+          : f.inicio.getDate() + ' ' + mesCap(f.inicio) + ' – ' + f.fin.getDate() + ' ' + mesCap(f.fin))
+        + ' ' + f.fin.getFullYear() + ' · Madrid, España';
+  }
+
+  const carta = document.getElementById('carta-parrafo-fechas');
+  if (carta) {
+    const fechasHtml = !f ? prog.carta.fechasHtml
+      : 'del <strong>' + (mismoMes
+          ? f.inicio.getDate() + ' al ' + f.fin.getDate() + ' de ' + MESES_TYC_[f.fin.getMonth()]
+          : f.inicio.getDate() + ' de ' + MESES_TYC_[f.inicio.getMonth()] + ' al ' + f.fin.getDate() + ' de ' + MESES_TYC_[f.fin.getMonth()])
+        + ' ' + f.fin.getFullYear() + '</strong>';
+    carta.innerHTML = 'Para nosotros —desde la Fundación Real Madrid y la Fundación Revel— es un verdadero orgullo darte la bienvenida a esta experiencia internacional única que vivirás en Madrid, España, ' + fechasHtml + '.';
+  }
+
+  // Solo lo ven quienes viajan por su cuenta (sin tiquete).
+  const vi = document.getElementById('doc-vuelo-independiente-desc');
+  if (vi) {
+    const fSin = fechasProgramaParticipante_(prog, false);
+    vi.innerHTML = !fSin ? prog.vueloIndependienteHtml
+      : 'Debes coordinar con Victory tu itinerario de vuelo. El programa inicia en Madrid el <strong>' + fechaLargaTyc_(fSin.inicio)
+        + '</strong> y finaliza el <strong>' + fechaLargaTyc_(fSin.fin) + '</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.';
+  }
+}
+
 function renderTyCDesdeSheet_(cfg) {
   const prog = getPrograma(programKeyActivo);
   const act = participanteActual ? (normalizeParticipant(participanteActual) || participanteActual) : { tipo: tipo, habitacion: habitacion };
@@ -4291,11 +4337,12 @@ function renderTyCDesdeSheet_(cfg) {
   const total = (m.reserva || 0) + (m.final || 0);
   const hab = (act.habitacion || habitacion || "").toLowerCase();
 
-  // Fechas del programa: con tiquete arranca el día del vuelo (inicio de
-  // programas.js); sin tiquete, el día siguiente (llegada a Madrid).
-  const inicioVuelo = fechaDeIsoTyc_(prog.inicio);
-  const finProg = fechaDeIsoTyc_(prog.fin);
-  const inicioDate = inicioVuelo ? new Date(inicioVuelo.getTime() + (conTiq ? 0 : 86400000)) : null;
+  // Fechas del programa: misma regla que el resto del área personal (ver
+  // fechasProgramaParticipante_). Para los T&C se usan siempre inicio/fin de
+  // programas.js, aunque la edición no tenga fechasConfirmadas.
+  const fp = fechasProgramaParticipante_(prog, conTiq, true);
+  const inicioDate = fp ? fp.inicio : null;
+  const finProg = fp ? fp.fin : null;
   const fechasProg = inicioDate && finProg
     ? (inicioDate.getMonth() === finProg.getMonth()
         ? "Del " + inicioDate.getDate() + " al " + fechaLargaTyc_(finProg)
@@ -4638,6 +4685,8 @@ function setTiquete(val) {
   document.getElementById('btn-tiq-si').style.background = val ? 'var(--green)' : 'var(--blue)';
   // Actualizar T&C con la nueva elección
   document.getElementById('tc-text').innerHTML = getTyC();
+  actualizarFechasProgramaUI_();
+  iniciarCountdownViaje();
   buildSteps();
 }
 
@@ -5172,6 +5221,8 @@ function toggleTiqueteDesdeWelcome() {
   // Ocultar optin del panel2 si ya se manejó desde welcome
   const optin = document.getElementById('tiq-optin');
   if (optin) optin.style.display = 'none';
+  actualizarFechasProgramaUI_();
+  iniciarCountdownViaje();
   // Actualizar T&C
   document.getElementById('tc-text').innerHTML = getTyC();
 

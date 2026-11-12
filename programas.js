@@ -94,12 +94,12 @@
         acomp_doble: { reserva: 1150, final: 1040 },
         acomp_sencilla: { reserva: 1150, final: 1360 },
         acomp_actividades: { reserva: 590, final: 0 },
-        acomp_solo_wc: { reserva: 185, final: 0 }
+        acomp_solo_wc: { reserva: 270, final: 0 }
       },
       precioBaseReferido: 2890,
-      tiqueteEur: 950,
+      tiqueteEur: 1400,
       tasaFija: null,
-      fechasLimite: { reserva: '5 de octubre 2026', tiquete: '5 de octubre 2026', final: '11 de diciembre 2026' },
+      fechasLimite: { reserva: '15 de diciembre 2026', tiquete: '15 de diciembre 2026', final: '15 de enero 2027' },
       finTexto: '27 de marzo de 2027', finTextoCorto: '27 de marzo 2027',
       carta: {
         fechaMes: 'Madrid, marzo 2027',
@@ -113,7 +113,7 @@
         idaLlegadaLarga: '13:10 (20 de marzo, hora Madrid)',
         regresoFecha: '27 de marzo 2027', regresoVuelo: 'Air Europa · UX0193', regresoSalida: '15:15 hrs', regresoLlegada: '19:15 hrs'
       },
-      vueloIndependienteHtml: 'Debes coordinar con Victory tu itinerario de vuelo. El programa inicia el <strong>19 de marzo</strong> y finaliza el <strong>27 de marzo de 2027</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.',
+      vueloIndependienteHtml: 'Debes coordinar con Victory tu itinerario de vuelo. El programa inicia el <strong>20 de marzo</strong> en Madrid y finaliza el <strong>27 de marzo de 2027</strong>. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.',
       clima: {
         tituloRango: '19–27 Marzo', max: '18°C', min: '5°C', soleados: '5', lluvia: '4', humedad: '65%', viento: '22 km/h',
         forecastTitulo: 'Pronóstico 19–27 marzo 2027', forecastStart: '2027-03-19', forecastEnd: '2027-03-27',
@@ -123,8 +123,8 @@
         titulo: 'Real Madrid Foundation World Challenge',
         descripcion: 'Torneo internacional en la Ciudad Deportiva del Real Madrid. 19–27 Marzo 2027 · Madrid, España.',
         icono: '🏆',
-        precioTiqueteHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>950 EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> del pago.',
-        anioNacMin: 2013, anioNacMax: 2020, edadTexto: '8 a 14 años'
+        precioTiqueteHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>1.400 EUR</strong> por persona (válido hasta agotar cupos reservados), pagadero en pesos colombianos a la <strong>tasa del día</strong> del pago.',
+        anioNacMin: 2013, anioNacMax: 2018, edadTexto: '8 a 14 años'
       },
       cuposTiquete: 20
     },
@@ -140,6 +140,7 @@
       nombreCorto: 'RMF Clinic 2027',
       etiqueta: '🏟️ Clinic 2027',
       inicio: '2027-10-01T09:00:00+02:00', fin: '2027-10-09T23:59:59+02:00', // TODO
+      fechasConfirmadas: false, // TODO quitar cuando inicio/fin sean reales — mientras tanto se muestran los textos fijos (subtitulo, carta…)
       fechaRefEdad: { anio: 2027, mes: 10, dia: 1 },
       fechaRefEdadTexto: '1-oct-2027',
       subtitulo: 'Real Madrid Foundation Clinic · Octubre 2027 · Madrid, España', // TODO fechas exactas
