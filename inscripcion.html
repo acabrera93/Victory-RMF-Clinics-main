@@ -539,7 +539,12 @@ function fechaNacJugadorEnRangoWC_() {
 function renderProgramasInscripcion() {
   const grid = document.getElementById('programa-grid');
   if (!grid) return;
-  grid.innerHTML = programasConInscripcionAbierta().map(p =>
+  const abiertos = programasConInscripcionAbierta();
+  if (!abiertos.length) {
+    grid.innerHTML = '<div class="type-card" style="cursor:default;grid-column:1/-1"><div class="type-title">Inscripciones cerradas</div><div class="type-desc">En este momento no hay ningún programa con inscripción abierta. Escríbenos y te avisamos cuando abra la próxima edición.</div></div>';
+    return;
+  }
+  grid.innerHTML = abiertos.map(p =>
     '<div class="type-card' + (p.key === selectedPrograma ? ' selected' : '') + '" data-prog="' + p.key + '" onclick="selectPrograma(\'' + p.key + '\')">'
     + '<div class="type-icon">' + p.inscripcion.icono + '</div>'
     + '<div class="type-title">' + p.inscripcion.titulo + '</div>'
@@ -710,6 +715,17 @@ function chk(id) {
 }
 
 async function submitForm(tipo) {
+  // Nunca enviar una inscripción a un viaje que ya pasó o está cerrado
+  // (ej. la página quedó abierta en el navegador desde antes de la fecha).
+  if (!programasConInscripcionAbierta().some(p => p.key === selectedPrograma)) {
+    const errId = tipo === 'jugador' ? 'j-err' : 'a-err';
+    const errEl = document.getElementById(errId);
+    if (errEl) {
+      errEl.textContent = 'La inscripción para este programa ya está cerrada. Recarga la página para ver los programas disponibles.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
   let valid = true;
   if (tipo === 'jugador') {
     valid = ['j-nombre','j-fnac','j-pasaporte','j-pais','j-posicion','j-ciudad','j-acudiente','j-relacion','j-email','j-phone'].map(chk).every(Boolean) && tiqJugador !== null;

@@ -258,8 +258,29 @@
     return pas.length ? pas[0].key : PROGRAMAS[0].key;
   }
 
+  // El viaje ya empezó (pasó la fecha `inicio`): no se aceptan más
+  // inscripciones ni solicitudes de información para esa edición.
+  function programaIniciado(programa) {
+    var p = getPrograma(programa);
+    return Date.now() >= new Date(p.inicio).getTime();
+  }
+
+  // Formulario de inscripción: programas con inscripcionAbierta cuyo viaje
+  // aún no ha empezado, el más próximo primero. Al llegar la fecha del viaje
+  // la edición desaparece sola de las opciones (aunque siga con
+  // inscripcionAbierta: true).
   function programasConInscripcionAbierta() {
-    return ordenarPorInicio(PROGRAMAS.filter(function (p) { return p.habilitado && p.inscripcionAbierta; }));
+    return ordenarPorInicio(PROGRAMAS.filter(function (p) {
+      return p.habilitado && p.inscripcionAbierta && !programaIniciado(p.key);
+    }));
+  }
+
+  // Formulario de "Más información": programas habilitados cuyo viaje aún no
+  // ha empezado, el más próximo primero.
+  function programasParaInformacion() {
+    return ordenarPorInicio(PROGRAMAS.filter(function (p) {
+      return p.habilitado && !programaIniciado(p.key);
+    }));
   }
 
   global.PROGRAMAS = PROGRAMAS;
@@ -273,4 +294,6 @@
   global.programaAdminPorDefecto = programaAdminPorDefecto;
   global.programaPreferido = programaPreferido;
   global.programasConInscripcionAbierta = programasConInscripcionAbierta;
+  global.programaIniciado = programaIniciado;
+  global.programasParaInformacion = programasParaInformacion;
 })(typeof window !== 'undefined' ? window : this);

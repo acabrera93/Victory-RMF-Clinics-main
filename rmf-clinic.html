@@ -1720,14 +1720,17 @@
 
           <div class="form-group">
             <label class="form-label" style="margin-bottom:8px;" data-es="¿Qué programa te interesa? *" data-en="Which program are you interested in? *">¿Qué programa te interesa? *</label>
-            <div class="programa-toggle-grid">
-              <div class="programa-toggle-card" id="card-clinic" data-value="Real Madrid Foundation Clinic" onclick="selectPrograma('clinic')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPrograma('clinic');}">
-                <span class="programa-toggle-date" data-es="OCT 2027" data-en="OCT 2027">OCT 2027</span>
-                <span class="programa-toggle-name" data-es="RMF Clinic 2027" data-en="RMF Clinic 2027">RMF Clinic 2027</span>
-              </div>
-              <div class="programa-toggle-card" id="card-wc" data-value="Real Madrid Foundation World Challenge" onclick="selectPrograma('wc')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPrograma('wc');}">
+            <!-- Orden y visibilidad automáticos (ordenarTarjetasPrograma): el
+                 viaje más próximo primero; el que ya empezó se oculta.
+                 data-prog = key en programas.js. -->
+            <div class="programa-toggle-grid" id="programa-toggle-grid">
+              <div class="programa-toggle-card" id="card-wc" data-prog="world_challenge" data-value="Real Madrid Foundation World Challenge" onclick="selectPrograma('wc')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPrograma('wc');}">
                 <span class="programa-toggle-date" data-es="19 – 27 MAR 2027" data-en="MAR 19 – 27, 2027">19 – 27 MAR 2027</span>
                 <span class="programa-toggle-name" data-es="World Challenge 2027" data-en="World Challenge 2027">World Challenge 2027</span>
+              </div>
+              <div class="programa-toggle-card" id="card-clinic" data-prog="clinic_2027" data-value="Real Madrid Foundation Clinic" onclick="selectPrograma('clinic')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPrograma('clinic');}">
+                <span class="programa-toggle-date" data-es="OCT 2027" data-en="OCT 2027">OCT 2027</span>
+                <span class="programa-toggle-name" data-es="RMF Clinic 2027" data-en="RMF Clinic 2027">RMF Clinic 2027</span>
               </div>
             </div>
             <input type="hidden" id="f-programa" required>
@@ -1786,6 +1789,28 @@
 </section>
 
 <script src="config.js"></script>
+<script src="programas.js"></script>
+<script>
+// Formulario "Más información": el viaje más próximo va primero (izquierda) y
+// el que ya empezó desaparece de las opciones. Usa las fechas de programas.js.
+function ordenarTarjetasPrograma() {
+  const grid = document.getElementById('programa-toggle-grid');
+  if (!grid || typeof programasParaInformacion !== 'function') return;
+  const orden = programasParaInformacion().map(p => p.key);
+  const cards = Array.from(grid.querySelectorAll('.programa-toggle-card'));
+  cards.forEach(c => {
+    const idx = orden.indexOf(c.dataset.prog);
+    c.style.display = idx < 0 ? 'none' : '';
+    c.style.order = idx < 0 ? 99 : idx;
+  });
+  const visibles = cards.filter(c => c.style.display !== 'none');
+  if (visibles.length === 1) grid.style.gridTemplateColumns = '1fr';
+}
+function tarjetaProgramaVisible(card) {
+  return !!card && card.style.display !== 'none';
+}
+document.addEventListener('DOMContentLoaded', ordenarTarjetasPrograma);
+</script>
 <script>
 var currentLang = 'es';
 
@@ -1864,6 +1889,8 @@ function selectPrograma(which) {
   const cardClinic = document.getElementById('card-clinic');
   const cardWc = document.getElementById('card-wc');
   const hidden = document.getElementById('f-programa');
+  // No permitir elegir un viaje que ya pasó (tarjeta oculta).
+  if (!tarjetaProgramaVisible(which === 'clinic' ? cardClinic : cardWc)) return;
   cardClinic.classList.remove('selected', 'field-error');
   cardWc.classList.remove('selected', 'field-error');
   document.getElementById('err-f-programa')?.classList.remove('show');
