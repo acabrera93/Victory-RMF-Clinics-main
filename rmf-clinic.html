@@ -1777,7 +1777,7 @@
             Enviarme la presentación y precios →
           </button>
 
-          <p style="font-size:12px; color:var(--muted,#888); margin-top:8px; text-align:center;" data-es="Recibirás la presentación completa del programa en tu correo en menos de 2 minutos." data-en="You'll receive the full program presentation in your email within 2 minutes.">Recibirás la presentación completa del programa en tu correo en menos de 2 minutos.</p>
+          <p id="form-nota-presentacion" style="font-size:12px; color:var(--muted,#888); margin-top:8px; text-align:center;" data-es="Recibirás la presentación completa del programa en tu correo en menos de 2 minutos." data-en="You'll receive the full program presentation in your email within 2 minutes.">Recibirás la presentación completa del programa en tu correo en menos de 2 minutos.</p>
 
           <!-- Estado de envío -->
           <div id="submit-status" style="display:none; margin-top:14px; padding:14px 16px; border-radius:6px; font-size:14px; text-align:center;"></div>
@@ -1845,8 +1845,13 @@ function toggleLang(){
 // ─── CONFIGURACIÓN — REEMPLAZA ESTOS VALORES ─────────────────────────────────
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/3gcs8kbhhs9pwlnblt16l5oqybbkc6sh';
 
-// URL pública del PDF de Real Madrid en español (LatAm + España)
-const PDF_RMF = 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing';
+// URL pública del PDF del Real Madrid Foundation Clinic 2027.
+// PENDIENTE: vacío hasta que esté la presentación del Clinic 2027. Mientras
+// esté vacío, el lead NO recibe ningún PDF (pdf_link: '') y el correo de Make
+// le dice que la presentación estará disponible pronto. NO volver a poner el
+// PDF del Clinic 2026 (1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7): tiene fechas y
+// precios de 2026.
+const PDF_RMF = '';
 // URL pública del PDF de Real Madrid Foundation World Challenge
 const PDF_WORLD_CHALLENGE = 'https://drive.google.com/file/d/1TJWchX-nKeeAT1Uqtaf0xaYJ-sNN0m09/view?usp=sharing';
 // URL pública del PDF de Japan Golf
@@ -1870,7 +1875,9 @@ function getMensajeWhatsApp(data) {
     ? `¡Hola ${data.nombre}! 🇪🇸⚽\n\nGracias por tu interés en el *RMF Clinic 2027* como acompañante. Mientras tu hijo entrena en la Ciudad Deportiva del Real Madrid, tú vives Madrid a tu ritmo.`
     : `¡Hola ${data.nombre}! 🇪🇸⚽\n\nGracias por inscribir a *${data.jugador || 'tu hijo/a'}* en el *RMF Clinic 2027* — el programa oficial de la Fundación Real Madrid.`;
 
-  const pdfLine = `📄 Aquí tienes la presentación completa del programa:\n${pdf}`;
+  const pdfLine = pdf
+    ? `📄 Aquí tienes la presentación completa del programa:\n${pdf}`
+    : `📄 La presentación del programa estará disponible muy pronto; te la enviaremos en cuanto esté lista.`;
 
   return `${intro}
 
@@ -1903,6 +1910,25 @@ function selectPrograma(which) {
   }
   const submitBtn = document.getElementById('submit-btn');
   if (submitBtn) submitBtn.disabled = false;
+  actualizarNotaPresentacion();
+}
+
+// Texto bajo el botón: si el programa elegido aún no tiene presentación
+// (PDF vacío), no prometer que llegará por correo.
+function actualizarNotaPresentacion() {
+  const nota = document.getElementById('form-nota-presentacion');
+  const programa = document.getElementById('f-programa')?.value || '';
+  if (!nota || !programa) return;
+  const conPdf = !!getPdfLink(programa);
+  const es = conPdf
+    ? 'Recibirás la presentación completa del programa en tu correo en menos de 2 minutos.'
+    : 'La presentación de este programa estará disponible muy pronto. Te contactaremos con toda la información.';
+  const en = conPdf
+    ? "You'll receive the full program presentation in your email within 2 minutes."
+    : 'The presentation for this program will be available very soon. We will contact you with all the details.';
+  nota.setAttribute('data-es', es);
+  nota.setAttribute('data-en', en);
+  nota.textContent = (typeof currentLang !== 'undefined' && currentLang === 'en') ? en : es;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
