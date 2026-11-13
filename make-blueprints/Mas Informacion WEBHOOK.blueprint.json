@@ -1,0 +1,274 @@
+{
+    "name": "Mas Informacion WEBHOOK",
+    "flow": [
+        {
+            "id": 18,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 2301469,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": { "x": -11, "y": 35 },
+                "restore": {
+                    "parameters": {
+                        "hook": { "data": { "editable": "true" }, "label": "Victory Landing" }
+                    }
+                },
+                "parameters": [
+                    { "name": "hook", "type": "hook:gateway-webhook", "label": "Webhook", "required": true },
+                    { "name": "maxResults", "type": "number", "label": "Maximum number of results" }
+                ],
+                "interface": [
+                    { "name": "value", "type": "text" }
+                ]
+            }
+        },
+        {
+            "id": 22,
+            "module": "json:ParseJSON",
+            "version": 1,
+            "parameters": {
+                "type": 440647
+            },
+            "filter": {
+                "name": "Solo si hay body válido",
+                "conditions": [
+                    [
+                        { "a": "{{18.value}}", "o": "exist" }
+                    ]
+                ]
+            },
+            "mapper": {
+                "json": "{{18.value}}"
+            },
+            "metadata": {
+                "designer": { "x": 289, "y": 35 },
+                "restore": {
+                    "parameters": {
+                        "type": { "label": "Landing" }
+                    }
+                },
+                "parameters": [
+                    { "name": "type", "type": "udt", "label": "Data structure" }
+                ],
+                "expect": [
+                    { "name": "json", "type": "text", "label": "JSON string", "required": true }
+                ],
+                "interface": [
+                    { "help": "", "name": "nombre", "type": "text", "label": "Nombre", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "jugador", "type": "text", "label": "Jugador", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "edad", "type": "text", "label": "Edad", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "pais", "type": "text", "label": "Pais", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "phone", "type": "text", "label": "Phone", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "email", "type": "text", "label": "Email", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "programa", "type": "text", "label": "Programa", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "mensaje_whatsapp", "type": "text", "label": "Mensaje whatsapp", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "pdf_link", "type": "text", "label": "PDF link", "default": null, "required": false, "multiline": false },
+                    { "help": "", "name": "timestamp", "type": "date", "label": "Timestamp", "required": false },
+                    { "help": "", "name": "fuente", "type": "text", "label": "Fuente", "default": null, "required": false, "multiline": false }
+                ]
+            }
+        },
+        {
+            "id": 19,
+            "module": "google-sheets:addRow",
+            "version": 2,
+            "parameters": {
+                "__IMTCONN__": 7942121
+            },
+            "mapper": {
+                "from": "drive",
+                "mode": "select",
+                "values": {
+                    "Pais": "{{22.pais}}",
+                    "Email": "{{22.email}}",
+                    "Nombre": "{{22.nombre}}",
+                    "PDF Link": "{{22.pdf_link}}",
+                    "Programa": "{{22.programa}}",
+                    "WhatsApp": "'{{22.phone}}",
+                    "Timestamp": "{{22.timestamp}}"
+                },
+                "sheetId": "Leads",
+                "spreadsheetId": "/1uIsD7vjvZh0AqQ76lcgLPBpca29lDeDrIQieCM7s0S8",
+                "includesHeaders": true,
+                "insertDataOption": "INSERT_ROWS",
+                "useColumnHeaders": true,
+                "valueInputOption": "USER_ENTERED",
+                "insertUnformatted": false
+            },
+            "metadata": {
+                "designer": { "x": 610, "y": 36 },
+                "restore": {
+                    "expect": {
+                        "from": { "label": "My Drive" },
+                        "mode": { "label": "Search by path" },
+                        "sheetId": { "label": "Leads" },
+                        "spreadsheetId": { "path": ["Lead Landing Clinic"] },
+                        "includesHeaders": { "label": "Yes" },
+                        "insertDataOption": { "mode": "chose", "label": "Insert rows" },
+                        "useColumnHeaders": { "label": "Yes" },
+                        "valueInputOption": { "mode": "chose", "label": "User entered" },
+                        "insertUnformatted": { "mode": "chose" }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": { "scoped": "true", "connection": "google" },
+                            "label": "My Google connection (alejandro.cabrera@fundacionrevel.net)"
+                        }
+                    }
+                },
+                "parameters": [
+                    { "name": "__IMTCONN__", "type": "account:google", "label": "Connection", "required": true }
+                ],
+                "expect": [
+                    { "name": "mode", "type": "select", "label": "Search Method", "required": true, "validate": { "enum": ["select", "fromAll", "map"] } },
+                    { "name": "insertUnformatted", "type": "boolean", "label": "Unformatted", "required": true },
+                    { "name": "valueInputOption", "type": "select", "label": "Value input option", "required": true, "validate": { "enum": ["USER_ENTERED", "RAW"] } },
+                    { "name": "insertDataOption", "type": "select", "label": "Insert data option", "validate": { "enum": ["INSERT_ROWS", "OVERWRITE"] } },
+                    { "name": "from", "type": "select", "label": "Drive", "required": true, "validate": { "enum": ["drive", "share", "team"] } },
+                    { "name": "spreadsheetId", "type": "file", "label": "Spreadsheet Name", "required": true },
+                    { "name": "sheetId", "type": "select", "label": "Sheet Name", "required": true },
+                    { "name": "includesHeaders", "type": "select", "label": "Table contains headers", "required": true, "validate": { "enum": [true, false] } },
+                    { "name": "useColumnHeaders", "type": "select", "label": "Use column headers as IDs of the columns", "required": true, "validate": { "enum": [true, false] } },
+                    {
+                        "name": "values",
+                        "spec": [
+                            { "name": "Timestamp", "type": "text", "label": "Timestamp (A)" },
+                            { "name": "Nombre", "type": "text", "label": "Nombre (B)" },
+                            { "name": "Fecha de Nacimiento", "type": "text", "label": "Fecha de Nacimiento (C)" },
+                            { "name": "Pais", "type": "text", "label": "Pais (D)" },
+                            { "name": "WhatsApp", "type": "text", "label": "WhatsApp (E)" },
+                            { "name": "Email", "type": "text", "label": "Email (F)" },
+                            { "name": "Programa", "type": "text", "label": "Programa (G)" },
+                            { "name": "PDF Link", "type": "text", "label": "PDF Link (H)" }
+                        ],
+                        "type": "collection",
+                        "label": "Values in columns",
+                        "metadata": [[["Timestamp", "Nombre", "Fecha de Nacimiento", "Pais", "WhatsApp", "Email", "Programa", "PDF Link"]]]
+                    }
+                ],
+                "advanced": true
+            }
+        },
+        {
+            "id": 20,
+            "module": "google-email:sendAnEmail",
+            "version": 4,
+            "parameters": {
+                "__IMTCONN__": 7949862
+            },
+            "mapper": {
+                "to": ["{{22.email}}"],
+                "content": "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n<meta charset=\"UTF-8\">\n<title>{{if(contains(22.programa; \"World Challenge\"); \"Real Madrid Foundation World Challenge 2027 - Presentación del programa\"; \"Real Madrid Foundation Clinic 2027 - Presentación del programa\")}}</title>\n</head>\n<body style=\"margin:0; padding:0; background:#f4f7fb; font-family:Arial, Helvetica, sans-serif; color:#1a2e46;\">\n\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f4f7fb; padding:40px 16px;\">\n  <tr>\n    <td align=\"center\">\n\n      <table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px; width:100%; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 16px rgba(11,31,58,0.08);\">\n\n        <tr>\n          <td style=\"background:#0a1f3c; padding:32px 40px; text-align:center;\">\n            <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 18px auto;\">\n              <tr>\n                <td style=\"padding:0 14px; vertical-align:middle;\">\n                  <img src=\"https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO\" alt=\"Fundación Revel\" height=\"48\" style=\"display:block; height:48px; width:auto;\">\n                </td>\n                <td style=\"padding:0 14px; vertical-align:middle;\">\n                  <img src=\"https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ\" alt=\"Real Madrid Foundation\" height=\"60\" style=\"display:block; height:60px; width:auto;\">\n                </td>\n              </tr>\n            </table>\n            <div style=\"color:#5a9de0; font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;\">FUNDACIÓN REVEL - REAL MADRID FOUNDATION</div>\n            <div style=\"color:#ffffff; font-size:26px; font-weight:bold; letter-spacing:1px; line-height:1.2;\">{{if(contains(22.programa; \"World Challenge\"); \"REAL MADRID FOUNDATION WORLD CHALLENGE 2027\"; \"REAL MADRID FOUNDATION CLINIC 2027\")}}</div>\n            <div style=\"color:rgba(255,255,255,0.7); font-size:14px; margin-top:8px;\">{{if(contains(22.programa; \"World Challenge\"); \"19 al 27 de marzo 2027 - Madrid, España\"; \"Octubre 2027 - Madrid, España\")}}</div>\n          </td>\n        </tr>\n\n        <tr>\n          <td style=\"padding:36px 40px 24px;\">\n            <p style=\"font-size:18px; color:#0a1f3c; margin:0 0 18px;\">¡Hola <strong>{{22.nombre}}</strong>!</p>\n\n            <p style=\"font-size:15px; line-height:1.7; color:#4a6080; margin:0 0 16px;\">\n              {{if(contains(22.programa; \"World Challenge\"); \"Gracias por tu interés en el <strong style='color:#1e5ba8;'>Real Madrid Foundation World Challenge 2027</strong>, el torneo internacional juvenil de la Fundación Real Madrid para jugadores de 8 a 14 años.\"; \"Gracias por tu interés en el <strong style='color:#1e5ba8;'>Real Madrid Foundation Clinic 2027</strong>, el programa oficial de la Fundación Real Madrid para jóvenes de 8 a 17 años.\")}}\n            </p>\n\n            <p style=\"font-size:15px; line-height:1.7; color:#4a6080; margin:0 0 16px;\">\n              {{if(contains(22.programa; \"World Challenge\"); \"Te enviamos la presentación completa del programa con todos los detalles: el torneo World Challenge en la Ciudad Deportiva del Real Madrid, la agenda día a día, las actividades en Madrid, el plan para acompañantes (Family Experience) y, por supuesto, los precios y formas de pago.\"; \"Te enviamos la presentación completa del programa con todos los detalles: entrenamientos oficiales en la Ciudad Deportiva del Real Madrid, la Victory Cup, las actividades en Madrid y, por supuesto, los precios y formas de pago.\")}}\n            </p>\n\n            <p style=\"font-size:15px; line-height:1.7; color:#4a6080; margin:0 0 28px;\">\n              Haz clic en el primer botón para ver la presentación. Cuando estés listo para asegurar el cupo de tu hijo, completa la inscripción en el segundo botón. Y si tienes alguna duda, escríbenos directo por WhatsApp.\n            </p>\n\n            <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 24px auto;\">\n              <tr>\n                <td style=\"background:#0a1f3c; border-radius:6px; padding:14px 32px; text-align:center;\">\n                  <a href=\"{{22.pdf_link}}\" style=\"color:#ffffff; font-size:15px; font-weight:bold; text-decoration:none;\">\n                    Ver presentación del programa\n                  </a>\n                </td>\n              </tr>\n              <tr><td style=\"height:10px;\"></td></tr>\n              <tr>\n                <td style=\"background:#3b7fd4; border-radius:6px; padding:14px 32px; text-align:center;\">\n                  <a href=\"https://victory.com.es/inscripcion.html?programa={{encodeURL(22.programa)}}\" style=\"color:#ffffff; font-size:15px; font-weight:bold; text-decoration:none;\">\n                    Completar inscripción\n                  </a>\n                </td>\n              </tr>\n              <tr><td style=\"height:10px;\"></td></tr>\n              <tr>\n                <td style=\"background:#25D366; border-radius:6px; padding:14px 32px; text-align:center;\">\n                  <a href=\"https://wa.me/34620301690?text={{if(contains(22.programa; \"World Challenge\"); \"Hola%20Fundaci%C3%B3n%20Revel%2C%20tengo%20una%20duda%20sobre%20el%20RMF%20World%20Challenge%202027\"; \"Hola%20Fundaci%C3%B3n%20Revel%2C%20tengo%20una%20duda%20sobre%20el%20RMF%20Clinic%202027\")}}\" style=\"color:#ffffff; font-size:15px; font-weight:bold; text-decoration:none;\">\n                    Tengo una duda - WhatsApp\n                  </a>\n                </td>\n              </tr>\n            </table>\n\n            <p style=\"font-size:13px; line-height:1.6; color:#8da4bf; margin:24px 0 0; text-align:center;\">\n              Un asesor de Fundación Revel te contactará en las próximas 24 horas para resolver cualquier duda.\n            </p>\n          </td>\n        </tr>\n\n        <tr>\n          <td style=\"padding:0 40px;\">\n            <div style=\"height:1px; background:#e2e8f0;\"></div>\n          </td>\n        </tr>\n\n        <tr>\n          <td style=\"padding:24px 40px 32px; text-align:center;\">\n            <p style=\"font-size:13px; color:#4a6080; margin:0 0 10px;\">\n              <strong>Alejandro Cabrera</strong><br>\n              Director Experiencias Internacionales - Fundación Revel\n            </p>\n            <p style=\"font-size:13px; color:#8da4bf; margin:0 0 14px;\">\n              <a href=\"https://wa.me/34620301690\" style=\"color:#1e5ba8; text-decoration:none;\">WhatsApp +34 620 301 690</a>\n              &nbsp;-&nbsp;\n              <a href=\"mailto:alejandro.cabrera@fundacionrevel.net\" style=\"color:#1e5ba8; text-decoration:none;\">Escribir correo</a>\n            </p>\n            <p style=\"font-size:11px; color:#a0b1c8; margin:0;\">\n              &copy; {{formatDate(now; \"YYYY\")}} Fundación Revel\n            </p>\n          </td>\n        </tr>\n\n      </table>\n\n      <p style=\"font-size:11px; color:#a0b1c8; margin:18px 0 0; text-align:center;\">\n        Si no solicitaste esta información, puedes ignorar este correo.\n      </p>\n\n    </td>\n  </tr>\n</table>\n\n</body>\n</html>",
+                "subject": "{{if(contains(22.programa; \"World Challenge\"); \"Real Madrid Foundation World Challenge 2027 · Presentación del programa\"; \"Real Madrid Foundation Clinic 2027 · Presentación del programa\")}}",
+                "bodyType": "rawHtml"
+            },
+            "metadata": {
+                "designer": { "x": 889, "y": 35 },
+                "restore": {
+                    "expect": {
+                        "cc": { "mode": "chose" },
+                        "to": { "mode": "chose", "items": [null] },
+                        "bcc": { "mode": "chose" },
+                        "from": { "mode": "chose" },
+                        "bodyType": { "label": "Raw HTML" },
+                        "attachments": { "mode": "chose" },
+                        "emailHeaders": { "mode": "chose" }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": { "scoped": "true", "connection": "google-email" },
+                            "label": "My Gmail connection (alejandro.cabrera@fundacionrevel.net)"
+                        }
+                    }
+                },
+                "parameters": [
+                    { "name": "__IMTCONN__", "type": "account:google-email", "label": "Connection", "required": true }
+                ],
+                "expect": [
+                    { "name": "to", "spec": { "name": "value", "type": "email", "label": "Recipient email address", "required": true, "validate": true }, "type": "array", "label": "To", "required": true },
+                    { "name": "subject", "type": "text", "label": "Subject" },
+                    { "name": "bodyType", "type": "select", "label": "Body type", "required": true, "validate": { "enum": ["rawHtml", "collection"] } },
+                    { "name": "attachments", "spec": { "name": "value", "spec": [{ "name": "filename", "type": "filename", "label": "File name", "required": true, "semantic": "file:name" }, { "name": "data", "type": "buffer", "label": "Data", "required": true, "semantic": "file:data" }], "type": "collection", "label": "Attachment" }, "type": "array", "label": "Attachments" },
+                    { "name": "from", "type": "select", "label": "From" },
+                    { "name": "cc", "spec": { "name": "value", "type": "email", "label": "Recipient email address" }, "type": "array", "label": "CC recipients" },
+                    { "name": "bcc", "spec": { "name": "value", "type": "email", "label": "Recipient email address" }, "type": "array", "label": "BCC recipients" },
+                    { "name": "emailHeaders", "spec": { "name": "value", "spec": [{ "name": "key", "type": "text", "label": "Key", "required": true }, { "name": "value", "type": "text", "label": "Value" }], "type": "collection", "label": "Email header" }, "type": "array", "label": "Additional email headers" },
+                    { "name": "content", "type": "text", "label": "Content" }
+                ]
+            }
+        },
+        {
+            "id": 21,
+            "module": "google-email:sendAnEmail",
+            "version": 4,
+            "parameters": {
+                "__IMTCONN__": 7949862
+            },
+            "mapper": {
+                "to": ["alejandro.cabrera@fundacionrevel.net"],
+                "content": "<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;\">\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f4f4f4;padding:30px 0;\">\n    <tr><td align=\"center\">\n      <table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:10px;overflow:hidden;\">\n        <tr>\n          <td style=\"background:#0a1f3c;padding:24px 40px;\">\n            <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 16px 0;\">\n              <tr>\n                <td style=\"padding:0 14px 0 0; vertical-align:middle;\">\n                  <img src=\"https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO\" alt=\"Fundación Revel\" height=\"34\" style=\"display:block; height:34px; width:auto;\">\n                </td>\n                <td style=\"padding:0 0 0 14px; vertical-align:middle;\">\n                  <img src=\"https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ\" alt=\"Real Madrid Foundation\" height=\"44\" style=\"display:block; height:44px; width:auto;\">\n                </td>\n              </tr>\n            </table>\n            <p style=\"color:#3b7fd4;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0;\">Revel Fundación</p>\n            <h1 style=\"color:#ffffff;font-size:22px;margin:8px 0 0 0;\">Nuevo lead · {{if(contains(22.programa; \"World Challenge\"); \"World Challenge 2027\"; \"Clinic 2027\")}}</h1>\n          </td>\n        </tr>\n        <tr>\n          <td style=\"padding:32px 40px;\">\n            <table width=\"100%\" cellpadding=\"10\" cellspacing=\"0\" style=\"background:#f8f9fa;border-radius:8px;margin-bottom:24px;\">\n              <tr><td style=\"font-size:13px;color:#888;width:140px;\">Nombre</td><td style=\"font-size:14px;color:#333;font-weight:bold;\">{{22.nombre}}</td></tr>\n              <tr style=\"border-top:1px solid #eee;\"><td style=\"font-size:13px;color:#888;\">Jugador</td><td style=\"font-size:14px;color:#333;\">{{22.jugador}}</td></tr>\n              <tr style=\"border-top:1px solid #eee;\"><td style=\"font-size:13px;color:#888;\">Email</td><td style=\"font-size:14px;color:#3b7fd4;\">{{22.email}}</td></tr>\n              <tr style=\"border-top:1px solid #eee;\"><td style=\"font-size:13px;color:#888;\">WhatsApp</td><td style=\"font-size:14px;color:#333;\">{{22.phone}}</td></tr>\n              <tr style=\"border-top:1px solid #eee;\"><td style=\"font-size:13px;color:#888;\">Programa</td><td style=\"font-size:14px;color:#333;font-weight:bold;\">{{22.programa}}</td></tr>\n              <tr style=\"border-top:1px solid #eee;\"><td style=\"font-size:13px;color:#888;\">Edad</td><td style=\"font-size:14px;color:#333;\">{{22.edad}}</td></tr>\n              <tr style=\"border-top:1px solid #eee;\"><td style=\"font-size:13px;color:#888;\">Presentación enviada</td><td style=\"font-size:14px;color:#333;\"><a href=\"{{22.pdf_link}}\" style=\"color:#3b7fd4;\">Ver PDF</a></td></tr>\n              <tr style=\"border-top:1px solid #eee;\"><td style=\"font-size:13px;color:#888;\">Fuente</td><td style=\"font-size:14px;color:#333;\">{{22.fuente}}</td></tr>\n            </table>\n            <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 20px 0;\">\n              <tr>\n                <td style=\"background:#25D366;border-radius:6px;padding:12px 28px;text-align:center;\">\n                  <a href=\"https://wa.me/{{replace(replace(replace(replace(replace(22.phone; \"+\"; \"\"); \" \"; \"\"); \"-\"; \"\"); \"(\"; \"\"); \")\"; \"\")}}\" style=\"color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;\">\n                    Escribir por WhatsApp\n                  </a>\n                </td>\n              </tr>\n            </table>\n            <p style=\"font-size:13px;color:#888;margin:0;\">Recibido el {{formatDate(22.timestamp; \"DD/MM/YYYY HH:mm\"; \"America/Bogota\")}} (hora Colombia)</p>\n          </td>\n        </tr>\n        <tr>\n          <td style=\"background:#0a1f3c;padding:16px 40px;text-align:center;\">\n            <p style=\"color:rgba(255,255,255,0.4);font-size:12px;margin:0;\">Revel Fundación - Victory Sports</p>\n          </td>\n        </tr>\n      </table>\n    </td></tr>\n  </table>\n</body>\n</html>",
+                "subject": "Nuevo lead {{if(contains(22.programa; \"World Challenge\"); \"RMF World Challenge\"; \"RMF Clinic\")}} — {{22.nombre}}",
+                "bodyType": "rawHtml"
+            },
+            "metadata": {
+                "designer": { "x": 1189, "y": 35 },
+                "restore": {
+                    "expect": {
+                        "cc": { "mode": "chose" },
+                        "to": { "mode": "chose", "items": [null] },
+                        "bcc": { "mode": "chose" },
+                        "from": { "mode": "chose" },
+                        "bodyType": { "label": "Raw HTML" },
+                        "attachments": { "mode": "chose" },
+                        "emailHeaders": { "mode": "chose" }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": { "scoped": "true", "connection": "google-email" },
+                            "label": "My Gmail connection (alejandro.cabrera@fundacionrevel.net)"
+                        }
+                    }
+                },
+                "parameters": [
+                    { "name": "__IMTCONN__", "type": "account:google-email", "label": "Connection", "required": true }
+                ],
+                "expect": [
+                    { "name": "to", "spec": { "name": "value", "type": "email", "label": "Recipient email address", "required": true, "validate": true }, "type": "array", "label": "To", "required": true },
+                    { "name": "subject", "type": "text", "label": "Subject" },
+                    { "name": "bodyType", "type": "select", "label": "Body type", "required": true, "validate": { "enum": ["rawHtml", "collection"] } },
+                    { "name": "attachments", "spec": { "name": "value", "spec": [{ "name": "filename", "type": "filename", "label": "File name", "required": true, "semantic": "file:name" }, { "name": "data", "type": "buffer", "label": "Data", "required": true, "semantic": "file:data" }], "type": "collection", "label": "Attachment" }, "type": "array", "label": "Attachments" },
+                    { "name": "from", "type": "select", "label": "From" },
+                    { "name": "cc", "spec": { "name": "value", "type": "email", "label": "Recipient email address" }, "type": "array", "label": "CC recipients" },
+                    { "name": "bcc", "spec": { "name": "value", "type": "email", "label": "Recipient email address" }, "type": "array", "label": "BCC recipients" },
+                    { "name": "emailHeaders", "spec": { "name": "value", "spec": [{ "name": "key", "type": "text", "label": "Key", "required": true }, { "name": "value", "type": "text", "label": "Value" }], "type": "collection", "label": "Email header" }, "type": "array", "label": "Additional email headers" },
+                    { "name": "content", "type": "text", "label": "Content" }
+                ]
+            }
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "us2.make.com",
+        "notes": []
+    }
+}

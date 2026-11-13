@@ -7039,94 +7039,240 @@ const TYC_ALIANZAS_INICIALES_ = {
   ]
 };
 
-// Texto inicial de los T&C (transcrito de los que estaban en el código).
+// T&C estándar del World Challenge — transcrito de "Términos y Condiciones RMF
+// World Challenge 2027 Estándar" (PDF), más la 3.ª persona (menores de 3 años
+// sin costo) y el tiquete de bebés (25%). Montos y fechas límite salen de la
+// pestaña Alianzas ({jugador_total}, {jugador_fecha_reserva}…); el tiquete,
+// del precio de cada persona ({tiquete}). Para cargarlo en un Sheet que ya
+// tiene la pestaña T&C: actualizarTycEstandarWC().
 // [orden, sección, aplica a, texto]
-const TYC_BANCO_WC_ = '- **Datos bancarios:** Bancolombia · Beneficiario: Fundación Revel · Cuenta 05962673128 · NIT 900636583-7';
-const TYC_CANCEL_WC_ = [
-  '- **Antes de los 3 meses del inicio del programa (más de 90 días):** penalidad del 10% del valor pagado (reembolso del 90%)',
-  '- **De 90 a 61 días de anticipación:** penalidad del 30% del valor pagado (reembolso del 70%)',
-  '- **De 60 a 31 días de anticipación:** penalidad del 60% del valor pagado (reembolso del 40%)',
-  '- **30 días o menos de anticipación:** penalidad del 100% (no hay lugar a reembolso)'
-];
 const TYC_SEMILLA_WC_ = [
-  [0, 'Encabezado', 'Todos', '**{programa}**\n{fechas_programa} · Madrid, España'],
-  [1, 'Servicios incluidos', 'Jugador', [
-    '[con tiquete] - **Tiquete aéreo:** ida y vuelta en la ruta Bogotá – Madrid – Bogotá',
-    '- **Alojamiento:** 7 noches y 8 días en el Campus Deportivo European Football Institute by StepHouse — pensión completa (desayuno, almuerzo, snack y cena). Lavandería incluida.',
+  [0, 'Encabezado', 'Todos', '**TÉRMINOS Y CONDICIONES**\n**{programa}**\nDel 19 al 27 de marzo de 2027 · Madrid, España\nVictory Sports Spain, S.L. · Fundación Revel'],
+  [1, 'Servicios incluidos', 'Todos', [
+    '- **Alojamiento:** 7 noches y 8 días en el Campus Deportivo European Football Institute: pensión completa (desayuno, almuerzo, snack y cena). Lavandería incluida de uniformes.',
     '- Participación en el Real Madrid Foundation World Challenge',
     '- Tour al Estadio Santiago Bernabéu y tienda oficial Adidas',
     '- Recorrido histórico por la ciudad de Madrid',
     '- Excursión Parque de Diversiones de Madrid',
     '- Conferencia Building a Champion',
     '- **Transporte:** todos los traslados durante el programa, incluyendo recogida y regreso al Aeropuerto Madrid-Barajas',
-    '- **Kit deportivo:** dos camisetas, gorra, chaqueta y escarapela identificativa',
-    '- **Seguro médico** durante todo el programa',
-    '- **Atención personalizada:** staff dedicado para garantizar la experiencia de los participantes'
+    '- **Kit deportivo:** dos uniformes (camiseta, pantaloneta y medias), dos camisetas, chaqueta y escarapela identificativa',
+    '- **Seguro médico** durante todo el programa, con cobertura de USD 60.000 (sesenta mil dólares) por participante',
+    '- **Atención personalizada:** staff dedicado durante todo el programa, con 1 persona de staff por cada 10 participantes',
+    '- Diploma oficial del Real Madrid Foundation World Challenge'
   ].join('\n')],
-  [1, 'Servicios incluidos', 'Acompañante con alojamiento', [
-    '[con tiquete] - **Tiquete aéreo:** ida y vuelta en la ruta Bogotá – Madrid – Bogotá',
-    '- **Transporte** Aeropuerto – Hotel y actividades',
-    '- **Alojamiento** en Hotel Eurostars (desayuno incluido) — habitación {habitacion}',
-    '- Tour Estadio Santiago Bernabéu y Adidas Store',
-    '- City Tour Madrid histórico',
-    '- Excursión Parque de Diversiones de Madrid',
-    '- Seguro médico de viaje para todos los participantes durante el programa'
+  [2, 'Categorías y formato de juego', 'Todos', [
+    'Pueden participar jugadores y jugadoras entre los 8 y los 14 años, inscritos en una de las siguientes categorías formativas, según su año de nacimiento:',
+    '- **U10** — nacidos 2017 – 2018 · formato 5 vs 5 · mínimo 6 jugadores (incl. portero) · máximo 10 por equipo',
+    '- **U12** — nacidos 2015 – 2016 · formato 7 vs 7 · mínimo 8 jugadores (incl. portero) · máximo 14 por equipo',
+    '- **U14** — nacidos 2013 – 2014 · formato 7 vs 7 · mínimo 8 jugadores (incl. portero) · máximo 14 por equipo',
+    'La conformación de los equipos y la asignación de categorías se realiza conforme al reglamento del Real Madrid Foundation World Challenge. La organización podrá agrupar participantes de distintos clubes o colegios en un mismo equipo para cumplir los mínimos de jugadores por categoría.'
   ].join('\n')],
-  [1, 'Servicios incluidos', 'Acompañante solo actividades', '- Asistencia y participación en el Real Madrid Foundation World Challenge\n- Seguro médico de viaje durante el evento'],
-  [1, 'Servicios incluidos', 'Acompañante solo World Challenge', '- Entrada y participación en el torneo Real Madrid Foundation World Challenge\n- Seguro médico de viaje durante el evento'],
-  [2, 'Precio del programa y forma de pago', 'Jugador', [
-    '[con tiquete] - Costo total por participante: **{total} EUR** (programa) + **{tiquete} EUR** (tiquete aéreo) = **{total_con_tiquete} EUR**',
-    '[sin tiquete] - Costo total por participante: **{total} EUR** (el tiquete aéreo no está incluido; valor referencial: {tiquete} EUR)',
-    '- Reserva: **{reserva} EUR** — fecha límite **{fecha_reserva}**',
-    '[con tiquete] - Tiquete aéreo: **{tiquete} EUR** — fecha límite **{fecha_tiquete}**',
-    '- Pago final: **{pago_final} EUR** — fecha límite **{fecha_final}**',
-    '- El pago se realizará en pesos colombianos (COP) según la tasa oficial del día de la transferencia bancaria',
-    TYC_BANCO_WC_
+  [3, 'Precio del programa y forma de pago', 'Todos', [
+    'El programa se ofrece en dos modalidades: sin tiquete aéreo o con tiquete aéreo Bogotá – Madrid – Bogotá incluido.',
+    '**Opción sin tiquete aéreo**',
+    '- Costo total por participante: **{jugador_total} EUR**',
+    '- Reserva (no reembolsable) — hasta el {jugador_fecha_reserva}: **{jugador_reserva} EUR**',
+    '- Pago final — hasta el {jugador_fecha_final}: **{jugador_final} EUR**',
+    '**Opción con tiquete aéreo**',
+    '- Costo total por participante: **{jugador_total+tiquete} EUR**',
+    '- Reserva (no reembolsable) + tiquete aéreo — hasta el {fecha_tiquete}: **{jugador_reserva+tiquete} EUR**',
+    '- Pago final — hasta el {jugador_fecha_final}: **{jugador_final} EUR**',
+    'El tiquete aéreo ({tiquete} EUR) corresponde a cupos de grupo reservados con la aerolínea, se paga junto con la reserva y su precio es válido hasta agotar los cupos reservados. Los bebés menores de 2 años a la fecha de regreso pagan el 25% del valor del tiquete. Los vuelos de salida desde Bogotá están previstos para el 19 de marzo de 2027, con llegada a Madrid el 20 de marzo de 2027 (fechas de referencia sujetas a confirmación de la aerolínea).',
+    'El pago se realizará en pesos colombianos (COP) según la Tasa Representativa del Mercado (TRM) de cambio EUR/COP del día del pago, en los términos del numeral 6.5.',
+    '**Datos bancarios**',
+    '- Entidad: Bancolombia',
+    '- Beneficiario: Fundación Revel',
+    '- Cuenta: 05962673128',
+    '- NIT: 900636583-7'
   ].join('\n')],
-  [2, 'Precio del programa y forma de pago', 'Acompañante con alojamiento', [
-    '[con tiquete] - Total del programa: **{total_con_tiquete} EUR**',
-    '[sin tiquete] - Total del programa: **{total} EUR**',
-    '- Reserva: **{reserva} EUR** — fecha límite **{fecha_reserva}**',
-    '[con tiquete] - Tiquete aéreo: **{tiquete} EUR** — fecha límite **{fecha_tiquete}**',
-    '- Pago final: **{pago_final} EUR** — fecha límite **{fecha_final}**',
-    '- El pago se efectuará en COP o euros por transferencia',
-    TYC_BANCO_WC_
+  [4, 'Precios para acompañantes', 'Todos', [
+    'Los siguientes valores aplican para acompañantes de los participantes (personas que viajan con el grupo sin participar en los entrenamientos deportivos del programa). El FULL PACK incluye alojamiento en Hotel Eurostars (4 estrellas).',
+    '**FULL PACK (con alojamiento) incluye:**',
+    '- 7 noches en Hotel Eurostars (desayuno incluido)',
+    '- Seguro médico de viaje',
+    '- Transporte a las actividades',
+    '- Escarapela de identificación',
+    '- Madrid City Tour y Parque Warner',
+    '- Real Madrid Foundation World Challenge',
+    '- Tour al Estadio Santiago Bernabéu',
+    '**Solo Actividades (sin alojamiento) incluye:**',
+    '- Escarapela de identificación',
+    '- Madrid City Tour y Parque Warner',
+    '- Real Madrid Foundation World Challenge',
+    '- Tour al Estadio Santiago Bernabéu',
+    'No incluye alojamiento, transporte a las actividades ni seguro médico de viaje.',
+    '**Solo acceso al Torneo Real Madrid Foundation World Challenge incluye:**',
+    '- Real Madrid Foundation World Challenge',
+    'No incluye alojamiento, transporte a las actividades ni seguro médico de viaje.',
+    '**Precios**',
+    '- FULL PACK — Habitación doble (por persona): **{doble_total} EUR**',
+    '- Total habitación doble (2 personas): **{doble_total*2} EUR**',
+    '- FULL PACK — 3.ª persona en habitación doble: **{triple_total} EUR** (menores de 3 años al inicio del programa: sin costo)',
+    '- FULL PACK — Habitación sencilla: **{sencilla_total} EUR**',
+    '- Solo Actividades: **{actividades_total} EUR**',
+    '- Solo acceso al Torneo Real Madrid Foundation World Challenge: **{solo_wc_total} EUR**',
+    '- Tiquete aéreo Bogotá – Madrid – Bogotá (opcional): **{tiquete} EUR**',
+    '**Forma de pago acompañantes — FULL PACK (con alojamiento)**',
+    '- Reserva (no reembolsable) — hasta el {acomp_fecha_reserva}: **{doble_reserva} EUR**',
+    '- Pago final habitación doble (por persona) — hasta el {acomp_fecha_final}: **{doble_final} EUR**',
+    '- Pago final habitación sencilla — hasta el {acomp_fecha_final}: **{sencilla_final} EUR**',
+    '',
+    'La 3.ª persona en habitación doble ({triple_total} EUR), los planes Solo Actividades ({actividades_total} EUR) y Solo acceso al Torneo ({solo_wc_total} EUR) se cancelan en un solo pago, con fecha límite el {acomp_fecha_reserva}, dado que su valor total es inferior al monto de la reserva. La 3.ª persona menor de 3 años al inicio del programa no tiene costo.',
+    'El tiquete aéreo opcional ({tiquete} EUR) se paga junto con la reserva o el pago único, con fecha límite el {fecha_tiquete}, y su precio es válido hasta agotar los cupos reservados. Los bebés menores de 2 años a la fecha de regreso pagan el 25% del valor del tiquete.',
+    'El pago se realizará en pesos colombianos (COP) según la Tasa Representativa del Mercado (TRM) de cambio EUR/COP del día del pago, en los términos del numeral 6.5.',
+    'Los valores de FULL PACK en habitación doble corresponden al precio por persona; cada acompañante que comparta la habitación paga este valor de forma individual.'
   ].join('\n')],
-  [2, 'Precio del programa y forma de pago', 'Acompañante sin alojamiento', [
-    '[con tiquete] - Con Tiquete Aéreo: **{total_con_tiquete} EUR** — pago único al momento de la inscripción',
-    '[sin tiquete] - Sin Tiquete Aéreo: **{total} EUR** — pago único al momento de la inscripción',
-    '- El pago se efectuará en COP o euros por transferencia',
-    TYC_BANCO_WC_
-  ].join('\n')],
-  [3, 'Documentación requerida', 'Jugador', [
+  [5, 'Documentación requerida', 'Todos', [
     '- Pasaporte con validez de mínimo 6 meses hasta la finalización del viaje',
     '- Cédula de ciudadanía para mayores de edad y registro civil para menores de edad',
-    '- Permiso de salida del país para menores de edad, debidamente autenticado ante notario',
-    '- Registro Civil de nacimiento'
+    '- Permiso de salida del país para menores de edad, firmado por ambos padres y debidamente autenticado ante notario',
+    '- Registro Civil de nacimiento',
+    '- ETIAS (autorización de viaje a Europa), si se encuentra vigente en la fecha del viaje; la organización confirmará este requisito'
   ].join('\n')],
-  [3, 'Documentación requerida', 'Acompañante', [
-    '- Pasaporte con validez de mínimo 6 meses hasta la finalización del viaje',
-    '- Cédula de ciudadanía para mayores de edad y registro civil para menores de edad',
-    '- Permiso de salida del país para menores de edad'
+  [6, 'Políticas de cancelación', 'Todos', [
+    '**6.1 Reserva**',
+    'La inscripción solo quedará confirmada con el pago de la reserva de {jugador_reserva} EUR. La reserva no es reembolsable en ningún caso, salvo (a) excusa médica debidamente certificada, según el numeral 6.4, o (b) cancelación o modificación sustancial del programa por parte de la organización, según la cláusula 8.',
+    'La reserva no es reembolsable porque se destina a cubrir costos que se generan desde el momento mismo de la inscripción y que la organización no puede recuperar, entre ellos:',
+    '- Inscripción y confirmación de la plaza del participante ante la organización del Real Madrid Foundation World Challenge.',
+    '- Bloqueo de plazas de alojamiento y alimentación con los proveedores del programa.',
+    '- Gastos administrativos y de gestión de la inscripción.',
+    '- Comisiones bancarias, costos de pasarela de pago y costos de conversión de divisas.',
+    'Los planes que se pagan en un solo pago por ser de valor inferior a la reserva (3.ª persona en habitación doble, Solo Actividades y Solo acceso al Torneo) reciben el mismo tratamiento que la reserva: no son reembolsables, salvo en los casos de los numerales (a) y (b) anteriores, ya que las entradas y acreditaciones correspondientes se adquieren de forma anticipada.',
+    '**Tiquete aéreo:** el tiquete aéreo ({tiquete} EUR) corresponde a cupos de grupo que la organización paga y emite con anticipación a la aerolínea. Una vez emitido no es reembolsable, salvo en los casos de los numerales (a) y (b) anteriores, y cualquier cambio de nombre, fecha o ruta queda sujeto a las condiciones y penalidades de la aerolínea, que serán asumidas por el participante.',
+    '**6.2 Penalidades por cancelación del participante**',
+    'Si el participante cancela su inscripción, la organización retendrá de los valores efectivamente pagados el porcentaje indicado a continuación. Los porcentajes se calculan sobre el valor total del programa contratado: {jugador_total} EUR para los jugadores (sin incluir el tiquete aéreo, que se rige por el numeral 6.1) y el valor del paquete correspondiente para los acompañantes. La anticipación se cuenta hasta la fecha de inicio del programa, el 19 de marzo de 2027.',
+    '- **Más de 90 días de anticipación (hasta el 19 de diciembre de 2026):** penalidad: la reserva · retención máx. (jugador) {jugador_reserva} EUR · reembolso máx. (jugador) {jugador_final} EUR',
+    '- **Entre 90 y 61 días (del 20 de diciembre de 2026 al 18 de enero de 2027):** penalidad 30% (mín. la reserva) · retención máx. (jugador) {jugador_reserva} EUR · reembolso máx. (jugador) {jugador_final} EUR',
+    '- **Entre 60 y 31 días (del 19 de enero al 17 de febrero de 2027):** penalidad 60% · retención máx. (jugador) {jugador_total*0.6} EUR · reembolso máx. (jugador) {jugador_total*0.4} EUR',
+    '- **30 días o menos (desde el 18 de febrero de 2027):** penalidad 100% · retención máx. (jugador) {jugador_total} EUR · reembolso máx. (jugador) 0 EUR',
+    'La retención nunca será superior a lo efectivamente pagado por el participante a la fecha de cancelación, y la cancelación no le genera ninguna obligación de pago adicional. En todos los casos se retendrá, como mínimo, el valor de la reserva ({jugador_reserva} EUR); por ello, entre 90 y 61 días la retención para jugadores equivale a la reserva, ya que el 30% del programa ({jugador_total*0.3} EUR) es inferior a ella. El saldo a favor del participante, si lo hay, se reembolsará dentro de los 30 días calendario siguientes a la recepción de la cancelación.',
+    'Las penalidades responden a los costos que la organización ya ha comprometido y pagado a medida que se acerca la fecha del programa, y que no puede recuperar ni reasignar a otro participante:',
+    '- **Entre 90 y 61 días:** pago completo de la inscripción en el torneo a la organización del Real Madrid Foundation World Challenge (no reembolsable a partir del 15 de diciembre de 2026), y reservas de alojamiento, alimentación y transporte con los proveedores.',
+    '- **Entre 60 y 31 días:** además de lo anterior, producción del kit deportivo, contratación de pólizas de seguro, asignación de staff y compra de entradas y reservas de actividades y excursiones.',
+    '- **30 días o menos:** la totalidad de los servicios del programa está contratada y pagada, la plantilla del equipo está cerrada ante la organización del torneo y la plaza no puede ser reasignada.',
+    '**Ejemplo 1:** un jugador de la opción sin tiquete ha pagado {jugador_total} EUR y cancela el 1 de febrero de 2027 (entre 60 y 31 días de anticipación). Se retienen {jugador_total*0.6} EUR (60%) y se le reembolsan {jugador_total*0.4} EUR.',
+    '**Ejemplo 2:** un jugador ha pagado únicamente la reserva de {jugador_reserva} EUR y cancela el 10 de diciembre de 2026. Se retienen los {jugador_reserva} EUR, no hay reembolso y el participante no adeuda ningún valor adicional.',
+    '**6.3 Forma y cómputo de la cancelación**',
+    'La cancelación debe comunicarse por escrito a través de los canales de contacto oficiales del programa. La fecha que se tendrá en cuenta para aplicar la tabla del numeral 6.2 será la fecha de recepción de dicha comunicación.',
+    '**6.4 Excusa médica**',
+    'Si el participante no puede viajar por una condición médica que se lo impida, certificada por un médico y presentada a la organización dentro de los 10 días calendario siguientes al diagnóstico, podrá elegir entre:',
+    '- (a) Reprogramar su participación, por una única vez, para la siguiente fecha disponible del programa dentro de los 12 meses siguientes, conservando las mismas condiciones; o',
+    '- (b) Solicitar el reembolso de lo pagado, incluida la reserva, descontando los costos de terceros ya pagados que no puedan recuperarse (pólizas de seguro u otros).',
+    '**6.5 Moneda, pagos y tasa de cambio**',
+    'Todos los precios de este documento están expresados en euros (EUR). El participante paga en pesos colombianos (COP) el equivalente en euros de cada cuota, según la TRM EUR/COP del día del pago. Cada pago se abona a la cuenta del participante por el valor en euros resultante de dicha conversión, valor que constará en el recibo correspondiente.',
+    'Las retenciones y reembolsos previstos en esta cláusula se calculan en euros, sobre los valores en euros abonados por el participante. Los reembolsos se pagarán en COP, según la TRM EUR/COP vigente en la fecha del reembolso. La organización no reconocerá diferencias a favor ni en contra del participante derivadas de la variación de la tasa de cambio entre la fecha de pago y la fecha de reembolso.',
+    'Las comisiones bancarias, los costos de pasarela de pago y los gastos de transferencia corren por cuenta del participante y no son reembolsables, ya que corresponden a servicios de entidades financieras que la organización no puede recuperar.',
+    '**6.6 Causas personales y documentación**',
+    'Cualquier inconveniente de índole personal en el aeropuerto o con la documentación de viaje (pasaporte vencido, permisos de salida incompletos, homónimos, demandas, llegada fuera de hora, negación de entrada al país, requisitos migratorios no cumplidos, etc.) se considerará una cancelación por parte del participante y se regirá por el numeral 6.2.',
+    'La organización no es responsable de la obtención de pasaportes, permisos de salida de menores, autorizaciones de viaje ni de las decisiones de las autoridades migratorias, ya que se trata de trámites personales del participante y de decisiones de terceros ajenos a su control. Los servicios del programa se contratan y pagan con anticipación con independencia de dichos trámites.',
+    '**6.7 Servicios no utilizados**',
+    'No habrá reembolso por servicios no utilizados en caso de no presentación del participante, regreso anticipado o retiro del programa por incumplimiento de la cláusula de comportamiento, dado que dichos servicios ya han sido contratados y pagados a los proveedores.'
   ].join('\n')],
-  [4, 'Políticas de cancelación', 'Jugador', TYC_CANCEL_WC_.concat([
-    '- Tiquete aéreo: reembolsable según las políticas propias de la aerolínea, de forma independiente a esta política',
-    '- Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del valor pagado',
-    '- Devoluciones por condiciones médicas debidamente certificadas: el programa se reprogramará a la siguiente fecha disponible del programa, conservando las mismas condiciones'
-  ]).join('\n')],
-  [4, 'Políticas de cancelación', 'Acompañante con alojamiento', TYC_CANCEL_WC_.concat([
-    '- Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del valor pagado'
-  ]).join('\n')],
-  [4, 'Políticas de cancelación', 'Acompañante sin alojamiento', ['- El programa se paga en un solo pago (100% del valor total) al momento de la inscripción, sujeto a esta política de cancelación'].concat(TYC_CANCEL_WC_, [
-    '- Cualquier inconveniente de índole personal en el aeropuerto (pasaporte vencido, permisos incompletos, homónimos, demandas, llegada fuera de hora, etc.) no da lugar a reembolso del 100% del valor pagado'
-  ]).join('\n')],
-  [5, 'Cláusula de responsabilidad', 'Todos', 'Victory Sports Spain, Fundación Revel y sus operadores garantizan la calidad de los servicios descritos y quedan exentos de responsabilidad en casos de fuerza mayor, como desastres naturales, pandemias, huelgas o cualquier circunstancia imprevisible e inevitable.'],
-  [6, 'Cesión de derechos de imagen', 'Todos', 'El padre, madre o representante legal del menor autoriza a Victory Sports Spain SL y a la Fundación Revel a tomar fotografías y videos del menor durante el viaje. Estas imágenes podrán ser utilizadas en redes sociales, páginas web y materiales promocionales, siempre respetando la dignidad del menor.'],
-  [7, 'Cláusula de comportamiento', 'Jugador', 'Todos los participantes deben respetar las normas y reglamentos del programa, mantener un comportamiento adecuado en todas las actividades y alojamientos, y cumplir con las indicaciones del staff de Victory Sports. Cualquier incumplimiento podrá resultar en la expulsión inmediata del programa sin derecho a reembolso.'],
-  [8, 'Política de cambios y fuerza mayor', 'Jugador', 'En caso de cambios en el itinerario por razones fuera del control de los organizadores, Victory Sports Spain y Fundación Revel se comprometen a ofrecer alternativas de igual o mayor calidad, pero no serán responsables por gastos adicionales incurridos por los participantes.'],
-  [9, 'Jurisdicción legal', 'Jugador', 'Este contrato se rige bajo las leyes colombianas. Cualquier disputa que surja del mismo será resuelta en los tribunales de Bogotá.'],
-  [10, 'Declaración de aceptación', 'Jugador', 'Al realizar el primer pago, el participante o su representante legal declara haber leído, comprendido y aceptado estos términos y condiciones en su totalidad.']
+  [7, 'Política de cambios y fuerza mayor', 'Todos', [
+    'Para efectos de este contrato, se entiende por fuerza mayor o caso fortuito todo acontecimiento imprevisible e irresistible, ajeno a la voluntad de Victory Sports Spain y Fundación Revel, que impida o dificulte gravemente la ejecución del programa en los términos pactados, incluyendo de forma enunciativa y no taxativa:',
+    '- Desastres naturales (terremotos, huracanes, inundaciones u otros fenómenos naturales).',
+    '- Pandemias, epidemias o emergencias sanitarias declaradas por autoridades competentes.',
+    '- Huelgas, paros o disturbios sociales.',
+    '- Actos de autoridad, cierre de fronteras o del espacio aéreo, o cambios en políticas migratorias.',
+    '- Actos terroristas, conflictos armados o situaciones de orden público.',
+    '- Cualquier otra circunstancia imprevisible e inevitable que escape del control razonable de los organizadores.',
+    'Adicionalmente, Victory Sports Spain y Fundación Revel no serán responsables por hechos de terceros ajenos a su control directo —tales como cancelaciones o retrasos de aerolíneas, cierre de instalaciones por parte de operadores externos, o incumplimientos de proveedores—, los cuales constituyen un eximente distinto a la fuerza mayor y se regirán por las políticas propias de dichos terceros.',
+    'Los cambios menores en el itinerario (como la sustitución de un alojamiento por otro de categoría equivalente, o la reorganización del orden de las actividades) se consideran ajustes operativos normales y no dan lugar a compensación alguna. Los cambios que afecten sustancialmente el contenido central del programa (cambio de fechas, sede o eliminación de componentes principales) se regirán por lo dispuesto en la cláusula 8.',
+    'Los gastos en que el participante haya incurrido por su cuenta (visas, seguros adicionales, tiquetes o trámites propios, entre otros) no serán reembolsados ni asumidos por la organización en los eventos descritos en esta cláusula.',
+    'En caso de que un evento de fuerza mayor impida la realización del programa en las fechas previstas, este se reprogramará para la siguiente fecha disponible dentro de los doce (12) meses siguientes, conservando las mismas condiciones pactadas.'
+  ].join('\n')],
+  [8, 'Cancelación o modificación por parte de la organización', 'Todos',
+    'Si Victory Sports Spain y/o Fundación Revel se ven en la necesidad de cancelar el programa por causas distintas a la fuerza mayor descrita en la cláusula 7, se reembolsará al participante el 100% de los valores efectivamente pagados, incluida la reserva, dentro de los 30 días calendario siguientes a la notificación de cancelación. En caso de modificaciones sustanciales al programa (cambio de fechas, sede o contenido central de la experiencia) atribuibles a la organización, el participante podrá optar por aceptar la modificación o solicitar el reembolso total de lo pagado hasta la fecha, sin penalidad.'],
+  [9, 'Cesión de derechos de imagen', 'Todos',
+    'El padre, madre o representante legal del menor autoriza a Victory Sports Spain, S.L. y a la Fundación Revel a tomar fotografías y videos del menor durante el viaje. Estas imágenes podrán ser utilizadas en redes sociales, páginas web y materiales promocionales, siempre respetando la dignidad del menor.'],
+  [10, 'Tratamiento de datos personales', 'Todos', [
+    'De conformidad con la Ley 1581 de 2012, el Decreto 1377 de 2013 y demás normas que los modifiquen, adicionen o reglamenten en Colombia, el participante o su representante legal autoriza a Victory Sports Spain, S.L. y a Fundación Revel para recolectar, almacenar, usar y tratar sus datos personales y los del menor a su cargo (incluyendo datos de identificación, contacto, salud relevantes para el programa y documentos de viaje), con las siguientes finalidades:',
+    '- Gestión administrativa, logística y operativa del programa (inscripción, pagos, alojamiento, seguros).',
+    '- Comunicación con el participante y su familia antes, durante y después del viaje.',
+    '- Cumplimiento de obligaciones legales, migratorias y de seguridad social o médica ante autoridades o aseguradoras.',
+    '- Fines estadísticos e institucionales relacionados con la operación de los programas de Fundación Revel.',
+    'El Titular de los datos (o su representante legal, tratándose de un menor de edad) podrá ejercer en cualquier momento los derechos de conocer, actualizar, rectificar y suprimir sus datos, así como revocar la autorización otorgada, mediante solicitud escrita dirigida a Fundación Revel a través de los canales de contacto oficiales del programa. Los datos serán tratados de forma confidencial y no serán compartidos con terceros distintos de los operadores directamente involucrados en la prestación de los servicios (aerolíneas, alojamiento, aseguradoras, autoridades migratorias), salvo obligación legal.'
+  ].join('\n')],
+  [11, 'Cláusula de comportamiento', 'Todos',
+    'Todos los participantes deben respetar las normas y reglamentos del programa, mantener un comportamiento adecuado en todas las actividades y alojamientos, y cumplir con las indicaciones del staff de Victory Sports. Cualquier incumplimiento podrá resultar en la expulsión inmediata del programa sin derecho a reembolso.'],
+  [12, 'Jurisdicción legal', 'Todos',
+    'Este contrato se rige bajo las leyes colombianas. Cualquier disputa que surja del mismo será resuelta en los tribunales de Bogotá.'],
+  [13, 'Declaración de aceptación', 'Todos',
+    'Al realizar el primer pago, el participante o su representante legal declara haber leído, comprendido y aceptado estos términos y condiciones en su totalidad, incluyendo la autorización de tratamiento de datos personales y de imagen contenidas en este documento.']
 ];
+
+// ── Ejecutar UNA VEZ desde el editor ─────────────────────────────────────
+// Cambios de la presentación WC 2027 (12-nov-2026): escribe en la fila
+// "Estándar" de la pestaña Alianzas las fechas límite (15/12/2026 y
+// 15/01/2027), el tiquete (1.400), Solo World Challenge (270) y Triple
+// (650 + 0), y luego carga los T&C estándar nuevos (actualizarTycEstandarWC).
+// Busca las tablas ①②③ y las columnas por su encabezado, no por posición fija.
+function aplicarCambiosWC2027() {
+  const prog = getPrograma_('world_challenge');
+  const sh = SpreadsheetApp.openById(prog.sheetId).getSheetByName('Alianzas');
+  if (!sh) throw new Error('No existe la pestaña Alianzas en el Sheet del World Challenge.');
+  const values = sh.getDataRange().getValues();
+  const filaTitulo = {};
+  values.forEach(function(r, i) {
+    const a = String(r[0] || '').trim();
+    Object.keys(ALIANZAS_MARCAS_).forEach(function(k) { if (a.indexOf(ALIANZAS_MARCAS_[k]) === 0) filaTitulo[k] = i; });
+  });
+  const reserva = new Date(2026, 11, 15), final = new Date(2027, 0, 15);
+  const cambios = {
+    general: { 'Tiquete aéreo (€)': 1400, 'Límite Tiquete': reserva },
+    jugadores: { 'Límite Reserva': reserva, 'Límite Pago Final': final },
+    acomp: {
+      'Límite Reserva': reserva, 'Límite Pago Final': final,
+      'Triple (3.ª persona) · Reserva': 650, 'Triple (3.ª persona) · Pago Final': 0,
+      'Solo World Challenge · Reserva': 270, 'Solo World Challenge · Pago Final': 0
+    }
+  };
+  Object.keys(cambios).forEach(function(k) {
+    if (filaTitulo[k] == null) throw new Error('No se encontró la tabla ' + ALIANZAS_MARCAS_[k] + ' en Alianzas.');
+    const hIdx = filaTitulo[k] + 1, estIdx = filaTitulo[k] + 2;
+    const headers = values[hIdx].map(normPagosHeaderKey_);
+    const nombreEst = String(values[estIdx][0] || '').trim();
+    if (k === 'general' && normText_(nombreEst) !== normText_(ALIANZA_ESTANDAR_)) throw new Error('La primera fila de ① no es "Estándar" (es "' + nombreEst + '").');
+    Object.keys(cambios[k]).forEach(function(col) {
+      const j = headers.indexOf(normPagosHeaderKey_(col));
+      if (j < 0) throw new Error('No se encontró la columna "' + col + '" en la tabla ' + ALIANZAS_MARCAS_[k] + '.');
+      sh.getRange(estIdx + 1, j + 1).setValue(cambios[k][col]);
+      Logger.log(ALIANZAS_MARCAS_[k] + ' fila ' + (estIdx + 1) + ' · ' + col + ' = ' + cambios[k][col]);
+    });
+  });
+  try { CacheService.getScriptCache().remove('config_prog_v1_' + prog.key); } catch (e) {}
+  actualizarTycEstandarWC();
+  Logger.log('aplicarCambiosWC2027: listo.');
+}
+
+// ── Ejecutar UNA VEZ desde el editor ─────────────────────────────────────
+// Reemplaza en la pestaña "T&C" de cada World Challenge las filas ESTÁNDAR
+// (columna Alianza vacía) por TYC_SEMILLA_WC_. No toca las filas de alianzas
+// (ej. Alianza F.C). Antes guarda una copia de la pestaña como
+// "T&C (respaldo aaaa-mm-dd HH:mm)".
+function actualizarTycEstandarWC() {
+  listarProgramas_().filter(function(p) { return p.familia === 'world_challenge'; }).forEach(function(prog) {
+    const ss = SpreadsheetApp.openById(prog.sheetId);
+    const sh = ss.getSheetByName('T&C');
+    if (!sh) { construirPestanaTyc_(ss, prog); Logger.log('actualizarTycEstandarWC: ' + prog.key + ' → pestaña T&C creada.'); return; }
+    sh.copyTo(ss).setName('T&C (respaldo ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm') + ')');
+    const values = sh.getDataRange().getValues();
+    let hi = -1;
+    for (let i = 0; i < values.length; i++) { if (normPagosHeaderKey_(values[i][0]) === 'orden') { hi = i; break; } }
+    if (hi < 0) throw new Error('No se encontró la fila de encabezados (Orden | Sección | …) en T&C de ' + prog.key);
+    const deAlianza = values.slice(hi + 1).filter(function(r) { return String(r[3] || '').trim() && String(r[1] || '').trim(); })
+      .map(function(r) { return [r[0], r[1], r[2], r[3], r[4]]; });
+    const nuevas = TYC_SEMILLA_WC_.map(function(r) { return [r[0], r[1], r[2], '', r[3]]; }).concat(deAlianza);
+    const primera = hi + 2;
+    const viejas = Math.max(sh.getLastRow() - hi - 1, 0);
+    if (viejas) sh.getRange(primera, 1, viejas, 5).clearContent();
+    if (sh.getMaxRows() < primera + nuevas.length) sh.insertRowsAfter(sh.getMaxRows(), primera + nuevas.length - sh.getMaxRows());
+    sh.getRange(primera, 1, nuevas.length, 5).setValues(nuevas);
+    try { CacheService.getScriptCache().remove('config_prog_v1_' + prog.key); } catch (e) {}
+    Logger.log('actualizarTycEstandarWC: ' + prog.key + ' → ' + TYC_SEMILLA_WC_.length + ' secciones estándar escritas, ' + deAlianza.length + ' filas de alianza conservadas.');
+  });
+}
 
 const TYC_SEMILLA_CLINIC_ = [
   [0, 'Encabezado', 'Todos', '**{programa}**\n{fechas_programa} · Madrid, España'],
