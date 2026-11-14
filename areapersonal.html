@@ -3089,10 +3089,11 @@ function activarPrograma(key, opts) {
     const n = normalizeParticipant(p) || p;
     return !(n.tipo||'').toLowerCase().includes('jug') && (n.habitacion||'') === '';
   });
-  // World Challenge: si TODO el grupo tiene un tipo de pago único (Solo
-  // Actividades / Solo World Challenge — todo se paga en la reserva, sin
-  // segundo pago), oculta el paso "Pago final" del stepper (ver STEP_DEFS).
-  sinPagoFinal = esWCKey(key) && programParticipants.every(p => {
+  // Si TODO el grupo tiene un tipo de pago único (Solo Actividades / Solo
+  // World Challenge / 3.ª persona — todo se paga en la reserva, sin segundo
+  // pago), oculta el paso "Pago final" del stepper (ver STEP_DEFS). Aplica a
+  // World Challenge y, desde 2027, también al Clinic.
+  sinPagoFinal = programParticipants.every(p => {
     const n = normalizeParticipant(p) || p;
     return montoReservaFinalParticipante_(n, key).final === 0;
   });
@@ -3112,7 +3113,12 @@ function activarPrograma(key, opts) {
   document.getElementById('tiq-toggle-label').textContent = conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
   document.getElementById('tc-text').innerHTML = getTyC();
   const tiqOptin = document.getElementById('tiq-optin');
-  if (tiqOptin) tiqOptin.style.display = !conTiq ? 'block' : 'none';
+  // Edición sin cotización de tiquete (programas.js → tiqueteDisponible:
+  // false): no se ofrece agregarlo. Quien ya lo tenga puede quitarlo.
+  const puedeAgregarTiq = tiqueteDisponible(key);
+  if (tiqOptin) tiqOptin.style.display = !conTiq && puedeAgregarTiq ? 'block' : 'none';
+  const btnToggleTiq = document.getElementById('btn-toggle-tiq');
+  if (btnToggleTiq) btnToggleTiq.style.display = conTiq || puedeAgregarTiq ? '' : 'none';
   const tc = document.getElementById('tc-chk');
   if (tc) { tc.checked = grupoPaso > 2; onTC(); }
   applyPaymentTotals(calcPaymentTotals());
@@ -3641,7 +3647,8 @@ function paqueteFront_(p, prog) {
     if (hab === "" || hab === "solo_actividades") return "acomp_actividades";
     return hab.includes("doble") ? "acomp_doble" : "acomp_sencilla";
   }
-  if (hab === "") {
+  // "" = registros viejos; "solo_actividades" = valor del formulario actual.
+  if (hab === "" || hab === "solo_actividades") {
     const fObj = parseFechaNacFront(p.fecha_nacimiento || "");
     const edad = fObj ? calcEdadRefFront(fObj, prog.key) : null;
     return (edad !== null && edad <= 12 && pr.acomp_actividades_menor12) ? "acomp_actividades_menor12" : "acomp_actividades";
@@ -5253,6 +5260,7 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
 
 // ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
 function toggleTiqueteDesdeWelcome() {
+  if (!conTiq && !tiqueteDisponible(programKeyActivo)) return; // sin cotización de tiquete
   conTiq = !conTiq;
   // Actualizar label botón welcome
   document.getElementById('tiq-toggle-label').textContent =

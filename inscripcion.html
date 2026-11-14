@@ -496,6 +496,19 @@ function renderItinerarioInscripcion() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = itin.precioHtml;
   });
+  // Edición sin cotización de tiquete: solo "gestiono mi tiquete".
+  const conTiqVictory = tiqueteDisponible(selectedPrograma);
+  ['j', 'a'].forEach(function(pfx) {
+    const si = document.getElementById(pfx + '-tiq-si');
+    const itinEl = document.getElementById(pfx + '-tiq-itinerario');
+    const precioEl = document.getElementById(pfx + '-tiq-precio');
+    if (si) si.style.display = conTiqVictory ? '' : 'none';
+    if (itinEl) itinEl.style.display = conTiqVictory ? '' : 'none';
+    if (!conTiqVictory) {
+      if (precioEl) precioEl.innerHTML = 'El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> de este programa aún está en cotización. Por ahora la inscripción es <strong>sin tiquete</strong>; te avisaremos cuando esté disponible.';
+      selTiq(pfx === 'j' ? 'jugador' : 'acompanante', 'no');
+    }
+  });
 }
 
 // Rango de años de nacimiento del jugador por edición (programas.js →
@@ -715,6 +728,9 @@ function chk(id) {
 }
 
 async function submitForm(tipo) {
+  if (!tiqueteDisponible(selectedPrograma)) {
+    if (tipo === 'jugador') tiqJugador = 'no'; else tiqAcompanante = 'no';
+  }
   // Nunca enviar una inscripción a un viaje que ya pasó o está cerrado
   // (ej. la página quedó abierta en el navegador desde antes de la fecha).
   if (!programasConInscripcionAbierta().some(p => p.key === selectedPrograma)) {
