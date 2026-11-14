@@ -252,25 +252,24 @@ const PROGRAMAS = [
     linkPresentacion: 'https://drive.google.com/file/d/1TJWchX-nKeeAT1Uqtaf0xaYJ-sNN0m09/view?usp=sharing'
   },
   {
-    // TODO: completar IDs, fechas y precios definitivos del Clinic 2027.
+    // Fechas y precios según la presentación "RMF Clinic 2027" (8–18 oct 2027).
     key: 'clinic_2027', familia: 'clinic', anio: 2027,
     nombre: 'Real Madrid Foundation Clinic 2027', nombreBase: 'Real Madrid Foundation Clinic', nombreCorto: 'RMF Clinic 2027',
     sheetId: '1XDY6Y30xZu3Rs8B_1367sW-h0giapPZxikQ_osN0gCs', budgetSheetId: '162QwHhVdRDLoxml3OFV9SSntcLJ2Gp1YzVnI9dwGEsY',
     uploadsFolderId: '1e1F2pyJMMKYN7-XXPj6SX_RBPOfElcbG', fotosFolderId: '1dWV2jp6vO0K33cVRapBAOawtoPz6KYMa',
-    inicio: new Date(2027, 9, 1), fin: new Date(2027, 9, 9, 23, 59, 59), // TODO fechas reales
-    fechasConfirmadas: false, // TODO quitar con las fechas reales — mientras tanto los correos usan fechasTexto/fechasCorto
-    fechaRefEdad: { anio: 2027, mes: 10, dia: 1 },
-    deadlines: { reserva: new Date(2027, 5, 1), tiquete: new Date(2027, 5, 1), final: new Date(2027, 6, 30) }, // TODO
-    precios: { // TODO confirmar — copiados del Clinic 2026
-      jugador: { reserva: 1000, final: 1790 },
-      acomp_doble: { reserva: 1000, final: 1190 },
-      acomp_sencilla: { reserva: 1000, final: 1510 },
-      acomp_actividades: { reserva: 0, final: 590 },
-      acomp_actividades_menor12: { reserva: 0, final: 190 }
+    inicio: new Date(2027, 9, 8), fin: new Date(2027, 9, 18, 23, 59, 59), // según presentación 2027 (8–18 oct)
+    fechaRefEdad: { anio: 2027, mes: 10, dia: 8 },
+    deadlines: { reserva: new Date(2027, 5, 1), tiquete: new Date(2027, 5, 1), final: new Date(2027, 6, 15) },
+    precios: { // presentación Clinic 2027 (sin tiquete)
+      jugador: { reserva: 800, final: 2090 },        // total 2.890
+      acomp_doble: { reserva: 800, final: 1355 },    // total 2.155 por persona
+      acomp_sencilla: { reserva: 800, final: 1570 }, // total 2.370
+      acomp_actividades: { reserva: 470, final: 0 }, // Solo Actividades: pago único hasta el 1 de junio
+      acomp_triple: { reserva: 650, final: 0 }       // 3.ª persona en hab. doble. Menores de 3 años: gratis
     },
-    precioBaseReferido: 2790, prefijoReferido: 'RMF27', tiqueteEur: 993,
-    fechasTexto: '1 al 9 Octubre', fechasCorto: '1–9 octubre', // TODO fechas reales
-    linkPresentacion: 'https://drive.google.com/file/d/1wvyYr6sKuYxJpFI0Vv1BxsMlvn6TBZn7/view?usp=sharing' // TODO presentación 2027
+    precioBaseReferido: 2890, prefijoReferido: 'RMF27', tiqueteEur: 993, // TODO tiquete: "se cotiza según demanda"
+    fechasTexto: '8 al 18 Octubre', fechasCorto: '8–18 octubre',
+    linkPresentacion: 'https://drive.google.com/file/d/1WM90NFoN49uN6sWyRiH2cR3NOJjkGaBi/view?usp=sharing'
   }
 ];
 
@@ -5992,6 +5991,7 @@ const PAQUETES_ACOMP_ = {
   clinic: [
     { key: 'acomp_doble', label: 'Doble' },
     { key: 'acomp_sencilla', label: 'Sencilla' },
+    { key: 'acomp_triple', label: 'Triple (3.ª persona)' },
     { key: 'acomp_actividades', label: 'Solo actividades' },
     { key: 'acomp_actividades_menor12', label: 'Solo act. menor 12' }
   ]
@@ -6333,7 +6333,8 @@ function paqueteGS_(tipo, habitacion, fechaNacimiento, programa, precios) {
     if (hab === '' || hab === 'solo_actividades') return 'acomp_actividades';
     return hab.indexOf('doble') >= 0 ? 'acomp_doble' : 'acomp_sencilla';
   }
-  if (hab === '') {
+  // '' = registros viejos; 'solo_actividades' = valor del formulario actual.
+  if (hab === '' || hab === 'solo_actividades') {
     const edad = calcEdadRef(parseFechaNacimiento(fechaNacimiento), prog);
     return (edad !== null && edad <= 12 && precios && precios.acomp_actividades_menor12) ? 'acomp_actividades_menor12' : 'acomp_actividades';
   }
@@ -6836,7 +6837,7 @@ const TYC_APLICA_OPCIONES_ = ['Todos', 'Jugador', 'Acompañante', 'Acompañante 
 function construirPestanaTyc_(ss, prog) {
   if (ss.getSheetByName('T&C')) { Logger.log('T&C (' + prog.key + '): ya existe, no se toca.'); return; }
   const sh = ss.insertSheet('T&C', Math.min(ss.getSheetByName('Alianzas') ? ss.getSheetByName('Alianzas').getIndex() : ss.getNumSheets(), ss.getNumSheets()));
-  const semillaStd = prog.familia === 'world_challenge' ? TYC_SEMILLA_WC_ : TYC_SEMILLA_CLINIC_;
+  const semillaStd = TYC_SEMILLA_POR_KEY_()[prog.key] || (prog.familia === 'world_challenge' ? TYC_SEMILLA_WC_ : TYC_SEMILLA_CLINIC_);
   // [orden, sección, aplica, alianza, texto] — estándar (alianza vacía) + alianzas precargadas
   const semilla = semillaStd.map(function(r) { return [r[0], r[1], r[2], '', r[3]]; }).concat(TYC_ALIANZAS_INICIALES_[prog.key] || []);
   const ancho = 5;
@@ -7345,6 +7346,229 @@ const TYC_SEMILLA_CLINIC_ = [
   [9, 'Jurisdicción legal', 'Todos', 'Este contrato se rige bajo las leyes colombianas. Cualquier disputa se resolverá en los tribunales de Bogotá.'],
   [10, 'Declaración de aceptación', 'Jugador', 'Al aceptar estos términos, el participante o su representante legal declara haber leído, comprendido y aceptado los presentes términos y condiciones en su totalidad.']
 ];
+
+// T&C estándar del Clinic 2027 — redactados a partir de la presentación
+// "RMF Clinic 2027" (8–18 oct 2027) con la misma estructura que los del World
+// Challenge 2027: reserva no reembolsable salvo excusa médica certificada o
+// cancelación por parte de la organización. Montos y fechas límite salen de
+// la pestaña Alianzas ({jugador_total}, {jugador_fecha_reserva}…). Para
+// cargarlos en el Sheet: aplicarCambiosClinic2027().
+// [orden, sección, aplica a, texto]
+const TYC_SEMILLA_CLINIC_2027_ = [
+  [0, 'Encabezado', 'Todos', '**TÉRMINOS Y CONDICIONES**\n**{programa}**\nDel 8 al 18 de octubre de 2027 · Madrid, España\nVictory Sports Spain, S.L. · Fundación Revel'],
+  [1, 'Servicios incluidos', 'Todos', [
+    '[con tiquete] - **Tiquete aéreo:** Bogotá – Madrid – Bogotá',
+    '- **Alojamiento:** 9 noches y 10 días en el Campus Deportivo European Football Institute: pensión completa (desayuno, almuerzo, snack y cena).',
+    '- 4 sesiones de entrenamiento con metodología oficial de la Fundación Real Madrid en la Ciudad Deportiva del Real Madrid (Valdebebas)',
+    '- **Victory Cup:** 3 partidos contra colegios de Madrid',
+    '- Tour al Estadio Santiago Bernabéu y tienda oficial Real Madrid Adidas',
+    '- Tour por la Ciudad Deportiva del Real Madrid',
+    '- Madrid City Tour y Museo Legends',
+    '- Excursión al Parque Warner',
+    '- Conferencia "Building a Champion" y visita a The Style Outlet',
+    '- Ceremonia de Diplomas y Ceremonia de Clausura',
+    '- **Kit deportivo:** 2 uniformes, 2 camisetas y chaqueta',
+    '- **Transporte privado:** todos los traslados durante el programa, incluyendo recogida y regreso al Aeropuerto Madrid-Barajas',
+    '- **Seguro médico de viaje** durante todo el programa, con cobertura de USD 60.000 (sesenta mil dólares) por participante',
+    '- **Atención personalizada:** 1 persona de staff por cada 10 participantes',
+    '**No incluye:** gastos personales ni tiquete aéreo (opcional, se cotiza según demanda). El partido de Liga en el Estadio Santiago Bernabéu está sujeto al calendario de LaLiga y las entradas están disponibles solo para jugadores.'
+  ].join('\n')],
+  [2, 'Precio del programa y forma de pago', 'Todos', [
+    '**Tarifa única por jugador** (sin tiquete aéreo)',
+    '- Costo total por participante: **{jugador_total} EUR**',
+    '- Reserva (no reembolsable) — hasta el {jugador_fecha_reserva}: **{jugador_reserva} EUR**',
+    '- Pago final — hasta el {jugador_fecha_final}: **{jugador_final} EUR**',
+    'Los plazos de pago aplican hasta la fecha indicada o hasta agotar cupos.',
+    '[con tiquete] - Tiquete aéreo Bogotá – Madrid – Bogotá: **{tiquete} EUR**, pagadero junto con la reserva — hasta el {fecha_tiquete}',
+    'El tiquete aéreo Bogotá – Madrid – Bogotá es opcional y se cotiza según demanda.',
+    'El pago se realizará en pesos colombianos (COP) según la Tasa Representativa del Mercado (TRM) de cambio EUR/COP del día del pago, en los términos del numeral 5.5. Los valores en COP que aparecen en la presentación del programa son aproximados (TRM de referencia 3.650).',
+    '**Datos bancarios**',
+    '- Entidad: Bancolombia',
+    '- Beneficiario: Fundación Revel',
+    '- Cuenta: 05962673128',
+    '- NIT: 900636583-7'
+  ].join('\n')],
+  [3, 'Precios para acompañantes (Family Experience)', 'Todos', [
+    'Los siguientes valores aplican para acompañantes de los participantes (personas que viajan con el grupo sin participar en los entrenamientos deportivos del programa).',
+    '**FULL PACK (con alojamiento) incluye:**',
+    '- 9 noches en Hotel EuroStars (desayuno incluido)',
+    '- Seguro médico de viaje',
+    '- Transporte a las actividades',
+    '- Escarapela de identificación',
+    '- Madrid City Tour, Museo Legends, Parque Warner y Tour Bernabéu',
+    '- Asistencia al Real Madrid Foundation Clinic (Ceremonia de Diplomas)',
+    '- Asistencia a la Victory Cup',
+    '**Solo Actividades (sin alojamiento) incluye:**',
+    '- Madrid City Tour, Museo Legends, Parque Warner y Tour Bernabéu',
+    '- Asistencia al Real Madrid Foundation Clinic (Ceremonia de Diplomas)',
+    '- Asistencia a la Victory Cup',
+    '- Escarapela de identificación',
+    'No incluye alojamiento, transporte a las actividades ni seguro médico de viaje.',
+    '**Precios**',
+    '- FULL PACK — Habitación doble (por persona, 2 por habitación): **{doble_total} EUR**',
+    '- Total habitación doble (2 personas): **{doble_total*2} EUR**',
+    '- FULL PACK — Habitación sencilla: **{sencilla_total} EUR**',
+    '- 3.ª persona en habitación doble: **{triple_total} EUR** (menores de 3 años al inicio del programa: sin costo)',
+    '- Solo Actividades: **{actividades_total} EUR**',
+    '**Forma de pago acompañantes — FULL PACK (con alojamiento)**',
+    '- Reserva (no reembolsable) — hasta el {acomp_fecha_reserva}: **{doble_reserva} EUR**',
+    '- Pago final habitación doble (por persona) — hasta el {acomp_fecha_final}: **{doble_final} EUR**',
+    '- Pago final habitación sencilla — hasta el {acomp_fecha_final}: **{sencilla_final} EUR**',
+    '',
+    'La 3.ª persona en habitación doble ({triple_total} EUR) y el plan Solo Actividades ({actividades_total} EUR) se cancelan en un solo pago, con fecha límite el {acomp_fecha_reserva}. La 3.ª persona menor de 3 años al inicio del programa no tiene costo.',
+    '[con tiquete] El tiquete aéreo opcional ({tiquete} EUR) se paga junto con la reserva o el pago único, con fecha límite el {fecha_tiquete}.',
+    'El pago se realizará en pesos colombianos (COP) según la TRM EUR/COP del día del pago, en los términos del numeral 5.5.',
+    'Los valores de FULL PACK en habitación doble corresponden al precio por persona; cada acompañante que comparta la habitación paga este valor de forma individual.'
+  ].join('\n')],
+  [4, 'Documentación requerida', 'Todos', [
+    '- Pasaporte vigente con validez mínima de 6 meses',
+    '- Permiso de salida del país para menores de edad, autenticado ante notario',
+    '- Registro civil de nacimiento',
+    '- ETIAS (autorización de viaje a Europa), si se encuentra vigente en la fecha del viaje; la organización confirmará este requisito'
+  ].join('\n')],
+  [5, 'Políticas de cancelación', 'Todos', [
+    '**5.1 Reserva**',
+    'La inscripción solo quedará confirmada con el pago de la reserva de {jugador_reserva} EUR. La reserva no es reembolsable, salvo (a) excusa médica debidamente certificada, según el numeral 5.4, o (b) cancelación o modificación sustancial del programa por parte de la organización, según la cláusula 7.',
+    'La reserva no es reembolsable porque se destina a cubrir costos que se generan desde el momento mismo de la inscripción y que la organización no puede recuperar, entre ellos:',
+    '- Confirmación de la plaza del participante en el Real Madrid Foundation Clinic.',
+    '- Bloqueo de plazas de alojamiento y alimentación con los proveedores del programa.',
+    '- Gastos administrativos y de gestión de la inscripción.',
+    '- Comisiones bancarias, costos de pasarela de pago y costos de conversión de divisas.',
+    'Los planes que se pagan en un solo pago (3.ª persona en habitación doble y Solo Actividades) reciben el mismo tratamiento que la reserva: no son reembolsables, salvo en los casos de los literales (a) y (b) anteriores, ya que las entradas y acreditaciones correspondientes se adquieren de forma anticipada.',
+    '[con tiquete] **Tiquete aéreo:** una vez emitido, el tiquete aéreo no es reembolsable, salvo en los casos de los literales (a) y (b) anteriores, y cualquier cambio de nombre, fecha o ruta queda sujeto a las condiciones y penalidades de la aerolínea, que serán asumidas por el participante.',
+    '**5.2 Penalidades por cancelación del participante**',
+    'Si el participante cancela su inscripción, la organización retendrá de los valores efectivamente pagados el porcentaje indicado a continuación. Los porcentajes se calculan sobre el valor total del programa contratado: {jugador_total} EUR para los jugadores (sin incluir el tiquete aéreo) y el valor del paquete correspondiente para los acompañantes. La anticipación se cuenta hasta la fecha de inicio del programa, el 8 de octubre de 2027.',
+    '- **Más de 90 días de anticipación (hasta el 10 de julio de 2027):** penalidad: la reserva · retención máx. (jugador) {jugador_reserva} EUR · reembolso máx. (jugador) {jugador_final} EUR',
+    '- **Entre 90 y 61 días (del 11 de julio al 9 de agosto de 2027):** penalidad 30% (mín. la reserva) · retención máx. (jugador) {jugador_total*0.3} EUR · reembolso máx. (jugador) {jugador_total*0.7} EUR',
+    '- **Entre 60 y 31 días (del 10 de agosto al 8 de septiembre de 2027):** penalidad 60% · retención máx. (jugador) {jugador_total*0.6} EUR · reembolso máx. (jugador) {jugador_total*0.4} EUR',
+    '- **30 días o menos (desde el 9 de septiembre de 2027):** penalidad 100% · retención máx. (jugador) {jugador_total} EUR · reembolso máx. (jugador) 0 EUR',
+    'La retención nunca será superior a lo efectivamente pagado por el participante a la fecha de cancelación, y la cancelación no le genera ninguna obligación de pago adicional. En todos los casos se retendrá, como mínimo, el valor de la reserva ({jugador_reserva} EUR). El saldo a favor del participante, si lo hay, se reembolsará dentro de los 30 días calendario siguientes a la recepción de la cancelación.',
+    'Las penalidades responden a los costos que la organización ya ha comprometido y pagado a medida que se acerca la fecha del programa, y que no puede recuperar ni reasignar a otro participante: reservas de alojamiento, alimentación y transporte; sesiones de entrenamiento y Victory Cup; producción del kit deportivo; pólizas de seguro; asignación de staff, y compra de entradas y reservas de actividades y excursiones.',
+    '**Ejemplo 1:** un jugador ha pagado {jugador_total} EUR y cancela el 20 de agosto de 2027 (entre 60 y 31 días de anticipación). Se retienen {jugador_total*0.6} EUR (60%) y se le reembolsan {jugador_total*0.4} EUR.',
+    '**Ejemplo 2:** un jugador ha pagado únicamente la reserva de {jugador_reserva} EUR y cancela el 1 de julio de 2027. Se retienen los {jugador_reserva} EUR, no hay reembolso y el participante no adeuda ningún valor adicional.',
+    '**5.3 Forma y cómputo de la cancelación**',
+    'La cancelación debe comunicarse por escrito a través de los canales de contacto oficiales del programa. La fecha que se tendrá en cuenta para aplicar la tabla del numeral 5.2 será la fecha de recepción de dicha comunicación.',
+    '**5.4 Excusa médica**',
+    'Si el participante no puede viajar por una condición médica que se lo impida, certificada por un médico y presentada a la organización dentro de los 10 días calendario siguientes al diagnóstico, podrá elegir entre:',
+    '- (a) Reprogramar su participación, por una única vez, para la siguiente fecha disponible del programa dentro de los 12 meses siguientes, conservando las mismas condiciones; o',
+    '- (b) Solicitar el reembolso de lo pagado, incluida la reserva, descontando los costos de terceros ya pagados que no puedan recuperarse (pólizas de seguro u otros).',
+    '**5.5 Moneda, pagos y tasa de cambio**',
+    'Todos los precios de este documento están expresados en euros (EUR). El participante paga en pesos colombianos (COP) el equivalente en euros de cada cuota, según la TRM EUR/COP del día del pago. Cada pago se abona a la cuenta del participante por el valor en euros resultante de dicha conversión, valor que constará en el recibo correspondiente.',
+    'Las retenciones y reembolsos previstos en esta cláusula se calculan en euros, sobre los valores en euros abonados por el participante. Los reembolsos se pagarán en COP, según la TRM EUR/COP vigente en la fecha del reembolso. La organización no reconocerá diferencias a favor ni en contra del participante derivadas de la variación de la tasa de cambio.',
+    'Las comisiones bancarias, los costos de pasarela de pago y los gastos de transferencia corren por cuenta del participante y no son reembolsables.',
+    '**5.6 Causas personales y documentación**',
+    'Cualquier inconveniente de índole personal en el aeropuerto o con la documentación de viaje (pasaporte vencido, permisos de salida incompletos, homónimos, demandas, llegada fuera de hora, negación de entrada al país, requisitos migratorios no cumplidos, etc.) se considerará una cancelación por parte del participante y se regirá por el numeral 5.2.',
+    'La organización no es responsable de la obtención de pasaportes, permisos de salida de menores, autorizaciones de viaje ni de las decisiones de las autoridades migratorias.',
+    '**5.7 Servicios no utilizados**',
+    'No habrá reembolso por servicios no utilizados en caso de no presentación del participante, regreso anticipado o retiro del programa por incumplimiento de la cláusula de comportamiento, dado que dichos servicios ya han sido contratados y pagados a los proveedores.'
+  ].join('\n')],
+  [6, 'Política de cambios y fuerza mayor', 'Todos', [
+    'Para efectos de este contrato, se entiende por fuerza mayor o caso fortuito todo acontecimiento imprevisible e irresistible, ajeno a la voluntad de Victory Sports Spain y Fundación Revel, que impida o dificulte gravemente la ejecución del programa en los términos pactados, incluyendo de forma enunciativa y no taxativa: desastres naturales; pandemias, epidemias o emergencias sanitarias declaradas por autoridades competentes; huelgas, paros o disturbios sociales; actos de autoridad, cierre de fronteras o del espacio aéreo, o cambios en políticas migratorias; actos terroristas, conflictos armados o situaciones de orden público, y cualquier otra circunstancia imprevisible e inevitable que escape del control razonable de los organizadores.',
+    'Victory Sports Spain y Fundación Revel no serán responsables por hechos de terceros ajenos a su control directo —tales como cancelaciones o retrasos de aerolíneas, cierre de instalaciones por parte de operadores externos, o incumplimientos de proveedores—, los cuales se regirán por las políticas propias de dichos terceros.',
+    'Los cambios menores en el itinerario (como la sustitución de un alojamiento por otro de categoría equivalente, o la reorganización del orden de las actividades) se consideran ajustes operativos normales y no dan lugar a compensación alguna. El partido de Liga en el Estadio Santiago Bernabéu depende del calendario de LaLiga; si no coincide con las fechas del programa, se coordinará una actividad alternativa. Los cambios que afecten sustancialmente el contenido central del programa (cambio de fechas, sede o eliminación de componentes principales) se regirán por lo dispuesto en la cláusula 7.',
+    'Los gastos en que el participante haya incurrido por su cuenta (visas, seguros adicionales, tiquetes o trámites propios, entre otros) no serán reembolsados ni asumidos por la organización en los eventos descritos en esta cláusula.',
+    'En caso de que un evento de fuerza mayor impida la realización del programa en las fechas previstas, este se reprogramará para la siguiente fecha disponible dentro de los doce (12) meses siguientes, conservando las mismas condiciones pactadas.'
+  ].join('\n')],
+  [7, 'Cancelación o modificación por parte de la organización', 'Todos',
+    'Si Victory Sports Spain y/o Fundación Revel se ven en la necesidad de cancelar el programa por causas distintas a la fuerza mayor descrita en la cláusula 6, se reembolsará al participante el 100% de los valores efectivamente pagados, incluida la reserva, dentro de los 30 días calendario siguientes a la notificación de cancelación. En caso de modificaciones sustanciales al programa (cambio de fechas, sede o contenido central de la experiencia) atribuibles a la organización, el participante podrá optar por aceptar la modificación o solicitar el reembolso total de lo pagado hasta la fecha, sin penalidad.'],
+  [8, 'Cesión de derechos de imagen', 'Todos',
+    'El padre, madre o representante legal del menor autoriza a Victory Sports Spain, S.L. y a la Fundación Revel a tomar fotografías y videos del menor durante el viaje. Estas imágenes podrán ser utilizadas en redes sociales, páginas web y materiales promocionales, siempre respetando la dignidad del menor.'],
+  [9, 'Tratamiento de datos personales', 'Todos', [
+    'De conformidad con la Ley 1581 de 2012, el Decreto 1377 de 2013 y demás normas que los modifiquen, adicionen o reglamenten en Colombia, el participante o su representante legal autoriza a Victory Sports Spain, S.L. y a Fundación Revel para recolectar, almacenar, usar y tratar sus datos personales y los del menor a su cargo (incluyendo datos de identificación, contacto, salud relevantes para el programa y documentos de viaje), con las siguientes finalidades:',
+    '- Gestión administrativa, logística y operativa del programa (inscripción, pagos, alojamiento, seguros).',
+    '- Comunicación con el participante y su familia antes, durante y después del viaje.',
+    '- Cumplimiento de obligaciones legales, migratorias y de seguridad social o médica ante autoridades o aseguradoras.',
+    '- Fines estadísticos e institucionales relacionados con la operación de los programas de Fundación Revel.',
+    'El Titular de los datos (o su representante legal, tratándose de un menor de edad) podrá ejercer en cualquier momento los derechos de conocer, actualizar, rectificar y suprimir sus datos, así como revocar la autorización otorgada, mediante solicitud escrita dirigida a Fundación Revel a través de los canales de contacto oficiales del programa. Los datos serán tratados de forma confidencial y no serán compartidos con terceros distintos de los operadores directamente involucrados en la prestación de los servicios (aerolíneas, alojamiento, aseguradoras, autoridades migratorias), salvo obligación legal.'
+  ].join('\n')],
+  [10, 'Cláusula de comportamiento', 'Todos',
+    'Todos los participantes deben respetar las normas y reglamentos del programa, mantener un comportamiento adecuado en todas las actividades y alojamientos, y cumplir con las indicaciones del staff de Victory Sports. Cualquier incumplimiento podrá resultar en la expulsión inmediata del programa sin derecho a reembolso.'],
+  [11, 'Jurisdicción legal', 'Todos',
+    'Este contrato se rige bajo las leyes colombianas. Cualquier disputa que surja del mismo será resuelta en los tribunales de Bogotá.'],
+  [12, 'Declaración de aceptación', 'Todos',
+    'Al realizar el primer pago, el participante o su representante legal declara haber leído, comprendido y aceptado estos términos y condiciones en su totalidad, incluyendo la autorización de tratamiento de datos personales y de imagen contenidas en este documento.']
+];
+
+// T&C estándar propios de una edición (si no está aquí, se usa el de su familia).
+function TYC_SEMILLA_POR_KEY_() {
+  return { clinic_2027: TYC_SEMILLA_CLINIC_2027_ };
+}
+
+// ── Ejecutar UNA VEZ desde el editor ─────────────────────────────────────
+// Cambios de la presentación Clinic 2027 (8–18 oct 2027): escribe en la fila
+// "Estándar" de la pestaña Alianzas del Sheet del Clinic 2027 los precios y
+// fechas límite (reserva 1/06/2027, pago final 15/07/2027), borra el precio
+// "Solo act. menor 12" (en 2027 no hay descuento por edad) y luego reemplaza
+// los T&C estándar por TYC_SEMILLA_CLINIC_2027_ (las filas de alianzas se
+// conservan). Antes guarda una copia de la pestaña T&C como respaldo.
+function aplicarCambiosClinic2027() {
+  const prog = getPrograma_('clinic_2027');
+  const ss = SpreadsheetApp.openById(prog.sheetId);
+  const sh = ss.getSheetByName('Alianzas');
+  if (!sh) throw new Error('No existe la pestaña Alianzas en el Sheet del Clinic 2027. Ejecuta primero construirPestanasPreciosYTyC().');
+  const values = sh.getDataRange().getValues();
+  const filaTitulo = {};
+  values.forEach(function(r, i) {
+    const a = String(r[0] || '').trim();
+    Object.keys(ALIANZAS_MARCAS_).forEach(function(k) { if (a.indexOf(ALIANZAS_MARCAS_[k]) === 0) filaTitulo[k] = i; });
+  });
+  const reserva = new Date(2027, 5, 1), final = new Date(2027, 6, 15);
+  // null = columna opcional (si no existe se avisa y se usa el valor por
+  // defecto de PROGRAMAS); '' = vaciar la celda.
+  const cambios = {
+    general: { 'Límite Tiquete': reserva },
+    jugadores: { 'Reserva': 800, 'Límite Reserva': reserva, 'Pago Final': 2090, 'Límite Pago Final': final },
+    acomp: {
+      'Límite Reserva': reserva, 'Límite Pago Final': final,
+      'Doble · Reserva': 800, 'Doble · Pago Final': 1355,
+      'Sencilla · Reserva': 800, 'Sencilla · Pago Final': 1570,
+      'Solo actividades · Reserva': 470, 'Solo actividades · Pago Final': 0,
+      'Triple (3.ª persona) · Reserva': 650, 'Triple (3.ª persona) · Pago Final': 0,
+      'Solo act. menor 12 · Reserva': '', 'Solo act. menor 12 · Pago Final': ''
+    }
+  };
+  const opcionales = ['Triple (3.ª persona) · Reserva', 'Triple (3.ª persona) · Pago Final', 'Solo act. menor 12 · Reserva', 'Solo act. menor 12 · Pago Final'];
+  Object.keys(cambios).forEach(function(k) {
+    if (filaTitulo[k] == null) throw new Error('No se encontró la tabla ' + ALIANZAS_MARCAS_[k] + ' en Alianzas.');
+    const hIdx = filaTitulo[k] + 1, estIdx = filaTitulo[k] + 2;
+    const headers = values[hIdx].map(normPagosHeaderKey_);
+    const nombreEst = String(values[estIdx][0] || '').trim();
+    if (k === 'general' && normText_(nombreEst) !== normText_(ALIANZA_ESTANDAR_)) throw new Error('La primera fila de ① no es "Estándar" (es "' + nombreEst + '").');
+    Object.keys(cambios[k]).forEach(function(col) {
+      const j = headers.indexOf(normPagosHeaderKey_(col));
+      if (j < 0) {
+        if (opcionales.indexOf(col) >= 0) { Logger.log('Aviso: no existe la columna "' + col + '" en ' + ALIANZAS_MARCAS_[k] + ' — se usa el valor por defecto del código.'); return; }
+        throw new Error('No se encontró la columna "' + col + '" en la tabla ' + ALIANZAS_MARCAS_[k] + '.');
+      }
+      sh.getRange(estIdx + 1, j + 1).setValue(cambios[k][col]);
+      Logger.log(ALIANZAS_MARCAS_[k] + ' fila ' + (estIdx + 1) + ' · ' + col + ' = ' + cambios[k][col]);
+    });
+  });
+
+  // T&C estándar
+  const tyc = ss.getSheetByName('T&C');
+  if (!tyc) {
+    construirPestanaTyc_(ss, prog);
+    Logger.log('aplicarCambiosClinic2027: pestaña T&C creada con los T&C 2027.');
+  } else {
+    tyc.copyTo(ss).setName('T&C (respaldo ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm') + ')');
+    const tv = tyc.getDataRange().getValues();
+    let hi = -1;
+    for (let i = 0; i < tv.length; i++) { if (normPagosHeaderKey_(tv[i][0]) === 'orden') { hi = i; break; } }
+    if (hi < 0) throw new Error('No se encontró la fila de encabezados (Orden | Sección | …) en T&C del Clinic 2027.');
+    const deAlianza = tv.slice(hi + 1).filter(function(r) { return String(r[3] || '').trim() && String(r[1] || '').trim(); })
+      .map(function(r) { return [r[0], r[1], r[2], r[3], r[4]]; });
+    const nuevas = TYC_SEMILLA_CLINIC_2027_.map(function(r) { return [r[0], r[1], r[2], '', r[3]]; }).concat(deAlianza);
+    const primera = hi + 2;
+    const viejas = Math.max(tyc.getLastRow() - hi - 1, 0);
+    if (viejas) tyc.getRange(primera, 1, viejas, 5).clearContent();
+    if (tyc.getMaxRows() < primera + nuevas.length) tyc.insertRowsAfter(tyc.getMaxRows(), primera + nuevas.length - tyc.getMaxRows());
+    tyc.getRange(primera, 1, nuevas.length, 5).setValues(nuevas);
+    Logger.log('aplicarCambiosClinic2027: ' + TYC_SEMILLA_CLINIC_2027_.length + ' secciones T&C estándar escritas, ' + deAlianza.length + ' filas de alianza conservadas.');
+  }
+  try { CacheService.getScriptCache().remove('config_prog_v1_' + prog.key); } catch (e) {}
+  Logger.log('aplicarCambiosClinic2027: listo.');
+}
 
 // Dado un email, busca el valor de su columna "Alianza" en la hoja de
 // inscripción del programa dado — usado por procesarReferidoExitoso_ para

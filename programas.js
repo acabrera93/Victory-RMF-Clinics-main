@@ -130,53 +130,56 @@
       cuposTiquete: 20
     },
     {
-      // TODO Clinic 2027: completar fechas, precios, vuelo y clima reales.
-      // Pasar habilitado a true cuando el backend tenga los Sheets reales, e
-      // inscripcionAbierta a true para abrir la inscripción.
+      // Fechas y precios según la presentación "RMF Clinic 2027" (8–18 oct
+      // 2027, 10 días / 9 noches). Pendiente: itinerario de vuelo y precio
+      // del tiquete (se cotiza según demanda).
       key: 'clinic_2027', familia: 'clinic', anio: 2027,
-      habilitado: true, inscripcionAbierta: false, // TODO inscripcionAbierta: true cuando estén fechas y precios
+      habilitado: true, inscripcionAbierta: true,
 
       nombre: 'Real Madrid Foundation Clinic 2027',
       nombreBase: 'Real Madrid Foundation Clinic',
       nombreCorto: 'RMF Clinic 2027',
       etiqueta: '🏟️ Clinic 2027',
-      inicio: '2027-10-01T09:00:00+02:00', fin: '2027-10-09T23:59:59+02:00', // TODO
-      fechasConfirmadas: false, // TODO quitar cuando inicio/fin sean reales — mientras tanto se muestran los textos fijos (subtitulo, carta…)
-      fechaRefEdad: { anio: 2027, mes: 10, dia: 1 },
-      fechaRefEdadTexto: '1-oct-2027',
-      subtitulo: 'Real Madrid Foundation Clinic · Octubre 2027 · Madrid, España', // TODO fechas exactas
-      precios: { // TODO confirmar — copiados del Clinic 2026
-        jugador: { reserva: 1000, final: 1790 },
-        acomp_doble: { reserva: 1000, final: 1190 },
-        acomp_sencilla: { reserva: 1000, final: 1510 },
-        acomp_actividades: { reserva: 0, final: 590 },
-        acomp_actividades_menor12: { reserva: 0, final: 190 }
+      inicio: '2027-10-08T09:00:00+02:00', fin: '2027-10-18T23:59:59+02:00', // según presentación 2027 (8–18 oct)
+      fechaRefEdad: { anio: 2027, mes: 10, dia: 8 },
+      fechaRefEdadTexto: '8-oct-2027',
+      subtitulo: 'Real Madrid Foundation Clinic · 8–18 Octubre 2027 · Madrid, España',
+      precios: { // presentación Clinic 2027 (sin tiquete)
+        jugador: { reserva: 800, final: 2090 },        // total 2.890
+        acomp_doble: { reserva: 800, final: 1355 },    // total 2.155 por persona
+        acomp_sencilla: { reserva: 800, final: 1570 }, // total 2.370
+        acomp_actividades: { reserva: 470, final: 0 }, // Solo Actividades: pago único hasta el 1 de junio
+        acomp_triple: { reserva: 650, final: 0 }       // 3.ª persona en hab. doble. Menores de 3 años: gratis
       },
       albumUrl: 'https://drive.google.com/drive/folders/1dWV2jp6vO0K33cVRapBAOawtoPz6KYMa',
-      precioBaseReferido: 2790,
-      tiqueteEur: 993, // TODO
-      tasaFija: null, // TODO: si se fija una TRM, poner { valor: ..., fechaTexto: '...' }
-      fechasLimite: { reserva: '1 de junio 2027', tiquete: '1 de junio 2027', final: '30 de julio 2027' }, // TODO
-      finTexto: '9 de octubre de 2027', finTextoCorto: '9 de octubre 2027', // TODO
+      precioBaseReferido: 2890,
+      // Sin cotización del tiquete aún: se oculta la opción "con tiquete" en la
+      // inscripción y en el área personal. Poner true (y tiqueteEur, vuelo,
+      // precioTiqueteHtml) cuando haya cotización.
+      tiqueteDisponible: false,
+      tiqueteEur: 993, // TODO: la presentación dice "opcional, se cotiza según demanda"
+      tasaFija: null, // tasa del día (la presentación da COP aproximados a TRM 3.650, no fija)
+      fechasLimite: { reserva: '1 de junio 2027', tiquete: '1 de junio 2027', final: '15 de julio 2027' },
+      finTexto: '18 de octubre de 2027', finTextoCorto: '18 de octubre 2027',
       carta: {
         fechaMes: 'Madrid, octubre 2027',
         titulo: '¡Bienvenido al Real Madrid Foundation Clinic 2027!',
-        fechasHtml: 'en <strong>octubre de 2027</strong>', // TODO fechas exactas
+        fechasHtml: 'del <strong>8 al 18 de octubre de 2027</strong>',
         descripcion: 'Bienvenido a formar parte de uno de los programas formativos más importantes del mundo, en el que representarás a tu país enfrentándote a academias internacionales y viviendo el fútbol desde dentro, tal como lo hacen los futuros profesionales del Real Madrid CF.',
         cierre: '¡Nos emociona acompañarte en esta aventura y verte brillar en el Real Madrid Foundation Clinic powered by Fundación Revel!'
       },
       vuelo: null, // TODO itinerario cuando esté confirmado (null = "por confirmar")
-      vueloIndependienteHtml: 'Debes coordinar con Victory tu itinerario de vuelo. Las fechas exactas del programa (octubre de 2027) se confirmarán pronto. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.',
+      vueloIndependienteHtml: 'Debes coordinar con Victory tu itinerario de vuelo. El programa es del 8 al 18 de octubre de 2027. Envía tu confirmación a <strong>alejandro.cabrera@fundacionrevel.net</strong>.',
       clima: {
-        tituloRango: 'Octubre', max: '19°C', min: '10°C', soleados: '7', lluvia: '3', humedad: '40%', viento: '14 km/h',
-        forecastTitulo: 'Pronóstico octubre 2027', forecastStart: '2027-10-01', forecastEnd: '2027-10-09', // TODO
-        cutoffTexto: '17 de septiembre de 2027'
+        tituloRango: '8–18 Octubre', max: '19°C', min: '10°C', soleados: '7', lluvia: '3', humedad: '40%', viento: '14 km/h',
+        forecastTitulo: 'Pronóstico 8–18 octubre 2027', forecastStart: '2027-10-08', forecastEnd: '2027-10-18',
+        cutoffTexto: '24 de septiembre de 2027'
       },
       inscripcion: {
         titulo: 'Real Madrid Foundation Clinic',
-        descripcion: 'Programa deportivo en la Ciudad Deportiva del Real Madrid. Octubre 2027 · Madrid, España.', // TODO fechas
+        descripcion: 'Programa deportivo en la Ciudad Deportiva del Real Madrid. 8–18 Octubre 2027 · Madrid, España.',
         icono: '🏟️',
-        precioTiqueteHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo por confirmar.', // TODO
+        precioTiqueteHtml: 'Tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> opcional: se cotiza según demanda.',
         anioNacMin: null, anioNacMax: null, edadTexto: '8 a 17 años'
       }
     }
@@ -265,6 +268,12 @@
     return Date.now() >= new Date(p.inicio).getTime();
   }
 
+  // ¿Se puede elegir el tiquete aéreo de Victory en esta edición?
+  // (tiqueteDisponible: false = aún sin cotización).
+  function tiqueteDisponible(programa) {
+    return getPrograma(programa).tiqueteDisponible !== false;
+  }
+
   // Formulario de inscripción: programas con inscripcionAbierta cuyo viaje
   // aún no ha empezado, el más próximo primero. Al llegar la fecha del viaje
   // la edición desaparece sola de las opciones (aunque siga con
@@ -295,5 +304,6 @@
   global.programaPreferido = programaPreferido;
   global.programasConInscripcionAbierta = programasConInscripcionAbierta;
   global.programaIniciado = programaIniciado;
+  global.tiqueteDisponible = tiqueteDisponible;
   global.programasParaInformacion = programasParaInformacion;
 })(typeof window !== 'undefined' ? window : this);
