@@ -956,18 +956,6 @@
   @keyframes galeria-spin { to { transform: rotate(360deg); } }
 
   /* ─── AGENDA TIMELINE ─── */
-  .agenda-timeline { padding-top: 12px; }
-  .agenda-row { display: flex; align-items: flex-start; justify-content: space-between; position: relative; margin-bottom: 36px; }
-  .agenda-row:last-of-type { margin-bottom: 0; }
-  .agenda-line { position: absolute; left: 11%; right: 11%; top: 27px; height: 2px; background: linear-gradient(to right, var(--blue), var(--blue-bright)); }
-  .agenda-line.alt { background: linear-gradient(to right, var(--blue-bright), var(--navy)); }
-  .agenda-stop { flex: 1; text-align: center; position: relative; padding: 0 6px; }
-  .agenda-dot { width: 54px; height: 54px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 12px; position: relative; z-index: 1; }
-  .agenda-dot.featured { background: var(--blue); box-shadow: 0 4px 14px rgba(30,91,168,0.35); }
-  .agenda-date { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: var(--blue); letter-spacing: 1px; }
-  .agenda-name { font-size: 14px; font-weight: 600; color: var(--navy); margin: 3px 0 2px; line-height: 1.25; }
-  .agenda-desc { font-size: 12px; color: #4a6080; line-height: 1.45; }
-  .agenda-note { margin-top: 24px; font-size: 11px; color: #8da4bf; text-align: center; }
 
   /* ─── ESCALA GLOBAL DESKTOP ─── */
   @media (min-width: 901px) {
@@ -994,6 +982,72 @@
     .footer-grid { grid-template-columns: 1fr 1fr; }
     nav { padding: 16px 24px; }
     .container { padding: 0 24px; }
+  }
+
+  /* ─── AGENDA EN TARJETAS (componente .ag-, ver renderAgenda) ─── */
+  .ag-section { background: #f4f7fb; padding: 48px 24px 56px; }
+  .ag-section.ag-inline { background: transparent; padding: 40px 0 8px; }
+  .ag-wrap { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+  .ag-panel { display: flex; flex-direction: column; gap: 22px; }
+  .ag-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 18px; }
+  .ag-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: #a3803f; margin: 0 0 6px; }
+  .ag-title { font-family: 'Bebas Neue', sans-serif; font-size: 44px; line-height: .95; color: #0b1f3a; margin: 0 0 10px; font-weight: 400; }
+  .ag-intro { font-size: 15px; line-height: 1.5; color: #4a6080; margin: 0; max-width: 640px; }
+  .ag-tabs { display: inline-flex; background: #fff; border-radius: 999px; border: 1px solid #d5dfeb; padding: 4px; box-shadow: 0 4px 14px rgba(11,31,58,.06); }
+  .ag-tab { min-height: 44px; padding: 0 22px; border: 0; border-radius: 999px; background: transparent; color: #0b1f3a; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 15px; cursor: pointer; }
+  .ag-tab[aria-selected="true"] { background: #0b1f3a; color: #fff; }
+  .ag-tab:focus-visible { outline: 2px solid #1e5ba8; outline-offset: 2px; }
+  .ag-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: #d5dfeb; border: 1px solid #d5dfeb; border-radius: 14px; overflow: hidden; }
+  .ag-stat { background: #fff; padding: 12px 18px; display: flex; align-items: baseline; gap: 10px; }
+  .ag-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 36px; line-height: 1; color: #a3803f; }
+  .ag-stat-txt { font-size: 14px; font-weight: 600; color: #0b1f3a; }
+  .ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .ag-card { position: relative; background: #fff; border-radius: 12px; border: 1px solid #e1e8f1; box-shadow: 0 4px 14px rgba(11,31,58,.06); color: #0b1f3a; }
+  .ag-card-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px; }
+  .ag-daynum { font-family: 'Bebas Neue', sans-serif; font-size: 44px; line-height: .85; color: #0b1f3a; }
+  .ag-dayn { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: #1e5ba8; }
+  .ag-weekday { display: block; font-size: 15px; font-weight: 700; }
+  .ag-div { height: 1px; background: #e8eef5; margin: 0 16px; }
+  .ag-row { display: flex; gap: 8px; padding: 10px 16px; }
+  .ag-row-label { flex: 0 0 52px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: #9aa7b8; padding-top: 8px; }
+  .ag-acts { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .ag-act { display: flex; align-items: flex-start; gap: 10px; }
+  .ag-ico { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .ag-ico svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.7; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .ag-act-title { display: block; font-size: 14px; font-weight: 600; line-height: 1.3; color: #0b1f3a; }
+  .ag-act-cat { display: block; font-size: 11px; font-weight: 600; margin-top: 1px; }
+  .ag-c-rmf .ag-ico { background: #f6eedd; color: #a3803f; } .ag-c-rmf .ag-act-cat { color: #a3803f; }
+  .ag-c-cup .ag-ico { background: #e2ecf9; color: #1e5ba8; } .ag-c-cup .ag-act-cat { color: #1e5ba8; }
+  .ag-c-tour .ag-ico { background: #e3f2ee; color: #2f7d6b; } .ag-c-tour .ag-act-cat { color: #2f7d6b; }
+  .ag-c-cer .ag-ico { background: #e6eaf0; color: #0b1f3a; } .ag-c-cer .ag-act-cat { color: #0b1f3a; }
+  .ag-c-ent .ag-ico { background: #edf0f5; color: #5d6b7d; } .ag-c-ent .ag-act-cat { color: #5d6b7d; }
+  .ag-c-via .ag-ico { background: #f0f0ee; color: #6f6f68; } .ag-c-via .ag-act-cat { color: #6f6f68; }
+  .ag-c-lib .ag-ico { background: #fff; border: 1px dashed #c3ccd8; color: #8a97a8; } .ag-c-lib .ag-act-cat { color: #8a97a8; }
+  /* Tarjeta destacada */
+  .ag-card.ag-hl { background: #0b1f3a; color: #fff; border-color: #0b1f3a; box-shadow: 0 8px 20px rgba(11,31,58,.22); }
+  .ag-hl .ag-daynum, .ag-hl .ag-dayn { color: #d9b46a; }
+  .ag-hl .ag-weekday, .ag-hl .ag-act-title { color: #fff; }
+  .ag-hl .ag-row-label { color: #8fa6c4; }
+  .ag-hl .ag-div { background: rgba(255,255,255,.12); }
+  .ag-hl .ag-act .ag-ico { background: rgba(255,255,255,.08); border: 0; color: #cfdcec; }
+  .ag-hl .ag-act .ag-act-cat { color: #a9bdd6; }
+  .ag-hl .ag-c-rmf .ag-ico, .ag-hl .ag-c-rmf .ag-act-cat { color: #d9b46a; }
+  .ag-badge { margin-left: auto; align-self: flex-start; white-space: nowrap; border: 1px solid #d9b46a; color: #d9b46a; font-size: 10px; font-weight: 700; letter-spacing: .1em; padding: 4px 8px; border-radius: 999px; line-height: 1; }
+  .ag-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; }
+  .ag-note { font-size: 14px; color: #4a6080; margin: 0; }
+  .ag-note-liga { font-size: 14px; color: #4a6080; font-style: italic; margin: 0; }
+  .ag-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; }
+  .ag-btn { display: inline-flex; align-items: center; min-height: 52px; padding: 0 28px; border-radius: 8px; background: #1e5ba8; color: #fff; font-weight: 600; font-size: 15px; text-decoration: none; }
+  .ag-btn:hover { background: #174c8e; }
+  .ag-link { color: #a3803f; font-weight: 700; font-size: 16px; text-decoration: underline; text-underline-offset: 4px; }
+  @media (max-width: 767px) {
+    .ag-section { padding: 40px 16px 48px; }
+    .ag-section.ag-inline { padding: 32px 0 8px; }
+    .ag-title { font-size: 38px; }
+    .ag-tabs { display: flex; width: 100%; }
+    .ag-tab { flex: 1; padding: 0 12px; }
+    .ag-stats { grid-template-columns: 1fr; }
+    .ag-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -1186,6 +1240,9 @@
       </a>
 
     </div>
+    <div style="text-align:center;">
+      <a href="#inscripcion" style="display:inline-block; margin-top:28px; color:#a3803f; font-weight:700; font-size:16px; text-decoration:underline; text-underline-offset:4px;" data-es="Consulta precios y forma de pago →" data-en="Check prices and payment options →">Consulta precios y forma de pago →</a>
+    </div>
   </div>
 </section>
 
@@ -1254,82 +1311,9 @@
       </div>
     </div>
 
-    <!-- Agenda -->
-    <div style="margin-top:48px;">
-      <p class="section-label" data-es="Agenda deportistas · World Challenge" data-en="Athletes schedule · World Challenge">Agenda deportistas · World Challenge</p>
-      <h3 class="section-title" style="font-size:26px;" data-es="8 DÍAS DE COMPETENCIA EN MADRID · 19-27 MARZO 2027" data-en="8 DAYS OF COMPETITION IN MADRID · MARCH 19-27, 2027">8 DÍAS DE COMPETENCIA EN MADRID · 19-27 MARZO 2027</h3>
-
-      <div class="faq-item" onclick="this.classList.toggle('open')" style="border-bottom:1px solid rgba(11,31,58,0.1);">
-        <div class="faq-question" style="font-size:18px;"><span data-es="Ver agenda día a día (World Challenge)" data-en="View day-by-day schedule (World Challenge)">Ver agenda día a día (World Challenge)</span> <span class="faq-arrow">+</span></div>
-        <div class="faq-answer" style="padding-bottom:16px; max-width:none;">
-          <div class="agenda-timeline">
-            <div class="agenda-row">
-              <div class="agenda-line"></div>
-              <div class="agenda-stop">
-                <div class="agenda-dot">✈️</div>
-                <div class="agenda-date" data-es="VIE 19 MARZO 2027" data-en="FRI MAR 19, 2027">VIE 19 MARZO 2027</div>
-                <div class="agenda-name" data-es="Salida a Madrid" data-en="Departure to Madrid">Salida a Madrid</div>
-                <div class="agenda-desc" data-es="Viaje hacia Madrid. Inicio de la aventura del World Challenge." data-en="Journey to Madrid. The World Challenge adventure begins.">Viaje hacia Madrid. Inicio de la aventura del World Challenge.</div>
-              </div>
-              <div class="agenda-stop">
-                <div class="agenda-dot">🏨</div>
-                <div class="agenda-date" data-es="SÁB 20 MARZO 2027" data-en="SAT MAR 20, 2027">SÁB 20 MARZO 2027</div>
-                <div class="agenda-name" data-es="Recepción + Check-in" data-en="Arrival + Check-in">Recepción + Check-in</div>
-                <div class="agenda-desc" data-es="13:00 Recepción en el Aeropuerto Madrid-Barajas. 14:00 Check-in. 15:00 Reunión de bienvenida. 17:00–18:30 Entrenamiento." data-en="1:00 PM Arrival at Madrid-Barajas Airport. 2:00 PM Check-in. 3:00 PM Welcome meeting. 5:00–6:30 PM Training.">13:00 Recepción en el Aeropuerto Madrid-Barajas. 14:00 Check-in. 15:00 Reunión de bienvenida. 17:00–18:30 Entrenamiento.</div>
-              </div>
-              <div class="agenda-stop">
-                <div class="agenda-dot">🎤</div>
-                <div class="agenda-date" data-es="DOM 21 MARZO 2027" data-en="SUN MAR 21, 2027">DOM 21 MARZO 2027</div>
-                <div class="agenda-name" data-es="Conferencia + Tour Bernabéu" data-en="Conference + Bernabéu Tour">Conferencia + Tour Bernabéu</div>
-                <div class="agenda-desc" data-es='9:30 Conferencia "Building a Champion" y entrenamiento. 16:00 Tour Bernabéu y Real Madrid Adidas Store.' data-en='9:30 AM "Building a Champion" talk and training. 4:00 PM Bernabéu Tour and the Real Madrid Adidas Store.'>9:30 Conferencia "Building a Champion" y entrenamiento. 16:00 Tour Bernabéu y Real Madrid Adidas Store.</div>
-              </div>
-            </div>
-            <div class="agenda-row">
-              <div class="agenda-line alt"></div>
-              <div class="agenda-stop">
-                <div class="agenda-dot featured">🏆</div>
-                <div class="agenda-date" data-es="LUN 22 MARZO 2027" data-en="MON MAR 22, 2027">LUN 22 MARZO 2027</div>
-                <div class="agenda-name" data-es="Inauguración World Challenge" data-en="World Challenge Opening">Inauguración World Challenge</div>
-                <div class="agenda-desc" data-es="11:00 Inauguración del World Challenge. 13:30 Visita al centro de Madrid." data-en="11:00 AM World Challenge opening. 1:30 PM Visit to Madrid city centre.">11:00 Inauguración del World Challenge. 13:30 Visita al centro de Madrid.</div>
-              </div>
-              <div class="agenda-stop">
-                <div class="agenda-dot featured">⚽</div>
-                <div class="agenda-date" data-es="MAR 23 MARZO 2027" data-en="TUE MAR 23, 2027">MAR 23 MARZO 2027</div>
-                <div class="agenda-name" data-es="Partido de grupos" data-en="Group stage match">Partido de grupos</div>
-                <div class="agenda-desc" data-es="Partidos de fase de grupos del World Challenge." data-en="World Challenge group stage matches.">Partidos de fase de grupos del World Challenge.</div>
-              </div>
-              <div class="agenda-stop">
-                <div class="agenda-dot featured">⚽</div>
-                <div class="agenda-date" data-es="MIÉ 24 MARZO 2027" data-en="WED MAR 24, 2027">MIÉ 24 MARZO 2027</div>
-                <div class="agenda-name" data-es="Partido de grupos" data-en="Group stage match">Partido de grupos</div>
-                <div class="agenda-desc" data-es="Partidos de fase de grupos del World Challenge." data-en="World Challenge group stage matches.">Partidos de fase de grupos del World Challenge.</div>
-              </div>
-            </div>
-            <div class="agenda-row">
-              <div class="agenda-line"></div>
-              <div class="agenda-stop">
-                <div class="agenda-dot">🥅</div>
-                <div class="agenda-date" data-es="JUE 25 MARZO 2027" data-en="THU MAR 25, 2027">JUE 25 MARZO 2027</div>
-                <div class="agenda-name" data-es="Grupos + Eliminatorias" data-en="Group stage + Knockouts">Grupos + Eliminatorias</div>
-                <div class="agenda-desc" data-es="Último partido de grupos y eliminatorias del World Challenge." data-en="Last group stage match and World Challenge knockouts.">Último partido de grupos y eliminatorias del World Challenge.</div>
-              </div>
-              <div class="agenda-stop">
-                <div class="agenda-dot">🏅</div>
-                <div class="agenda-date" data-es="VIE 26 MARZO 2027" data-en="FRI MAR 26, 2027">VIE 26 MARZO 2027</div>
-                <div class="agenda-name" data-es="Finales + Parque Warner" data-en="Finals + Parque Warner">Finales + Parque Warner</div>
-                <div class="agenda-desc" data-es="Finales del World Challenge. 13:00 Parque Warner Madrid." data-en="World Challenge finals. 1:00 PM Parque Warner Madrid.">Finales del World Challenge. 13:00 Parque Warner Madrid.</div>
-              </div>
-              <div class="agenda-stop">
-                <div class="agenda-dot">🏟️</div>
-                <div class="agenda-date" data-es="SÁB 27 MARZO 2027" data-en="SAT MAR 27, 2027">SÁB 27 MARZO 2027</div>
-                <div class="agenda-name" data-es="Ceremonia de Clausura + Check Out" data-en="Closing Ceremony + Check Out">Ceremonia de Clausura + Check Out</div>
-                <div class="agenda-desc" data-es="Ceremonia de Clausura Real Madrid Foundation y Check Out." data-en="Real Madrid Foundation Closing Ceremony and Check Out.">Ceremonia de Clausura Real Madrid Foundation y Check Out.</div>
-              </div>
-            </div>
-            <p class="agenda-note" data-es="Cada día: 19:00 regreso al hotel · 20:00 cena · 21:00 hora de descanso." data-en="Every day: 7:00 PM return to hotel · 8:00 PM dinner · 9:00 PM rest time.">Cada día: 19:00 regreso al hotel · 20:00 cena · 21:00 hora de descanso.</p>
-          </div>
-        </div>
-      </div>
+    <!-- Agenda — tarjetas (renderAgenda + AGENDA_WC_2027, ver script al final) -->
+    <div class="ag-section ag-inline">
+      <div class="ag-wrap" id="ag-wc"></div>
     </div>
 
     <!-- Incluye (jugadores) -->
@@ -1394,6 +1378,9 @@
       <a href="#inscripcion" class="btn-primary on-light" style="color:white;text-decoration:none;" data-es="Recibir información →" data-en="Get free info →">Recibir información →</a>
       <a href="inscripcion.html?programa=clinic_2027" data-inscribir="clinic_2027" class="btn-secondary on-light" data-es="Inscríbete →" data-en="Enroll now →">Inscríbete →</a>
     </div>
+    <div style="text-align:center;">
+      <a href="#inscripcion" style="display:inline-block; margin-top:18px; color:#a3803f; font-weight:700; font-size:16px; text-decoration:underline; text-underline-offset:4px;" data-es="Consulta precios y forma de pago →" data-en="Check prices and payment options →">Consulta precios y forma de pago →</a>
+    </div>
   </div>
   <div class="galeria-track-wrap">
     <div class="galeria-track" id="galeria-track-prog">
@@ -1447,101 +1434,9 @@
   </div>
 </section>
 
-<!-- ITINERARIO -->
-<section id="itinerario" style="background: var(--off-white); padding:56px 0;">
-  <div class="container">
-    <p class="section-label" data-es="Agenda RMF Clinic 2027" data-en="RMF Clinic 2027 Schedule">Agenda RMF Clinic 2027</p>
-    <h2 class="section-title" data-es="10 DÍAS EN MADRID · 8–18 OCTUBRE 2027" data-en="10 DAYS IN MADRID · OCTOBER 8–18, 2027">10 DÍAS EN MADRID · 8–18 OCTUBRE 2027</h2>
-    <p class="section-sub" style="margin-bottom:40px;" data-es="Agenda ejemplo de los deportistas. Cada día incluye desayuno, almuerzo, cena y hora de descanso." data-en="Sample schedule for players. Every day includes breakfast, lunch, dinner and rest time.">Agenda ejemplo de los deportistas. Cada día incluye desayuno, almuerzo, cena y hora de descanso.</p>
-
-    <div class="faq-item open" onclick="this.classList.toggle('open')" style="border-bottom:1px solid rgba(11,31,58,0.1);">
-      <div class="faq-question" style="font-size:18px;"><span data-es="Ver agenda día a día (10 días en Madrid)" data-en="View day-by-day schedule (10 days in Madrid)">Ver agenda día a día (10 días en Madrid)</span> <span class="faq-arrow">+</span></div>
-      <div class="faq-answer" style="padding-bottom:16px; max-width:none;">
-        <div class="agenda-timeline">
-          <div class="agenda-row">
-            <div class="agenda-line"></div>
-            <div class="agenda-stop">
-              <div class="agenda-dot">✈️</div>
-              <div class="agenda-date" data-es="VIE 8 OCT 2027" data-en="FRI OCT 8, 2027">VIE 8 OCT 2027</div>
-              <div class="agenda-name" data-es="Bogotá → Madrid" data-en="Bogotá → Madrid">Bogotá → Madrid</div>
-              <div class="agenda-desc" data-es="Vuelo hacia Madrid. Inicio de la aventura." data-en="Flight to Madrid. The adventure begins.">Vuelo hacia Madrid. Inicio de la aventura.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot">🏨</div>
-              <div class="agenda-date" data-es="SÁB 9 OCT 2027" data-en="SAT OCT 9, 2027">SÁB 9 OCT 2027</div>
-              <div class="agenda-name" data-es="Recepción + Bienvenida" data-en="Arrival + Welcome">Recepción + Bienvenida</div>
-              <div class="agenda-desc" data-es="Recepción en el Aeropuerto Madrid-Barajas, reunión de bienvenida y entrenamiento en el EFI." data-en="Pick-up at Madrid-Barajas Airport, welcome meeting and training at the EFI.">Recepción en el Aeropuerto Madrid-Barajas, reunión de bienvenida y entrenamiento en el EFI.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot">🎤</div>
-              <div class="agenda-date" data-es="DOM 10 OCT 2027" data-en="SUN OCT 10, 2027">DOM 10 OCT 2027</div>
-              <div class="agenda-name" data-es="Conferencia + Tour Bernabéu" data-en="Talk + Bernabéu Tour">Conferencia + Tour Bernabéu</div>
-              <div class="agenda-desc" data-es="Conferencia &quot;Building a Champion&quot; y entrenamiento en el EFI. Tour Bernabéu y Real Madrid Adidas Store." data-en="&quot;Building a Champion&quot; talk and training at the EFI. Bernabéu Tour and Real Madrid Adidas Store.">Conferencia "Building a Champion" y entrenamiento en el EFI. Tour Bernabéu y Real Madrid Adidas Store.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot featured">⚽</div>
-              <div class="agenda-date" data-es="LUN 11 OCT 2027" data-en="MON OCT 11, 2027">LUN 11 OCT 2027</div>
-              <div class="agenda-name" data-es="RMF Clinic + Victory Cup" data-en="RMF Clinic + Victory Cup">RMF Clinic + Victory Cup</div>
-              <div class="agenda-desc" data-es="Sesión del Real Madrid Foundation Clinic y partido de la Victory Cup." data-en="Real Madrid Foundation Clinic session and Victory Cup match.">Sesión del Real Madrid Foundation Clinic y partido de la Victory Cup.</div>
-            </div>
-          </div>
-          <div class="agenda-row">
-            <div class="agenda-line alt"></div>
-            <div class="agenda-stop">
-              <div class="agenda-dot featured">🛍️</div>
-              <div class="agenda-date" data-es="MAR 12 OCT 2027" data-en="TUE OCT 12, 2027">MAR 12 OCT 2027</div>
-              <div class="agenda-name" data-es="RMF Clinic + Outlet" data-en="RMF Clinic + Outlet">RMF Clinic + Outlet</div>
-              <div class="agenda-desc" data-es="Sesión del Real Madrid Foundation Clinic y visita a The Style Outlet Store." data-en="Real Madrid Foundation Clinic session and visit to The Style Outlet Store.">Sesión del Real Madrid Foundation Clinic y visita a The Style Outlet Store.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot">🏙️</div>
-              <div class="agenda-date" data-es="MIÉ 13 OCT 2027" data-en="WED OCT 13, 2027">MIÉ 13 OCT 2027</div>
-              <div class="agenda-name" data-es="City Tour I + Victory Cup" data-en="City Tour I + Victory Cup">City Tour I + Victory Cup</div>
-              <div class="agenda-desc" data-es="Madrid City Tour I y partido de la Victory Cup." data-en="Madrid City Tour I and Victory Cup match.">Madrid City Tour I y partido de la Victory Cup.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot featured">⚽</div>
-              <div class="agenda-date" data-es="JUE 14 OCT 2027" data-en="THU OCT 14, 2027">JUE 14 OCT 2027</div>
-              <div class="agenda-name" data-es="RMF Clinic + Victory Cup" data-en="RMF Clinic + Victory Cup">RMF Clinic + Victory Cup</div>
-              <div class="agenda-desc" data-es="Sesión del Real Madrid Foundation Clinic y partido de la Victory Cup." data-en="Real Madrid Foundation Clinic session and Victory Cup match.">Sesión del Real Madrid Foundation Clinic y partido de la Victory Cup.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot featured">🎓</div>
-              <div class="agenda-date" data-es="VIE 15 OCT 2027" data-en="FRI OCT 15, 2027">VIE 15 OCT 2027</div>
-              <div class="agenda-name" data-es="Ceremonia de Diplomas" data-en="Diploma Ceremony">Ceremonia de Diplomas</div>
-              <div class="agenda-desc" data-es="Ceremonia de Diplomas, Tour Ciudad Deportiva y sesión del RMF Clinic. Madrid City Tour II y Museo Legends." data-en="Diploma Ceremony, Sports City Tour and RMF Clinic session. Madrid City Tour II and Legends Museum.">Ceremonia de Diplomas, Tour Ciudad Deportiva y sesión del RMF Clinic. Madrid City Tour II y Museo Legends.</div>
-            </div>
-          </div>
-          <div class="agenda-row">
-            <div class="agenda-line"></div>
-            <div class="agenda-stop">
-              <div class="agenda-dot">🎢</div>
-              <div class="agenda-date" data-es="SÁB 16 OCT 2027" data-en="SAT OCT 16, 2027">SÁB 16 OCT 2027</div>
-              <div class="agenda-name" data-es="Parque Warner" data-en="Parque Warner">Parque Warner</div>
-              <div class="agenda-desc" data-es="Día de diversión en el Parque Warner Madrid." data-en="A fun day at Parque Warner Madrid.">Día de diversión en el Parque Warner Madrid.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot">🏟️</div>
-              <div class="agenda-date" data-es="DOM 17 OCT 2027" data-en="SUN OCT 17, 2027">DOM 17 OCT 2027</div>
-              <div class="agenda-name" data-es="Actividad deportiva + Liga*" data-en="Sports activity + League*">Actividad deportiva + Liga*</div>
-              <div class="agenda-desc" data-es="Actividad deportiva en la residencia y partido de Liga del Real Madrid*." data-en="Sports activity at the residence and Real Madrid league match*.">Actividad deportiva en la residencia y partido de Liga del Real Madrid*.</div>
-            </div>
-            <div class="agenda-stop">
-              <div class="agenda-dot">🏅</div>
-              <div class="agenda-date" data-es="LUN 18 OCT 2027" data-en="MON OCT 18, 2027">LUN 18 OCT 2027</div>
-              <div class="agenda-name" data-es="Clausura + Madrid → Bogotá" data-en="Closing + Madrid → Bogotá">Clausura + Madrid → Bogotá</div>
-              <div class="agenda-desc" data-es="Ceremonia de Clausura, check-out y vuelo de regreso Madrid → Bogotá." data-en="Closing Ceremony, check-out and return flight Madrid → Bogotá.">Ceremonia de Clausura, check-out y vuelo de regreso Madrid → Bogotá.</div>
-            </div>
-          </div>
-          <p class="agenda-note" data-es="* El partido de Liga del Real Madrid está sujeto al calendario de LaLiga. Posibilidad de fechas personalizadas para grupos." data-en="* The Real Madrid league match is subject to the LaLiga schedule. Custom dates available for groups.">* El partido de Liga del Real Madrid está sujeto al calendario de LaLiga. Posibilidad de fechas personalizadas para grupos.</p>
-        </div>
-      </div>
-    </div>
-    <div style="text-align:center; margin-top:28px;">
-      <a href="https://drive.google.com/file/d/1WM90NFoN49uN6sWyRiH2cR3NOJjkGaBi/view?usp=sharing" target="_blank" rel="noopener" class="btn-secondary on-light" data-es="Ver la presentación completa →" data-en="See the full presentation →">Ver la presentación completa →</a>
-    </div>
-
-  </div>
+<!-- ITINERARIO — agenda en tarjetas (renderAgenda + AGENDA_CLINIC_2027, ver script al final) -->
+<section id="itinerario" class="ag-section">
+  <div class="ag-wrap" id="ag-clinic"></div>
 </section>
 
 <!-- FAMILY EXPERIENCE (ACOMPAÑANTES) -->
@@ -1654,7 +1549,7 @@
         <div class="step-number">02</div>
         <div class="step-content">
           <h3 class="step-title" data-es="Reserva con cuota inicial" data-en="Reserve with a deposit">Reserva con cuota inicial</h3>
-          <p class="step-text" data-es="Asegura el cupo con el pago de la reserva y paga el saldo antes de la fecha límite. Pagos en pesos colombianos por transferencia o tarjeta." data-en="Secure the spot with the reservation payment and pay the balance before the deadline. Payments in Colombian pesos by bank transfer or card.">Asegura el cupo con el pago de la reserva y paga el saldo antes de la fecha límite. Pagos en pesos colombianos por transferencia o tarjeta.</p>
+          <p class="step-text" data-es="Asegura el cupo con el pago de la reserva (Clinic: hasta el 1 de junio de 2027) y paga el saldo antes de la fecha límite. Pagos en pesos colombianos por transferencia o tarjeta." data-en="Secure the spot with the reservation payment (Clinic: by June 1, 2027) and pay the balance before the deadline. Payments in Colombian pesos by bank transfer or card.">Asegura el cupo con el pago de la reserva (Clinic: hasta el 1 de junio de 2027) y paga el saldo antes de la fecha límite. Pagos en pesos colombianos por transferencia o tarjeta.</p>
         </div>
       </div>
       <div class="step">
@@ -1729,7 +1624,7 @@
           <div class="promise-item"><div class="promise-check">✓</div><span data-es="Respuesta en menos de 24 horas" data-en="Response within 24 hours">Respuesta en menos de 24 horas</span></div>
           <div class="promise-item"><div class="promise-check">✓</div><span data-es="Financiamiento disponible en cuotas" data-en="Payment plans available">Financiamiento disponible en cuotas</span></div>
           <div class="promise-item"><div class="promise-check">✓</div><span data-es="Asesor dedicado durante todo el proceso" data-en="Dedicated advisor throughout the process">Asesor dedicado durante todo el proceso</span></div>
-          <div class="promise-item"><div class="promise-check">✓</div><span data-es="Cancelación flexible hasta 90 días antes" data-en="Flexible cancellation up to 90 days before">Cancelación flexible hasta 90 días antes</span></div>
+          <div class="promise-item"><div class="promise-check">✓</div><span data-es="Reserva no reembolsable (ver T&amp;C)" data-en="Non-refundable reservation (see T&amp;C)">Reserva no reembolsable (ver T&amp;C)</span></div>
         </div>
       </div>
 
@@ -2290,13 +2185,9 @@ function showStatus(type, msg, onClick) {
   .incluye-cats { grid-template-columns: 1fr !important; }
   .incluye-lines { white-space: normal !important; }
   .videos-testimonios { grid-template-columns: 1fr; gap: 16px; max-width: 360px; margin-left: auto; margin-right: auto; }
-  .agenda-row { flex-direction: column; gap: 20px; margin-bottom: 20px; }
   .fechas-grid { grid-template-columns: 1fr !important; }
   .family-grid { grid-template-columns: 1fr !important; }
   .family-grid > div:last-child { min-height: 220px !important; }
-  .agenda-line { display: none; }
-  .agenda-stop { display: flex; align-items: flex-start; text-align: left; gap: 14px; padding: 0; }
-  .agenda-stop .agenda-dot { margin: 0; flex-shrink: 0; width: 46px; height: 46px; font-size: 20px; }
 
   #programas .container > div[style*="grid-template-columns:repeat(3"] {
     grid-template-columns: 1fr !important;
@@ -2634,5 +2525,275 @@ img, video, iframe, table {
   });
 })();
 </script>
+<script>
+// ═══ AGENDA EN TARJETAS ════════════════════════════════════════════════════
+// renderAgenda(container, config) pinta cabecera, selector (si hay varias
+// pestañas), cifras (calculadas de los datos), tarjetas por día y pie.
+// Todo texto visible va en un elemento hoja con data-es/data-en, escrito en
+// el idioma activo (currentLang), para que toggleLang() lo siga traduciendo.
+(function (global) {
+  'use strict';
+
+  var ICONOS = {
+    rmf: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.8 2.8-1.5 4.4H9.7L8.2 10.3z"/><path d="M12 3v4.5M20.6 9.3l-4.8 1M17 19.3l-2.7-4.6M7 19.3l2.7-4.6M3.4 9.3l4.8 1"/>',
+    cup: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M8.5 20h7M10 17h4"/>',
+    tour: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/>',
+    cer: '<circle cx="12" cy="9" r="5"/><path d="M9 13.2 7.5 21l4.5-2.5 4.5 2.5-1.5-7.8"/>',
+    ent: '<path d="M10 4h4l4.5 15h-13z"/><path d="M3 19.5h18"/><path d="M7.6 12h8.8"/>',
+    via: '<path d="M10.5 13.5 3 11l1.5-1.5 8 1 3.5-4.5c.8-1 2.3-1.1 3 0 .6.8.4 1.9-.3 2.6L14.5 12l1 8L14 21.5l-3-6.5-3.5 3V20L6 21.5 5 18l-2-1z"/>',
+    lib: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>'
+  };
+  var CATEGORIAS = {
+    rmf: { es: 'Entrenamiento RMF', en: 'RMF training' },
+    cup: { es: 'Victory Cup', en: 'Victory Cup' },
+    tour: { es: 'Turismo', en: 'Sightseeing' },
+    cer: { es: 'Ceremonia', en: 'Ceremony' },
+    ent: { es: 'Entreno y formación', en: 'Training & learning' },
+    via: { es: 'Viaje', en: 'Travel' },
+    lib: { es: 'Libre', en: 'Free time' }
+  };
+  var FRANJAS = {
+    m: { es: 'Mañana', en: 'Morning' },
+    t: { es: 'Tarde', en: 'Afternoon' },
+    td: { es: 'Todo el día', en: 'All day' }
+  };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function lang() { return global.currentLang === 'en' ? 'en' : 'es'; }
+  // Elemento hoja bilingüe.
+  function tx(tag, cls, par, extra) {
+    return '<' + tag + (cls ? ' class="' + cls + '"' : '') + (extra || '') +
+      ' data-es="' + esc(par.es) + '" data-en="' + esc(par.en) + '">' + esc(par[lang()]) + '</' + tag + '>';
+  }
+
+  function contar(dias, cat) {
+    var n = 0;
+    dias.forEach(function (d) {
+      ['m', 't', 'td'].forEach(function (f) { (d[f] || []).forEach(function (a) { if (a.cat === cat) n++; }); });
+    });
+    return n;
+  }
+  function diasCon(dias, cat) {
+    return dias.filter(function (d) { return tieneCat(d, cat); }).length;
+  }
+  function tieneCat(d, cat) {
+    return ['m', 't', 'td'].some(function (f) { return (d[f] || []).some(function (a) { return a.cat === cat; }); });
+  }
+  function valorCifra(c, dias) {
+    if (c.fijo != null) return c.fijo;
+    if (c.diasCon) return diasCon(dias, c.diasCon);
+    return contar(dias, c.cat);
+  }
+
+  function actividadHtml(a, cats) {
+    var cat = (cats && cats[a.cat]) || CATEGORIAS[a.cat];
+    return '<div class="ag-act ag-c-' + a.cat + '">' +
+      '<span class="ag-ico"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + ICONOS[a.cat] + '</svg></span>' +
+      '<span>' + tx('span', 'ag-act-title', a) + tx('span', 'ag-act-cat', cat) + '</span>' +
+    '</div>';
+  }
+  function filaHtml(franja, acts, cats) {
+    return '<div class="ag-row">' + tx('span', 'ag-row-label', FRANJAS[franja]) +
+      '<div class="ag-acts">' + acts.map(function (a) { return actividadHtml(a, cats); }).join('') + '</div></div>';
+  }
+  function tarjetaHtml(d, i, cfg) {
+    var hl = tieneCat(d, cfg.destacar);
+    var filas = [];
+    if (d.td) filas.push(filaHtml('td', d.td, cfg.categorias));
+    if (d.m) filas.push(filaHtml('m', d.m, cfg.categorias));
+    if (d.t) filas.push(filaHtml('t', d.t, cfg.categorias));
+    return '<article class="ag-card' + (hl ? ' ag-hl' : '') + '">' +
+      '<div class="ag-card-head"><span class="ag-daynum">' + d.dia + '</span><span>' +
+        tx('span', 'ag-dayn', { es: 'Día ' + (i + 1), en: 'Day ' + (i + 1) }) +
+        tx('span', 'ag-weekday', d.semana) +
+      '</span>' + (hl ? tx('span', 'ag-badge', cfg.sello) : '') + '</div>' +
+      '<div class="ag-div"></div>' +
+      filas.join('<div class="ag-div"></div>') +
+    '</article>';
+  }
+
+  function renderAgenda(container, cfg, activa) {
+    if (!container) return;
+    var tabs = cfg.pestanas;
+    var idx = Math.max(0, Math.min(activa || 0, tabs.length - 1));
+    var p = tabs[idx];
+    var idBase = container.id || 'ag';
+    var selector = '';
+    if (tabs.length > 1) {
+      selector = '<div class="ag-tabs" role="tablist" aria-label="' + esc(cfg.selectorLabel || 'Agenda') + '">' +
+        tabs.map(function (t, i) {
+          var sel = i === idx;
+          return '<button type="button" role="tab" class="ag-tab" id="' + idBase + '-tab-' + i + '"' +
+            ' aria-selected="' + sel + '" aria-controls="' + idBase + '-panel" tabindex="' + (sel ? '0' : '-1') + '" data-i="' + i + '">' +
+            tx('span', '', t.nombre) + '</button>';
+        }).join('') + '</div>';
+    }
+    container.innerHTML =
+      '<div class="ag-head"><div>' +
+        tx('p', 'ag-label', cfg.etiqueta) + tx('h2', 'ag-title', cfg.titulo) + tx('p', 'ag-intro', cfg.intro) +
+      '</div>' + selector + '</div>' +
+      '<div id="' + idBase + '-panel"' + (tabs.length > 1 ? ' role="tabpanel" aria-labelledby="' + idBase + '-tab-' + idx + '"' : '') + ' class="ag-panel">' +
+        '<div class="ag-stats">' + p.cifras.map(function (c) {
+          return '<div class="ag-stat"><span class="ag-stat-num">' + valorCifra(c, p.dias) + '</span>' + tx('span', 'ag-stat-txt', c.texto) + '</div>';
+        }).join('') + '</div>' +
+        '<div class="ag-grid">' + p.dias.map(function (d, i) { return tarjetaHtml(d, i, cfg); }).join('') + '</div>' +
+        '<div class="ag-foot">' + tx('p', 'ag-note', p.nota) + (p.notaLiga ? tx('p', 'ag-note-liga', p.notaLiga) : '') + '</div>' +
+        '<div class="ag-ctas">' +
+          tx('a', 'ag-btn', { es: 'Recibir información →', en: 'Get information →' }, ' href="#inscripcion"') +
+          tx('a', 'ag-link', { es: 'Consulta precios y forma de pago →', en: 'Check prices and payment options →' }, ' href="#inscripcion"') +
+        '</div>' +
+      '</div>';
+
+    if (tabs.length > 1) {
+      var botones = container.querySelectorAll('.ag-tab');
+      var ir = function (i, foco) {
+        renderAgenda(container, cfg, i);
+        if (foco) { var b = container.querySelector('#' + idBase + '-tab-' + i); if (b) b.focus(); }
+      };
+      botones.forEach(function (b) {
+        b.addEventListener('click', function () { ir(+b.getAttribute('data-i'), false); });
+        b.addEventListener('keydown', function (e) {
+          var n = tabs.length, i = +b.getAttribute('data-i'), dest = null;
+          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') dest = (i + 1) % n;
+          else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') dest = (i - 1 + n) % n;
+          else if (e.key === 'Home') dest = 0;
+          else if (e.key === 'End') dest = n - 1;
+          if (dest !== null) { e.preventDefault(); ir(dest, true); }
+        });
+      });
+    }
+  }
+  global.renderAgenda = renderAgenda;
+})(window);
+
+// ── Datos: Clinic 2027 (8–18 octubre) ─────────────────────────────────────
+(function () {
+  function A(cat, es, en) { return { cat: cat, es: es, en: en }; }
+  function S(es, en) { return { es: es, en: en }; }
+  var SEM = {
+    vie: S('Viernes', 'Friday'), sab: S('Sábado', 'Saturday'), dom: S('Domingo', 'Sunday'),
+    lun: S('Lunes', 'Monday'), mar: S('Martes', 'Tuesday'), mie: S('Miércoles', 'Wednesday'), jue: S('Jueves', 'Thursday')
+  };
+  var LIBRE = A('lib', 'Libre', 'Free time');
+  var ENTRENO_CD = A('rmf', 'Entrenamiento Ciudad Deportiva', 'Training at the Training Ground');
+  var DIPLOMAS = A('rmf', 'Ceremonia de Diplomas + Tour Ciudad Deportiva', 'Diploma Ceremony + Training Ground Tour');
+  var BERNABEU = A('tour', 'Tour Bernabéu + Real Madrid Adidas Store', 'Bernabéu Tour + Real Madrid Adidas Store');
+  var OUTLET = A('tour', 'The Style Outlet Store', 'The Style Outlet Store');
+  var CITY1 = A('tour', 'Madrid City Tour I', 'Madrid City Tour I');
+  var WARNER = A('tour', 'Parque Warner', 'Parque Warner');
+  var RECEPCION = A('via', 'Recepción Aeropuerto Madrid-Barajas', 'Pick-up at Madrid-Barajas Airport');
+  var EFI = A('ent', 'Entrenamiento en EFI', 'Training at the EFI');
+
+  var jugadores = [
+    { dia: 8, semana: SEM.vie, td: [A('via', 'Vuelo Bogotá → Madrid', 'Flight Bogotá → Madrid')] },
+    { dia: 9, semana: SEM.sab, m: [RECEPCION], t: [A('cer', 'Reunión de bienvenida', 'Welcome meeting'), EFI] },
+    { dia: 10, semana: SEM.dom, m: [A('ent', 'Conferencia “Building a Champion”', '“Building a Champion” talk'), EFI], t: [BERNABEU] },
+    { dia: 11, semana: SEM.lun, m: [ENTRENO_CD], t: [A('cup', 'Victory Cup · Partido 1', 'Victory Cup · Match 1')] },
+    { dia: 12, semana: SEM.mar, m: [ENTRENO_CD], t: [OUTLET] },
+    { dia: 13, semana: SEM.mie, m: [CITY1], t: [A('cup', 'Victory Cup · Partido 2', 'Victory Cup · Match 2')] },
+    { dia: 14, semana: SEM.jue, m: [ENTRENO_CD], t: [A('cup', 'Victory Cup · Partido 3', 'Victory Cup · Match 3')] },
+    { dia: 15, semana: SEM.vie, m: [DIPLOMAS], t: [A('tour', 'Madrid City Tour II + Museo Legends', 'Madrid City Tour II + Legends Museum')] },
+    { dia: 16, semana: SEM.sab, td: [WARNER] },
+    { dia: 17, semana: SEM.dom, m: [A('ent', 'Actividad deportiva en residencia', 'Sports activity at the residence')], t: [A('tour', 'Partido de Liga*', 'League match*')] },
+    { dia: 18, semana: SEM.lun, m: [A('cer', 'Ceremonia de Clausura · Check out', 'Closing Ceremony · Check-out')], t: [A('via', 'Vuelo Madrid → Bogotá', 'Flight Madrid → Bogotá')] }
+  ];
+  var VCUP = A('cup', 'Victory Cup', 'Victory Cup');
+  var acompanantes = [
+    { dia: 8, semana: SEM.vie, td: [A('via', 'Salida a Madrid', 'Departure to Madrid')] },
+    { dia: 9, semana: SEM.sab, m: [RECEPCION], t: [LIBRE] },
+    { dia: 10, semana: SEM.dom, m: [LIBRE], t: [BERNABEU] },
+    { dia: 11, semana: SEM.lun, m: [LIBRE], t: [VCUP] },
+    { dia: 12, semana: SEM.mar, m: [LIBRE], t: [OUTLET] },
+    { dia: 13, semana: SEM.mie, m: [CITY1], t: [VCUP] },
+    { dia: 14, semana: SEM.jue, m: [LIBRE], t: [VCUP] },
+    { dia: 15, semana: SEM.vie, m: [DIPLOMAS], t: [A('tour', 'Madrid City Tour II', 'Madrid City Tour II')] },
+    { dia: 16, semana: SEM.sab, td: [WARNER] },
+    { dia: 17, semana: SEM.dom, td: [LIBRE] },
+    { dia: 18, semana: SEM.lun, td: [A('via', 'Regreso a Bogotá', 'Return to Bogotá')] }
+  ];
+
+  window.AGENDA_CLINIC_2027 = {
+    etiqueta: S('Agenda RMF Clinic 2027', 'RMF Clinic 2027 schedule'),
+    titulo: S('10 días en Madrid · 8–18 octubre', '10 days in Madrid · October 8–18'),
+    intro: S('Agenda de ejemplo, día a día. Los días en azul oscuro son los de entrenamiento en la Ciudad Deportiva del Real Madrid.',
+             'Sample day-by-day schedule. Days in dark blue are training days at the Real Madrid Training Ground.'),
+    selectorLabel: 'Agenda para',
+    destacar: 'rmf',
+    sello: S('CLINIC RMF', 'CLINIC RMF'),
+    pestanas: [
+      { nombre: S('Jugadores', 'Players'), dias: jugadores,
+        cifras: [
+          { cat: 'rmf', texto: S('entrenamientos en Ciudad Deportiva', 'trainings at the Training Ground') },
+          { cat: 'cup', texto: S('partidos de Victory Cup', 'Victory Cup matches') },
+          { cat: 'tour', texto: S('experiencias en Madrid', 'experiences in Madrid') }
+        ],
+        nota: S('Cada día incluye desayuno, almuerzo, snack, cena y hora de descanso.', 'Every day includes breakfast, lunch, snack, dinner and rest time.'),
+        notaLiga: S('*El partido de Liga está sujeto al calendario de LaLiga.', '*The league match is subject to the LaLiga schedule.') },
+      { nombre: S('Acompañantes', 'Companions'), dias: acompanantes,
+        cifras: [
+          { cat: 'cup', texto: S('partidos de Victory Cup', 'Victory Cup matches') },
+          { cat: 'tour', texto: S('experiencias en Madrid', 'experiences in Madrid') },
+          { fijo: 9, texto: S('noches en Hotel EuroStars', 'nights at Hotel EuroStars') }
+        ],
+        nota: S('Cada día: regreso al hotel, hora de descanso y cena.', 'Every day: return to the hotel, rest time and dinner.') }
+    ]
+  };
+})();
+
+// ── Datos: World Challenge 2027 (19–27 marzo) ─────────────────────────────
+// Tomados de la agenda anterior de la página (mismos textos ES/EN), repartidos
+// en Mañana / Tarde según las horas que ya tenía; sin horas → Todo el día.
+(function () {
+  function A(cat, es, en) { return { cat: cat, es: es, en: en }; }
+  function S(es, en) { return { es: es, en: en }; }
+  var dias = [
+    { dia: 19, semana: S('Viernes', 'Friday'), td: [A('via', 'Salida a Madrid', 'Departure to Madrid')] },
+    { dia: 20, semana: S('Sábado', 'Saturday'), t: [
+      A('via', '13:00 Recepción en el Aeropuerto Madrid-Barajas', '1:00 PM Arrival at Madrid-Barajas Airport'),
+      A('via', '14:00 Check-in', '2:00 PM Check-in'),
+      A('cer', '15:00 Reunión de bienvenida', '3:00 PM Welcome meeting'),
+      A('ent', '17:00–18:30 Entrenamiento', '5:00–6:30 PM Training')] },
+    { dia: 21, semana: S('Domingo', 'Sunday'),
+      m: [A('ent', '9:30 Conferencia “Building a Champion” y entrenamiento', '9:30 AM “Building a Champion” talk and training')],
+      t: [A('tour', '16:00 Tour Bernabéu y Real Madrid Adidas Store', '4:00 PM Bernabéu Tour and the Real Madrid Adidas Store')] },
+    { dia: 22, semana: S('Lunes', 'Monday'),
+      m: [A('cer', '11:00 Inauguración del World Challenge', '11:00 AM World Challenge opening')],
+      t: [A('tour', '13:30 Visita al centro de Madrid', '1:30 PM Visit to Madrid city centre')] },
+    { dia: 23, semana: S('Martes', 'Tuesday'), td: [A('cup', 'Partidos de fase de grupos', 'Group stage matches')] },
+    { dia: 24, semana: S('Miércoles', 'Wednesday'), td: [A('cup', 'Partidos de fase de grupos', 'Group stage matches')] },
+    { dia: 25, semana: S('Jueves', 'Thursday'), td: [A('cup', 'Último partido de grupos y eliminatorias', 'Last group stage match and knockouts')] },
+    { dia: 26, semana: S('Viernes', 'Friday'),
+      m: [A('cup', 'Finales del World Challenge', 'World Challenge finals')],
+      t: [A('tour', '13:00 Parque Warner Madrid', '1:00 PM Parque Warner Madrid')] },
+    { dia: 27, semana: S('Sábado', 'Saturday'), td: [
+      A('cer', 'Ceremonia de Clausura Real Madrid Foundation', 'Real Madrid Foundation Closing Ceremony'),
+      A('via', 'Check Out', 'Check Out')] }
+  ];
+  window.AGENDA_WC_2027 = {
+    etiqueta: S('Agenda World Challenge 2027', 'World Challenge 2027 schedule'),
+    titulo: S('8 días en Madrid · 19–27 marzo', '8 days in Madrid · March 19–27'),
+    intro: S('Agenda de ejemplo, día a día. Los días en azul oscuro son los de competición del World Challenge.',
+             'Sample day-by-day schedule. Days in dark blue are World Challenge competition days.'),
+    destacar: 'cup',
+    sello: S('WORLD CHALLENGE', 'WORLD CHALLENGE'),
+    categorias: { cup: S('World Challenge', 'World Challenge') },
+    pestanas: [{ dias: dias,
+      cifras: [
+        { diasCon: 'cup', texto: S('días de competición', 'competition days') },
+        { fijo: 7, texto: S('noches en el Campus', 'nights at the Campus') },
+        { cat: 'tour', texto: S('experiencias en Madrid', 'experiences in Madrid') }
+      ],
+      nota: S('Cada día incluye desayuno, almuerzo, snack, cena y hora de descanso.', 'Every day includes breakfast, lunch, snack, dinner and rest time.') }]
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', function () {
+  renderAgenda(document.getElementById('ag-wc'), window.AGENDA_WC_2027);
+  renderAgenda(document.getElementById('ag-clinic'), window.AGENDA_CLINIC_2027);
+});
+</script>
+
 </body>
 </html>
