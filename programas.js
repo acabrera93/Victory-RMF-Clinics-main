@@ -74,6 +74,7 @@
         titulo: 'Real Madrid Foundation Clinic',
         descripcion: 'Programa deportivo en la Ciudad Deportiva del Real Madrid. 2–10 Octubre 2026 · Madrid, España.',
         icono: '🏟️',
+        logo: { src: 'https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ', alt: 'Real Madrid Foundation Clinic' },
         precioTiqueteHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>$4.050.000 COP</strong> por persona.',
         anioNacMin: null, anioNacMax: null, edadTexto: '8 a 17 años'
       }
@@ -124,6 +125,7 @@
         titulo: 'Real Madrid Foundation World Challenge',
         descripcion: 'Torneo internacional en la Ciudad Deportiva del Real Madrid. 19–27 Marzo 2027 · Madrid, España.',
         icono: '🏆',
+        logo: { src: 'assets/logo-rmf-world-challenge.png', alt: 'Real Madrid Foundation World Challenge' },
         precioTiqueteHtml: 'Vuelo grupal <strong>Bogotá – Madrid – Bogotá</strong> con fecha fija. Costo <strong>1.400 EUR</strong> por persona (válido hasta agotar cupos reservados; bebés menores de 2 años: <strong>25%</strong>), pagadero en pesos colombianos a la <strong>tasa del día</strong> del pago.',
         anioNacMin: 2013, anioNacMax: 2018, edadTexto: '8 a 14 años'
       },
@@ -179,6 +181,7 @@
         titulo: 'Real Madrid Foundation Clinic',
         descripcion: 'Programa deportivo en la Ciudad Deportiva del Real Madrid. 8–18 Octubre 2027 · Madrid, España.',
         icono: '🏟️',
+        logo: { src: 'https://lh3.googleusercontent.com/d/1USK2ut3e0f1VwBbQ8uNqVSD517KtdZZQ', alt: 'Real Madrid Foundation Clinic' },
         precioTiqueteHtml: 'Tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> opcional: se cotiza según demanda.',
         anioNacMin: null, anioNacMax: null, edadTexto: '8 a 17 años'
       }
