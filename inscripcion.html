@@ -27,7 +27,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .type-title{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--navy);letter-spacing:1px;margin-bottom:8px}
 .type-desc{font-size:13px;color:var(--muted);line-height:1.6}
 .type-badge{display:inline-block;margin-top:10px;padding:4px 12px;background:rgba(30,91,168,.08);border-radius:20px;font-size:11px;font-weight:500;color:var(--blue)}
-.form-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:18px;display:none;animation:fadeIn .3s ease}
+.form-card{scroll-margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:18px;display:none;animation:fadeIn .3s ease}
 .form-card.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .ctitle{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--navy);margin-bottom:18px;display:flex;align-items:center;gap:10px}
@@ -132,7 +132,7 @@ img, video, iframe, table {
   <div class="type-grid" id="programa-grid"></div>
 
   <!-- SELECTOR -->
-  <div class="ctitle" style="margin-top:24px">2. Tipo de participante</div>
+  <div class="ctitle" id="paso-tipo" style="margin-top:24px;scroll-margin-top:16px">2. Tipo de participante</div>
   <div class="type-grid" id="type-grid">
     <div class="type-card" id="card-jugador" onclick="selectType('jugador')">
       <div class="type-icon">⚽</div>
@@ -558,7 +558,7 @@ function renderProgramasInscripcion() {
     return;
   }
   grid.innerHTML = abiertos.map(p =>
-    '<div class="type-card' + (p.key === selectedPrograma ? ' selected' : '') + '" data-prog="' + p.key + '" onclick="selectPrograma(\'' + p.key + '\')">'
+    '<div class="type-card' + (p.key === selectedPrograma ? ' selected' : '') + '" data-prog="' + p.key + '" onclick="selectPrograma(\'' + p.key + '\', true)">'
     + '<div class="type-icon">' + p.inscripcion.icono + '</div>'
     + '<div class="type-title">' + p.inscripcion.titulo + '</div>'
     + '<div class="type-desc">' + p.inscripcion.descripcion + '</div>'
@@ -567,8 +567,16 @@ function renderProgramasInscripcion() {
   ).join('');
 }
 
-function selectPrograma(programa) {
+// desdeClick = true solo cuando la persona toca una tarjeta (no en la
+// preselección al cargar la página): entonces baja al paso 2.
+function selectPrograma(programa, desdeClick) {
   selectedPrograma = getPrograma(programa).key;
+  if (desdeClick) {
+    setTimeout(() => {
+      const paso2 = document.getElementById('paso-tipo');
+      if (paso2) paso2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
   document.querySelectorAll('#programa-grid .type-card').forEach(c => c.classList.toggle('selected', c.dataset.prog === selectedPrograma));
   const sub = document.getElementById('hero-programa-sub');
   if (sub) sub.textContent = getPrograma(selectedPrograma).subtitulo;
