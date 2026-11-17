@@ -269,7 +269,7 @@ const PROGRAMAS = [
     },
     precioBaseReferido: 2890, prefijoReferido: 'RMF27', tiqueteEur: 993, // TODO tiquete: "se cotiza según demanda"
     fechasTexto: '8 al 18 Octubre', fechasCorto: '8–18 octubre',
-    linkPresentacion: 'https://drive.google.com/file/d/1WM90NFoN49uN6sWyRiH2cR3NOJjkGaBi/view?usp=sharing'
+    linkPresentacion: 'https://drive.google.com/file/d/1IG1pN0bFsMuf60OXSkfpk7BNVTQsjUtQ/view?usp=sharing'
   }
 ];
 
