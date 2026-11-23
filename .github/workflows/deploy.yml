@@ -23,8 +23,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v4
+      # Solo se publican los archivos del sitio. Antes se subía la carpeta
+      # entera (path: .) y quedaban públicos APPS_SCRIPT_CODE.gs, los
+      # blueprints de Make, .claude/ y carpetas temporales. Si agregas una
+      # página o carpeta nueva al sitio, agrégala aquí.
+      - name: Preparar carpeta pública
+        run: |
+          mkdir _site
+          cp *.html *.js manifest.json CNAME apple-touch-icon.png _site/
+          touch _site/.nojekyll
+          cp -R assets mail _site/
+          ls -R _site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - uses: actions/deploy-pages@v4
         id: deployment

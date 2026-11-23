@@ -1975,7 +1975,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Cambia la contraseña que se pide al entrar al panel. La primera vez, la contraseña por defecto es <strong>revel2026admin</strong>.</p>
         <div style="display:flex;flex-direction:column;gap:8px;max-width:340px">
           <input type="password" id="admin-pwd-current" class="pwd-input" placeholder="Contraseña actual" maxlength="50">
-          <input type="password" id="admin-pwd-new" class="pwd-input" placeholder="Nueva contraseña (mín. 6 caracteres)" maxlength="50">
+          <input type="password" id="admin-pwd-new" class="pwd-input" placeholder="Nueva contraseña (mín. 8 caracteres)" maxlength="50">
           <input type="password" id="admin-pwd-confirm" class="pwd-input" placeholder="Confirmar nueva contraseña" maxlength="50">
           <div id="admin-pwd-err" style="font-size:12px;min-height:16px"></div>
           <button onclick="cambiarPasswordAdmin(this)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;align-self:flex-start">Cambiar contraseña</button>
@@ -5428,7 +5428,7 @@ let _bioSection = null;
 let _bioOfferShownThisSession = false;
 let _pendingBioCallback = null;
 
-function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLink, rememberDevice }) {
+function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLink, rememberDevice, hideInput }) {
   document.getElementById('pwd-title').textContent = title || 'Acceso restringido';
   document.getElementById('pwd-subtitle').textContent = subtitle || '';
   document.getElementById('pwd-confirm-wrap').style.display = confirm ? '' : 'none';
@@ -5438,6 +5438,7 @@ function _pwdSetUI({ title, subtitle, confirm, cancelText, submitText, forgotLin
   document.getElementById('pwd-submit-btn').textContent = submitText || 'Entrar';
   document.getElementById('pwd-forgot-link').style.display = forgotLink ? '' : 'none';
   document.getElementById('pwd-input').value = '';
+  document.getElementById('pwd-input').style.display = hideInput ? 'none' : '';
   document.getElementById('pwd-err').textContent = '';
   document.getElementById('pwd-form').style.display = '';
   document.getElementById('pwd-forgot-form').style.display = 'none';
@@ -5500,8 +5501,10 @@ async function openPasswordGate(section) {
   const hasComercialPwd = !!(cd && cd.has_password);
 
   if (section === 'comercial' && !hasComercialPwd) {
-    _pwdMode = 'create';
-    _pwdSetUI({ title: 'Área Comercial', subtitle: 'Primera vez: crea tu contraseña personal (mín. 6 caracteres).', confirm: true, submitText: 'Crear contraseña' });
+    // La primera contraseña se crea desde un enlace enviado al correo (el
+    // backend ya no deja crearla sin comprobar que el correo es tuyo).
+    _pwdMode = 'create_link';
+    _pwdSetUI({ title: 'Área Comercial', subtitle: 'Primera vez: te enviaremos a ' + (participantEmail || 'tu correo') + ' un enlace para crear tu contraseña.', confirm: false, submitText: 'Enviarme el enlace', hideInput: true });
   } else {
     _pwdMode = 'verify';
     _pwdSetUI({ title: section === 'admin' ? 'Panel de Administración' : 'Área Comercial', subtitle: 'Introduce la contraseña para continuar.', forgotLink: true, rememberDevice: true });
@@ -5532,7 +5535,7 @@ function _openMustChange() {
 function openResetGate(token, email, type) {
   _pwdResetToken = token; _pwdResetEmail = email;
   _pwdMode = 'reset'; _pwdPendingSection = type === 'admin' ? 'admin' : 'comercial';
-  _pwdSetUI({ title: 'Nueva contraseña', subtitle: 'Crea tu nueva contraseña (mín. 6 caracteres).', confirm: true, cancelText: false, submitText: 'Guardar contraseña' });
+  _pwdSetUI({ title: 'Nueva contraseña', subtitle: 'Crea tu nueva contraseña (mín. 8 caracteres).', confirm: true, cancelText: false, submitText: 'Guardar contraseña' });
   document.getElementById('pwd-gate').classList.add('open');
   setTimeout(() => document.getElementById('pwd-input').focus(), 80);
 }
@@ -5762,12 +5765,24 @@ async function submitPasswordGate() {
   const errEl = document.getElementById('pwd-err');
   const submitBtn = document.getElementById('pwd-submit-btn');
   errEl.textContent = '';
+  if (_pwdMode === 'create_link') {
+    submitBtn.disabled = true; submitBtn.textContent = 'Enviando…';
+    try {
+      await fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'forgot_comercial_password', email: participantEmail, reset_url: location.origin + location.pathname }), redirect: 'follow' });
+      errEl.style.color = '#16a34a';
+      errEl.textContent = 'Listo. Revisa tu correo y abre el enlace para crear tu contraseña.';
+      submitBtn.textContent = 'Enviado ✓';
+    } catch (e) { errEl.textContent = 'Error de conexión.'; submitBtn.textContent = 'Enviarme el enlace'; submitBtn.disabled = false; }
+    return;
+  }
+  errEl.style.color = '';
   if (!val) { errEl.textContent = 'Introduce una contraseña.'; return; }
 
   // ── Modos con confirmación (create / must_change / reset) ──
   if (_pwdMode === 'create' || _pwdMode === 'must_change' || _pwdMode === 'reset') {
     const confirm = document.getElementById('pwd-confirm').value.trim();
-    if (val.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
+    if (val.length < 8) { errEl.textContent = 'Mínimo 8 caracteres.'; return; }
     if (val !== confirm) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
     const origText = submitBtn.textContent;
     submitBtn.textContent = 'Guardando…'; submitBtn.disabled = true;
@@ -6227,6 +6242,21 @@ function selComercialPrograma(p) {
 function renderComercialPanel() {
   const data = window._comercialData;
   if (!data || !data.found) return;
+  // Sin sesión el backend solo dice si la cuenta existe; las comisiones y
+  // jugadores asignados se piden aquí, ya con el token de sesión comercial.
+  if (!data.completo) {
+    if (!comercialSessionToken || data._cargando) return;
+    data._cargando = true;
+    fetch(APPS_SCRIPT_URL + '?action=comercial_login&email=' + encodeURIComponent(participantEmail) + '&token=' + encodeURIComponent(comercialSessionToken) + '&_t=' + Date.now(), { redirect: 'follow' })
+      .then(r => r.json())
+      .then(full => {
+        data._cargando = false;
+        if (full && full.found && full.completo) { window._comercialData = full; renderComercialPanel(); }
+        else { sessionStorage.removeItem('auth_comercial'); sessionStorage.removeItem('comercial_token'); comercialSessionToken = ''; openPasswordGate('comercial'); }
+      })
+      .catch(() => { data._cargando = false; });
+    return;
+  }
   const jugsAll = data.jugadores || [];
   // Cada comercial puede vender ambos programas con la misma cuenta — se
   // separan en pestañas para no mezclar comisiones de Clinic y World Challenge.
@@ -6333,7 +6363,7 @@ function renderComercialPanel() {
     + '<p style="font-size:13px;color:var(--muted);margin-bottom:14px">Actualiza la contraseña de acceso a tu área comercial.</p>'
     + '<div style="display:flex;flex-direction:column;gap:8px;max-width:340px">'
     + '<input type="password" id="com-pwd-current" class="pwd-input" placeholder="Contraseña actual" maxlength="50">'
-    + '<input type="password" id="com-pwd-new" class="pwd-input" placeholder="Nueva contraseña (mín. 6 caracteres)" maxlength="50">'
+    + '<input type="password" id="com-pwd-new" class="pwd-input" placeholder="Nueva contraseña (mín. 8 caracteres)" maxlength="50">'
     + '<input type="password" id="com-pwd-confirm" class="pwd-input" placeholder="Confirmar nueva contraseña" maxlength="50">'
     + '<div id="com-pwd-err" style="font-size:12px;min-height:16px"></div>'
     + '<button onclick="cambiarPasswordComercial(this)" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;font-family:\'DM Sans\',sans-serif;cursor:pointer;align-self:flex-start">Cambiar contraseña</button>'
@@ -6368,7 +6398,7 @@ async function cambiarPasswordComercial(btn) {
   const errEl   = document.getElementById('com-pwd-err');
   errEl.style.color = '#dc2626'; errEl.textContent = '';
   if (!current) { errEl.textContent = 'Introduce la contraseña actual.'; return; }
-  if (newPwd.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
+  if (newPwd.length < 8) { errEl.textContent = 'Mínimo 8 caracteres.'; return; }
   if (newPwd !== confirm) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
   const origText = btn.textContent;
   btn.textContent = 'Guardando…'; btn.disabled = true;
@@ -6398,14 +6428,14 @@ async function cambiarPasswordAdmin(btn) {
   const errEl   = document.getElementById('admin-pwd-err');
   errEl.style.color = '#dc2626'; errEl.textContent = '';
   if (!current) { errEl.textContent = 'Introduce la contraseña actual.'; return; }
-  if (newPwd.length < 6) { errEl.textContent = 'Mínimo 6 caracteres.'; return; }
+  if (newPwd.length < 8) { errEl.textContent = 'Mínimo 8 caracteres.'; return; }
   if (newPwd !== confirm) { errEl.textContent = 'Las contraseñas no coinciden.'; return; }
   const origText = btn.textContent;
   btn.textContent = 'Guardando…'; btn.disabled = true;
   try {
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'set_admin_password', current_password: current, new_password: newPwd }),
+      body: JSON.stringify({ action: 'set_admin_password', current_password: current, new_password: newPwd, token: adminSessionToken }),
       redirect: 'follow'
     }).then(r => r.json());
     if (res.ok) {
@@ -10647,7 +10677,7 @@ function deleteAdminFoto(fileId, fileName, btn) {
   if (!confirm('¿Eliminar "' + fileName + '"? Esta acción no se puede deshacer.')) return;
   btn.textContent = '…';
   btn.style.pointerEvents = 'none';
-  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_foto_drive', fileId}), redirect:'follow' })
+  fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'eliminar_foto_drive', fileId, token: adminSessionToken}), redirect:'follow' })
     .then(r => r.json())
     .then(res => {
       if (res.ok) {
@@ -10686,7 +10716,7 @@ function adminHandleFotoUpload(files) {
       const base64 = ev.target.result.split(',')[1];
       const ext = file.name.split('.').pop().toLowerCase();
       const fileName = 'foto_' + Date.now() + '_' + Math.random().toString(36).slice(2,7) + '.' + ext;
-      fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'subir_foto_drive',base64,fileName,mimeType:file.type,programa:adminProgramaActivo}), redirect:'follow' })
+      fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify({action:'subir_foto_drive',base64,fileName,mimeType:file.type,programa:adminProgramaActivo,token:adminSessionToken}), redirect:'follow' })
         .then(r => r.json())
         .then(res => {
           done++;
