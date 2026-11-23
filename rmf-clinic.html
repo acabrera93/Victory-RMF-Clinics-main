@@ -1660,20 +1660,9 @@
             <div class="field-error-msg" id="err-f-jugador">Por favor completa el nombre del jugador.</div>
           </div>
           <div class="form-group">
-            <select class="form-select" id="f-edad" required>
-              <option value="" data-es="Edad del jugador" data-en="Player's age">Edad del jugador</option>
-              <option value="8" data-es="8 años" data-en="8 years old">8 años</option>
-              <option value="9" data-es="9 años" data-en="9 years old">9 años</option>
-              <option value="10" data-es="10 años" data-en="10 years old">10 años</option>
-              <option value="11" data-es="11 años" data-en="11 years old">11 años</option>
-              <option value="12" data-es="12 años" data-en="12 years old">12 años</option>
-              <option value="13" data-es="13 años" data-en="13 years old">13 años</option>
-              <option value="14" data-es="14 años" data-en="14 years old">14 años</option>
-              <option value="15" data-es="15 años" data-en="15 years old">15 años</option>
-              <option value="16" data-es="16 años" data-en="16 years old">16 años</option>
-              <option value="17" data-es="17 años" data-en="17 years old">17 años</option>
-            </select>
-            <div class="field-error-msg" id="err-f-edad">Por favor selecciona la edad del jugador.</div>
+            <label class="form-label" for="f-nacimiento" data-es="Fecha de nacimiento del jugador *" data-en="Player's date of birth *">Fecha de nacimiento del jugador *</label>
+            <input class="form-input" id="f-nacimiento" type="date" min="2000-01-01" required>
+            <div class="field-error-msg" id="err-f-nacimiento">Ingresa una fecha de nacimiento válida.</div>
           </div>
           <div class="form-group">
             <div class="phone-row">
@@ -1861,7 +1850,31 @@ function actualizarNotaPresentacion() {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_CODE_RE = /^\+\d{1,4}$/;
 const PHONE_RE = /^[\d\s\-()]{6,}$/;
-const REQUIRED_FIELD_IDS = ['f-programa', 'f-nombre', 'f-jugador', 'f-edad', 'f-phone-code', 'f-phone', 'f-email'];
+const REQUIRED_FIELD_IDS = ['f-programa', 'f-nombre', 'f-jugador', 'f-nacimiento', 'f-phone-code', 'f-phone', 'f-email'];
+
+// Fecha de nacimiento (YYYY-MM-DD del <input type="date">) → edad en años
+// cumplidos hoy, o null si la fecha no es válida (vacía, futura o absurda).
+function edadDesdeNacimiento(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  if (!m) return null;
+  const a = +m[1], mes = +m[2], d = +m[3];
+  const f = new Date(a, mes - 1, d);
+  if (f.getFullYear() !== a || f.getMonth() !== mes - 1 || f.getDate() !== d) return null;
+  const hoy = new Date();
+  if (f > hoy || a < 2000) return null;
+  let edad = hoy.getFullYear() - a;
+  if (mes > hoy.getMonth() + 1 || (mes === hoy.getMonth() + 1 && d > hoy.getDate())) edad -= 1;
+  return edad;
+}
+function formatoFechaNac(iso) {
+  const p = (iso || '').split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : '';
+}
+// No permitir fechas futuras en el selector.
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('f-nacimiento');
+  if (el) { const h = new Date(); el.max = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0'); }
+});
 
 function clearFieldErrors() {
   REQUIRED_FIELD_IDS.forEach(id => {
@@ -1887,7 +1900,7 @@ async function handleSubmit(e) {
   const programa   = document.getElementById('f-programa')?.value;
   const nombre     = document.getElementById('f-nombre')?.value?.trim();
   const jugador    = document.getElementById('f-jugador')?.value?.trim();
-  const edad       = document.getElementById('f-edad')?.value;
+  const nacimiento = document.getElementById('f-nacimiento')?.value; // YYYY-MM-DD
   const phoneCode  = document.getElementById('f-phone-code')?.value?.trim();
   const phone      = document.getElementById('f-phone')?.value?.trim();
   const email      = document.getElementById('f-email')?.value?.trim();
@@ -1897,7 +1910,8 @@ async function handleSubmit(e) {
   if (!programa) { markFieldError('f-programa'); firstErrorId = firstErrorId || 'f-programa'; }
   if (!nombre)   { markFieldError('f-nombre');  firstErrorId = firstErrorId || 'f-nombre'; }
   if (!jugador)  { markFieldError('f-jugador'); firstErrorId = firstErrorId || 'f-jugador'; }
-  if (!edad)     { markFieldError('f-edad');    firstErrorId = firstErrorId || 'f-edad'; }
+  const edad = edadDesdeNacimiento(nacimiento);
+  if (edad === null) { markFieldError('f-nacimiento'); firstErrorId = firstErrorId || 'f-nacimiento'; }
   if (!phoneCode || !PHONE_CODE_RE.test(phoneCode)) { markFieldError('f-phone-code'); firstErrorId = firstErrorId || 'f-phone-code'; }
   if (!phone || !PHONE_RE.test(phone)) { markFieldError('f-phone'); firstErrorId = firstErrorId || 'f-phone'; }
   if (!email || !EMAIL_RE.test(email)) { markFieldError('f-email'); firstErrorId = firstErrorId || 'f-email'; }
@@ -1910,15 +1924,11 @@ async function handleSubmit(e) {
 
   // World Challenge es Sub14 — solo acepta jugadores nacidos en 2013 o después
   // (misma categoría más vieja permitida, "U14: 2013–2014", ya mostrada arriba
-  // en esta página, y que inscripcion.html valida con fecha de nacimiento
-  // exacta). Este formulario de "más información" solo pide la edad en años,
-  // así que el año de nacimiento se aproxima restando la edad al año actual —
-  // suficiente para filtrar un lead antes de contactarlo, no para la
-  // inscripción vinculante (esa sí exige la fecha exacta).
+  // en esta página, y que inscripcion.html también valida).
   const WC_ANIO_NAC_MIN_INFO = 2013;
-  const anioNacAprox = new Date().getFullYear() - parseInt(edad, 10);
-  if (programa.indexOf('World Challenge') >= 0 && anioNacAprox < WC_ANIO_NAC_MIN_INFO) {
-    showStatus('warning', '⚠️ El Real Madrid Foundation World Challenge es para jugadores Sub14 (nacidos en 2013 o después). Con la edad indicada, tu jugador no calificaría para este programa. Haz clic aquí para ver el Real Madrid Foundation Clinic 2027, que no tiene este límite de edad.', () => {
+  const anioNac = parseInt(nacimiento.slice(0, 4), 10);
+  if (programa.indexOf('World Challenge') >= 0 && anioNac < WC_ANIO_NAC_MIN_INFO) {
+    showStatus('warning', '⚠️ El Real Madrid Foundation World Challenge es para jugadores Sub14 (nacidos en 2013 o después). Con la fecha de nacimiento indicada, tu jugador no calificaría para este programa. Haz clic aquí para ver el Real Madrid Foundation Clinic 2027, que no tiene este límite de edad.', () => {
       selectPrograma('clinic');
       document.getElementById('f-nombre')?.focus();
     });
@@ -1937,7 +1947,8 @@ async function handleSubmit(e) {
   const payload = {
     nombre:            nombre || '',
     jugador:           jugador || '',
-    edad:              edad || '',
+    edad:              String(edad),
+    fecha_nacimiento:  formatoFechaNac(nacimiento), // DD/MM/YYYY
     pais:              '',
     phone:             (phoneCode + ' ' + phone) || '',
     phone_whatsapp:    phoneWhatsapp,
@@ -1965,7 +1976,7 @@ async function handleSubmit(e) {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-    document.getElementById('f-edad').value = '';
+    document.getElementById('f-nacimiento').value = '';
     setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = 'Enviarme la presentación y precios →';

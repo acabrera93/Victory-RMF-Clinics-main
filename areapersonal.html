@@ -3494,8 +3494,8 @@ function goPanel(id, noScroll) {
 }
 
 // ── TASA ─────────────────────────────────────────────────────────────────────
-const MARGEN_TASA_PCT = 0.0030; // margen sobre la tasa de mercado (0,30%)
-const TASA_FALLBACK = 4466; // ~4.424 EUR/COP mercado + margen
+const MARGEN_TASA_PCT = 0.0035; // margen sobre la tasa de mercado (0,35%) — aplica a todos los programas
+const TASA_FALLBACK = 4440; // ~4.424 EUR/COP mercado + margen 0,35%
 let tasa = TASA_FALLBACK;
 // La TRM fija de reserva/tiquete (tasaFija) y el valor del tiquete
 // (tiqueteEur) son de cada edición — ver programas.js.
@@ -4724,7 +4724,49 @@ if (urlParams.get('tiquete') === 'sin') {
   if (opt) opt.style.display = 'block';
 }
 
+// Guarda en la hoja de Inscripción (acción cambiar_tiquete_participante) que
+// el grupo agregó/quitó el tiquete aéreo, y actualiza los participantes en
+// memoria para que calcPaymentTotals() incluya (o quite) el monto del
+// tiquete. Sin esto el cambio era solo visual: el paso "Pago tiquete" salía
+// en 0 EUR y se perdía al recargar o con el auto-refresh de 60s.
+// Resuelve true si quedó guardado; si no, avisa al participante y resuelve false.
+function guardarTiqueteParticipante_(val, btn) {
+  if (!val) {
+    const t = calcPaymentTotals();
+    if ((t.abonoTiquete || 0) > 0) {
+      alert('Ya registraste un pago del tiquete aéreo, así que no se puede quitar desde aquí. Escríbenos a alejandro.cabrera@fundacionrevel.net y lo revisamos.');
+      return Promise.resolve(false);
+    }
+  }
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  return fetch(APPS_SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify({ action: 'cambiar_tiquete_participante', email: participantEmail, programa: programKeyActivo, tiquete_aereo: val ? 'Con tiquete' : 'Sin tiquete' }),
+    redirect: 'follow'
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (!res || !res.ok) {
+        alert((res && res.mensaje) || 'No pudimos guardar el cambio del tiquete aéreo. Intenta de nuevo en unos minutos.');
+        return false;
+      }
+      const valor = val ? 'Con tiquete' : 'Sin tiquete';
+      allParticipants.forEach(p => { if ((p.program_key || 'clinic') === programKeyActivo) p.tiquete_aereo = valor; });
+      if (participanteActual) participanteActual.tiquete_aereo = valor;
+      return true;
+    })
+    .catch(() => { alert('Error de conexión al guardar el tiquete aéreo. Intenta de nuevo.'); return false; })
+    .finally(() => { if (btn) { btn.disabled = false; btn.style.opacity = ''; } });
+}
+
 function setTiquete(val) {
+  if (val === conTiq) { aplicarSetTiqueteUI_(val); return; }
+  guardarTiqueteParticipante_(val, document.getElementById('btn-tiq-si')).then(ok => {
+    if (ok) aplicarSetTiqueteUI_(val);
+  });
+}
+
+function aplicarSetTiqueteUI_(val) {
   conTiq = val;
   document.getElementById('tiq-ok').style.display = val ? 'block' : 'none';
   document.getElementById('btn-tiq-si').textContent = val ? '✅ Tiquete agregado' : '✈️ Sí, agregar tiquete';
@@ -4733,6 +4775,7 @@ function setTiquete(val) {
   document.getElementById('tc-text').innerHTML = getTyC();
   actualizarFechasProgramaUI_();
   iniciarCountdownViaje();
+  applyPaymentTotals(calcPaymentTotals());
   buildSteps();
 }
 
@@ -5261,7 +5304,14 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
 // ── TIQUETE TOGGLE DESDE WELCOME ─────────────────────────────────────────────
 function toggleTiqueteDesdeWelcome() {
   if (!conTiq && !tiqueteDisponible(programKeyActivo)) return; // sin cotización de tiquete
-  conTiq = !conTiq;
+  const nuevo = !conTiq;
+  guardarTiqueteParticipante_(nuevo, document.getElementById('btn-toggle-tiq')).then(ok => {
+    if (ok) aplicarToggleTiqueteUI_(nuevo);
+  });
+}
+
+function aplicarToggleTiqueteUI_(nuevo) {
+  conTiq = nuevo;
   // Actualizar label botón welcome
   document.getElementById('tiq-toggle-label').textContent =
     conTiq ? 'Quitar tiquete aéreo' : 'Agregar tiquete aéreo';
@@ -5314,7 +5364,8 @@ function toggleTiqueteDesdeWelcome() {
     }, 100);
   }
 
-  // Reconstruir pasos
+  // Recalcular montos (incluye/quita el pago del tiquete) y reconstruir pasos
+  applyPaymentTotals(calcPaymentTotals());
   buildSteps();
 }
 

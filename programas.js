@@ -49,7 +49,7 @@
       precioBaseReferido: 2790,
       tiqueteEur: 993,
       // Reserva y tiquete a tasa fija (TRM de la fecha límite); null = tasa del día.
-      tasaFija: { valor: 4288, fechaTexto: '1 de junio de 2026' },
+      tasaFija: null,
       fechasLimite: { reserva: '1 de junio 2026', tiquete: '1 de junio 2026', final: '30 de julio 2026' },
       finTexto: '10 de octubre de 2026', finTextoCorto: '10 de octubre 2026',
       carta: {
