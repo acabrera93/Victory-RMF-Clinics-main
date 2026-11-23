@@ -5268,7 +5268,7 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, comprobante_count: comprobanteCount, metodo_pago: metodoPago, programa: programKeyActivo }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', email: participantEmail, nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, comprobante_count: comprobanteCount, metodo_pago: metodoPago, programa: programKeyActivo }),
     redirect: 'follow'
   })
     .then(r => r.json())
@@ -9331,7 +9331,7 @@ function registrarPagoDesdePanel(tipo) {
       if (estado === 'Completo' && email && nuevoPaso) {
         fetch(APPS_SCRIPT_URL, {
           method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'actualizar_paso', email, paso_actual: String(nuevoPaso), programa: pagoCurrentProgramKey })
+          body: JSON.stringify({ action: 'actualizar_paso', email, paso_actual: String(nuevoPaso), programa: pagoCurrentProgramKey, token: adminSessionToken })
         }).then(() => {
           (adminData || []).forEach(r => {
             const n = normalizeParticipant(r) || {};
