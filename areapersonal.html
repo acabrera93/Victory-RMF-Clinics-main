@@ -649,6 +649,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     </div>
   </div>
 
+  <div style="text-align:right;margin:-4px 0 10px">
+    <button type="button" onclick="cerrarSesionAreaPersonal()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;padding:4px">Cerrar sesión</button>
+  </div>
+
   <div class="section-tabs" id="section-tabs" style="display:none">
     <button class="stab active" data-section="proceso" onclick="switchSection('proceso')">Mi Proceso</button>
     <button class="stab" id="stab-recuerdo" data-section="recuerdo" onclick="switchSection('recuerdo')" style="display:none">🏁 Mi programa</button>
@@ -2965,6 +2969,17 @@ function guardarSesionParticipante_(email, token, expira) {
 function borrarSesionParticipante_() {
   participanteToken = '';
   try { localStorage.removeItem(SESION_PART_KEY); } catch (_) {}
+}
+
+// Cierra la sesión en este navegador: borra la sesión de 90 días de la
+// familia y las sesiones de admin/comercial de esta pestaña. El próximo
+// ingreso vuelve a pedir el código del correo. "Recordar este dispositivo"
+// de admin/comercial no se toca (lo eligió la persona explícitamente).
+function cerrarSesionAreaPersonal() {
+  if (!confirm('¿Cerrar sesión en este dispositivo? La próxima vez tendrás que ingresar con el código que llega a tu correo.')) return;
+  borrarSesionParticipante_();
+  try { ['admin_token', 'comercial_token', 'auth_admin', 'auth_comercial'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (_) {}
+  location.href = location.pathname;
 }
 
 function mostrarPasoLogin_(paso) {
