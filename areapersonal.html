@@ -538,8 +538,20 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <img src="https://lh3.googleusercontent.com/d/1XfpwTY8c5GDI4ssInLnIKxJ37UOPKKmO" alt="Revel">
     </div>
     <div class="login-sub">Ingresa el correo electrónico con el que te inscribiste para acceder a tu información.</div>
-    <input class="login-input" id="login-email" type="email" placeholder="tucorreo@ejemplo.com" onkeydown="if(event.key==='Enter') doLogin()">
-    <button class="login-btn" id="login-btn" onclick="doLogin()">Acceder →</button>
+    <div id="login-paso-email">
+      <input class="login-input" id="login-email" type="email" placeholder="tucorreo@ejemplo.com" onkeydown="if(event.key==='Enter') doLogin()">
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Acceder →</button>
+    </div>
+    <div id="login-paso-codigo" style="display:none">
+      <div class="login-sub" id="login-codigo-msg" style="margin-bottom:10px"></div>
+      <input class="login-input" id="login-codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Código de 6 dígitos" style="letter-spacing:6px;text-align:center;font-size:22px" onkeydown="if(event.key==='Enter') verificarCodigoLogin()">
+      <button class="login-btn" id="login-codigo-btn" onclick="verificarCodigoLogin()">Verificar código →</button>
+      <div style="margin-top:12px;font-size:13px;text-align:center">
+        <a href="#" id="login-reenviar" onclick="reenviarCodigoLogin();return false" style="color:var(--blue-light)">Reenviar código</a>
+        &nbsp;·&nbsp;
+        <a href="#" onclick="cambiarCorreoLogin();return false" style="color:var(--blue-light)">Usar otro correo</a>
+      </div>
+    </div>
     <div class="login-err" id="login-err">No encontramos ninguna inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.</div>
     <div class="login-footer">¿Aún no te has inscrito? <a href="inscripcion.html" style="color:var(--blue-light)">Ir al formulario →</a></div>
   </div>
@@ -2933,7 +2945,105 @@ function buildBreakdown(t) {
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
+// Sesión del área personal: se obtiene con un código de 6 dígitos enviado al
+// correo (enviar_codigo_login / verificar_codigo_login) y se guarda 30 días
+// en este navegador. Todas las llamadas con datos de la familia la envían
+// como `token`; sin ella el backend no devuelve ni modifica nada.
+const SESION_PART_KEY = 'participante_sesion';
+let participanteToken = '';
+
+function sesionParticipanteGuardada_(email) {
+  try {
+    const s = JSON.parse(localStorage.getItem(SESION_PART_KEY) || 'null');
+    if (s && s.email === email && s.token && (!s.expira || Date.now() < s.expira)) return s.token;
+  } catch (_) {}
+  return '';
+}
+function guardarSesionParticipante_(email, token, expira) {
+  try { localStorage.setItem(SESION_PART_KEY, JSON.stringify({ email, token, expira })); } catch (_) {}
+}
+function borrarSesionParticipante_() {
+  participanteToken = '';
+  try { localStorage.removeItem(SESION_PART_KEY); } catch (_) {}
+}
+
+function mostrarPasoLogin_(paso) {
+  document.getElementById('login-paso-email').style.display = paso === 'email' ? '' : 'none';
+  document.getElementById('login-paso-codigo').style.display = paso === 'codigo' ? '' : 'none';
+}
+
+async function postAppsScript_(body) {
+  const r = await fetch(APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body), redirect: 'follow' });
+  return r.json();
+}
+
 async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Introduce un correo electrónico válido.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (ADMIN_EMAILS.includes(email)) return continuarLogin_();
+  const guardado = sesionParticipanteGuardada_(email);
+  if (guardado) { participanteToken = guardado; return continuarLogin_(); }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Enviando código...';
+  try {
+    const res = await postAppsScript_({ action: 'enviar_codigo_login', email });
+    if (!res || res.ok === false) throw new Error((res && res.error) || 'error');
+    if (res.participante === false) { btn.disabled = false; btn.textContent = 'Acceder →'; return continuarLogin_(); } // comercial/admin/no inscrito
+    document.getElementById('login-codigo-msg').innerHTML = res.enviado === false
+      ? 'Ya te enviamos un código a <strong>' + escapeHtml(email) + '</strong> hace un momento. Revisa tu correo (también la carpeta de spam).'
+      : 'Te enviamos un código de 6 dígitos a <strong>' + escapeHtml(email) + '</strong>. Revisa tu correo (también la carpeta de spam).';
+    mostrarPasoLogin_('codigo');
+    const inp = document.getElementById('login-codigo'); inp.value = ''; setTimeout(() => inp.focus(), 50);
+  } catch (e) {
+    errEl.textContent = 'No pudimos enviarte el código. Intenta de nuevo en unos segundos.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Acceder →';
+  }
+}
+
+async function verificarCodigoLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const codigo = (document.getElementById('login-codigo').value || '').replace(/\D/g, '');
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  if (codigo.length !== 6) { errEl.textContent = 'Escribe el código de 6 dígitos.'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('login-codigo-btn');
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  try {
+    const res = await postAppsScript_({ action: 'verificar_codigo_login', email, codigo });
+    if (!res || !res.ok || !res.token) {
+      errEl.textContent = (res && res.error) || 'Código incorrecto.';
+      errEl.style.display = 'block';
+      return;
+    }
+    participanteToken = res.token;
+    guardarSesionParticipante_(email, res.token, res.expira);
+    mostrarPasoLogin_('email');
+    await continuarLogin_();
+  } catch (e) {
+    errEl.textContent = 'Error de conexión. Intenta de nuevo.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Verificar código →';
+  }
+}
+
+function reenviarCodigoLogin() { mostrarPasoLogin_('email'); doLogin(); }
+function cambiarCorreoLogin() {
+  mostrarPasoLogin_('email');
+  document.getElementById('login-err').style.display = 'none';
+  const inp = document.getElementById('login-email'); inp.value = ''; inp.focus();
+}
+
+async function continuarLogin_() {
   const email = document.getElementById('login-email').value.trim().toLowerCase();
   const errEl = document.getElementById('login-err');
   const defaultErr = 'No encontramos ninguna inscripción con ese correo. Verifica que sea el mismo que usaste en el formulario.';
@@ -2956,12 +3066,18 @@ async function doLogin() {
   try {
     // Buscar participante, comercial y referidor en paralelo
     const [rawText, comercialJson, referidoJson] = await Promise.all([
-      fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email) + '&login=1&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.text()),
+      fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(email) + '&login=1&token=' + encodeURIComponent(participanteToken) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.text()),
       fetch(APPS_SCRIPT_URL + '?action=comercial_login&email=' + encodeURIComponent(email) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json()).catch(() => ({ found: false })),
-      fetch(APPS_SCRIPT_URL + '?action=referido_login&email=' + encodeURIComponent(email) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json()).catch(() => ({ found: false }))
+      fetch(APPS_SCRIPT_URL + '?action=referido_login&email=' + encodeURIComponent(email) + '&token=' + encodeURIComponent(participanteToken) + '&_t=' + Date.now(), { redirect: 'follow' }).then(r => r.json()).catch(() => ({ found: false }))
     ]);
 
     let data; try { data = JSON.parse(rawText); } catch(e2) { data = null; }
+    // Sesión guardada vencida o revocada → pedir un código nuevo.
+    if (data && data.auth_required && participanteToken) {
+      borrarSesionParticipante_();
+      btn.disabled = false; btn.textContent = 'Acceder →';
+      return doLogin();
+    }
     const rawParticipants = extractParticipants(data);
     const isComercial = !!(comercialJson && comercialJson.found);
 
@@ -4054,7 +4170,7 @@ function pagoYaCongelado(tipoPago) {
 // reemplace la estimación mostrada mientras estaba "Pendiente de confirmar".
 function cargarMisPagosValidados() {
   if (!nombre) return;
-  fetch(APPS_SCRIPT_URL + '?action=mis_pagos&nombre=' + encodeURIComponent(nombre) + '&programa=' + encodeURIComponent(programKeyActivo) + '&_t=' + Date.now(), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=mis_pagos&nombre=' + encodeURIComponent(nombre) + '&programa=' + encodeURIComponent(programKeyActivo) + '&token=' + encodeURIComponent(participanteToken) + '&_t=' + Date.now(), { redirect: 'follow' })
     .then(r => r.json())
     .then(data => {
       misPagosValidados = (data && typeof data === 'object') ? data : {};
@@ -4165,7 +4281,7 @@ function hayModalAbierto_() {
 // hay lógica de render duplicada que mantener sincronizada aparte.
 function refrescarParticipanteAuto_() {
   if (hayModalAbierto_() || !participantEmail || !allParticipants.length) return;
-  fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(participantEmail) + '&_t=' + Date.now(), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=buscar&email=' + encodeURIComponent(participantEmail) + '&token=' + encodeURIComponent(participanteToken) + '&_t=' + Date.now(), { redirect: 'follow' })
     .then(r => r.text())
     .then(rawText => {
       let data; try { data = JSON.parse(rawText); } catch(e) { data = null; }
@@ -4718,7 +4834,7 @@ function guardarTiqueteParticipante_(val, btn) {
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
   return fetch(APPS_SCRIPT_URL, {
     method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'cambiar_tiquete_participante', email: participantEmail, programa: programKeyActivo, tiquete_aereo: val ? 'Con tiquete' : 'Sin tiquete' }),
+    body: JSON.stringify({ action: 'cambiar_tiquete_participante', email: participantEmail, programa: programKeyActivo, tiquete_aereo: val ? 'Con tiquete' : 'Sin tiquete', token: participanteToken }),
     redirect: 'follow'
   })
     .then(r => r.json())
@@ -5009,7 +5125,8 @@ function uploadDocumento(inp, tipoDocumento) {
       base64: base64Data,
       fileName: file.name,
       nombre: nombre,
-      programa: programKeyActivo
+      programa: programKeyActivo,
+      token: participanteToken
     };
 
     fetch(APPS_SCRIPT_URL, {
@@ -5117,7 +5234,7 @@ function subirUnComprobante(file, tipoPago) {
     const reader = new FileReader();
     reader.onload = () => {
       const base64Data = reader.result.split(',')[1];
-      const payload = { email: participantEmail, tipo_pago: tipoPago, base64: base64Data, fileName: file.name, nombre, programa: programKeyActivo };
+      const payload = { email: participantEmail, tipo_pago: tipoPago, base64: base64Data, fileName: file.name, nombre, programa: programKeyActivo, token: participanteToken };
       fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
@@ -5268,7 +5385,7 @@ function marcarComprobantePendiente(tipoPago, urlsNuevas) {
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', email: participantEmail, nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, comprobante_count: comprobanteCount, metodo_pago: metodoPago, programa: programKeyActivo }),
+    body: JSON.stringify({ action: 'marcar_comprobante_pendiente', email: participantEmail, token: participanteToken, nombre, tipo: tipoLabel, tipo_participante: tipoParticipante, eur: eurFinal, cop: copFinal, distribucion, fecha: hoy, comprobante_url: comprobanteUrl, file_id: fileId, comprobante_count: comprobanteCount, metodo_pago: metodoPago, programa: programKeyActivo }),
     redirect: 'follow'
   })
     .then(r => r.json())
@@ -5355,7 +5472,7 @@ function actualizarPaso(nuevoPaso) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'actualizar_paso', email: participantEmail, paso_actual: String(nuevoPaso), programa: programKeyActivo }),
+    body: JSON.stringify({ action: 'actualizar_paso', email: participantEmail, paso_actual: String(nuevoPaso), programa: programKeyActivo, token: participanteToken }),
     keepalive: true
   }).catch(() => {});
 }
@@ -10121,7 +10238,8 @@ function adminSubirDocumento(inputEl, tipo) {
         tipo_documento: tipo,
         base64: base64Data,
         fileName: file.name,
-        programa: row.programa
+        programa: row.programa,
+        token: adminSessionToken
       })
     })
       .then(r => r.json())
