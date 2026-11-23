@@ -3511,22 +3511,9 @@ let tasa = TASA_FALLBACK;
 // Challenge son pago único en la reserva, SIN "Pago Final" (a diferencia del
 // Clinic, donde Solo Actividades paga todo al final).
 
-// Excepción puntual: estos 3 participantes de Clinic ven la tasa del día en
-// vivo (misma que ya usa World Challenge) en vez de la TRM fija del 1 de
-// junio de 2026 para Reserva/Tiquete — así que si pagan después del plazo,
-// pagan con la tasa real del día en que efectivamente pagan, no con la tasa
-// del día en que venció el plazo (que es lo que le toca a todos los demás
-// participantes de Clinic). El congelamiento al enviar comprobante SIGUE
-// aplicando igual que a todos — ver pagoYaCongelado más abajo, que NO tiene
-// excepción: solo cambia qué tasa ven antes de ese momento. Acordado
-// puntualmente con estos 3 correos; no es un cambio de precio general.
-const EMAILS_TASA_VIVA_EXCEPCION = ['hernando.cifuentes@gmail.com', 'richenao@gmail.com', 'paolacamposg@hotmail.com'];
-function esExcepcionTasaViva_() {
-  return EMAILS_TASA_VIVA_EXCEPCION.includes(String(participantEmail || '').toLowerCase().trim());
-}
 function tasaReservaTiquete_() {
   const fija = getPrograma(programKeyActivo).tasaFija;
-  if (!fija || esExcepcionTasaViva_()) return tasa;
+  if (!fija) return tasa;
   return fija.valor;
 }
 function tiqueteUnitEur_() {
@@ -3761,11 +3748,7 @@ function actualizarFechasLimitePorPrograma_() {
   const prog = getPrograma(programKeyActivo);
   const esWC = prog.familia === 'world_challenge';
   const fechas = fechasLimiteActivas_();
-  // Excepción puntual (ver EMAILS_TASA_VIVA_EXCEPCION) — para estos 3
-  // participantes de Clinic, los textos de "tasa fija al 1 de junio" deben
-  // hablar de tasa del día como World Challenge, para no contradecir el
-  // número real que muestra su calculadora (ver tasaReservaTiquete_).
-  const usaTasaDia = !prog.tasaFija || esExcepcionTasaViva_();
+  const usaTasaDia = !prog.tasaFija;
   const tasaFijaTxt = prog.tasaFija ? prog.tasaFija.fechaTexto : '';
   const tasaFijaValor = prog.tasaFija ? prog.tasaFija.valor.toLocaleString('es-CO') : '';
 
@@ -4051,13 +4034,7 @@ function congelarPagoKey(tipoPago) {
 }
 
 function pagoYaCongelado(tipoPago) {
-  // La excepción de tasa viva (EMAILS_TASA_VIVA_EXCEPCION) NO evita el
-  // congelamiento — al igual que todos los demás, una vez envían su
-  // comprobante, el monto/tasa de ESE momento queda fijo. La diferencia es
-  // solo QUÉ tasa ven ANTES de pagar: la del día real (tasaReservaTiquete_)
-  // en vez de la TRM fija del 1 de junio — así que si pagan tarde, congelan
-  // la tasa del día en que de verdad pagaron, no la del día del vencimiento
-  // (que es lo que le pasa al resto de participantes de Clinic).
+  // Una vez enviado el comprobante, el monto/tasa de ESE momento queda fijo.
   const cfg = PAGOS_CONGELABLES[tipoPago];
   if (!cfg || grupoPaso < cfg.paso) return false;
   // Si tras congelar apareció saldo pendiente REAL (ej. se agregó un
