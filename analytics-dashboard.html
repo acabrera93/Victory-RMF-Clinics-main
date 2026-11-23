@@ -522,7 +522,7 @@
       const tr = document.createElement('tr');
       const rateLow = row.conversionRate < 2;
       tr.innerHTML = `
-        <td>${row.source}</td>
+        <td>${escapeHtml(row.source)}</td>
         <td>${row.pageviews}</td>
         <td>${row.clicks}</td>
         <td>${row.forms}</td>
@@ -595,7 +595,7 @@
       const row = document.createElement('div');
       row.className = 'bar-row';
       row.innerHTML = `
-        <div class="bar-label" title="${label}">${label}</div>
+        <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
         <div class="bar-track"><div class="bar-fill" style="width:${(count / max) * 100}%"></div></div>
         <div class="bar-count">${count}</div>
       `;

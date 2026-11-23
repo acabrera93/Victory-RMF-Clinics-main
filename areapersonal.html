@@ -5026,7 +5026,7 @@ function notificarClickBold(panel, tipo, monto, eur, tasa) {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({ action: 'notificar_click_bold', email: participantEmail, nombre, panel, tipo, monto, eur, tasa }),
+    body: JSON.stringify({ action: 'notificar_click_bold', email: participantEmail, token: participanteToken, nombre, panel, tipo, monto, eur, tasa }),
     keepalive: true
   }).catch(() => {});
 }
@@ -6155,7 +6155,7 @@ document.addEventListener('keydown', e => {
 
 function loadComunicaciones() {
   comunLoaded = true;
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail || '') + '&programa=' + encodeURIComponent(programKeyActivo), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail || '') + '&programa=' + encodeURIComponent(programKeyActivo) + '&token=' + encodeURIComponent(participanteToken || ''), { redirect: 'follow' })
     .then(r => r.json())
     .then(data => {
       const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
@@ -6172,7 +6172,7 @@ function loadComunicaciones() {
         </div>`
       ).join('');
       if (participantEmail) {
-        fetch(APPS_SCRIPT_URL + '?action=marcar_comunicados_vistos&email=' + encodeURIComponent(participantEmail) + '&count=' + msgs.length + '&programa=' + encodeURIComponent(programKeyActivo), { redirect: 'follow' }).catch(() => {});
+        fetch(APPS_SCRIPT_URL + '?action=marcar_comunicados_vistos&email=' + encodeURIComponent(participantEmail) + '&count=' + msgs.length + '&programa=' + encodeURIComponent(programKeyActivo) + '&token=' + encodeURIComponent(participanteToken || ''), { redirect: 'follow' }).catch(() => {});
       }
       clearComunBadge();
     })
@@ -6184,7 +6184,7 @@ function loadComunicaciones() {
 
 function checkNuevosComunicados() {
   if (!participantEmail) return;
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail) + '&programa=' + encodeURIComponent(programKeyActivo), { redirect: 'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&email=' + encodeURIComponent(participantEmail) + '&programa=' + encodeURIComponent(programKeyActivo) + '&token=' + encodeURIComponent(participanteToken || ''), { redirect: 'follow' })
     .then(r => r.json())
     .then(data => {
       const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];
@@ -6482,7 +6482,7 @@ function renderComercialPanel() {
       var dataNombre = normNombre(j.nombre || '');
       var dataColegio = m.colegioKey;
       var fechaTexto = m.fnDisp + (m.edad !== null ? ' · ' + m.edad + ' años' : '');
-      html += '<tr data-nombre="' + dataNombre + '" data-colegio="' + dataColegio + '"><td>' + j.nombre + '</td><td>' + (j.colegio || '—') + '</td><td>' + fechaTexto + '</td></tr>';
+      html += '<tr data-nombre="' + escapeHtml(dataNombre) + '" data-colegio="' + escapeHtml(dataColegio) + '"><td>' + escapeHtml(j.nombre) + '</td><td>' + escapeHtml(j.colegio || '—') + '</td><td>' + escapeHtml(fechaTexto) + '</td></tr>';
     });
     html += '<tr id="mis-jugadores-sin-resultados" style="display:none"><td colspan="3" style="text-align:center;color:var(--muted)">Sin coincidencias.</td></tr>';
     html += '</tbody></table></div>';
@@ -7237,7 +7237,7 @@ function renderAdminDashboard(rows, fin) {
         <tbody>
           ${jugs.map(c => `
             <tr style="border-bottom:1px solid var(--border)">
-              <td style="padding:11px 0;font-weight:500;color:var(--navy)">${c.comercial}</td>
+              <td style="padding:11px 0;font-weight:500;color:var(--navy)">${escapeHtml(c.comercial)}</td>
               <td style="padding:11px 0;text-align:right;font-size:13px;color:var(--muted)">${(c.comision_jugador||0).toLocaleString('es-CO')}€</td>
               <td style="padding:11px 0;text-align:right;font-size:13px">${c.jugadores||0}</td>
               <td style="padding:11px 0;text-align:right">${statusChip(c.estado)}</td>
@@ -7262,7 +7262,7 @@ function renderAdminDashboard(rows, fin) {
         <tbody>
           ${acomps.map(c => `
             <tr style="border-bottom:1px solid var(--border)">
-              <td style="padding:11px 0;font-weight:500;color:var(--navy)">${c.comercial}</td>
+              <td style="padding:11px 0;font-weight:500;color:var(--navy)">${escapeHtml(c.comercial)}</td>
               <td style="padding:11px 0;text-align:right;font-size:13px;color:var(--muted)">${(c.com_doble||0).toLocaleString('es-CO')}€</td>
               <td style="padding:11px 0;text-align:right;font-size:13px;color:var(--muted)">${(c.com_sencilla||0).toLocaleString('es-CO')}€</td>
               <td style="padding:11px 0;text-align:right;font-size:13px">${c.acomp_doble||0}</td>
@@ -10439,7 +10439,7 @@ function renderAdminCategorias(cats) {
 function loadAdminComunicados() {
   const el = document.getElementById('admin-comun-list');
   el.innerHTML = '<p style="color:var(--muted)">Cargando...</p>';
-  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&programa=' + encodeURIComponent(adminProgramaActivo) + '&_t=' + Date.now(), { redirect:'follow' })
+  fetch(APPS_SCRIPT_URL + '?action=comunicaciones&programa=' + encodeURIComponent(adminProgramaActivo) + '&token=' + encodeURIComponent(adminSessionToken || '') + '&_t=' + Date.now(), { redirect:'follow' })
     .then(r => r.json())
     .then(data => {
       const msgs = (data && Array.isArray(data.mensajes)) ? data.mensajes : [];

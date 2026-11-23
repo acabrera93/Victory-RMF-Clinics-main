@@ -898,9 +898,10 @@ async function submitForm(tipo) {
     // llega puede ser el de acceso inmediato al Área Personal O el de
     // "en revisión" (ver registrarInscripcionWeb_ en el backend) — no
     // prometer aquí un acceso que todavía no está garantizado.
+    const escI = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     document.getElementById('success-msg').innerHTML = payload2
-      ? `Recibimos la inscripción de <strong>${payload.nombre}</strong> y de su compañero/a de habitación <strong>${payload2.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con la confirmación y los siguientes pasos.`
-      : `Recibimos la inscripción de <strong>${payload.nombre}</strong>. Te enviamos un correo a <strong>${payload.email}</strong> con la confirmación y los siguientes pasos.`;
+      ? `Recibimos la inscripción de <strong>${escI(payload.nombre)}</strong> y de su compañero/a de habitación <strong>${escI(payload2.nombre)}</strong>. Te enviamos un correo a <strong>${escI(payload.email)}</strong> con la confirmación y los siguientes pasos.`
+      : `Recibimos la inscripción de <strong>${escI(payload.nombre)}</strong>. Te enviamos un correo a <strong>${escI(payload.email)}</strong> con la confirmación y los siguientes pasos.`;
     document.getElementById('success').classList.add('active');
     window.scrollTo({top:0, behavior:'smooth'});
     let cuenta = 4;
