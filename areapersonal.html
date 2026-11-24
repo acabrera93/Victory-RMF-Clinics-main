@@ -7474,7 +7474,7 @@ function renderAdminPagos(fin) {
     });
     const adRow = origIdx >= 0 ? (normalizeParticipant(adminData[origIdx]) || {}) : {};
     const conTiq = adRow.tiquete_aereo ? adRow.tiquete_aereo.toLowerCase().includes('con') : true;
-    const btnClick = `openPagosModal(${origIdx}, '${nombre.replace(/'/g,"\\'")}')`;
+    const btnClick = `openPagosModal(${origIdx}, '${jsStr_(nombre)}')`; // luego pasa por escapeHtml
     const tipoPart = tipoMap[key] || adRow.tipo || '';
     const tipoIsAcomp = tipoPart.toLowerCase().includes('acomp');
     const tipoKeyDato = tipoPart.toLowerCase().includes('staff') ? 'staff' : (tipoIsAcomp ? 'acomp' : 'jug');
@@ -9983,10 +9983,27 @@ function renderAdminDocumentosTab() {
   filterAdminDocumentosTable();
 }
 
-// Escapa para HTML y además neutraliza comillas simples — para insertar
-// valores dentro de un atributo onclick="...('valor')" sin romper el HTML.
+// Escapa un valor para meterlo dentro de una cadena JS entre comillas
+// simples ('valor'). Solo escape JS: si el resultado va dentro de un
+// atributo HTML, usar jsAttr_ (o pasar el atributo entero por escapeHtml).
+function jsStr_(s) {
+  return String(s || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+// Para valores dentro de un atributo onclick="fn('valor')". El orden
+// importa: primero escape JS y DESPUÉS HTML. Antes se hacía al revés y el
+// navegador volvía a convertir &#39; en ' antes de ejecutar el onclick, así
+// que un colegio o email como x');alert(1)// escrito en el formulario
+// público ejecutaba código en el panel admin.
 function jsAttr_(s) {
-  return escapeHtml(String(s || '')).replace(/'/g, "\\'");
+  return escapeHtml(jsStr_(s));
 }
 
 // Celda compacta de una sola línea (sin link "Ver", sin motivo, sin botones
@@ -10678,8 +10695,8 @@ function renderAdminAcceso() {
     const rolLabel = a.rol === 'editar' ? 'Ver y editar' : 'Solo ver';
     const rolColor = a.rol === 'editar' ? 'rgba(22,101,52,.12)' : 'rgba(30,91,168,.1)';
     const rolTextColor = a.rol === 'editar' ? '#166534' : 'var(--blue)';
-    const cambiarRolClick = `adminCambiarRolAcceso('${a.email.replace(/'/g,"\\'")}', this.value)`;
-    const eliminarClick = `adminEliminarAcceso('${a.email.replace(/'/g,"\\'")}', this)`;
+    const cambiarRolClick = `adminCambiarRolAcceso('${jsStr_(a.email)}', this.value)`; // luego pasa por escapeHtml
+    const eliminarClick = `adminEliminarAcceso('${jsStr_(a.email)}', this)`;
     return `
     <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:#fff">
       <div style="flex:1">
@@ -10784,7 +10801,7 @@ function loadAdminFotos(force) {
           <a href="${f.url}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%">
             <img src="${f.viewUrl}" alt="${f.name}" loading="lazy">
           </a>
-          <span class="foto-dl-btn" style="opacity:1;bottom:auto;top:8px;right:8px;background:rgba(220,38,38,.85);cursor:pointer" onclick="deleteAdminFoto('${f.id}','${f.name.replace(/'/g,"\\'")}',this)">✕</span>
+          <span class="foto-dl-btn" style="opacity:1;bottom:auto;top:8px;right:8px;background:rgba(220,38,38,.85);cursor:pointer" onclick="deleteAdminFoto('${jsAttr_(f.id)}','${jsAttr_(f.name)}',this)">✕</span>
         </div>`
       ).join('');
     })
