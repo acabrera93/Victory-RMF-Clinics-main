@@ -367,6 +367,10 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
           </div>
           <div class="form-field full"><label data-es="Mensaje" data-en="Message">Mensaje</label><textarea id="c-mensaje"></textarea></div>
         </div>
+        <label for="c-consent" style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 10px;font-size:12.5px;line-height:1.55;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="c-consent" required style="margin-top:3px;width:15px;height:15px;flex-shrink:0;cursor:pointer">
+          <span><span data-es="He leído el" data-en="I have read the">He leído el</span> <a href="aviso-de-privacidad.html" target="_blank" rel="noopener" style="color:var(--blue)" data-es="aviso de privacidad" data-en="privacy notice">aviso de privacidad</a> <span data-es="y autorizo el tratamiento de mis datos para responder a mi consulta. *" data-en="and I authorise the processing of my data to answer my enquiry. *">y autorizo el tratamiento de mis datos para responder a mi consulta. *</span></span>
+        </label>
         <button type="submit" class="contact-btn" id="contact-submit-btn" data-es="Enviar mensaje" data-en="Send message">Enviar mensaje</button>
         <div id="contact-status" style="margin-top:12px;display:none;font-size:13px;padding:10px 14px;border-radius:8px"></div>
       </form>
@@ -375,7 +379,7 @@ footer p{font-size:12px;color:rgba(255,255,255,.4)}
 </section>
 
 <footer>
-  <p>Victory Sports Spain</p>
+  <p>Victory Sports Spain · <a href="aviso-de-privacidad.html" style="color:inherit" data-es="Aviso de privacidad" data-en="Privacy notice">Aviso de privacidad</a></p>
 </footer>
 
 <script src="config.js"></script>
@@ -424,7 +428,7 @@ function enviarContacto(e){
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'contacto_institucional', nombre: nombre, organizacion: org, pais: pais, email: email, tipo: tipo, mensaje: mensaje }),
+    body: JSON.stringify({ action: 'contacto_institucional', nombre: nombre, organizacion: org, pais: pais, email: email, tipo: tipo, mensaje: mensaje, consentimiento_privacidad: 'Sí — aviso-de-privacidad.html — ' + new Date().toISOString() }),
     redirect: 'follow'
   })
   .then(function(r){ return r.json(); })

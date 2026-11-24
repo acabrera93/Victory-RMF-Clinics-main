@@ -54,6 +54,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 .btn-submit:disabled{background:var(--muted);cursor:not-allowed;transform:none;box-shadow:none}
 .err-msg{display:none;background:var(--rbg);border:1px solid var(--rborder);border-radius:8px;padding:12px 15px;font-size:13px;color:var(--red);margin-top:14px;line-height:1.6}
 .ok-msg{background:var(--gbg);border:1px solid var(--gborder);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--green);margin-top:8px;line-height:1.5}
+.consent-row{display:flex;gap:10px;align-items:flex-start;margin-top:20px;font-size:13px;line-height:1.55;color:var(--muted);cursor:pointer}
+.consent-row input{margin-top:3px;width:16px;height:16px;flex-shrink:0;cursor:pointer}
+.consent-row a{color:var(--blue)}
+.consent-row.error{color:var(--red)}
 .info-note{background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:8px;padding:13px 16px;font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:18px}
 .info-note strong{color:var(--navy)}
 .success-screen{display:none;text-align:center;background:#fff;border:1px solid var(--gborder);border-radius:12px;padding:56px 32px;margin-bottom:18px}
@@ -240,6 +244,11 @@ img, video, iframe, table {
       <div class="info-note" id="j-codigo-promo-msg" style="display:none;margin-top:8px"></div>
     </div>
 
+    <label class="consent-row" for="j-consent">
+      <input type="checkbox" id="j-consent">
+      <span>He leído el <a href="aviso-de-privacidad.html" target="_blank" rel="noopener">aviso de privacidad</a> y, como padre, madre o representante legal del jugador, autorizo el tratamiento de sus datos y los míos —incluidos los datos de salud que haya indicado— para gestionar su inscripción y participación en el programa. *</span>
+    </label>
+
     <div class="err-msg" id="j-err">Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.</div>
     <button class="btn-submit" id="j-btn" onclick="submitForm('jugador')">Enviar inscripción del jugador →</button>
   </div>
@@ -334,6 +343,11 @@ img, video, iframe, table {
         <input type="radio" name="a-tiquete" value="no"> 🧳 No, gestiono mi tiquete
       </label>
     </div>
+
+    <label class="consent-row" for="a-consent">
+      <input type="checkbox" id="a-consent">
+      <span>He leído el <a href="aviso-de-privacidad.html" target="_blank" rel="noopener">aviso de privacidad</a> y autorizo el tratamiento de mis datos (y los de la persona que comparte habitación conmigo, con su permiso) para gestionar la inscripción y el viaje. *</span>
+    </label>
 
     <div class="err-msg" id="a-err">Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.</div>
     <button class="btn-submit" id="a-btn" onclick="submitForm('acompanante')">Enviar inscripción del acompañante →</button>
@@ -775,9 +789,25 @@ async function submitForm(tipo) {
       const p2ok = ['p2-nombre','p2-fnac','p2-pasaporte'].map(chk).every(Boolean);
       valid = valid && p2ok;
     }
+    document.getElementById('a-err').textContent = 'Por favor completa todos los campos obligatorios y selecciona la opción de tiquete.';
     if (!valid) { document.getElementById('a-err').style.display = 'block'; return; }
     document.getElementById('a-err').style.display = 'none';
   }
+
+  // Autorización de tratamiento de datos (aviso-de-privacidad.html): sin la
+  // casilla marcada no se envía nada.
+  const pref = tipo === 'jugador' ? 'j' : 'a';
+  const consentEl = document.getElementById(pref + '-consent');
+  const consentRow = consentEl && consentEl.closest('.consent-row');
+  if (consentEl && !consentEl.checked) {
+    if (consentRow) consentRow.classList.add('error');
+    const errEl = document.getElementById(pref + '-err');
+    errEl.textContent = 'Para enviar la inscripción debes aceptar el aviso de privacidad y autorizar el tratamiento de los datos.';
+    errEl.style.display = 'block';
+    consentEl.focus();
+    return;
+  }
+  if (consentRow) consentRow.classList.remove('error');
 
   const btn = document.getElementById(tipo === 'jugador' ? 'j-btn' : 'a-btn');
   btn.disabled = true;
@@ -801,7 +831,7 @@ async function submitForm(tipo) {
     relacion: document.getElementById('j-relacion').value,
     tiquete_aereo: tiqJugador === 'si' ? 'Con tiquete' : 'Sin tiquete',
     programa: selectedPrograma, habitacion: '', jugador_acompana: '',
-    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web',
+    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web', consentimiento_privacidad: 'Sí — aviso-de-privacidad.html — ' + ts,
     codigoPromo: document.getElementById('j-codigo-promo').value.trim().toUpperCase(),
     codigoPromoValido: !!(codigoPromoValidado.jugador && codigoPromoValidado.jugador.valido),
     descuentoPorcentaje: (codigoPromoValidado.jugador && codigoPromoValidado.jugador.valido) ? codigoPromoValidado.jugador.descuentoPorcentaje : 0
@@ -823,7 +853,7 @@ async function submitForm(tipo) {
     jugador_acompana: document.getElementById('a-jugador').value.trim(),
     nombre_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-nombre').value.trim() : '',
     pasaporte_p2: document.getElementById('a-habitacion').value === 'doble' ? document.getElementById('p2-pasaporte').value.trim() : '',
-    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web',
+    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web', consentimiento_privacidad: 'Sí — aviso-de-privacidad.html — ' + ts,
     // Acompañantes no tienen código de referido/promoción — ver comentario en
     // codigoPromoValidado más arriba.
     codigoPromo: '', codigoPromoValido: false, descuentoPorcentaje: 0
@@ -851,7 +881,7 @@ async function submitForm(tipo) {
     jugador_acompana: payload.jugador_acompana,
     nombre_p2: payload.nombre,
     pasaporte_p2: payload.pasaporte,
-    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web',
+    paso_actual: '1', tc_aceptado: 'No', fuente: 'Preinscripcion Web', consentimiento_privacidad: 'Sí — aviso-de-privacidad.html — ' + ts,
     codigoPromo: payload.codigoPromo,
     codigoPromoValido: payload.codigoPromoValido,
     descuentoPorcentaje: payload.descuentoPorcentaje

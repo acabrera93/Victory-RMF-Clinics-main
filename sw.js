@@ -1,4 +1,4 @@
-const CACHE = 'rmf-v11';
+const CACHE = 'rmf-v12';
 
 self.addEventListener('install', e => {
   // Precache only the main HTML pages — icon files cached on demand

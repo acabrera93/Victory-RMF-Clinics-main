@@ -818,6 +818,10 @@
   }
   .form-select option { background: var(--navy-mid); }
   .form-input.field-error, .form-select.field-error { border-color: #dc2626; }
+  .consent-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.5; color: rgba(255,255,255,0.6); cursor: pointer; }
+  .consent-row input { margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; accent-color: #3b7fd4; cursor: pointer; }
+  .consent-row a { color: #93c5fd; text-decoration: underline; }
+  .consent-row.field-error { color: #f87171; }
   .field-error-msg { display: none; color: #f87171; font-size: 12px; margin-top: 6px; }
   .phone-row { display: flex; gap: 8px; }
   .phone-code-input { flex: 0 0 68px; width: 68px; text-align: center; padding-left: 4px; padding-right: 4px; }
@@ -1675,6 +1679,13 @@
             <input class="form-input" id="f-email" type="email" placeholder="Correo electrónico *" data-placeholder-es="Correo electrónico *" data-placeholder-en="Email address *" required>
             <div class="field-error-msg" id="err-f-email">Ingresa un correo electrónico válido.</div>
           </div>
+          <div class="form-group">
+            <label class="consent-row" for="f-consent">
+              <input type="checkbox" id="f-consent" required>
+              <span><span data-es="He leído el" data-en="I have read the">He leído el</span> <a href="aviso-de-privacidad.html" target="_blank" rel="noopener" data-es="aviso de privacidad" data-en="privacy notice">aviso de privacidad</a> <span data-es="y autorizo el tratamiento de mis datos y, como padre, madre o representante legal, los del jugador, para enviarme información del programa. *" data-en="and, as parent or legal guardian, I authorise the processing of my data and the player's to send me information about the programme. *">y autorizo el tratamiento de mis datos y, como padre, madre o representante legal, los del jugador, para enviarme información del programa. *</span></span>
+            </label>
+            <div class="field-error-msg" id="err-f-consent" data-es="Necesitamos tu autorización para enviarte la información." data-en="We need your consent to send you the information.">Necesitamos tu autorización para enviarte la información.</div>
+          </div>
 
           <button id="submit-btn" class="form-submit" onclick="handleSubmit(event)" disabled data-es="Enviarme la presentación y precios →" data-en="Send me the presentation and pricing →">
             Enviarme la presentación y precios →
@@ -1843,7 +1854,7 @@ function actualizarNotaPresentacion() {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_CODE_RE = /^\+\d{1,4}$/;
 const PHONE_RE = /^[\d\s\-()]{6,}$/;
-const REQUIRED_FIELD_IDS = ['f-programa', 'f-nombre', 'f-jugador', 'f-nacimiento', 'f-phone-code', 'f-phone', 'f-email'];
+const REQUIRED_FIELD_IDS = ['f-programa', 'f-nombre', 'f-jugador', 'f-nacimiento', 'f-phone-code', 'f-phone', 'f-email', 'f-consent'];
 
 // Fecha de nacimiento (YYYY-MM-DD del <input type="date">) → edad en años
 // cumplidos hoy, o null si la fecha no es válida (vacía, futura o absurda).
@@ -1876,6 +1887,7 @@ function clearFieldErrors() {
   });
   document.getElementById('card-clinic')?.classList.remove('field-error');
   document.getElementById('card-wc')?.classList.remove('field-error');
+  document.querySelector('.consent-row')?.classList.remove('field-error');
 }
 
 function markFieldError(id) {
@@ -1908,6 +1920,12 @@ async function handleSubmit(e) {
   if (!phoneCode || !PHONE_CODE_RE.test(phoneCode)) { markFieldError('f-phone-code'); firstErrorId = firstErrorId || 'f-phone-code'; }
   if (!phone || !PHONE_RE.test(phone)) { markFieldError('f-phone'); firstErrorId = firstErrorId || 'f-phone'; }
   if (!email || !EMAIL_RE.test(email)) { markFieldError('f-email'); firstErrorId = firstErrorId || 'f-email'; }
+  const consentEl = document.getElementById('f-consent');
+  if (consentEl && !consentEl.checked) {
+    markFieldError('f-consent');
+    consentEl.closest('.consent-row')?.classList.add('field-error');
+    firstErrorId = firstErrorId || 'f-consent';
+  }
 
   if (firstErrorId) {
     showStatus('error', '⚠️ Revisa los campos marcados en rojo.');
@@ -1950,7 +1968,9 @@ async function handleSubmit(e) {
     mensaje_whatsapp:  getMensajeWhatsApp({ nombre, programa }),
     pdf_link:          getPdfLink(programa),
     timestamp:         new Date().toISOString(),
-    fuente:            'Landing Revel Fundacion'
+    fuente:            'Landing Revel Fundacion',
+    // Constancia del consentimiento (solo se llega aquí con la casilla marcada).
+    consentimiento_privacidad: 'Sí — aviso-de-privacidad.html — ' + new Date().toISOString()
   };
 
   try {
@@ -1992,6 +2012,7 @@ REQUIRED_FIELD_IDS.forEach(id => {
   if (!el) return;
   el.addEventListener('input', () => {
     el.classList.remove('field-error');
+    el.closest('.consent-row')?.classList.remove('field-error');
     document.getElementById('err-' + id)?.classList.remove('show');
   });
 });
@@ -2086,6 +2107,7 @@ function showStatus(type, msg, onClick) {
         <a href="https://wa.me/34620301690">WhatsApp</a>
         <a href="mailto:alejandro.cabrera@fundacionrevel.net">alejandro.cabrera@fundacionrevel.net</a>
         <a href="https://www.instagram.com/revelfundacion/" target="_blank" rel="noopener">Instagram</a>
+        <a href="aviso-de-privacidad.html" data-es="Aviso de privacidad" data-en="Privacy notice">Aviso de privacidad</a>
       </div>
     </div>
     <div class="footer-bottom">
