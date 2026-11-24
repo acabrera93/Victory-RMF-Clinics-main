@@ -2171,27 +2171,15 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
 <script src="config.js"></script>
 <script src="programas.js"></script>
 <script>
-// ── CONFIG (mismo webhook que inscripción; Make filtra por body.action) ───
-const WEBHOOK_URL = 'https://hook.us2.make.com/***REMOVED***';
-
+// ── CONFIG ───
+// El área personal ya no habla con Make: todo pasa por Apps Script, que
+// exige sesión. El webhook viejo (acción "buscar") devolvía filas completas
+// sin autenticación — no volver a añadirlo aquí.
 // APPS_SCRIPT_URL viene de config.js (compartido entre todas las páginas)
 const ADMIN_EMAILS = ['alejandro.cabrera@fundacionrevel.net','presidente@fundacionrevel.net','andres.dewasseige@fundacionrevel.net'];
 const SUPER_ADMIN = 'alejandro.cabrera@fundacionrevel.net';
 // Las contraseñas se gestionan desde la propia app (admin → panel acceso; comercial → panel comercial)
 // (Después de desplegar tu Apps Script, copia la URL de implementación aquí)
-
-/** Mismo criterio que inscripcion.html: evita preflight CORS desde GitHub Pages. */
-function postMakeWebhook(baseUrl, payload) {
-  return fetch(baseUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain;charset=UTF-8',
-      Accept: '*/*'
-    },
-    body: JSON.stringify(payload),
-    keepalive: true
-  });
-}
 
 // ── Estado global (getTyC, loadParticipant, pasos) ───────────────────────────
 let allParticipants = [];
