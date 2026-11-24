@@ -710,8 +710,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="breakdown-reserva" class="breakdown-box" style="display:none"></div>
       <p id="pay-card1-hint" style="font-size:13px;color:var(--muted);margin-bottom:18px">Acepta los T&C arriba para habilitar el pago.</p>
 
-      <p id="reserva-tasa-info" style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, al tipo de cambio fijado el <strong>1 de junio de 2026</strong> — fecha límite de pago de reserva: <strong>1 EUR = $4.288 COP</strong>.</p>
-      <p id="reserva-tasa-nota" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa fija — no varía con la TRM del día.</p>
+      <p id="reserva-tasa-info" style="font-size:17px;color:var(--muted);margin-bottom:6px;line-height:1.6">El pago de la reserva se realiza en <strong>pesos colombianos (COP)</strong>, a la <strong>tasa del día</strong> en que realices el pago.</p>
+      <p id="reserva-tasa-nota" style="font-size:14px;color:var(--muted);margin-bottom:16px;opacity:0.7">Tasa del día — se actualiza con la tasa de mercado vigente.</p>
       <div class="calc-row">
         <div>
           <div class="clabel">Monto en euros (€)</div>
@@ -722,6 +722,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <input class="cinput ro" id="tasa1" type="text" readonly>
         </div>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin:6px 0 16px;">ℹ️ Spread bancario internacional 0.35%</div>
       <div class="cresult" style="margin-bottom:20px">
         <div>
           <div class="crlabel">Total en COP</div>
@@ -794,7 +795,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
     <div id="tiquete-tc-lock-msg" style="display:none;margin-bottom:20px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:14px 16px;font-size:14px;color:#92400e;line-height:1.6;text-align:center;font-weight:500">🔒 Debes aceptar los Términos y Condiciones para habilitar el pago del tiquete.</div>
     <div class="card pay-lock" id="pay-card-tiq">
       <div style="background:rgba(30,91,168,.05);border:1px solid rgba(30,91,168,.15);border-radius:10px;padding:20px;margin-bottom:20px">
-        <p id="tiquete-info-parrafo" style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>993 EUR</strong> por persona, pagadero en pesos colombianos al tipo de cambio fijado el <strong>1 de junio de 2026</strong>.</p>
+        <p id="tiquete-info-parrafo" style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:14px">El tiquete aéreo <strong>Bogotá – Madrid – Bogotá</strong> se gestiona como reserva grupal con vuelo y fecha fijos. Costo <strong>993 EUR</strong> por persona, pagadero en pesos colombianos a la <strong>tasa del día</strong> en que realices el pago.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">✈️</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Vuelo grupo</div><div style="font-size:10px;color:var(--muted)">BOG–MAD–BOG</div></div>
           <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px"><div style="font-size:18px;margin-bottom:4px">📅</div><div style="font-size:11px;font-weight:500;color:var(--navy)">Fecha límite</div><div id="tiquete-fecha-limite" style="font-size:10px;color:var(--muted)">1 de junio 2026</div></div>
@@ -808,6 +809,7 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div><div class="clabel">Valor del tiquete (EUR)</div><input class="cinput ro" id="eur-tiq" type="number" value="993" min="1" oninput="calcTiq()" readonly></div>
         <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin:6px 0 16px;">ℹ️ Spread bancario internacional 0.35%</div>
       <div class="cresult" style="margin-bottom:20px">
         <div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop-tiq">$ —</div></div>
       </div>
@@ -864,7 +866,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
         <div><div class="clabel">Monto en euros (€)</div><input class="cinput ro" id="eur2" type="number" value="1790" min="1" oninput="calc2()" readonly></div>
         <div><div class="clabel">Tasa media del mercado</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
       </div>
-      <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 16px;"></div>
+      <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 4px;"></div>
+      <div id="tasa-spread" style="font-size:11px;color:var(--muted);margin:0 0 16px;">ℹ️ Spread bancario internacional 0.35%</div>
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
       <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
       <div id="pago-exitoso-final" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago final completado exitosamente</div>
@@ -2839,6 +2842,7 @@ function applyPaymentTotals(t) {
   window.restantePendiente = window.restantePendiente || {};
   window.restantePendiente.tiquete = restanteTiquete;
   if (etiq) { etiq.value = restanteTiquete; calcTiq(); }
+  if (pagoYaCongelado('tiquete')) aplicarCongelamiento('tiquete');
   const idxT = STEP_DEFS.findIndex(s => s.panel === 'panel-tiq');
   if (idxT > -1) STEP_DEFS[idxT].done = totalTiqueteEur > 0 && conceptoGrupoCompleto_('tiquete');
 
@@ -4115,9 +4119,7 @@ function mostrarAbonoYRestante(idInput, idAviso, cardSelector, tituloEl, total, 
 
 function calc1() {
   if (pagoYaCongelado('reserva')) return; // ya se envió comprobante — el monto queda congelado
-  // Clinic: tasa fija (TRM del 1 de junio de 2026, fecha límite de pago de
-  // reserva) — no depende de la tasa en vivo. World Challenge: tasa del día
-  // (ver tasaReservaTiquete_()).
+  // Tasa del día (o tasaFija de la edición si la tuviera — ver tasaReservaTiquete_()).
   const e = parseFloat(document.getElementById('eur1').value) || 0;
   const tasaUsar = tasaReservaTiquete_();
   const base = e * tasaUsar;
@@ -4141,10 +4143,11 @@ function calc2() {
 // se recalculan solo porque cambie la tasa en vivo (pago final). Pero si luego
 // aparece saldo pendiente REAL (ej. se agrega un acompañante nuevo y el total
 // del grupo sube por encima de lo ya abonado), pagoYaCongelado() descongela
-// para permitir pagar la diferencia. El tiquete queda fuera a propósito —
-// sigue recalculándose igual.
+// para permitir pagar la diferencia. Aplica igual a reserva, tiquete y final
+// (los tres usan la tasa del día).
 const PAGOS_CONGELABLES = {
   reserva: { eur: 'eur1', tasa: 'tasa1', cop: 'cop1', tcTotal: 'p1tc-total', tcFee: 'p1tc-fee', trTotal: 'p1tr-total', paso: 4 },
+  tiquete: { eur: 'eur-tiq', tasa: 'tasa-tiq', cop: 'cop-tiq', tcTotal: 'ptiqtc-total', tcFee: 'ptiqtc-fee', trTotal: 'ptiqtr-total', paso: 5 },
   final:   { eur: 'eur2', tasa: 'tasa2', cop: 'cop2', tcTotal: 'p2tc-total', tcFee: 'p2tc-fee', trTotal: 'p2tr-total', paso: 6 }
 };
 
@@ -4161,8 +4164,8 @@ function pagoYaCongelado(tipoPago) {
   // congelado quedó desactualizado — hay que descongelar para permitir pagar
   // la diferencia y mostrar el monto/tasa/COP correctos.
   const t = calcPaymentTotals();
-  const total = tipoPago === 'reserva' ? t.reserva : t.final;
-  const abono = tipoPago === 'reserva' ? (t.abonoReserva || 0) : (t.abonoFinal || 0);
+  const total = tipoPago === 'reserva' ? t.reserva : tipoPago === 'tiquete' ? (t.tiqueteEurGrupo || 0) : t.final;
+  const abono = tipoPago === 'reserva' ? (t.abonoReserva || 0) : tipoPago === 'tiquete' ? (t.abonoTiquete || 0) : (t.abonoFinal || 0);
   if (total > 0 && abono < total) return false;
   return true;
 }
@@ -4178,6 +4181,7 @@ function cargarMisPagosValidados() {
     .then(data => {
       misPagosValidados = (data && typeof data === 'object') ? data : {};
       if (pagoYaCongelado('reserva')) aplicarCongelamiento('reserva');
+      if (pagoYaCongelado('tiquete')) aplicarCongelamiento('tiquete');
       if (pagoYaCongelado('final')) aplicarCongelamiento('final');
     })
     .catch(() => {});
@@ -4212,7 +4216,7 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
     const validado = misPagosValidados[tipoPago];
     const estadoValidado = validado ? String(validado.estado || '').toLowerCase() : '';
     if (validado && (estadoValidado === 'completo' || estadoValidado === 'parcial') && validado.eur > 0) {
-      const tasaReal = validado.cop > 0 ? Math.round(validado.cop / validado.eur) : (tipoPago === 'reserva' ? tasaReservaTiquete_() : tasa);
+      const tasaReal = validado.cop > 0 ? Math.round(validado.cop / validado.eur) : ((tipoPago === 'reserva' || tipoPago === 'tiquete') ? tasaReservaTiquete_() : tasa);
       const copReal = validado.cop > 0 ? validado.cop : validado.eur * tasaReal;
       datos = { eur: String(validado.eur), tasa: fmtT(tasaReal), cop: fmt(copReal) };
       try { localStorage.setItem(congelarPagoKey(tipoPago), JSON.stringify(datos)); } catch(e) {}
@@ -4235,7 +4239,7 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
     // una vez con la tasa vigente para que monto, tasa y COP queden coherentes
     // entre sí (en vez de dejar tasa/COP en blanco mientras el monto sí se ve),
     // y congelar ese resultado desde ahora.
-    const tasaUsar = tipoPago === 'reserva' ? tasaReservaTiquete_() : tasa;
+    const tasaUsar = (tipoPago === 'reserva' || tipoPago === 'tiquete') ? tasaReservaTiquete_() : tasa;
     const eur = eurEl ? (parseFloat(eurEl.value) || 0) : 0;
     const base = eur * tasaUsar;
     datos = { eur: eurEl ? eurEl.value : '', tasa: fmtT(tasaUsar), cop: fmt(base) };
@@ -4253,8 +4257,8 @@ function aplicarCongelamiento(tipoPago, datosForzados) {
   }
 }
 function calcTiq() {
-  // Clinic: tasa fija (misma TRM del 1 de junio que la reserva). World
-  // Challenge: tasa del día (ver tasaReservaTiquete_()).
+  if (pagoYaCongelado('tiquete')) return; // ya se envió comprobante — el monto y la tasa quedan congelados
+  // Tasa del día (o tasaFija de la edición si la tuviera — ver tasaReservaTiquete_()).
   const e = parseFloat(document.getElementById('eur-tiq').value) || 0;
   const tasaUsar = tasaReservaTiquete_();
   const base = e * tasaUsar;
@@ -5300,7 +5304,7 @@ function enviarComprobante(tipoPago) {
         if (tipoPago === 'reserva' && !conTiq) paso = sinPagoFinal ? 6 : 5; // sin tiquete: salta directo al siguiente paso pendiente
         if (tipoPago === 'tiquete' && sinPagoFinal) paso = 6; // World Challenge pago único: sin pago final, salta a documentos
         actualizarPaso(paso);
-        if (tipoPago === 'reserva' || tipoPago === 'final') congelarPago(tipoPago);
+        congelarPago(tipoPago);
         setTimeout(() => {
           applyPasoActual(paso, { optimistic: true }); // el comprobante recién enviado aún no está en la hoja
           scrollToStepsBar();
