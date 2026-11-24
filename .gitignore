@@ -1,3 +1,9 @@
 .DS_Store
 .claude/settings.local.json
 _site/
+
+# Código del backend y blueprints: nunca subir (repo público)
+privado/
+APPS_SCRIPT_CODE.gs
+make-blueprints/
+.claude/
