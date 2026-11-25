@@ -718,11 +718,10 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
           <input class="cinput ro" id="eur1" type="number" value="1000" min="1" oninput="calc1()" readonly>
         </div>
         <div>
-          <div class="clabel">Tasa de referencia</div>
+          <div class="clabel">Tasa de referencia<span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.75;margin-left:6px">· Spread bancario internacional 0.35%</span></div>
           <input class="cinput ro" id="tasa1" type="text" readonly>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin:6px 0 16px;">ℹ️ Spread bancario internacional 0.35%</div>
       <div class="cresult" style="margin-bottom:20px">
         <div>
           <div class="crlabel">Total en COP</div>
@@ -807,9 +806,8 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="breakdown-tiquete" class="breakdown-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Valor del tiquete (EUR)</div><input class="cinput ro" id="eur-tiq" type="number" value="993" min="1" oninput="calcTiq()" readonly></div>
-        <div><div class="clabel">Tasa de referencia</div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
+        <div><div class="clabel">Tasa de referencia<span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.75;margin-left:6px">· Spread bancario internacional 0.35%</span></div><input class="cinput ro" id="tasa-tiq" type="text" readonly></div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin:6px 0 16px;">ℹ️ Spread bancario internacional 0.35%</div>
       <div class="cresult" style="margin-bottom:20px">
         <div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop-tiq">$ —</div></div>
       </div>
@@ -864,10 +862,9 @@ nav{background:var(--navy);padding:16px 40px;display:flex;align-items:center;jus
       <div id="breakdown-final" class="breakdown-box" style="display:none"></div>
       <div class="calc-row">
         <div><div class="clabel">Monto en euros (€)</div><input class="cinput ro" id="eur2" type="number" value="1790" min="1" oninput="calc2()" readonly></div>
-        <div><div class="clabel">Tasa media del mercado</div><input class="cinput ro" id="tasa2" type="text" readonly></div>
+        <div><div class="clabel">Tasa media del mercado<span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.75;margin-left:6px">· Spread bancario internacional 0.35%</span></div><input class="cinput ro" id="tasa2" type="text" readonly></div>
       </div>
-      <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 4px;"></div>
-      <div id="tasa-spread" style="font-size:11px;color:var(--muted);margin:0 0 16px;">ℹ️ Spread bancario internacional 0.35%</div>
+      <div id="tasa-fecha" style="font-size:11px;color:var(--muted);margin:6px 0 16px;"></div>
       <div class="cresult" style="margin-bottom:20px"><div><div class="crlabel">Total en COP</div><div class="crvalue" id="cop2">$ —</div></div></div>
       <div id="calc-note2" style="display:none;margin-bottom:16px;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.25);border-radius:8px;padding:13px 15px;font-size:13px;color:#92400e;line-height:1.6;">⚠️ <strong>Datos de tasa no disponibles.</strong> Contacta a tu asesor: <strong>alejandro.cabrera@fundacionrevel.net</strong></div>
       <div id="pago-exitoso-final" class="ok-box" style="display:none;text-align:center;font-weight:500">✅ Pago final completado exitosamente</div>
